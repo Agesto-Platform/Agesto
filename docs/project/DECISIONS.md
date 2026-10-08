@@ -598,7 +598,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-31 — Migrations consolidadas numa `InitialCreate` única para o banco novo
 
-**Status:** 🟡 Decidido em 08/10/2026 — migration gerada na branch `feature/squash-initial-migration`; aplicação no Supabase pendente
+**Status:** ✅ Aplicada em 08/10/2026 no Supabase novo (São Paulo) pelo SQL Editor; `__EFMigrationsHistory` contém só `20261008213822_InitialCreate` e as 12 tabelas foram conferidas
 
 **Contexto:** ao gerar o script idempotente para o banco novo (DEC-30), constatou-se que a migration `20260618193156_ConvertEnumsToString` tem o `Up()` vazio: o schema correspondente tinha sido aplicado manualmente no Supabase antigo e a migration foi esvaziada só para alinhar o histórico. Num banco novo, o script rodaria sem erro, mas criaria o schema **sem a tabela `Empresas` e sem as colunas `EmpresaId`**. O snapshot do EF estava correto, por isso `has-pending-model-changes` não acusava nada.
 

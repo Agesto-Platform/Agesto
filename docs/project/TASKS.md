@@ -108,7 +108,7 @@
 | Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Campo de duração (não modelado) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje o sync de orçamento é só Carga (leitura) | Média | Decisão de produto |
 | Roteirização/geolocalização | Lat/lng no `Cliente`, ordenação da rota do dia por proximidade — fase posterior da DEC-17 | Média | — |
-| Aplicar migrations no banco novo | Migrations consolidadas numa `InitialCreate` única (DEC-31); aplicação pendente no Supabase novo (DEC-30) | Alta | Supabase provisionado |
+| ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
 | **Mapear uuid→id do cliente na Descarga** | Um atendimento criado offline não pode referenciar um cliente também criado offline (`PendingCliente`), porque a Descarga não devolve o mapeamento uuid→id do cliente pendente antes de processar o atendimento pendente da mesma leva (delta identificado em mob-06, ver DEC-26) | Média | Decisão de produto (ordem de processamento na Descarga) |
 
@@ -136,7 +136,7 @@
 | KAN-54 | Agents de QA automatizados | Baixa | Diego |
 | — | Configurar rulesets em `develop` e `main` | Alta | Davi Gomes |
 | — | Instalar dotnet ef global na máquina | Média | Davi Gomes |
-| — | Aplicar migrations pendentes no novo PostgreSQL | Alta | A definir |
+| — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
 | — | Subir banco/API real e trocar `VITE_USE_MOCKS`/`config.useMocks` para `false` no Web e no Mobile | Alta | Davi Gomes |
 
 ---
