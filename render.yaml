@@ -1,0 +1,29 @@
+# Blueprint do Render para a API do Agesto (DEC-32).
+# Render > New > Blueprint > selecionar este repositório.
+services:
+  - type: web
+    name: agesto-api
+    runtime: docker
+    plan: free
+    # Mesma região do Supabase (East US / N. Virginia).
+    region: virginia
+    # Provisório: develop até a promoção para main (DEC-32).
+    branch: develop
+    dockerContext: ./MicroERP.Api
+    dockerfilePath: ./MicroERP.Api/Dockerfile
+    healthCheckPath: /health
+    # Só publica depois que o CI do GitHub passar no commit.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      # O Dockerfile faz o Kestrel escutar na 8080; o Render encaminha para PORT.
+      - key: PORT
+        value: "8080"
+      # Segredos: preenchidos no painel do Render, nunca no Git.
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Jwt__Secret
+        generateValue: true
+      - key: Cors__AllowedOrigins__0
+        sync: false

@@ -438,4 +438,4 @@ FodyWeavers.xsd
 .claude/
 
 # Script de migrations gerado localmente (dotnet ef migrations script); regenerar a cada uso
-deploy/oracle/migrate.sql
+deploy/migrate.sql

@@ -308,7 +308,7 @@ O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois
 
 ## 8. Banco de Dados
 
-- **Provedor:** PostgreSQL no Supabase (plano Free, região São Paulo), ver DEC-30
+- **Provedor:** PostgreSQL no Supabase (plano Free, região East US / N. Virginia), ver DEC-32
 - **ORM:** Entity Framework Core 8.0.11
 - **Migrations:** controladas via `dotnet ef migrations`
 - **Estado:** migrations geradas no código; aplicação será validada em um banco novo
