@@ -66,6 +66,10 @@ public class AppDbContext : DbContext
                 .HasConversion<string>()
                 .HasMaxLength(10)
                 .IsRequired();
+            entity.Property(e => e.ModoAgendaAgente)
+                .HasConversion<string>()
+                .HasMaxLength(10)
+                .IsRequired();
             entity.HasIndex(e => e.EmpresaId).IsUnique();
             entity.HasOne(e => e.Empresa)
                 .WithMany()

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MicroERP.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260727233824_Orcamento")]
-    partial class Orcamento
+    [Migration("20261008213822_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -169,11 +169,19 @@ namespace MicroERP.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<bool>("ControlaEstoque")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
+
+                    b.Property<string>("ModoAgendaAgente")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("TipoOperacao")
                         .IsRequired()
@@ -543,6 +551,44 @@ namespace MicroERP.Api.Migrations
                     b.ToTable("Servicos");
                 });
 
+            modelBuilder.Entity("MicroERP.Api.Models.ServicoItemSugerido", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ProdutoId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("QuantidadePadrao")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("ServicoId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.HasIndex("ProdutoId");
+
+                    b.HasIndex("ServicoId", "ProdutoId")
+                        .IsUnique();
+
+                    b.ToTable("ServicoItemSugeridos");
+                });
+
             modelBuilder.Entity("MicroERP.Api.Models.Usuario", b =>
                 {
                     b.Property<long>("Id")
@@ -710,6 +756,25 @@ namespace MicroERP.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.ServicoItemSugerido", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.Produto", "Produto")
+                        .WithMany()
+                        .HasForeignKey("ProdutoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MicroERP.Api.Models.Servico", "Servico")
+                        .WithMany()
+                        .HasForeignKey("ServicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Produto");
+
+                    b.Navigation("Servico");
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Usuario", b =>
