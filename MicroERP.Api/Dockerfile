@@ -1,5 +1,5 @@
-# Imagem da API do Agesto. Multi-arquitetura: na VM Oracle (Ampere A1) o
-# build gera ARM64 automaticamente; localmente gera a arquitetura da máquina.
+# Imagem da API do Agesto, usada pelo Render (render.yaml). Multi-arquitetura:
+# o build gera a imagem para a arquitetura de quem compila.
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 COPY MicroERP.Api.csproj ./

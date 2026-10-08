@@ -563,7 +563,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-30 — Hospedagem do MVP em tiers gratuitos: Cloudflare Pages + Oracle Cloud + Supabase
 
-**Status:** 🟡 Decidido em 08/10/2026 — provisionamento pendente
+**Status:** ⚠️ Parcialmente substituída pela DEC-32 em 08/10/2026 — a web segue na Cloudflare Pages; a API saiu da Oracle para o Render e o banco foi recriado no Supabase em N. Virginia
 
 **Decisão:** O MVP será hospedado apenas em tiers gratuitos:
 - **Web (Módulo Dono):** Cloudflare Pages, servindo o build estático do Vite.
@@ -598,7 +598,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-31 — Migrations consolidadas numa `InitialCreate` única para o banco novo
 
-**Status:** ✅ Aplicada em 08/10/2026 no Supabase novo (São Paulo) pelo SQL Editor; `__EFMigrationsHistory` contém só `20261008213822_InitialCreate` e as 12 tabelas foram conferidas
+**Status:** ✅ Aplicada em 08/10/2026 no Supabase de São Paulo pelo SQL Editor; `__EFMigrationsHistory` contém só `20261008213822_InitialCreate` e as 12 tabelas foram conferidas. Com a DEC-32, o banco é recriado em N. Virginia com o mesmo script
 
 **Contexto:** ao gerar o script idempotente para o banco novo (DEC-30), constatou-se que a migration `20260618193156_ConvertEnumsToString` tem o `Up()` vazio: o schema correspondente tinha sido aplicado manualmente no Supabase antigo e a migration foi esvaziada só para alinhar o histórico. Num banco novo, o script rodaria sem erro, mas criaria o schema **sem a tabela `Empresas` e sem as colunas `EmpresaId`**. O snapshot do EF estava correto, por isso `has-pending-model-changes` não acusava nada.
 
@@ -613,3 +613,35 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - `Orcamentos` e `ServicoItemSugeridos` têm `EmpresaId` indexado, mas sem chave estrangeira para `Empresas` → não alterado; aguarda decisão.
 
 **Regra a partir daqui:** nenhuma migration pode ter o `Up()` esvaziado para "sincronizar histórico". Mudança aplicada manualmente em algum banco deve ser revertida ou reproduzida pela migration.
+
+---
+
+## DEC-32 — API no Render e banco no Supabase em N. Virginia
+
+**Status:** 🟡 Decidido em 08/10/2026 — provisionamento pendente
+
+**Decisão:** substitui a parte de API e banco da DEC-30:
+- **API (.NET 8):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `develop` (provisório, até a promoção para `main`) só depois que o CI passa (`autoDeployTrigger: checksPass`).
+- **Banco:** projeto Supabase novo em **East US (N. Virginia)**, ao lado da API, com a mesma `InitialCreate` da DEC-31. O projeto de São Paulo deixa de ser usado.
+- **Web:** sem mudança, segue na Cloudflare Pages.
+
+**Motivo:** a VM da Oracle exige operação (SO, Docker, HTTPS, firewall) e, sem Pay As You Go, pode ser parada por ociosidade; com Pay As You Go, exige cartão. O Render não pede cartão nem servidor para manter.
+
+**Por que mudar o banco de região:** o Render não tem região no Brasil. Com a API em Virginia e o banco em São Paulo, cada consulta atravessaria EUA↔Brasil (~120 ms cada, várias por requisição). Com os dois em Virginia, o usuário no Brasil paga essa distância uma vez por requisição. A troca foi feita enquanto o banco ainda estava vazio.
+
+**Alternativas descartadas:**
+- **Manter Oracle** → operação da VM e risco de recuperação por ociosidade (ver DEC-30).
+- **Google Cloud Run** em São Paulo → exige cartão.
+- **Trocar a arquitetura da API** (TypeScript no Cloudflare Workers ou Supabase direto com RLS) → reescrever ~5.500 linhas e 51 endpoints já testados para resolver só a hospedagem; contraria o princípio de mudanças pequenas no MVP.
+
+**Riscos e mitigações:**
+- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo chama `/health` a cada 10 min (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h).
+- **Pausa do Supabase Free** após 7 dias sem atividade → o mesmo ping, porque o `/health` executa `SELECT 1`.
+- **512 MB de RAM e 0,1 CPU** → suficiente para o MVP; reavaliar no primeiro sinal de lentidão.
+- **Sem disco persistente** → a API não grava arquivos hoje; uploads futuros precisam de storage externo.
+- **SMTP bloqueado** no plano Free → envio de e-mail futuro por API HTTP.
+- **Latência Brasil↔EUA** (~120 ms por requisição) → aceita no MVP; o mobile é offline-first.
+
+**Impacto no código:** nenhum na lógica. `deploy/oracle/` foi removido (fica no histórico do Git); o passo a passo está em `deploy/README.md`.
+
+**Revisão:** ao surgir receita, reavaliar Render Starter (sem dormir) e Supabase Pro (sem pausa, com backup).

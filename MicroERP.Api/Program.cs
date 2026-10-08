@@ -111,7 +111,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Em produção a API roda atrás do Caddy (proxy reverso com TLS); confia nos
+// Em produção a API roda atrás do proxy do Render, que termina o TLS; confia nos
 // cabeçalhos X-Forwarded-* para o esquema HTTPS e o IP real do cliente.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -121,7 +121,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 // SELECT 1 em vez de só abrir conexão: gera atividade real no banco, o que
-// também evita a pausa por inatividade do Supabase Free (DEC-30).
+// também evita a pausa por inatividade do Supabase Free (DEC-30, DEC-32).
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>(customTestQuery: async (db, ct) =>
     {
