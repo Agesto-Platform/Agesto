@@ -436,3 +436,6 @@ FodyWeavers.xsd
 
 # Ferramentas locais de IA / assistente (nao versionar)
 .claude/
+
+# Script de migrations gerado localmente (dotnet ef migrations script); regenerar a cada uso
+deploy/oracle/migrate.sql

@@ -1,0 +1,5 @@
+# Caddy emite e renova o certificado TLS (Let's Encrypt) para o domínio da API.
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy api:8080
+}

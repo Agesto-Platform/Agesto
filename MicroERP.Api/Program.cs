@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -96,17 +97,41 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
+// Origens liberadas vêm da configuração (Cors:AllowedOrigins); em produção,
+// o domínio da Cloudflare Pages é passado por variável de ambiente.
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("Dev", policy =>
+    options.AddPolicy("Web", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
 
+// Em produção a API roda atrás do Caddy (proxy reverso com TLS); confia nos
+// cabeçalhos X-Forwarded-* para o esquema HTTPS e o IP real do cliente.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// SELECT 1 em vez de só abrir conexão: gera atividade real no banco, o que
+// também evita a pausa por inatividade do Supabase Free (DEC-30).
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>(customTestQuery: async (db, ct) =>
+    {
+        await db.Database.ExecuteSqlRawAsync("SELECT 1", ct);
+        return true;
+    });
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
@@ -115,9 +140,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("Dev");
+app.UseCors("Web");
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 app.Run();
