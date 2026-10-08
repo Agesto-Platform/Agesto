@@ -558,3 +558,36 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - propriedade intelectual e responsabilidades definitivas por módulo ainda precisam ser formalizadas.
 
 **Impacto em decisões anteriores:** menções a “dev solo” permanecem como contexto histórico da decisão original e não representam a composição atual. A escolha de React Native, C# e monorepo não muda automaticamente com a retomada da equipe; qualquer revisão será uma nova decisão explícita.
+
+---
+
+## DEC-30 — Hospedagem do MVP em tiers gratuitos: Cloudflare Pages + Oracle Cloud + Supabase
+
+**Status:** 🟡 Decidido em 08/10/2026 — provisionamento pendente
+
+**Decisão:** O MVP será hospedado apenas em tiers gratuitos:
+- **Web (Módulo Dono):** Cloudflare Pages, servindo o build estático do Vite.
+- **API (.NET 8):** VM Ampere A1 (ARM) do Oracle Cloud Always Free, com a API em container Docker atrás de um proxy reverso com HTTPS.
+- **Banco:** Supabase (PostgreSQL), plano Free, usado apenas como Postgres gerenciado; a autenticação continua sendo o JWT próprio da API.
+- **Região:** São Paulo para a API (`sa-saopaulo-1`, como home region da conta Oracle) e para o banco (Supabase South America), mantendo a API ao lado do banco.
+
+**Motivo:** custo zero na fase de MVP. A VM Oracle fica ligada 24h, sem cold start, e permite colocar a API no Brasil junto do banco. A Cloudflare Pages permite uso comercial no plano gratuito.
+
+**Alternativas descartadas:**
+- **Vercel Hobby** para a web → proíbe uso comercial.
+- **Render** para a API → sem região no Brasil e cold start de cerca de 1 minuto no plano gratuito.
+- **Google Cloud Run** para a API → exige cartão e cobrança fora da cota; preterido pela equipe.
+- **Azure App Service F1** → limite de 60 min de CPU por dia, sem suporte para produção.
+- **Neon** para o banco → equipe optou por manter Supabase, já usado no setup inicial (KAN-14).
+
+**Riscos e mitigações:**
+- **Pausa do Supabase Free** após 7 dias sem atividade → endpoint `/health` da API consulta o banco e é chamado periodicamente por um monitor externo.
+- **Sem backup automático no Supabase Free** → `pg_dump` periódico agendado, guardado fora do Supabase.
+- **Oracle pode recuperar VMs ociosas** e alterou os limites do Always Free sem aviso em 2026 (A1 reduzido para 2 OCPUs / 12 GB) → dimensionar dentro do limite atual e manter o deploy reproduzível (Dockerfile + script de provisionamento) para recriar a VM.
+- **Home region da Oracle é definitiva** e a capacidade A1 não é garantida → confirmar São Paulo na criação da conta.
+- **Operação da VM** (SO, Docker, HTTPS, firewall, atualizações) fica com a equipe de infraestrutura (Depowo).
+- **Segredos** (connection string, chave JWT) apenas em variáveis de ambiente na VM, nunca no Git.
+
+**Impacto em documentos anteriores:** substitui a menção a Azure em `docs/PROJETO_CONTEXTO.md` (contexto histórico) e define a hospedagem que `DESIGN.md` seção 8 deixava em aberto. O `SETUP_LOG.md` permanece como registro histórico do Supabase de desenvolvimento original.
+
+**Revisão:** os tiers gratuitos não são recomendados pelos provedores para produção. Ao surgir receita, reavaliar Supabase Pro (sem pausa, com backup) e a hospedagem da API.
