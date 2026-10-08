@@ -175,8 +175,10 @@ namespace MicroERP.Api.Migrations
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("ModoAgendaAgente")
-                        .HasColumnType("integer");
+                    b.Property<string>("ModoAgendaAgente")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
 
                     b.Property<string>("TipoOperacao")
                         .IsRequired()
