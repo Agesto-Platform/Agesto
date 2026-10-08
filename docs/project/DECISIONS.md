@@ -602,14 +602,14 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Contexto:** ao gerar o script idempotente para o banco novo (DEC-30), constatou-se que a migration `20260618193156_ConvertEnumsToString` tem o `Up()` vazio: o schema correspondente tinha sido aplicado manualmente no Supabase antigo e a migration foi esvaziada só para alinhar o histórico. Num banco novo, o script rodaria sem erro, mas criaria o schema **sem a tabela `Empresas` e sem as colunas `EmpresaId`**. O snapshot do EF estava correto, por isso `has-pending-model-changes` não acusava nada.
 
-**Decisão:** substituir as 10 migrations anteriores por uma `InitialCreate` única, gerada a partir do modelo atual. Possível porque nenhum banco em uso depende do histórico antigo: o Supabase antigo será substituído.
+**Decisão:** substituir as 10 migrations anteriores por uma `InitialCreate` única (`20261008213822_InitialCreate`), gerada a partir do modelo atual. Possível porque nenhum banco em uso depende do histórico antigo: o Supabase antigo será substituído.
 
-**Verificação:** o `AppDbContextModelSnapshot.cs` gerado é idêntico ao anterior; o script tem as 12 tabelas, incluindo `Empresas`; build e 90 testes verdes.
+**Verificação:** o `AppDbContextModelSnapshot.cs` gerado difere do anterior só pela correção de `ModoAgendaAgente` abaixo; o script tem as 12 tabelas, incluindo `Empresas`, e nenhuma operação destrutiva; build e 90 testes verdes.
 
 **Alternativa descartada:** reescrever à mão o `Up()` da `ConvertEnumsToString` espelhando o `Down()` (28 operações) → preservaria o histórico, mas com risco de erro manual sem como provar a equivalência com o modelo.
 
-**Divergências do modelo encontradas na revisão (não alteradas, aguardam decisão):**
-- `Configuracao.ModoAgendaAgente` é persistido como `integer`, sem `HasConversion<string>()`, contrariando o invariante de enums como string.
-- `Orcamentos` e `ServicoItemSugeridos` têm `EmpresaId` indexado, mas sem chave estrangeira para `Empresas`.
+**Divergências do modelo encontradas na revisão:**
+- `Configuracao.ModoAgendaAgente` era persistido como `integer`, sem `HasConversion<string>()`, contrariando o invariante de enums como string → **corrigido** na mesma migration (`varchar(10)`), aproveitando o banco ainda vazio.
+- `Orcamentos` e `ServicoItemSugeridos` têm `EmpresaId` indexado, mas sem chave estrangeira para `Empresas` → não alterado; aguarda decisão.
 
 **Regra a partir daqui:** nenhuma migration pode ter o `Up()` esvaziado para "sincronizar histórico". Mudança aplicada manualmente em algum banco deve ser revertida ou reproduzida pela migration.
