@@ -558,3 +558,58 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - propriedade intelectual e responsabilidades definitivas por módulo ainda precisam ser formalizadas.
 
 **Impacto em decisões anteriores:** menções a “dev solo” permanecem como contexto histórico da decisão original e não representam a composição atual. A escolha de React Native, C# e monorepo não muda automaticamente com a retomada da equipe; qualquer revisão será uma nova decisão explícita.
+
+---
+
+## DEC-30 — Hospedagem do MVP em tiers gratuitos: Cloudflare Pages + Oracle Cloud + Supabase
+
+**Status:** 🟡 Decidido em 08/10/2026 — provisionamento pendente
+
+**Decisão:** O MVP será hospedado apenas em tiers gratuitos:
+- **Web (Módulo Dono):** Cloudflare Pages, servindo o build estático do Vite.
+- **API (.NET 8):** VM Ampere A1 (ARM) do Oracle Cloud Always Free, com a API em container Docker atrás de um proxy reverso com HTTPS.
+- **Banco:** Supabase (PostgreSQL), plano Free, usado apenas como Postgres gerenciado; a autenticação continua sendo o JWT próprio da API.
+- **Região:** São Paulo para a API (`sa-saopaulo-1`, como home region da conta Oracle) e para o banco (Supabase South America), mantendo a API ao lado do banco.
+
+**Motivo:** custo zero na fase de MVP. A VM Oracle fica ligada 24h, sem cold start, e permite colocar a API no Brasil junto do banco. A Cloudflare Pages permite uso comercial no plano gratuito.
+
+**Alternativas descartadas:**
+- **Vercel Hobby** para a web → proíbe uso comercial.
+- **Render** para a API → sem região no Brasil e cold start de cerca de 1 minuto no plano gratuito.
+- **Google Cloud Run** para a API → exige cartão e cobrança fora da cota; preterido pela equipe.
+- **Azure App Service F1** → limite de 60 min de CPU por dia, sem suporte para produção.
+- **Neon** para o banco → equipe optou por manter Supabase, já usado no setup inicial (KAN-14).
+
+**Riscos e mitigações:**
+- **Pausa do Supabase Free** após 7 dias sem atividade → endpoint `/health` da API consulta o banco e é chamado periodicamente por um monitor externo.
+- **Sem backup automático no Supabase Free** → `pg_dump` periódico agendado, guardado fora do Supabase.
+- **Data API do Supabase expõe o schema `public`** pela API REST com a chave `anon` (pública) → Data API desativada no projeto; o banco é acessado só pela API .NET.
+- **Oracle recupera VMs ociosas de contas Always Free** (7 dias com CPU, rede e memória abaixo de 20%), e a API do MVP fica ociosa a maior parte do tempo → **conta convertida para Pay As You Go** com alerta de orçamento; a VM sai da regra de recuperação e segue sem custo dentro dos limites Always Free. A Oracle também alterou os limites sem aviso em 2026 (A1 reduzido para 2 OCPUs / 12 GB) → dimensionar dentro do limite atual e manter o deploy reproduzível (Dockerfile + compose em `deploy/oracle/`) para recriar a VM.
+- **Home region da Oracle é definitiva** e a capacidade A1 não é garantida → confirmar São Paulo na criação da conta.
+- **Domínio provisório:** enquanto não houver domínio próprio, a API usa `api.<IP>.sslip.io` para o HTTPS automático → IP público reservado na Oracle para o endereço não mudar; ao adotar domínio próprio, trocar a URL na web e no mobile.
+- **Operação da VM** (SO, Docker, HTTPS, firewall, atualizações) fica com a equipe de infraestrutura (Depowo).
+- **Segredos** (connection string, chave JWT) apenas em variáveis de ambiente na VM, nunca no Git.
+
+**Impacto em documentos anteriores:** substitui a menção a Azure em `docs/PROJETO_CONTEXTO.md` (contexto histórico) e define a hospedagem que `DESIGN.md` seção 8 deixava em aberto. O `SETUP_LOG.md` permanece como registro histórico do Supabase de desenvolvimento original.
+
+**Revisão:** os tiers gratuitos não são recomendados pelos provedores para produção. Ao surgir receita, reavaliar Supabase Pro (sem pausa, com backup) e a hospedagem da API.
+
+---
+
+## DEC-31 — Migrations consolidadas numa `InitialCreate` única para o banco novo
+
+**Status:** ✅ Aplicada em 08/10/2026 no Supabase novo (São Paulo) pelo SQL Editor; `__EFMigrationsHistory` contém só `20261008213822_InitialCreate` e as 12 tabelas foram conferidas
+
+**Contexto:** ao gerar o script idempotente para o banco novo (DEC-30), constatou-se que a migration `20260618193156_ConvertEnumsToString` tem o `Up()` vazio: o schema correspondente tinha sido aplicado manualmente no Supabase antigo e a migration foi esvaziada só para alinhar o histórico. Num banco novo, o script rodaria sem erro, mas criaria o schema **sem a tabela `Empresas` e sem as colunas `EmpresaId`**. O snapshot do EF estava correto, por isso `has-pending-model-changes` não acusava nada.
+
+**Decisão:** substituir as 10 migrations anteriores por uma `InitialCreate` única (`20261008213822_InitialCreate`), gerada a partir do modelo atual. Possível porque nenhum banco em uso depende do histórico antigo: o Supabase antigo será substituído.
+
+**Verificação:** o `AppDbContextModelSnapshot.cs` gerado difere do anterior só pela correção de `ModoAgendaAgente` abaixo; o script tem as 12 tabelas, incluindo `Empresas`, e nenhuma operação destrutiva; build e 90 testes verdes.
+
+**Alternativa descartada:** reescrever à mão o `Up()` da `ConvertEnumsToString` espelhando o `Down()` (28 operações) → preservaria o histórico, mas com risco de erro manual sem como provar a equivalência com o modelo.
+
+**Divergências do modelo encontradas na revisão:**
+- `Configuracao.ModoAgendaAgente` era persistido como `integer`, sem `HasConversion<string>()`, contrariando o invariante de enums como string → **corrigido** na mesma migration (`varchar(10)`), aproveitando o banco ainda vazio.
+- `Orcamentos` e `ServicoItemSugeridos` têm `EmpresaId` indexado, mas sem chave estrangeira para `Empresas` → não alterado; aguarda decisão.
+
+**Regra a partir daqui:** nenhuma migration pode ter o `Up()` esvaziado para "sincronizar histórico". Mudança aplicada manualmente em algum banco deve ser revertida ou reproduzida pela migration.
