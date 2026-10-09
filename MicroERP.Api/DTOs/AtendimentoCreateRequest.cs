@@ -5,12 +5,12 @@ namespace MicroERP.Api.DTOs;
 
 public sealed class AtendimentoCreateRequest
 {
-    [Required(ErrorMessage = "Cliente obrigatorio.")]
-    [Range(1, long.MaxValue, ErrorMessage = "Cliente invalido.")]
+    [Required(ErrorMessage = "Cliente obrigatório.")]
+    [Range(1, long.MaxValue, ErrorMessage = "Cliente inválido.")]
     public long ClienteId { get; set; }
 
-    [Required(ErrorMessage = "Status obrigatorio.")]
-    [EnumDataType(typeof(StatusAtendimento), ErrorMessage = "Status invalido.")]
+    [Required(ErrorMessage = "Status obrigatório.")]
+    [EnumDataType(typeof(StatusAtendimento), ErrorMessage = "Status inválido.")]
     public StatusAtendimento Status { get; set; }
 
     public DateTime? DataRegistro { get; set; }

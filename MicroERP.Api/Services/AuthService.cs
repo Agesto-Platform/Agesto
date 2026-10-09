@@ -37,7 +37,7 @@ public sealed class AuthService : IAuthService
 
         if (emailExists)
         {
-            throw new EmailAlreadyExistsException("Email ja cadastrado.");
+            throw new EmailAlreadyExistsException("Email já cadastrado.");
         }
 
         var empresa = new Empresa

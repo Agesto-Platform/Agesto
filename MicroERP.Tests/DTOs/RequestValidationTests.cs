@@ -44,6 +44,6 @@ public sealed class RequestValidationTests
         var valido = Validator.TryValidateObject(request, new ValidationContext(request), results, validateAllProperties: true);
 
         Assert.False(valido);
-        Assert.Contains(results, r => r.ErrorMessage == "Status invalido.");
+        Assert.Contains(results, r => r.ErrorMessage == "Status inválido.");
     }
 }

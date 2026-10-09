@@ -27,7 +27,7 @@ public sealed class UsuarioService : IUsuarioService
             var totalDonos = await _usuarioRepository.CountDonos(empresaId, cancellationToken);
             if (totalDonos <= 1)
             {
-                throw new UltimoDonoDaEmpresaException("Nao e possivel remover o ultimo Dono da empresa. Delete a empresa ou transfira a responsabilidade primeiro.");
+                throw new UltimoDonoDaEmpresaException("Não é possível remover o último Dono da empresa. Delete a empresa ou transfira a responsabilidade primeiro.");
             }
         }
 

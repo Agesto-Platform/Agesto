@@ -54,14 +54,14 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task<AtendimentoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
         return MapResponse(atendimento);
     }
 
     public async Task<AtendimentoResponse> CreateAsync(long empresaId, long usuarioId, AtendimentoCreateRequest request, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, request.ClienteId, false, cancellationToken);
-        if (cliente is null) throw new NotFoundException("Cliente nao encontrado.");
+        if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
 
         var atendimento = new Atendimento
         {
@@ -86,7 +86,7 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task<AtendimentoResponse> UpdateAsync(long empresaId, long id, AtendimentoUpdateRequest request, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
 
         atendimento.Status = request.Status;
         atendimento.DataAgendada = request.DataAgendada;
@@ -100,7 +100,7 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
 
         var now = DateTime.UtcNow;
 

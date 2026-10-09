@@ -23,7 +23,7 @@ public sealed class UsuarioController : ApiControllerBase
     {
         if (!TryGetUsuarioId(out var usuarioId) || !TryGetEmpresaId(out var empresaId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
         }
 
         try
@@ -31,7 +31,7 @@ public sealed class UsuarioController : ApiControllerBase
             var deleted = await _usuarioService.DeleteAsync(usuarioId, empresaId, cancellationToken);
             if (!deleted)
             {
-                return NotFound(new ApiResponse { Success = false, Message = "Usuario nao encontrado." });
+                return NotFound(new ApiResponse { Success = false, Message = "Usuário não encontrado." });
             }
 
             return Ok(new ApiResponse

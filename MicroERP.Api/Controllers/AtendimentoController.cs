@@ -23,7 +23,7 @@ public sealed class AtendimentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetAll(CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         var atendimentos = await _atendimentoService.GetAllAsync(empresaId, cancellationToken);
         return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = atendimentos });
@@ -33,18 +33,18 @@ public sealed class AtendimentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetAgenda([FromQuery] DateTime? de, [FromQuery] DateTime? ate, [FromQuery] long? agenteId, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         // Fail-safe: sem perfil identificavel no token, nao libera a agenda.
         if (!TryGetPerfil(out var perfil))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Perfil nao identificado no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Perfil não identificado no token." });
 
         // Agente ve apenas a propria agenda; Dono ve todos ou filtra por agente.
         var filtroAgente = agenteId;
         if (perfil == PerfilUsuario.Agente)
         {
             if (!TryGetUsuarioId(out var usuarioId))
-                return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+                return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
             filtroAgente = usuarioId;
         }
 
@@ -56,7 +56,7 @@ public sealed class AtendimentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetById(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -73,7 +73,7 @@ public sealed class AtendimentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Create([FromBody] AtendimentoCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var usuarioId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         try
         {
@@ -95,7 +95,7 @@ public sealed class AtendimentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Update(long id, [FromBody] AtendimentoUpdateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -112,7 +112,7 @@ public sealed class AtendimentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {

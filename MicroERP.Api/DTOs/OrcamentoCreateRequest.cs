@@ -5,8 +5,8 @@ namespace MicroERP.Api.DTOs;
 
 public sealed class OrcamentoCreateRequest
 {
-    [Required(ErrorMessage = "Cliente obrigatorio.")]
-    [Range(1, long.MaxValue, ErrorMessage = "Cliente invalido.")]
+    [Required(ErrorMessage = "Cliente obrigatório.")]
+    [Range(1, long.MaxValue, ErrorMessage = "Cliente inválido.")]
     public long ClienteId { get; set; }
 
     public StatusOrcamento Status { get; set; } = StatusOrcamento.Rascunho;
@@ -18,21 +18,21 @@ public sealed class OrcamentoCreateRequest
 public sealed class ItemOrcamentoRequest
 {
     // Catalogo (ProdutoId ou ServicoId) ou avulso (ambos nulos + Descricao).
-    [Range(1, long.MaxValue, ErrorMessage = "Produto invalido.")]
+    [Range(1, long.MaxValue, ErrorMessage = "Produto inválido.")]
     public long? ProdutoId { get; set; }
 
-    [Range(1, long.MaxValue, ErrorMessage = "Servico invalido.")]
+    [Range(1, long.MaxValue, ErrorMessage = "Serviço inválido.")]
     public long? ServicoId { get; set; }
 
-    [MaxLength(200, ErrorMessage = "Descricao deve ter no maximo 200 caracteres.")]
+    [MaxLength(200, ErrorMessage = "Descrição deve ter no máximo 200 caracteres.")]
     public string? Descricao { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Quantidade invalida.")]
+    [Range(1, int.MaxValue, ErrorMessage = "Quantidade inválida.")]
     public int Quantidade { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "Valor unitario invalido.")]
+    [Range(0, double.MaxValue, ErrorMessage = "Valor unitário inválido.")]
     public decimal PrecoUnitario { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "Custo invalido.")]
+    [Range(0, double.MaxValue, ErrorMessage = "Custo inválido.")]
     public decimal? Custo { get; set; }
 }

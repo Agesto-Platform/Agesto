@@ -5,7 +5,7 @@ namespace MicroERP.Api.DTOs;
 
 public sealed class ConfiguracaoUpdateRequest
 {
-    [Required(ErrorMessage = "TipoOperacao e obrigatorio.")]
+    [Required(ErrorMessage = "TipoOperacao é obrigatório.")]
     public TipoOperacao? TipoOperacao { get; set; }
 
     // Opcionais: quando nulos, o campo permanece inalterado.

@@ -43,14 +43,14 @@ public sealed class OrcamentoService : IOrcamentoService
     public async Task<OrcamentoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var orcamento = await _orcamentoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (orcamento is null) throw new NotFoundException("Orcamento nao encontrado.");
+        if (orcamento is null) throw new NotFoundException("Orçamento não encontrado.");
         return MapResponse(orcamento);
     }
 
     public async Task<OrcamentoResponse> CreateAsync(long empresaId, long usuarioId, OrcamentoCreateRequest request, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, request.ClienteId, false, cancellationToken);
-        if (cliente is null) throw new NotFoundException("Cliente nao encontrado.");
+        if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
 
         var itens = new List<ItemOrcamento>();
         foreach (var itemRequest in request.Itens)
@@ -58,14 +58,14 @@ public sealed class OrcamentoService : IOrcamentoService
             // Item generico e mutuamente exclusivo: produto OU servico, nunca os dois.
             if (itemRequest.ProdutoId.HasValue && itemRequest.ServicoId.HasValue)
             {
-                throw new ArgumentException("Item nao pode ter produto e servico ao mesmo tempo.");
+                throw new ArgumentException("Item não pode ter produto e serviço ao mesmo tempo.");
             }
 
             // Item avulso (sem catalogo) exige descricao.
             if (!itemRequest.ProdutoId.HasValue && !itemRequest.ServicoId.HasValue
                 && string.IsNullOrWhiteSpace(itemRequest.Descricao))
             {
-                throw new ArgumentException("Item sem produto/servico exige descricao.");
+                throw new ArgumentException("Item sem produto/serviço exige descrição.");
             }
 
             itens.Add(new ItemOrcamento
@@ -106,7 +106,7 @@ public sealed class OrcamentoService : IOrcamentoService
     public async Task<OrcamentoResponse> UpdateStatusAsync(long empresaId, long id, OrcamentoUpdateRequest request, CancellationToken cancellationToken)
     {
         var orcamento = await _orcamentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (orcamento is null) throw new NotFoundException("Orcamento nao encontrado.");
+        if (orcamento is null) throw new NotFoundException("Orçamento não encontrado.");
 
         orcamento.Status = request.Status;
         orcamento.UpdatedAt = DateTime.UtcNow;
@@ -119,7 +119,7 @@ public sealed class OrcamentoService : IOrcamentoService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var orcamento = await _orcamentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (orcamento is null) throw new NotFoundException("Orcamento nao encontrado.");
+        if (orcamento is null) throw new NotFoundException("Orçamento não encontrado.");
 
         var now = DateTime.UtcNow;
         orcamento.DeletedAt = now;
@@ -133,12 +133,12 @@ public sealed class OrcamentoService : IOrcamentoService
     public async Task<AtendimentoResponse> ConverterAsync(long empresaId, long usuarioId, long id, CancellationToken cancellationToken)
     {
         var orcamento = await _orcamentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (orcamento is null) throw new NotFoundException("Orcamento nao encontrado.");
+        if (orcamento is null) throw new NotFoundException("Orçamento não encontrado.");
 
         if (orcamento.Status != StatusOrcamento.Aprovado)
-            throw new ArgumentException("Somente orcamentos aprovados podem ser convertidos.");
+            throw new ArgumentException("Somente orçamentos aprovados podem ser convertidos.");
         if (orcamento.AtendimentoConvertidoId is not null)
-            throw new ArgumentException("Orcamento ja foi convertido.");
+            throw new ArgumentException("Orçamento já foi convertido.");
 
         // Transacional: se qualquer item falhar (ex: estoque), desfaz tudo. Estoque so
         // baixa aqui, na conversao (DEC-16), reaproveitando os item-services.

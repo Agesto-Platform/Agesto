@@ -308,8 +308,8 @@ public sealed class SyncService : ISyncService
                 if (cliente is null)
                 {
                     falhas.Add(atendimentoRequest.ClienteUuid is { } u
-                        ? $"Cliente {u} nao encontrado."
-                        : $"Cliente {atendimentoRequest.ClienteId} nao encontrado.");
+                        ? $"Cliente {u} não encontrado."
+                        : $"Cliente {atendimentoRequest.ClienteId} não encontrado.");
                 }
 
                 var produtos = new Dictionary<long, Produto>();
@@ -317,7 +317,7 @@ public sealed class SyncService : ISyncService
                 {
                     if (itemProduto.Quantidade <= 0)
                     {
-                        falhas.Add($"Quantidade invalida para produto {itemProduto.ProdutoId}.");
+                        falhas.Add($"Quantidade inválida para produto {itemProduto.ProdutoId}.");
                         continue;
                     }
 
@@ -326,7 +326,7 @@ public sealed class SyncService : ISyncService
                     var produto = await _produtoRepository.GetByIdAsync(empresaId, itemProduto.ProdutoId, true, cancellationToken);
                     if (produto is null)
                     {
-                        falhas.Add($"Produto {itemProduto.ProdutoId} nao encontrado.");
+                        falhas.Add($"Produto {itemProduto.ProdutoId} não encontrado.");
                         continue;
                     }
 
@@ -352,7 +352,7 @@ public sealed class SyncService : ISyncService
                 {
                     if (itemServico.Quantidade <= 0)
                     {
-                        falhas.Add($"Quantidade invalida para servico {itemServico.ServicoId}.");
+                        falhas.Add($"Quantidade inválida para serviço {itemServico.ServicoId}.");
                         continue;
                     }
 
@@ -361,7 +361,7 @@ public sealed class SyncService : ISyncService
                     var servico = await _servicoRepository.GetByIdAsync(empresaId, itemServico.ServicoId, false, cancellationToken);
                     if (servico is null)
                     {
-                        falhas.Add($"Servico {itemServico.ServicoId} nao encontrado.");
+                        falhas.Add($"Serviço {itemServico.ServicoId} não encontrado.");
                         continue;
                     }
 

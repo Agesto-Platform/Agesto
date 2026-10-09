@@ -22,22 +22,22 @@ public sealed class OrcamentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetAll(CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         var orcamentos = await _orcamentoService.GetAllAsync(empresaId, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Orcamentos encontrados.", Data = orcamentos });
+        return Ok(new ApiResponse { Success = true, Message = "Orçamentos encontrados.", Data = orcamentos });
     }
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<ApiResponse>> GetById(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var orcamento = await _orcamentoService.GetByIdAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Orcamento encontrado.", Data = orcamento });
+            return Ok(new ApiResponse { Success = true, Message = "Orçamento encontrado.", Data = orcamento });
         }
         catch (NotFoundException ex)
         {
@@ -49,7 +49,7 @@ public sealed class OrcamentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Create([FromBody] OrcamentoCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var usuarioId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         try
         {
@@ -57,7 +57,7 @@ public sealed class OrcamentoController : ApiControllerBase
             return CreatedAtAction(nameof(GetById), new { id = orcamento.Id }, new ApiResponse
             {
                 Success = true,
-                Message = "Orcamento criado com sucesso.",
+                Message = "Orçamento criado com sucesso.",
                 Data = orcamento
             });
         }
@@ -75,12 +75,12 @@ public sealed class OrcamentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Update(long id, [FromBody] OrcamentoUpdateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var orcamento = await _orcamentoService.UpdateStatusAsync(empresaId, id, request, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Orcamento atualizado com sucesso.", Data = orcamento });
+            return Ok(new ApiResponse { Success = true, Message = "Orçamento atualizado com sucesso.", Data = orcamento });
         }
         catch (NotFoundException ex)
         {
@@ -92,12 +92,12 @@ public sealed class OrcamentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             await _orcamentoService.DeleteAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Orcamento removido com sucesso." });
+            return Ok(new ApiResponse { Success = true, Message = "Orçamento removido com sucesso." });
         }
         catch (NotFoundException ex)
         {
@@ -109,12 +109,12 @@ public sealed class OrcamentoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Converter(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var usuarioId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         try
         {
             var atendimento = await _orcamentoService.ConverterAsync(empresaId, usuarioId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Orcamento convertido em atendimento.", Data = atendimento });
+            return Ok(new ApiResponse { Success = true, Message = "Orçamento convertido em atendimento.", Data = atendimento });
         }
         catch (NotFoundException ex)
         {
