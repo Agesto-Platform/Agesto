@@ -98,8 +98,14 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // Origens liberadas vêm da configuração (Cors:AllowedOrigins); em produção,
-// o domínio da Cloudflare Pages é passado por variável de ambiente.
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+// o domínio da Cloudflare Pages é passado por variável de ambiente. Cada item
+// aceita várias origens separadas por vírgula; espaços e "/" final são
+// removidos, porque o navegador envia a origem sem barra.
+var allowedOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+    .SelectMany(o => o.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    .Select(o => o.TrimEnd('/'))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 
 builder.Services.AddCors(options =>
 {
@@ -130,6 +136,9 @@ builder.Services.AddHealthChecks()
     });
 
 var app = builder.Build();
+
+app.Logger.LogInformation("CORS liberado para: {Origins}",
+    allowedOrigins.Length > 0 ? string.Join(", ", allowedOrigins) : "(nenhuma origem)");
 
 app.UseForwardedHeaders();
 

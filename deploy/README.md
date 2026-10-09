@@ -53,7 +53,7 @@ A primeira deve listar todas as migrations de `MicroERP.Api/Migrations`; a segun
 2. *New → Blueprint* → selecione o repositório. O Render lê o `render.yaml` da raiz e cria o serviço `agesto-api` (plano Free, região Virginia).
 3. Preencha as variáveis pedidas:
    - `ConnectionStrings__DefaultConnection`: a connection string do passo 1.
-   - `Cors__AllowedOrigins__0`: a URL da web na Cloudflare Pages (passo 4). Se ainda não existir, use um valor provisório e troque depois.
+   - `Cors__AllowedOrigins__0`: a URL da web na Cloudflare Pages (passo 4). Se ainda não existir, use um valor provisório e troque depois. Aceita várias origens separadas por vírgula; a `/` final é ignorada.
    - `Jwt__Secret` é gerado pelo próprio Render.
 4. O serviço publica a branch `develop` (provisório, até a promoção para `main`), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
