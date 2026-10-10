@@ -101,6 +101,21 @@ export function createSqliteDb(): LocalDb {
         }
       })
     },
+    async remapCliente(clienteUuid, clienteId) {
+      const d = await conn()
+      const rows = await d.getAllAsync<{ uuid: string; json: string }>(`SELECT uuid, json FROM atendimentos`)
+      await d.withTransactionAsync(async () => {
+        for (const r of rows) {
+          const a = JSON.parse(r.json) as LocalAtendimento
+          if (a.clienteUuid !== clienteUuid) continue
+          await d.runAsync(
+            `UPDATE atendimentos SET json = ? WHERE uuid = ?`,
+            JSON.stringify({ ...a, clienteId, clienteUuid: null }),
+            r.uuid,
+          )
+        }
+      })
+    },
 
     async getMeta(key) {
       const d = await conn()

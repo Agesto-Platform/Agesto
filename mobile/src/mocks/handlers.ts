@@ -53,12 +53,15 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
 
   if (method === 'POST' && path.startsWith('/api/sync/descarga')) {
     const b = (body ?? { clientes: [], atendimentos: [] }) as {
-      clientes: unknown[]
-      atendimentos: unknown[]
+      clientes: { uuid: string }[]
+      atendimentos: { uuid: string }[]
     }
     return {
       clientesImportados: b.clientes.length,
       atendimentosImportados: b.atendimentos.length,
+      clientesSincronizados: b.clientes.map((c) => c.uuid),
+      atendimentosSincronizados: b.atendimentos.map((a) => a.uuid),
+      clientesMapeados: b.clientes.map((c, i) => ({ uuid: c.uuid, id: 1000 + i })),
       erros: [],
       sincronizadoEm: new Date().toISOString(),
     } as T

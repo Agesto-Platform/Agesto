@@ -5,7 +5,9 @@ import type { StatusAtendimento } from '@/types/api'
 export type QtyMap = Record<number, number>
 
 export interface RegistroInput {
-  clienteId: number
+  /** Cliente da Carga (id do servidor) ou criado offline (clienteUuid). */
+  clienteId: number | null
+  clienteUuid?: string | null
   status: StatusAtendimento
   servicoQty: QtyMap
   produtoQty: QtyMap
@@ -29,6 +31,7 @@ export function buildAtendimento(input: RegistroInput): LocalAtendimento {
   return {
     uuid: uuid(),
     clienteId: input.clienteId,
+    clienteUuid: input.clienteUuid ?? null,
     status: input.status,
     dataRegistro: new Date().toISOString(),
     dataAgendada: input.dataAgendada ?? null,

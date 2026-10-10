@@ -16,6 +16,16 @@ import type { Cliente, Configuracao, Produto, Servico, ServicoSugerido, StatusAt
 const brl = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
 
+/** Cliente selecionável: da Carga (id do servidor) ou criado offline (uuid). */
+interface ClienteOpcao {
+  key: string
+  id: number | null
+  uuid: string | null
+  nome: string
+  sub: string
+  pendente: boolean
+}
+
 function enderecoResumo(c: Cliente): string {
   const rua = c.logradouro ? `${c.logradouro}${c.numero ? ', ' + c.numero : ''}` : ''
   const local = c.bairro ?? c.cidade ?? ''
@@ -25,11 +35,11 @@ function enderecoResumo(c: Cliente): string {
 export default function Registrar() {
   const router = useRouter()
   const params = useLocalSearchParams<{ modo?: string }>()
-  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [clientes, setClientes] = useState<ClienteOpcao[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [servicos, setServicos] = useState<Servico[]>([])
 
-  const [clienteId, setClienteId] = useState<number | undefined>(undefined)
+  const [clienteKey, setClienteKey] = useState<string | undefined>(undefined)
   const [servicoQty, setServicoQty] = useState<QtyMap>({})
   const [produtoQty, setProdutoQty] = useState<QtyMap>({})
   const [status, setStatus] = useState<StatusAtendimento>('Concluido')
@@ -44,7 +54,13 @@ export default function Registrar() {
 
   useEffect(() => {
     ;(async () => {
-      setClientes(await db.getClientes())
+      const [ref, pend] = await Promise.all([db.getClientes(), db.getPendingClientes()])
+      setClientes([
+        ...pend
+          .filter((c) => c.syncedAt === null)
+          .map((c) => ({ key: `p${c.uuid}`, id: null, uuid: c.uuid, nome: c.nome, sub: c.telefone ?? c.cpf, pendente: true })),
+        ...ref.map((c) => ({ key: `r${c.id}`, id: c.id, uuid: null, nome: c.nome, sub: enderecoResumo(c), pendente: false })),
+      ])
       setProdutos(await db.getProdutos())
       setServicos(await db.getServicos())
       setConfig(await getConfig(db))
@@ -78,20 +94,23 @@ export default function Registrar() {
     return s + p
   }, [servicos, produtos, servicoQty, produtoQty])
 
+  const cliente = clientes.find((c) => c.key === clienteKey)
+
   const podeSalvar =
-    clienteId !== undefined &&
+    cliente !== undefined &&
     hasItems(servicoQty, produtoQty) &&
     (!agendando || dataAgendada !== null) &&
     !saving
 
   async function salvar() {
-    if (clienteId === undefined) return
+    if (cliente === undefined) return
     if (agendando && dataAgendada === null) return
     setSaving(true)
     try {
       await db.addAtendimento(
         buildAtendimento({
-          clienteId,
+          clienteId: cliente.id,
+          clienteUuid: cliente.uuid,
           status: agendando ? 'Pendente' : status,
           servicoQty,
           produtoQty,
@@ -156,16 +175,18 @@ export default function Registrar() {
         <Text style={styles.label}>Cliente</Text>
         <View style={{ gap: space(2) }}>
           {clientes.map((c) => {
-            const on = c.id === clienteId
+            const on = c.key === clienteKey
             return (
               <Pressable
-                key={c.id}
-                onPress={() => setClienteId(c.id)}
+                key={c.key}
+                onPress={() => setClienteKey(c.key)}
                 style={[styles.row, on && styles.rowOn]}
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.rowTitle, on && { color: colors.brandInk }]}>{c.nome}</Text>
-                  {enderecoResumo(c) ? <Text style={styles.rowSub}>{enderecoResumo(c)}</Text> : null}
+                  {c.sub || c.pendente ? (
+                    <Text style={styles.rowSub}>{[c.pendente ? 'Novo · não sincronizado' : '', c.sub].filter(Boolean).join(' · ')}</Text>
+                  ) : null}
                 </View>
                 <Ionicons
                   name={on ? 'radio-button-on' : 'radio-button-off'}

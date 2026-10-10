@@ -108,19 +108,31 @@ export interface AtendimentoSyncRequest {
   dataRegistro: string
   dataAgendada?: string | null
   status: StatusAtendimento
-  clienteId: number
+  /** Id do servidor, ou null quando o cliente foi criado offline (usa clienteUuid). */
+  clienteId: number | null
+  clienteUuid?: string | null
   itensProduto: { produtoId: number; quantidade: number }[]
   itensServico: { servicoId: number; quantidade: number }[]
 }
 
+/** Cliente pendente na Descarga: leva o UUID do device (idempotência). */
+export interface ClienteSyncInput extends ClienteInput {
+  uuid: string
+}
+
 export interface SyncDescargaRequest {
-  clientes: ClienteInput[]
+  clientes: ClienteSyncInput[]
   atendimentos: AtendimentoSyncRequest[]
 }
 
 export interface SyncDescargaResponse {
   atendimentosImportados: number
   clientesImportados: number
+  /** UUIDs aceitos (importados ou já existentes). O resto segue pendente. */
+  clientesSincronizados: string[]
+  atendimentosSincronizados: string[]
+  /** uuid do device -> id do servidor dos clientes criados offline. */
+  clientesMapeados?: { uuid: string; id: number }[]
   erros: string[]
   sincronizadoEm: string
 }

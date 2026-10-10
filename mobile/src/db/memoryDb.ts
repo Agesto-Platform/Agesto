@@ -69,6 +69,11 @@ export function createMemoryDb(): LocalDb {
         set.has(a.uuid) ? { ...a, syncedAt } : a,
       )
     },
+    async remapCliente(clienteUuid, clienteId) {
+      atendimentos = atendimentos.map((a) =>
+        a.clienteUuid === clienteUuid ? { ...a, clienteId, clienteUuid: null } : a,
+      )
+    },
 
     async getMeta(key) {
       return meta.get(key) ?? null
