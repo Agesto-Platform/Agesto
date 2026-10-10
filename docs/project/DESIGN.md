@@ -284,20 +284,24 @@ FastAPI → AgentRunner → ILLMProvider (Anthropic)
 ### Endpoints (KAN-60, implementados)
 ```
 GET  /api/sync/carga?ultimaSincronizacao={datetime}
-     → Retorna: clientes, produtos, serviços atualizados desde a data,
+     → Retorna: clientes, produtos, serviços atualizados desde a data
+       (o mobile chama sem o parâmetro — Carga completa, DEC-33),
        configuração da empresa, e orçamentos (SyncCargaResponse.Orcamentos,
        commit 5e82411)
      → Não inclui a agenda — ver delta abaixo
 
 POST /api/sync/descarga
-     → Recebe: atendimentos offline, novos clientes
-     → Retorna: confirmação com IDs do servidor
+     → Recebe: atendimentos offline, novos clientes (com Uuid do device);
+       atendimento referencia cliente por ClienteId ou ClienteUuid
+     → Retorna: ClientesSincronizados/AtendimentosSincronizados (uuids
+       aceitos), ClientesMapeados (uuid → id) e Erros. Cada atendimento é
+       tudo-ou-nada; rejeitados seguem pendentes no device (DEC-33)
 ```
 
 ### Consumo pelo app mobile (ver seção 11)
 O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois deltas de backend identificados durante a construção (DEC-26, ver TASKS.md):
 - A Carga não inclui a agenda — contornado no app com um passo `syncAgenda` separado (`GET /api/atendimento/agenda`).
-- Um atendimento criado offline não referencia um cliente também criado offline, pois a Descarga não mapeia uuid→id do cliente pendente para o atendimento pendente na mesma leva.
+- ~~Atendimento offline não referencia cliente criado offline~~ — resolvido pela DEC-33 (`ClienteUuid` + `ClientesMapeados`).
 
 ### Resolução de conflitos
 - **Cliente:** última escrita por `UpdatedAt` prevalece
@@ -428,12 +432,11 @@ mobile/src/
 
 ### Ciclo offline Carga/Descarga
 1. **Login** — autenticação JWT contra `/api/auth/login`; token guardado via `expo-secure-store`/`localStorage`.
-2. **Carga** — popula o banco local com clientes, produtos, serviços e configuração (`GET /api/sync/carga`), mais orçamentos (`SyncCargaResponse.Orcamentos`). Um passo adicional `syncAgenda` busca e cacheia `GET /api/atendimento/agenda` separadamente, pois a Carga não inclui a agenda (delta de backend, ver seção 7 e DEC-17).
+2. **Carga** — sempre completa (DEC-33); popula o banco local com clientes, produtos, serviços e configuração (`GET /api/sync/carga`), mais orçamentos (`SyncCargaResponse.Orcamentos`). Um passo adicional `syncAgenda` busca e cacheia `GET /api/atendimento/agenda` separadamente, pois a Carga não inclui a agenda (delta de backend, ver seção 7 e DEC-17).
 3. **Uso offline** — Home action-first (CTA Registrar + agenda do dia Próximo/Ainda hoje); registrar atendimento (cliente + itens de catálogo por quantidade + status) grava localmente como pendente; cadastro rápido de cliente offline grava como `PendingCliente`.
-4. **Descarga** — empurra clientes e atendimentos pendentes para `POST /api/sync/descarga`; ao confirmar, marca os registros locais como sincronizados. Aba "Mais" mostra status de sync (pendentes, última sincronização, botão Sincronizar) e logout.
+4. **Descarga** — empurra clientes e atendimentos pendentes para `POST /api/sync/descarga`; marca como sincronizados só os uuids que o servidor confirmou (os rejeitados seguem pendentes) e religa atendimentos de clientes criados offline ao id do servidor (DEC-33). O botão Sincronizar faz Descarga seguida de Carga + agenda. Aba "Mais" mostra status de sync (pendentes, última sincronização, botão Sincronizar) e logout.
 
 ### Limitações conhecidas (ver DEC-26 e TASKS.md)
-- Um atendimento registrado offline **não pode** referenciar um cliente também cadastrado offline (`PendingCliente`), pois o atendimento local não conhece o id de servidor do cliente antes da sincronização — resolver exigiria mapear uuid→id do cliente durante a Descarga.
 - Consulta de histórico de atendimentos próprios não foi implementada nesta fase (fora do escopo de mob-01 a mob-07).
 - Roteirização/geolocalização (lat/lng, ordenação por proximidade) depende da DEC-17, ainda pendente.
 - Teste de componente React Native (`@testing-library/react-native`) foi adiado por incompatibilidade de versão (lib v14 + jest-expo + React 19).
