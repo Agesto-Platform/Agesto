@@ -672,7 +672,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-34 — Endurecimento de segurança pós-auditoria
 
-**Status:** 🟢 Implementado em 10/10/2026 (PRs #44 e seguinte)
+**Status:** 🟢 Implementado e validado em produção em 10/10/2026 (PRs #44 e #45)
 
 **Contexto:** auditoria de API, front, banco e infraestrutura com o sistema já em produção. Não havia vazamento ativo (Data API do Supabase desligada), mas havia brechas exploráveis: sem limite de tentativas, sem checagem de perfil, cadastro aberto, token irrevogável, dados pessoais completos no celular do agente.
 
@@ -683,6 +683,13 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 4. **Token revalidado a cada requisição:** usuário excluído, de outra empresa ou com perfil alterado perde o acesso na hora, sem esperar o JWT expirar.
 5. **LGPD:** o Agente recebe CPF mascarado e orçamentos sem custo na Carga; cliente excluído é anonimizado (nome, CPF, telefone e endereço), mantendo a linha para o histórico.
 6. **Banco:** RLS em todas as tabelas sem acesso para `anon`/`authenticated`; a API conecta com o role `agesto_api` (só DML, `deploy/api-role.sql`) e TLS `VerifyFull` com a CA do Supabase.
+
+**Validação em produção (10/10/2026):**
+- Supabase: Data API desligada e `pg_graphql` não instalado (sem acesso público às tabelas); RLS ativo em todas as tabelas.
+- API: headers de segurança e HSTS presentes; cadastro responde 404; login e cadastro bloqueiam com 429 após o limite; payload acima do limite recusado com 413 (testado localmente).
+- Web (Cloudflare): CSP, `X-Frame-Options` e HSTS presentes; a CSP libera só a API usada pelo bundle de produção.
+- Banco: API conectando como `agesto_api` com `SSL Mode=VerifyFull`; CA do Supabase conferida com `openssl` nos poolers `aws-0` e `aws-1` de us-east-1. O `ssl = false` em `pg_stat_ssl` refere-se ao trecho interno pooler → Postgres.
+- Login, configuração, clientes, produtos, serviços, orçamentos, atendimentos, agenda, sync e dashboard respondendo 200 com a conta de teste depois de todas as mudanças.
 
 **Pendências:**
 - **Verificação de email** antes de reabrir o cadastro. Depende de provedor de envio com API HTTP (o Render bloqueia SMTP; sugestão: Resend) e de domínio próprio verificado.
