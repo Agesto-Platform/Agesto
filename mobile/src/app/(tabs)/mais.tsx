@@ -6,7 +6,7 @@ import { Screen } from '@/ui/Screen'
 import { colors, radius, space } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
 import { db } from '@/db/instance'
-import { descarga } from '@/sync/sync'
+import { descarga, initialSync } from '@/sync/sync'
 
 function fmt(iso: string | null): string {
   if (!iso) return '—'
@@ -49,7 +49,14 @@ export default function Mais() {
     setFlash(null)
     try {
       const r = await descarga()
-      setFlash(`Enviados: ${r.atendimentosImportados} atendimento(s), ${r.clientesImportados} cliente(s).`)
+      // Atualiza a referência: clientes recém-enviados passam a vir da Carga.
+      await initialSync()
+      const enviados = `Enviados: ${r.atendimentosImportados} atendimento(s), ${r.clientesImportados} cliente(s).`
+      setFlash(
+        r.erros.length > 0
+          ? `${enviados} ${r.erros.length} não enviado(s), seguem pendentes: ${r.erros[0]}`
+          : enviados,
+      )
       await reload()
     } catch {
       setFlash('Falha ao sincronizar. Tente novamente com internet.')

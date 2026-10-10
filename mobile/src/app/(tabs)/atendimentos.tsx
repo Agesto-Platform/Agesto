@@ -37,14 +37,18 @@ export default function Atendimentos() {
     useCallback(() => {
       let active = true
       ;(async () => {
-        const [atends, clientes] = await Promise.all([db.getAtendimentos(), db.getClientes()])
+        const [atends, clientes, pend] = await Promise.all([db.getAtendimentos(), db.getClientes(), db.getPendingClientes()])
         if (!active) return
         const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
+        const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
         const list = [...atends]
           .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
           .map((a) => ({
             key: a.uuid,
-            cliente: nomePorId.get(a.clienteId) ?? `Cliente #${a.clienteId}`,
+            cliente:
+              (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
+              (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
+              `Cliente #${a.clienteId ?? 'novo'}`,
             data: dataCurta(a.dataRegistro),
             itens: a.itensProduto.length + a.itensServico.length,
             status: a.status,

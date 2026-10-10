@@ -97,6 +97,50 @@ public sealed class AuthServiceTests
         Assert.Null(response);
     }
 
+    [Fact]
+    public async Task LoginAsync_WhenRegisteredWithMixedCaseEmail_ReturnsToken()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest
+        {
+            Nome = "Login User",
+            Email = "  Joao.Silva@Teste.com ",
+            Senha = "Senha123!"
+        }, CancellationToken.None);
+
+        var response = await service.LoginAsync(new AuthLoginRequest
+        {
+            Email = "Joao.Silva@Teste.com",
+            Senha = "Senha123!"
+        }, CancellationToken.None);
+
+        Assert.NotNull(response);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        Assert.Equal("joao.silva@teste.com", usuario.Email);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WhenEmailDiffersOnlyByCase_ThrowsEmailAlreadyExistsException()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest
+        {
+            Nome = "Primeiro",
+            Email = "Dono@Teste.com",
+            Senha = "Senha123!"
+        }, CancellationToken.None);
+
+        await Assert.ThrowsAsync<EmailAlreadyExistsException>(() =>
+            service.RegisterAsync(new AuthRegisterRequest
+            {
+                Nome = "Segundo",
+                Email = "dono@teste.com",
+                Senha = "Senha123!"
+            }, CancellationToken.None));
+    }
+
     private static IConfiguration CreateConfiguration()
     {
         return new ConfigurationBuilder()

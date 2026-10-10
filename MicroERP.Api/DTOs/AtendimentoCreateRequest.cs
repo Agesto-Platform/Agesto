@@ -10,7 +10,7 @@ public sealed class AtendimentoCreateRequest
     public long ClienteId { get; set; }
 
     [Required(ErrorMessage = "Status obrigatorio.")]
-    [MaxLength(30, ErrorMessage = "Status deve ter no maximo 30 caracteres.")]
+    [EnumDataType(typeof(StatusAtendimento), ErrorMessage = "Status invalido.")]
     public StatusAtendimento Status { get; set; }
 
     public DateTime? DataRegistro { get; set; }

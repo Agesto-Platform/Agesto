@@ -39,7 +39,7 @@ public sealed class ClienteService : IClienteService
 
         var cliente = new Cliente
         {
-            Uuid = Guid.NewGuid(),
+            Uuid = request.Uuid ?? Guid.NewGuid(),
             Nome = request.Nome,
             Telefone = request.Telefone,
             Cpf = cpf,

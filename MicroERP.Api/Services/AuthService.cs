@@ -53,7 +53,7 @@ public sealed class AuthService : IAuthService
         var usuario = new Usuario
         {
             Nome = request.Nome,
-            Email = request.Email,
+            Email = email,
             Senha = string.Empty, // A senha será definida após o hash
             EmpresaId = empresa.Id,
             Perfil = Enums.PerfilUsuario.Dono,

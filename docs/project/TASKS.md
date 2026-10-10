@@ -110,7 +110,7 @@
 | Roteirização/geolocalização | Lat/lng no `Cliente`, ordenação da rota do dia por proximidade — fase posterior da DEC-17 | Média | — |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
-| **Mapear uuid→id do cliente na Descarga** | Um atendimento criado offline não pode referenciar um cliente também criado offline (`PendingCliente`), porque a Descarga não devolve o mapeamento uuid→id do cliente pendente antes de processar o atendimento pendente da mesma leva (delta identificado em mob-06, ver DEC-26) | Média | Decisão de produto (ordem de processamento na Descarga) |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | Revisão de Davi |
 
 ---
 
@@ -283,7 +283,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | Item | Descrição | Prioridade |
 |------|-----------|------------|
 | Agenda na Carga do sync | Ver seção "Domínio Prestador de Serviço" acima — a Carga deveria idealmente incluir a agenda, eliminando o contorno `syncAgenda` | Média |
-| Mapear uuid→id do cliente na Descarga | Ver seção "Domínio Prestador de Serviço" acima — necessário para atendimento offline referenciar cliente criado offline | Média |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33) | — |
 
 ### 🔴 Pendências do próprio Mobile
 

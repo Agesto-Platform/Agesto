@@ -12,7 +12,10 @@ export interface PendingCliente extends ClienteInput {
  */
 export interface LocalAtendimento {
   uuid: string
-  clienteId: number
+  /** Id do servidor; null enquanto o cliente foi criado offline e não sincronizou. */
+  clienteId: number | null
+  /** UUID do cliente criado offline (PendingCliente), resolvido na Descarga. */
+  clienteUuid?: string | null
   status: StatusAtendimento
   dataRegistro: string
   /** Data agendada (futuro) — null quando é registro imediato. */
@@ -49,6 +52,8 @@ export interface LocalDb {
   getAtendimentos(): Promise<LocalAtendimento[]>
   getPendingAtendimentos(): Promise<LocalAtendimento[]>
   markSynced(uuids: string[], syncedAt: string): Promise<void>
+  /** Religa atendimentos do cliente criado offline ao id que o servidor atribuiu. */
+  remapCliente(clienteUuid: string, clienteId: number): Promise<void>
 
   // metadados (ex.: última sincronização)
   getMeta(key: string): Promise<string | null>

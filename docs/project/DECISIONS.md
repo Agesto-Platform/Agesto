@@ -645,3 +645,24 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Impacto no código:** nenhum na lógica. `deploy/oracle/` foi removido (fica no histórico do Git); o passo a passo está em `deploy/README.md`.
 
 **Revisão:** ao surgir receita, reavaliar Render Starter (sem dormir) e Supabase Pro (sem pausa, com backup).
+
+---
+
+## DEC-33 — Sincronização confiável: Carga completa, Descarga por atendimento e cliente offline por UUID
+
+**Status:** 🟡 Proposta implementada em `feature/sync-fixes` — aguardando revisão e aprovação de Davi
+
+**Contexto:** revisão do ciclo Carga/Descarga encontrou perda de dados no mobile:
+- a Carga era incremental (`ultimaSincronizacao`), mas o app substitui a tabela local inteira a cada Carga — a partir da segunda sincronização, clientes/produtos/serviços sem alteração sumiam do device; exclusões (soft delete) nunca chegavam ao device;
+- o app marcava **todos** os pendentes como sincronizados, mesmo os que o servidor rejeitou (só reportados em `Erros`), perdendo-os;
+- a Descarga gravava o atendimento sem os itens inválidos (produto inexistente, estoque insuficiente), com `ValorTotal` menor; não validava `ClienteId` contra a empresa; quantidade negativa aumentava o estoque.
+
+**Decisão:**
+1. **Carga sempre completa** no mobile (sem `ultimaSincronizacao`). O parâmetro continua aceito pelo backend, mas o app não o usa. Volume de catálogo do público-alvo torna o custo irrelevante; ganha-se propagação de exclusões sem tombstones.
+2. **Descarga tudo-ou-nada por atendimento:** cliente, itens, quantidades (> 0) e estoque (somado por produto) são validados antes de gravar; qualquer falha rejeita o atendimento inteiro, que segue pendente no device. Falha de um atendimento não bloqueia os demais da leva.
+3. **Confirmação explícita:** `SyncDescargaResponse` devolve `ClientesSincronizados` e `AtendimentosSincronizados` (importados agora ou já existentes). O device só marca como sincronizado o que estiver nessas listas.
+4. **UUID do cliente nasce no device:** `ClienteCreateRequest.Uuid` (opcional; ausente = gerado no servidor). Reenvio do mesmo cliente é idempotente.
+5. **Atendimento referencia cliente criado offline** por `AtendimentoSyncRequest.ClienteUuid` (`ClienteId` passa a ser opcional). Clientes são processados antes dos atendimentos na mesma leva; a resposta traz `ClientesMapeados` (uuid → id) e o device religa os atendimentos locais ao id do servidor. Cliente offline com CPF já existente é mapeado para o cliente existente (coerente com a DEC-06).
+6. O botão Sincronizar do mobile passa a fazer Descarga seguida de Carga + agenda, e informa quantos itens não foram enviados.
+
+**Impacto:** contrato da Descarga mudou — API e mobile precisam ser publicados juntos. Resolve as pendências "Mapear uuid→id do cliente na Descarga" (DEC-26) e a perda de dados acima. Testes: backend 127, mobile 32 — verdes.

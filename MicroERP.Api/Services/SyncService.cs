@@ -197,18 +197,60 @@ public sealed class SyncService : ISyncService
         // servidor — ignora DataAgendada vinda do device, mesmo em payload forjado.
         var agendaFixa = config?.ModoAgendaAgente == ModoAgendaAgente.Fixa;
 
+        // Uuids que o device pode marcar como sincronizados: importados agora ou
+        // ja presentes no servidor (reenvio). O que nao estiver aqui segue pendente.
+        var clientesSincronizados = new List<Guid>();
+        var atendimentosSincronizados = new List<Guid>();
+        var clienteIdPorUuid = new Dictionary<Guid, long>();
+
         // Importa clientes novos
         foreach (var clienteRequest in request.Clientes)
         {
             try
             {
-                await _clienteService.CreateAsync(empresaId, clienteRequest, cancellationToken);
+                if (clienteRequest.Uuid is { } clienteUuid)
+                {
+                    var existente = await _dbContext.Clientes
+                        .AsNoTracking()
+                        .Where(c => c.Uuid == clienteUuid)
+                        .Select(c => new { c.Id, c.EmpresaId, c.DeletedAt })
+                        .FirstOrDefaultAsync(cancellationToken);
+
+                    if (existente is not null)
+                    {
+                        if (existente.EmpresaId == empresaId)
+                        {
+                            clientesSincronizados.Add(clienteUuid);
+                            if (existente.DeletedAt is null) clienteIdPorUuid[clienteUuid] = existente.Id;
+                        }
+                        else
+                        {
+                            erros.Add($"Cliente '{clienteRequest.Nome}': identificador em conflito.");
+                        }
+                        continue;
+                    }
+                }
+
+                var criado = await _clienteService.CreateAsync(empresaId, clienteRequest, cancellationToken);
                 clientesImportados++;
+                if (clienteRequest.Uuid is { } novoUuid)
+                {
+                    clientesSincronizados.Add(novoUuid);
+                    clienteIdPorUuid[novoUuid] = criado.Id;
+                }
             }
             catch (CpfAlreadyExistsException)
             {
                 // CPF já existe — última escrita por UpdatedAt prevalece (DEC-06)
                 // Por ora ignora silenciosamente, sem contar como erro
+                // O uuid do device passa a apontar para o cliente que ja tem o CPF.
+                if (clienteRequest.Uuid is { } cpfUuid)
+                {
+                    clientesSincronizados.Add(cpfUuid);
+                    var cpf = new string(clienteRequest.Cpf.Where(char.IsDigit).ToArray());
+                    var mesmoCpf = await _clienteRepository.GetByCpfAsync(empresaId, cpf, cancellationToken);
+                    if (mesmoCpf is not null) clienteIdPorUuid[cpfUuid] = mesmoCpf.Id;
+                }
             }
             catch (Exception ex)
             {
@@ -216,122 +258,195 @@ public sealed class SyncService : ISyncService
             }
         }
 
-        // Importa atendimentos offline
+        // Importa atendimentos offline. Cada atendimento e tudo-ou-nada: valida
+        // cliente, itens e estoque antes de gravar; qualquer falha rejeita o
+        // atendimento inteiro, que continua pendente no device para correcao.
         foreach (var atendimentoRequest in request.Atendimentos)
         {
+            var rotulo = $"Atendimento '{atendimentoRequest.Uuid}'";
             await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
             try
             {
                 // Verifica se já foi sincronizado pelo Uuid
-                var jaExiste = await _dbContext.Atendimentos
-                    .AnyAsync(a => a.Uuid == atendimentoRequest.Uuid, cancellationToken);
+                var existente = await _dbContext.Atendimentos
+                    .AsNoTracking()
+                    .Where(a => a.Uuid == atendimentoRequest.Uuid)
+                    .Select(a => new { a.EmpresaId })
+                    .FirstOrDefaultAsync(cancellationToken);
 
-                if (jaExiste)
+                if (existente is not null)
                 {
                     await tx.RollbackAsync(cancellationToken);
+                    if (existente.EmpresaId == empresaId)
+                    {
+                        atendimentosSincronizados.Add(atendimentoRequest.Uuid);
+                    }
+                    else
+                    {
+                        erros.Add($"{rotulo}: identificador em conflito.");
+                    }
                     continue;
                 }
 
+                var falhas = new List<string>();
+
+                long? clienteId = atendimentoRequest.ClienteId;
+                if (atendimentoRequest.ClienteUuid is { } clienteUuidRef)
+                {
+                    clienteId = clienteIdPorUuid.TryGetValue(clienteUuidRef, out var mapeado)
+                        ? mapeado
+                        : await _dbContext.Clientes
+                            .AsNoTracking()
+                            .Where(c => c.Uuid == clienteUuidRef && c.EmpresaId == empresaId && c.DeletedAt == null)
+                            .Select(c => (long?)c.Id)
+                            .FirstOrDefaultAsync(cancellationToken);
+                }
+
+                var cliente = clienteId is { } idCliente
+                    ? await _clienteRepository.GetByIdAsync(empresaId, idCliente, false, cancellationToken)
+                    : null;
+                if (cliente is null)
+                {
+                    falhas.Add(atendimentoRequest.ClienteUuid is { } u
+                        ? $"Cliente {u} nao encontrado."
+                        : $"Cliente {atendimentoRequest.ClienteId} nao encontrado.");
+                }
+
+                var produtos = new Dictionary<long, Produto>();
+                foreach (var itemProduto in atendimentoRequest.ItensProduto)
+                {
+                    if (itemProduto.Quantidade <= 0)
+                    {
+                        falhas.Add($"Quantidade invalida para produto {itemProduto.ProdutoId}.");
+                        continue;
+                    }
+
+                    if (produtos.ContainsKey(itemProduto.ProdutoId)) continue;
+
+                    var produto = await _produtoRepository.GetByIdAsync(empresaId, itemProduto.ProdutoId, true, cancellationToken);
+                    if (produto is null)
+                    {
+                        falhas.Add($"Produto {itemProduto.ProdutoId} nao encontrado.");
+                        continue;
+                    }
+
+                    produtos[produto.Id] = produto;
+                }
+
+                if (controlaEstoque)
+                {
+                    // Soma por produto: o mesmo produto pode aparecer em mais de um item.
+                    var demanda = atendimentoRequest.ItensProduto
+                        .Where(i => i.Quantidade > 0 && produtos.ContainsKey(i.ProdutoId))
+                        .GroupBy(i => i.ProdutoId)
+                        .Select(g => new { Produto = produtos[g.Key], Quantidade = g.Sum(i => i.Quantidade) });
+
+                    foreach (var d in demanda.Where(d => d.Produto.QuantidadeEstoque < d.Quantidade))
+                    {
+                        falhas.Add($"Estoque insuficiente para produto '{d.Produto.Nome}'.");
+                    }
+                }
+
+                var servicos = new Dictionary<long, Servico>();
+                foreach (var itemServico in atendimentoRequest.ItensServico)
+                {
+                    if (itemServico.Quantidade <= 0)
+                    {
+                        falhas.Add($"Quantidade invalida para servico {itemServico.ServicoId}.");
+                        continue;
+                    }
+
+                    if (servicos.ContainsKey(itemServico.ServicoId)) continue;
+
+                    var servico = await _servicoRepository.GetByIdAsync(empresaId, itemServico.ServicoId, false, cancellationToken);
+                    if (servico is null)
+                    {
+                        falhas.Add($"Servico {itemServico.ServicoId} nao encontrado.");
+                        continue;
+                    }
+
+                    servicos[servico.Id] = servico;
+                }
+
+                if (falhas.Count > 0)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    // Descarta alteracoes rastreadas (nenhuma esperada aqui) para nao
+                    // vazarem no SaveChanges do proximo atendimento da leva.
+                    _dbContext.ChangeTracker.Clear();
+                    erros.AddRange(falhas.Select(f => $"{rotulo}: {f}"));
+                    continue;
+                }
+
+                var agora = DateTime.UtcNow;
                 var atendimento = new Atendimento
                 {
                     Uuid = atendimentoRequest.Uuid,
                     EmpresaId = empresaId,
                     UsuarioId = usuarioId,
-                    ClienteId = atendimentoRequest.ClienteId,
+                    ClienteId = cliente!.Id,
                     Status = atendimentoRequest.Status,
                     DataRegistro = atendimentoRequest.DataRegistro,
                     DataAgendada = agendaFixa ? null : atendimentoRequest.DataAgendada,
-                    ValorTotal = 0m,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = agora,
+                    UpdatedAt = agora
                 };
-
-                await _atendimentoRepository.AddAsync(atendimento, cancellationToken);
-                await _atendimentoRepository.SaveChangesAsync(cancellationToken);
-
-                var totalProdutos = 0m;
-                var totalServicos = 0m;
 
                 foreach (var itemProduto in atendimentoRequest.ItensProduto)
                 {
-                    var produto = await _produtoRepository.GetByIdAsync(empresaId, itemProduto.ProdutoId, true, cancellationToken);
-                    if (produto is null)
-                    {
-                        erros.Add($"Atendimento '{atendimentoRequest.Uuid}': Produto {itemProduto.ProdutoId} nao encontrado.");
-                        continue;
-                    }
-
-                    if (controlaEstoque && produto.QuantidadeEstoque < itemProduto.Quantidade)
-                    {
-                        erros.Add($"Atendimento '{atendimentoRequest.Uuid}': Estoque insuficiente para produto '{produto.Nome}'.");
-                        continue;
-                    }
-
+                    var produto = produtos[itemProduto.ProdutoId];
                     if (controlaEstoque)
                     {
                         produto.QuantidadeEstoque -= itemProduto.Quantidade;
-                        produto.UpdatedAt = DateTime.UtcNow;
+                        produto.UpdatedAt = agora;
                     }
 
-                    var subtotal = itemProduto.Quantidade * produto.Preco;
-                    totalProdutos += subtotal;
-
-                    await _itemProdutoRepository.AddAsync(new ItemProduto
+                    atendimento.ItensProduto.Add(new ItemProduto
                     {
                         Uuid = Guid.NewGuid(),
-                        AtendimentoId = atendimento.Id,
-                        ProdutoId = itemProduto.ProdutoId,
+                        ProdutoId = produto.Id,
                         Quantidade = itemProduto.Quantidade,
                         PrecoUnitario = produto.Preco,
-                        Subtotal = subtotal,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    }, cancellationToken);
+                        Subtotal = itemProduto.Quantidade * produto.Preco,
+                        CreatedAt = agora,
+                        UpdatedAt = agora
+                    });
                 }
 
                 foreach (var itemServico in atendimentoRequest.ItensServico)
                 {
-                    var servico = await _servicoRepository.GetByIdAsync(empresaId, itemServico.ServicoId, false, cancellationToken);
-                    if (servico is null)
-                    {
-                        erros.Add($"Atendimento '{atendimentoRequest.Uuid}': Servico {itemServico.ServicoId} nao encontrado.");
-                        continue;
-                    }
-
-                    var precoUnitario = servico.TipoCobranca == Enums.TipoCobranca.Empreitada
-                        ? servico.ValorEmpreitada!.Value
+                    var servico = servicos[itemServico.ServicoId];
+                    var empreitada = servico.TipoCobranca == Enums.TipoCobranca.Empreitada;
+                    var precoUnitario = empreitada
+                        ? servico.ValorEmpreitada ?? 0
                         : servico.ValorHora ?? 0;
 
-                    var subtotal = servico.TipoCobranca == Enums.TipoCobranca.Empreitada
-                        ? servico.ValorEmpreitada!.Value
-                        : itemServico.Quantidade * (servico.ValorHora ?? 0);
-
-                    totalServicos += subtotal;
-
-                    await _itemServicoRepository.AddAsync(new ItemServico
+                    atendimento.ItensServico.Add(new ItemServico
                     {
                         Uuid = Guid.NewGuid(),
-                        AtendimentoId = atendimento.Id,
-                        ServicoId = itemServico.ServicoId,
+                        ServicoId = servico.Id,
                         Quantidade = itemServico.Quantidade,
                         PrecoUnitario = precoUnitario,
-                        Subtotal = subtotal,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    }, cancellationToken);
+                        Subtotal = empreitada ? precoUnitario : itemServico.Quantidade * precoUnitario,
+                        CreatedAt = agora,
+                        UpdatedAt = agora
+                    });
                 }
 
-                atendimento.ValorTotal = totalProdutos + totalServicos;
-                atendimento.UpdatedAt = DateTime.UtcNow;
+                atendimento.ValorTotal = atendimento.ItensProduto.Sum(i => i.Subtotal)
+                    + atendimento.ItensServico.Sum(i => i.Subtotal);
 
+                await _atendimentoRepository.AddAsync(atendimento, cancellationToken);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 await tx.CommitAsync(cancellationToken);
                 atendimentosImportados++;
+                atendimentosSincronizados.Add(atendimentoRequest.Uuid);
             }
             catch (Exception ex)
             {
                 await tx.RollbackAsync(cancellationToken);
-                erros.Add($"Atendimento '{atendimentoRequest.Uuid}': {ex.Message}");
+                _dbContext.ChangeTracker.Clear();
+                erros.Add($"{rotulo}: {ex.Message}");
             }
         }
 
@@ -339,6 +454,11 @@ public sealed class SyncService : ISyncService
         {
             AtendimentosImportados = atendimentosImportados,
             ClientesImportados = clientesImportados,
+            ClientesSincronizados = clientesSincronizados,
+            AtendimentosSincronizados = atendimentosSincronizados,
+            ClientesMapeados = clienteIdPorUuid
+                .Select(kv => new ClienteMapeadoResponse { Uuid = kv.Key, Id = kv.Value })
+                .ToList(),
             Erros = erros,
             SincronizadoEm = DateTime.UtcNow
         };
