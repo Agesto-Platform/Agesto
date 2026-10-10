@@ -22,14 +22,14 @@ public sealed class SyncController : ApiControllerBase
     {
         if (!TryGetEmpresaId(out var empresaId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
         }
 
         var resultado = await _syncService.CargaAsync(empresaId, ultimaSincronizacao, cancellationToken);
         return Ok(new ApiResponse
         {
             Success = true,
-            Message = "Carga concluida.",
+            Message = "Carga concluída.",
             Data = resultado
         });
     }
@@ -39,14 +39,14 @@ public sealed class SyncController : ApiControllerBase
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var usuarioId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
         }
 
         var resultado = await _syncService.DescargaAsync(empresaId, usuarioId, request, cancellationToken);
         return Ok(new ApiResponse
         {
             Success = true,
-            Message = "Descarga concluida.",
+            Message = "Descarga concluída.",
             Data = resultado
         });
     }

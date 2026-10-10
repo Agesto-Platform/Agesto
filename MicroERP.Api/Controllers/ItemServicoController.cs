@@ -22,22 +22,22 @@ public sealed class ItemServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] long atendimentoId, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         var itens = await _itemServicoService.GetAllByAtendimentoAsync(empresaId, atendimentoId, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Itens de servico encontrados.", Data = itens });
+        return Ok(new ApiResponse { Success = true, Message = "Itens de serviço encontrados.", Data = itens });
     }
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<ApiResponse>> GetById(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var item = await _itemServicoService.GetByIdAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Item de servico encontrado.", Data = item });
+            return Ok(new ApiResponse { Success = true, Message = "Item de serviço encontrado.", Data = item });
         }
         catch (NotFoundException ex)
         {
@@ -49,7 +49,7 @@ public sealed class ItemServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Create([FromBody] ItemServicoCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -57,7 +57,7 @@ public sealed class ItemServicoController : ApiControllerBase
             return CreatedAtAction(nameof(GetById), new { id = item.Id }, new ApiResponse
             {
                 Success = true,
-                Message = "Item de servico criado com sucesso.",
+                Message = "Item de serviço criado com sucesso.",
                 Data = item
             });
         }
@@ -71,12 +71,12 @@ public sealed class ItemServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Update(long id, [FromBody] ItemServicoUpdateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var item = await _itemServicoService.UpdateAsync(empresaId, id, request, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Item de servico atualizado com sucesso.", Data = item });
+            return Ok(new ApiResponse { Success = true, Message = "Item de serviço atualizado com sucesso.", Data = item });
         }
         catch (NotFoundException ex)
         {
@@ -88,12 +88,12 @@ public sealed class ItemServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             await _itemServicoService.DeleteAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Item de servico removido com sucesso." });
+            return Ok(new ApiResponse { Success = true, Message = "Item de serviço removido com sucesso." });
         }
         catch (NotFoundException ex)
         {

@@ -20,13 +20,13 @@ builder.Services.AddControllers()
         {
             var errors = context.ModelState.Values
                 .SelectMany(v => v.Errors)
-                .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Requisicao invalida." : e.ErrorMessage)
+                .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Requisição inválida." : e.ErrorMessage)
                 .ToList();
 
             return new BadRequestObjectResult(new ApiResponse
             {
                 Success = false,
-                Message = "Falha de validacao.",
+                Message = "Falha de validação.",
                 Errors = errors
             });
         };

@@ -25,7 +25,7 @@ public sealed class AuthController : ControllerBase
             return Ok(new ApiResponse
             {
                 Success = true,
-                Message = "Usuario cadastrado com sucesso."
+                Message = "Usuário cadastrado com sucesso."
             });
         }
         catch (EmailAlreadyExistsException ex)
@@ -47,7 +47,7 @@ public sealed class AuthController : ControllerBase
             return Unauthorized(new ApiResponse
             {
                 Success = false,
-                Message = "Credenciais invalidas."
+                Message = "Credenciais inválidas."
             });
         }
 

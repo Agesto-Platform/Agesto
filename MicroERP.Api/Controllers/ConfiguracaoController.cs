@@ -23,19 +23,19 @@ public sealed class ConfiguracaoController : ApiControllerBase
     {
         if (!TryGetEmpresaId(out var empresaId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
         }
 
         var configuracao = await _configuracaoService.GetByEmpresaAsync(empresaId, cancellationToken);
         if (configuracao is null)
         {
-            return NotFound(new ApiResponse { Success = false, Message = "Configuracao nao encontrada." });
+            return NotFound(new ApiResponse { Success = false, Message = "Configuração não encontrada." });
         }
 
         return Ok(new ApiResponse
         {
             Success = true,
-            Message = "Configuracao encontrada.",
+            Message = "Configuração encontrada.",
             Data = configuracao
         });
     }
@@ -45,19 +45,19 @@ public sealed class ConfiguracaoController : ApiControllerBase
     {
         if (!TryGetEmpresaId(out var empresaId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
         }
 
         var configuracao = await _configuracaoService.UpdateAsync(empresaId, request, cancellationToken);
         if (configuracao is null)
         {
-            return NotFound(new ApiResponse { Success = false, Message = "Configuracao nao encontrada." });
+            return NotFound(new ApiResponse { Success = false, Message = "Configuração não encontrada." });
         }
 
         return Ok(new ApiResponse
         {
             Success = true,
-            Message = "Configuracao atualizada com sucesso.",
+            Message = "Configuração atualizada com sucesso.",
             Data = configuracao
         });
     }

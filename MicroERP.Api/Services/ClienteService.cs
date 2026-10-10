@@ -24,7 +24,7 @@ public sealed class ClienteService : IClienteService
     public async Task<ClienteResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (cliente is null) throw new NotFoundException("Cliente nao encontrado.");
+        if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
         return MapResponse(cliente);
     }
 
@@ -34,7 +34,7 @@ public sealed class ClienteService : IClienteService
         var existing = await _clienteRepository.GetByCpfAsync(empresaId, cpf, cancellationToken);
         if (existing is not null)
         {
-            throw new CpfAlreadyExistsException("CPF ja cadastrado.");
+            throw new CpfAlreadyExistsException("CPF já cadastrado.");
         }
 
         var cliente = new Cliente
@@ -62,7 +62,7 @@ public sealed class ClienteService : IClienteService
     public async Task<ClienteResponse> UpdateAsync(long empresaId, long id, ClienteUpdateRequest request, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (cliente is null) throw new NotFoundException("Cliente nao encontrado.");
+        if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
 
         var cpf = NormalizeCpf(request.Cpf);
         if (!string.Equals(cliente.Cpf, cpf, StringComparison.Ordinal))
@@ -70,7 +70,7 @@ public sealed class ClienteService : IClienteService
             var existing = await _clienteRepository.GetByCpfAsync(empresaId, cpf, cancellationToken);
             if (existing is not null)
             {
-                throw new CpfAlreadyExistsException("CPF ja cadastrado.");
+                throw new CpfAlreadyExistsException("CPF já cadastrado.");
             }
         }
 
@@ -92,7 +92,7 @@ public sealed class ClienteService : IClienteService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (cliente is null) throw new NotFoundException("Cliente nao encontrado.");
+        if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
 
         cliente.DeletedAt = DateTime.UtcNow;
         cliente.UpdatedAt = DateTime.UtcNow;
@@ -104,13 +104,13 @@ public sealed class ClienteService : IClienteService
     {
         var digits = cpf.Where(char.IsDigit).ToArray();
         if (digits.Length != 11)
-            throw new ArgumentException("CPF deve conter 11 digitos.");
+            throw new ArgumentException("CPF deve conter 11 dígitos.");
 
         var normalized = new string(digits);
 
         // Rejeita sequências triviais (ex: 111.111.111-11)
         if (digits.Distinct().Count() == 1)
-            throw new ArgumentException("CPF invalido.");
+            throw new ArgumentException("CPF inválido.");
 
         // Primeiro dígito verificador
         var sum = 0;
@@ -118,7 +118,7 @@ public sealed class ClienteService : IClienteService
         var remainder = (sum * 10) % 11;
         if (remainder == 10) remainder = 0;
         if (remainder != digits[9] - '0')
-            throw new ArgumentException("CPF invalido.");
+            throw new ArgumentException("CPF inválido.");
 
         // Segundo dígito verificador
         sum = 0;
@@ -126,7 +126,7 @@ public sealed class ClienteService : IClienteService
         remainder = (sum * 10) % 11;
         if (remainder == 10) remainder = 0;
         if (remainder != digits[10] - '0')
-            throw new ArgumentException("CPF invalido.");
+            throw new ArgumentException("CPF inválido.");
 
         return normalized;
     }

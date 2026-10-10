@@ -22,7 +22,7 @@ public sealed class ItemProdutoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] long atendimentoId, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         var itens = await _itemProdutoService.GetAllByAtendimentoAsync(empresaId, atendimentoId, cancellationToken);
         return Ok(new ApiResponse { Success = true, Message = "Itens de produto encontrados.", Data = itens });
@@ -32,7 +32,7 @@ public sealed class ItemProdutoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetById(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -49,7 +49,7 @@ public sealed class ItemProdutoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Create([FromBody] ItemProdutoCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -79,7 +79,7 @@ public sealed class ItemProdutoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Update(long id, [FromBody] ItemProdutoUpdateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -104,7 +104,7 @@ public sealed class ItemProdutoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
