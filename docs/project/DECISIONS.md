@@ -665,4 +665,4 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 5. **Atendimento referencia cliente criado offline** por `AtendimentoSyncRequest.ClienteUuid` (`ClienteId` passa a ser opcional). Clientes são processados antes dos atendimentos na mesma leva; a resposta traz `ClientesMapeados` (uuid → id) e o device religa os atendimentos locais ao id do servidor. Cliente offline com CPF já existente é mapeado para o cliente existente (coerente com a DEC-06).
 6. O botão Sincronizar do mobile passa a fazer Descarga seguida de Carga + agenda, e informa quantos itens não foram enviados.
 
-**Impacto:** contrato da Descarga mudou — API e mobile precisam ser publicados juntos. Resolve as pendências "Mapear uuid→id do cliente na Descarga" (DEC-26) e a perda de dados acima. Testes: backend 103, mobile 32 — verdes.
+**Impacto:** contrato da Descarga mudou — API e mobile precisam ser publicados juntos. Resolve as pendências "Mapear uuid→id do cliente na Descarga" (DEC-26) e a perda de dados acima. Testes: backend 127, mobile 32 — verdes.
