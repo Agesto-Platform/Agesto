@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MicroERP.Api.Authorization;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Enums;
 using MicroERP.Api.Services.Exceptions;
@@ -10,6 +11,7 @@ namespace MicroERP.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
+// A agenda é liberada ao Agente (só a própria); o restante é gestão do Dono.
 public sealed class AtendimentoController : ApiControllerBase
 {
     private readonly IAtendimentoService _atendimentoService;
@@ -20,6 +22,7 @@ public sealed class AtendimentoController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> GetAll(CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
@@ -53,6 +56,7 @@ public sealed class AtendimentoController : ApiControllerBase
     }
 
     [HttpGet("{id:long}")]
+    [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> GetById(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
@@ -70,6 +74,7 @@ public sealed class AtendimentoController : ApiControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> Create([FromBody] AtendimentoCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var usuarioId))
@@ -92,6 +97,7 @@ public sealed class AtendimentoController : ApiControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> Update(long id, [FromBody] AtendimentoUpdateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
@@ -109,6 +115,7 @@ public sealed class AtendimentoController : ApiControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))

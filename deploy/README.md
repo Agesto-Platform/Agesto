@@ -47,6 +47,12 @@ SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' O
 
 A primeira deve listar todas as migrations de `MicroERP.Api/Migrations`; a segunda, as tabelas do modelo mais `__EFMigrationsHistory`.
 
+A migration `EnableRlsLockdown` liga o RLS em todas as tabelas e revoga o acesso dos roles `anon` e `authenticated`. É uma segunda camada além da Data API desligada; a API não é afetada porque conecta como dona das tabelas. Para conferir:
+
+```sql
+SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER BY 1;  -- todas true
+```
+
 ## 3. API no Render
 
 1. Em render.com, entre com o GitHub e autorize o acesso ao repositório `Agesto-Platform/Agesto`.
@@ -54,9 +60,25 @@ A primeira deve listar todas as migrations de `MicroERP.Api/Migrations`; a segun
 3. Preencha as variáveis pedidas:
    - `ConnectionStrings__DefaultConnection`: a connection string do passo 1.
    - `Cors__AllowedOrigins__0`: a URL da web na Cloudflare Pages (passo 4). Se ainda não existir, use um valor provisório e troque depois. Aceita várias origens separadas por vírgula; a `/` final é ignorada.
-   - `Jwt__Secret` é gerado pelo próprio Render.
+   - `Jwt__Secret` é gerado pelo próprio Render. A API não sobe com segredo menor que 32 bytes.
+   - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
 4. O serviço publica a branch `develop` (provisório, até a promoção para `main`), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
+
+### Cadastrar uma empresa
+
+O cadastro público é fechado. `POST /api/auth/register` responde 404 enquanto `Auth__RegistrationKey` não estiver definida no Render. Para criar uma empresa:
+
+1. No painel do Render, defina `Auth__RegistrationKey` com um valor aleatório longo (ex.: `openssl rand -base64 32`).
+2. Chame o cadastro enviando a chave no header:
+
+   ```bash
+   curl -X POST https://agesto-api.onrender.com/api/auth/register      -H "Content-Type: application/json"      -H "X-Registration-Key: <a chave>"      -d '{"nomeEmpresa":"...","nome":"...","email":"...","senha":"..."}'
+   ```
+
+3. Apague a variável depois, para fechar o cadastro de novo.
+
+O endpoint aceita 5 tentativas por hora por IP; o login, 10 a cada 5 minutos por IP.
 
 ### Limites do plano Free
 

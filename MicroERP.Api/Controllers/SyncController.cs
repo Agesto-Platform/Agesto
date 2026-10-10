@@ -2,11 +2,14 @@
 using MicroERP.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using MicroERP.Api.Authorization;
 
 namespace MicroERP.Api.Controllers;
 
 [ApiController]
 [Authorize]
+[EnableRateLimiting(RateLimits.Sync)]
 [Route("api/[controller]")]
 public sealed class SyncController : ApiControllerBase
 {
@@ -35,6 +38,7 @@ public sealed class SyncController : ApiControllerBase
     }
 
     [HttpPost("descarga")]
+    [RequestSizeLimit(1024 * 1024)]
     public async Task<ActionResult<ApiResponse>> Descarga([FromBody] SyncDescargaRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var usuarioId))

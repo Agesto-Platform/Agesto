@@ -19,6 +19,11 @@ public sealed class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly PasswordHasher<Usuario> _passwordHasher = new();
 
+    // Hash de uma senha qualquer, verificado quando o email não existe: o login
+    // leva o mesmo tempo nos dois casos e não revela quais emails têm conta.
+    private static readonly string HashFicticio = new PasswordHasher<Usuario>()
+        .HashPassword(new Usuario(), Guid.NewGuid().ToString());
+
     public AuthService(AppDbContext dbContext, IConfiguration configuration)
     {
         _dbContext = dbContext;
@@ -39,6 +44,9 @@ public sealed class AuthService : IAuthService
         {
             throw new EmailAlreadyExistsException("Email ja cadastrado.");
         }
+
+        // Empresa, usuário e configuração nascem juntos ou nenhum deles.
+        await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var empresa = new Empresa
         {
@@ -73,6 +81,7 @@ public sealed class AuthService : IAuthService
         _dbContext.Configuracoes.Add(configuracao);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
     }
 
     public async Task<AuthResponse?> LoginAsync(AuthLoginRequest request, CancellationToken cancellationToken)
@@ -85,6 +94,7 @@ public sealed class AuthService : IAuthService
 
         if (usuario is null)
         {
+            _passwordHasher.VerifyHashedPassword(new Usuario(), HashFicticio, request.Senha);
             return null;
         }
 

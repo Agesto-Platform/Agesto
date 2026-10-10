@@ -10,12 +10,13 @@ public sealed class ServicoCreateRequest
     [MaxLength(200, ErrorMessage = "Descricao deve ter no maximo 200 caracteres.")]
     public string Descricao { get; set; } = string.Empty;
 
+    [EnumDataType(typeof(TipoCobranca), ErrorMessage = "Tipo de cobranca invalido.")]
     public TipoCobranca TipoCobranca { get; set; } = TipoCobranca.PorHora;
 
-    [Range(0.01, 999999999999.99, ErrorMessage = "Valor hora invalido.")]
+    [Range(0.01, 999999.99, ErrorMessage = "Valor hora invalido.")]
     public decimal? ValorHora { get; set; }
 
-    [Range(0.01, 999999999999.99, ErrorMessage = "Valor empreitada invalido.")]
+    [Range(0.01, 999999.99, ErrorMessage = "Valor empreitada invalido.")]
     public decimal? ValorEmpreitada { get; set; }
 
 }

@@ -18,13 +18,13 @@ public sealed class ItemProdutoCreateRequest
 
     // Valor unitario cobrado do cliente. Opcional: se nulo e houver ProdutoId,
     // usa o preco do catalogo como default (DEC-23).
-    [Range(0, double.MaxValue, ErrorMessage = "Valor unitario invalido.")]
+    [Range(0, 999999.99, ErrorMessage = "Valor unitario invalido.")]
     public decimal? PrecoUnitario { get; set; }
 
     // Custo que o prestador pagou por esta linha (livre, sem regra — DEC-19).
-    [Range(0, double.MaxValue, ErrorMessage = "Custo invalido.")]
+    [Range(0, 999999.99, ErrorMessage = "Custo invalido.")]
     public decimal? Custo { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Quantidade invalida.")]
+    [Range(1, 9999, ErrorMessage = "Quantidade invalida.")]
     public int Quantidade { get; set; }
 }

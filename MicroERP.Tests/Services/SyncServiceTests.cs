@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
@@ -130,6 +131,37 @@ public sealed class SyncServiceTests
         Assert.Equal(1, res.AtendimentosImportados);
         var at = await db.Atendimentos.FirstAsync();
         Assert.Null(at.DataAgendada); // Fixa: agendamento vindo do agente é ignorado no servidor
+    }
+
+    [Theory]
+    [InlineData(1900)]
+    [InlineData(2999)]
+    public async Task DescargaAsync_DataRegistroImplausivel_RejeitaAtendimento(int ano)
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        await db.SaveChangesAsync();
+
+        var uuid = Guid.NewGuid();
+        var req = new SyncDescargaRequest
+        {
+            Atendimentos =
+            [
+                new AtendimentoSyncRequest
+                {
+                    Uuid = uuid,
+                    DataRegistro = new DateTime(ano, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    Status = StatusAtendimento.Concluido,
+                    ClienteId = 1,
+                },
+            ],
+        };
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, req, CancellationToken.None);
+
+        Assert.Equal(0, res.AtendimentosImportados);
+        Assert.DoesNotContain(uuid, res.AtendimentosSincronizados);
+        Assert.Contains(res.Erros, e => e.Contains("Data de registro inválida."));
     }
 
     [Fact]
@@ -391,7 +423,8 @@ public sealed class SyncServiceTests
             new ServicoRepository(db),
             new AtendimentoRepository(db),
             new ItemProdutoRepository(db),
-            new ItemServicoRepository(db));
+            new ItemServicoRepository(db),
+            NullLogger<SyncService>.Instance);
     }
 
     private static AppDbContext CreateContext() =>

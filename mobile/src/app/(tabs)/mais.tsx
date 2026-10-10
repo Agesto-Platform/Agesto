@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
+import { countPendentes } from '@/auth/localData'
 import { db } from '@/db/instance'
 import { descarga, initialSync } from '@/sync/sync'
 
@@ -65,6 +66,25 @@ export default function Mais() {
     }
   }
 
+  // Sair apaga o banco local: se há pendências, confirma antes de perdê-las.
+  async function sair() {
+    const n = await countPendentes(db)
+    if (n === 0) {
+      await logout()
+      return
+    }
+    const msg = `Há ${n} registro(s) não sincronizado(s). Sair vai apagá-los deste aparelho.`
+    // No web o Alert do RN não tem botões: usa o confirm do navegador.
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) await logout()
+      return
+    }
+    Alert.alert('Sair', msg, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair mesmo assim', style: 'destructive', onPress: () => void logout() },
+    ])
+  }
+
   const pendentes = pendAt + pendCli
 
   return (
@@ -93,7 +113,7 @@ export default function Mais() {
           </Pressable>
         </View>
 
-        <Pressable onPress={logout} style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
+        <Pressable onPress={sair} style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
           <Ionicons name="log-out-outline" size={20} color={colors.bad} />
           <Text style={styles.rowText}>Sair</Text>
         </Pressable>

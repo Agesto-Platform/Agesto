@@ -1,4 +1,8 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using MicroERP.Api.Authorization;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Services.Exceptions;
 using MicroERP.Api.Services.Interfaces;
@@ -10,15 +14,39 @@ namespace MicroERP.Api.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IConfiguration _configuration;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, IConfiguration configuration)
     {
         _authService = authService;
+        _configuration = configuration;
     }
 
+    // Cadastro fechado: só funciona com Auth:RegistrationKey configurada e enviada
+    // no header X-Registration-Key. Sem a chave configurada, a rota não existe.
     [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] AuthRegisterRequest request, CancellationToken cancellationToken)
+    [EnableRateLimiting(RateLimits.Register)]
+    public async Task<IActionResult> Register(
+        [FromBody] AuthRegisterRequest request,
+        [FromHeader(Name = "X-Registration-Key")] string? registrationKey,
+        CancellationToken cancellationToken)
     {
+        var chaveEsperada = _configuration["Auth:RegistrationKey"];
+        if (string.IsNullOrWhiteSpace(chaveEsperada))
+        {
+            return NotFound();
+        }
+
+        if (string.IsNullOrEmpty(registrationKey) || !CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(registrationKey), Encoding.UTF8.GetBytes(chaveEsperada)))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse
+            {
+                Success = false,
+                Message = "Cadastro não autorizado."
+            });
+        }
+
         try
         {
             await _authService.RegisterAsync(request, cancellationToken);
@@ -39,6 +67,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting(RateLimits.Login)]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] AuthLoginRequest request, CancellationToken cancellationToken)
     {
         var response = await _authService.LoginAsync(request, cancellationToken);
