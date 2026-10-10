@@ -105,6 +105,17 @@ builder.Services.AddAuthentication(options =>
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(2)
         };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                if (!await TokenRevalidator.IsValidAsync(db, context.Principal!, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("Sessao revogada.");
+                }
+            }
+        };
     });
 
 // Telas e ações de gestão são do Dono; o Agente usa só o app (sync e agenda).

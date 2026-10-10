@@ -51,6 +51,27 @@ public sealed class SyncServiceTests
         Assert.Equal(5, carga.Orcamentos[0].Itens[0].ServicoId);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CargaAsync_ParaAgente_MascaraCpfEOcultaCusto(bool agente)
+    {
+        await using var db = CreateContext();
+        db.Clientes.Add(new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Maria", Cpf = "12345678901", EmpresaId = 1 });
+        db.Orcamentos.Add(new Orcamento
+        {
+            Id = 1, Uuid = Guid.NewGuid(), EmpresaId = 1, UsuarioId = 1, ClienteId = 1,
+            Status = StatusOrcamento.Enviado, DataRegistro = DateTime.UtcNow, ValorTotal = 100m, UpdatedAt = DateTime.UtcNow,
+            Itens = new List<ItemOrcamento> { new() { Uuid = Guid.NewGuid(), Quantidade = 1, PrecoUnitario = 100m, Subtotal = 100m, Custo = 60m } }
+        });
+        await db.SaveChangesAsync();
+
+        var carga = await BuildSync(db).CargaAsync(1, null, CancellationToken.None, restringirDadosSensiveis: agente);
+
+        Assert.Equal(agente ? "***.456.789-**" : "12345678901", carga.Clientes.Single().Cpf);
+        Assert.Equal(agente ? null : 60m, carga.Orcamentos.Single().Itens.Single().Custo);
+    }
+
     [Fact]
     public async Task CargaAsync_IncluiConfiguracaoDaEmpresa()
     {
