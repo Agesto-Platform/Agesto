@@ -4,6 +4,9 @@ namespace MicroERP.Api.DTOs;
 
 public sealed class ClienteCreateRequest
 {
+    // Opcional: UUID gerado no device (offline-first). Ausente = gerado no servidor.
+    public Guid? Uuid { get; set; }
+
     [Required(ErrorMessage = "Nome obrigatorio.")]
     [MinLength(2, ErrorMessage = "Nome deve ter no minimo 2 caracteres.")]
     [MaxLength(120, ErrorMessage = "Nome deve ter no maximo 120 caracteres.")]
