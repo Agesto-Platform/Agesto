@@ -12,7 +12,7 @@
 | Definir integrantes, papéis e focos iniciais | 🟢 Concluído — Davi (Produto), Depowo (Infra), ghzpro034 (Generalista) |
 | Criar organização GitHub e transferir para `Agesto-Platform/Agesto` | 🟢 Concluído |
 | Configurar time `Core`, acessos mínimos e segundo Owner | 🟢 Concluído — Davi e Depowo são Owners |
-| Proteger `develop` e `main` com PR, revisão e status checks | 🔴 Pendente |
+| Proteger `develop` e `main` com PR, revisão e status checks | 🟢 Concluído — ruleset exige PR e os checks Backend, Web e Mobile; sem aprovação obrigatória (decisão de 10/10/2026) |
 | Adicionar CI para backend, web e mobile | 🟢 Concluído — validado na promoção de governança |
 | Auditar `REQUIREMENTS.md` reconstruído | 🟡 Em andamento |
 | Publicar a linha local consolidada em `main` | 🟢 Concluído — merge `72b021b` |
@@ -124,20 +124,49 @@
 | KAN-13 | Projeto ASP.NET Core .NET 8 | Davi Gomes |
 | KAN-35 | Testes de endpoints | Diego |
 | KAN-16 | CI para backend, web e mobile | Equipe Agesto |
+| KAN-15 | Provedores: API no Render, banco no Supabase, web na Cloudflare Pages (DEC-32) | Equipe Agesto |
+| KAN-17 | Deploy da API em produção (`agesto-api.onrender.com`) | Equipe Agesto |
+| KAN-18 | Processo de deploy documentado em `deploy/README.md` | Equipe Agesto |
+| — | Banco e API reais no ar; mocks desligados no Web e no Mobile | Equipe Agesto |
 
 ### 🔴 Pendentes
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
 | KAN-14 | PostgreSQL de desenvolvimento + migrations | Alta | A definir |
-| KAN-15 | Escolher provedor e ambientes | Alta | Equipe |
-| KAN-17 | Deploy inicial da API | Média | A definir |
-| KAN-18 | Documentar processo de deploy | Baixa | A definir |
 | KAN-54 | Agents de QA automatizados | Baixa | Diego |
-| — | Configurar rulesets em `develop` e `main` | Alta | Davi Gomes |
 | — | Instalar dotnet ef global na máquina | Média | Davi Gomes |
 | — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
-| — | Subir banco/API real e trocar `VITE_USE_MOCKS`/`config.useMocks` para `false` no Web e no Mobile | Alta | Davi Gomes |
+| — | Backup automático do banco (Supabase Free não faz) — DEC-34 | Alta | A definir |
+| — | Migrar para .NET 10 (o .NET 8 perde suporte em 10/11/2026) — DEC-34 | Alta | A definir |
+
+---
+
+## Segurança (DEC-34)
+
+### ✅ Concluídas e validadas em produção — 10/10/2026
+
+| Item | Detalhe |
+|------|---------|
+| Auditoria de API, front, banco e infra | Achados e correções registrados na DEC-34 |
+| Rate limiting | Login, cadastro (por IP) e sync (por usuário) |
+| Cadastro fechado | `Auth__RegistrationKey` + header `X-Registration-Key`; ver `deploy/README.md` |
+| Perfis Dono/Agente no back | Policy `Dono` nas rotas de gestão, com teste de cobertura |
+| Revogação de token | JWT revalidado no banco a cada requisição |
+| JWT endurecido | HS256 fixo; issuer, audience e segredo ≥ 32 bytes obrigatórios |
+| Headers de segurança | API (HSTS, nosniff, frame-ancestors) e Web (CSP via `_headers`) |
+| LGPD de clientes | CPF mascarado para o Agente; anonimização na exclusão |
+| Banco | RLS em todas as tabelas; role `agesto_api` só com DML; TLS `VerifyFull` |
+| Mobile | Mock só em dev; dados locais apagados no logout e na troca de usuário; sem backup Android |
+| Web | Painel só para o Dono; cache limpo no logout |
+
+### 🔴 Pendentes
+
+| Item | Descrição | Prioridade |
+|------|-----------|------------|
+| Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio | Média |
+| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP) | Baixa |
+| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7 | Baixa |
 
 ---
 
