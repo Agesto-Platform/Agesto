@@ -1,4 +1,5 @@
 ﻿using MicroERP.Api.DTOs;
+using MicroERP.Api.Enums;
 using MicroERP.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -28,7 +29,9 @@ public sealed class SyncController : ApiControllerBase
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
         }
 
-        var resultado = await _syncService.CargaAsync(empresaId, ultimaSincronizacao, cancellationToken);
+        // Sem perfil identificável, trata como Agente (o mais restrito).
+        var restringir = !TryGetPerfil(out var perfil) || perfil != PerfilUsuario.Dono;
+        var resultado = await _syncService.CargaAsync(empresaId, ultimaSincronizacao, cancellationToken, restringir);
         return Ok(new ApiResponse
         {
             Success = true,

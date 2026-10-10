@@ -94,6 +94,7 @@ public sealed class ClienteService : IClienteService
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
         if (cliente is null) throw new NotFoundException("Cliente nao encontrado.");
 
+        DadosPessoais.Anonimizar(cliente);
         cliente.DeletedAt = DateTime.UtcNow;
         cliente.UpdatedAt = DateTime.UtcNow;
 

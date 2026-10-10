@@ -666,3 +666,25 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 6. O botão Sincronizar do mobile passa a fazer Descarga seguida de Carga + agenda, e informa quantos itens não foram enviados.
 
 **Impacto:** contrato da Descarga mudou — API e mobile precisam ser publicados juntos. Resolve as pendências "Mapear uuid→id do cliente na Descarga" (DEC-26) e a perda de dados acima. Testes: backend 127, mobile 32 — verdes.
+
+
+---
+
+## DEC-34 — Endurecimento de segurança pós-auditoria
+
+**Status:** 🟢 Implementado em 10/10/2026 (PRs #44 e seguinte)
+
+**Contexto:** auditoria de API, front, banco e infraestrutura com o sistema já em produção. Não havia vazamento ativo (Data API do Supabase desligada), mas havia brechas exploráveis: sem limite de tentativas, sem checagem de perfil, cadastro aberto, token irrevogável, dados pessoais completos no celular do agente.
+
+**Decisão:**
+1. **Cadastro fechado.** `POST /api/auth/register` só funciona com `Auth:RegistrationKey` configurada e enviada em `X-Registration-Key`; sem a chave, responde 404. Reabrir exige verificação de email (pendente).
+2. **Perfis no back.** Policy `Dono` em toda rota de gestão; o Agente usa só sync e a própria agenda. Um teste falha se uma action nova não declarar a policy.
+3. **Rate limiting** por IP no login e cadastro e por usuário no sync.
+4. **Token revalidado a cada requisição:** usuário excluído, de outra empresa ou com perfil alterado perde o acesso na hora, sem esperar o JWT expirar.
+5. **LGPD:** o Agente recebe CPF mascarado e orçamentos sem custo na Carga; cliente excluído é anonimizado (nome, CPF, telefone e endereço), mantendo a linha para o histórico.
+6. **Banco:** RLS em todas as tabelas sem acesso para `anon`/`authenticated`; a API conecta com o role `agesto_api` (só DML, `deploy/api-role.sql`) e TLS `VerifyFull` com a CA do Supabase.
+
+**Pendências:**
+- **Verificação de email** antes de reabrir o cadastro. Depende de provedor de envio com API HTTP (o Render bloqueia SMTP; sugestão: Resend) e de domínio próprio verificado.
+- **Backup automático** do banco (o plano Free do Supabase não faz).
+- **Migração para .NET 10** (o .NET 8 perde suporte em 10/11/2026).

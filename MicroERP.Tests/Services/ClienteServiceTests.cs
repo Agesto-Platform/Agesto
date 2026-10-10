@@ -78,6 +78,9 @@ public sealed class ClienteServiceTests
             Id = 3,
             Nome = "Cliente",
             Cpf = "12345678910",
+            Telefone = "11999999999",
+            Logradouro = "Rua A",
+            Cidade = "Cidade",
             EmpresaId = 1
         };
 
@@ -91,6 +94,12 @@ public sealed class ClienteServiceTests
         await _service.DeleteAsync(1, 3, CancellationToken.None);
 
         Assert.NotNull(cliente.DeletedAt);
+        // LGPD: a linha fica para o histórico, sem dados que identifiquem a pessoa.
+        Assert.Equal("Cliente removido", cliente.Nome);
+        Assert.Equal("ANON3", cliente.Cpf);
+        Assert.Null(cliente.Telefone);
+        Assert.Null(cliente.Logradouro);
+        Assert.Null(cliente.Cidade);
         _repositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 

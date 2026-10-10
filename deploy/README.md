@@ -121,6 +121,24 @@ Agende num monitor externo grátis (ex.: cron-job.org) uma chamada a `https://<U
 
 Não use o GitHub Actions para isso: um ping a cada 10 minutos estoura a cota de minutos.
 
+## 7. Usuário dedicado e TLS verificado (DEC-34)
+
+A API não deve conectar como `postgres`. Depois de aplicar as migrations:
+
+1. Rode `deploy/api-role.sql` no SQL Editor, trocando `<SENHA>` por uma senha aleatória longa.
+2. No Render, troque a connection string para o novo usuário e TLS verificado:
+
+   ```
+   Host=<host do pooler>;Port=5432;Database=postgres;Username=agesto_api.<ref-do-projeto>;Password=<senha do agesto_api>;SSL Mode=VerifyFull;Root Certificate=/app/certs/supabase-ca.crt
+   ```
+
+   O certificado `MicroERP.Api/certs/supabase-ca.crt` é a CA pública do Supabase (*Database → Settings → SSL Configuration*) e vai junto na imagem.
+3. Confira `/health` e um login. Se falhar, volte a connection string anterior no Render e veja o log.
+
+Sempre que uma migration criar tabela nova, rode de novo o último bloco de `deploy/api-role.sql` (policies do RLS).
+
 ## Pendências
 
 - Backup periódico com `pg_dump` (o Supabase Free não tem backup automático).
+- Verificação de email antes de reabrir o cadastro (DEC-34).
+- Migração para .NET 10 (o .NET 8 perde suporte em 10/11/2026).

@@ -46,7 +46,9 @@ public sealed class SyncService : ISyncService
         _logger = logger;
     }
 
-    public async Task<SyncCargaResponse> CargaAsync(long empresaId, DateTime? ultimaSincronizacao, CancellationToken cancellationToken)
+    // restringirDadosSensiveis (Agente): CPF mascarado e sem custo nos orçamentos.
+    // O app em campo não precisa desses dados, e um celular perdido não os expõe (LGPD).
+    public async Task<SyncCargaResponse> CargaAsync(long empresaId, DateTime? ultimaSincronizacao, CancellationToken cancellationToken, bool restringirDadosSensiveis = false)
     {
         var desde = ultimaSincronizacao ?? DateTime.MinValue;
 
@@ -65,6 +67,11 @@ public sealed class SyncService : ISyncService
                 UpdatedAt = c.UpdatedAt
             })
             .ToListAsync(cancellationToken);
+
+        if (restringirDadosSensiveis)
+        {
+            foreach (var cliente in clientes) cliente.Cpf = DadosPessoais.MascararCpf(cliente.Cpf);
+        }
 
         var produtos = await _dbContext.Produtos
             .AsNoTracking()
@@ -131,7 +138,7 @@ public sealed class SyncService : ISyncService
                         Quantidade = i.Quantidade,
                         PrecoUnitario = i.PrecoUnitario,
                         Subtotal = i.Subtotal,
-                        Custo = i.Custo
+                        Custo = restringirDadosSensiveis ? null : i.Custo
                     })
                     .ToList()
             })
