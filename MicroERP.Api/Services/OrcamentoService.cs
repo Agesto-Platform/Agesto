@@ -68,6 +68,19 @@ public sealed class OrcamentoService : IOrcamentoService
                 throw new ArgumentException("Item sem produto/servico exige descricao.");
             }
 
+            // Sem FK nessas colunas: garante que o item aponta para o catalogo da propria empresa.
+            if (itemRequest.ProdutoId is { } produtoId && !await _dbContext.Produtos.AnyAsync(
+                    p => p.Id == produtoId && p.EmpresaId == empresaId && p.DeletedAt == null, cancellationToken))
+            {
+                throw new NotFoundException($"Produto {produtoId} nao encontrado.");
+            }
+
+            if (itemRequest.ServicoId is { } servicoId && !await _dbContext.Servicos.AnyAsync(
+                    s => s.Id == servicoId && s.EmpresaId == empresaId && s.DeletedAt == null, cancellationToken))
+            {
+                throw new NotFoundException($"Servico {servicoId} nao encontrado.");
+            }
+
             itens.Add(new ItemOrcamento
             {
                 Uuid = Guid.NewGuid(),

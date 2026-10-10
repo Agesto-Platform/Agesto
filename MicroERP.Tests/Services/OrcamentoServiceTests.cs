@@ -241,6 +241,24 @@ public sealed class OrcamentoServiceTests
         }
     }
 
+    [Fact]
+    public async Task CreateAsync_ProdutoDeOutraEmpresa_ThrowsNotFound()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 20, empresaId: 2, estoque: 5, preco: 20m);
+        await db.SaveChangesAsync();
+
+        var request = new OrcamentoCreateRequest
+        {
+            ClienteId = 1,
+            Itens = new List<ItemOrcamentoRequest> { new() { ProdutoId = 20, Quantidade = 1, PrecoUnitario = 10m } }
+        };
+
+        await Assert.ThrowsAsync<MicroERP.Api.Services.Exceptions.NotFoundException>(() => BuildService(db).CreateAsync(1, 7, request, CancellationToken.None));
+        Assert.Empty(db.Orcamentos);
+    }
+
     // ---- helpers ----
 
     private static void SeedCliente(AppDbContext db, long id, long empresaId) =>

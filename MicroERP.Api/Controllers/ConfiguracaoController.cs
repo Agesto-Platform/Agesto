@@ -1,13 +1,14 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MicroERP.Api.Authorization;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Services.Interfaces;
 
 namespace MicroERP.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = Policies.Dono)]
 [Route("api/[controller]")]
 public sealed class ConfiguracaoController : ApiControllerBase
 {

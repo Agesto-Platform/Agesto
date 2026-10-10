@@ -3,11 +3,12 @@ using MicroERP.Api.Services.Exceptions;
 using MicroERP.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MicroERP.Api.Authorization;
 
 namespace MicroERP.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = Policies.Dono)]
 [Route("api/[controller]")]
 public sealed class ServicoController : ApiControllerBase
 {

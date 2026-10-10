@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Enums;
@@ -19,6 +20,9 @@ public sealed class SyncService : ISyncService
     private readonly IAtendimentoRepository _atendimentoRepository;
     private readonly IItemProdutoRepository _itemProdutoRepository;
     private readonly IItemServicoRepository _itemServicoRepository;
+    private readonly ILogger<SyncService> _logger;
+
+    private static readonly DateTime DataMinima = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     public SyncService(
         AppDbContext dbContext,
@@ -28,7 +32,8 @@ public sealed class SyncService : ISyncService
         IServicoRepository servicoRepository,
         IAtendimentoRepository atendimentoRepository,
         IItemProdutoRepository itemProdutoRepository,
-        IItemServicoRepository itemServicoRepository)
+        IItemServicoRepository itemServicoRepository,
+        ILogger<SyncService> logger)
     {
         _dbContext = dbContext;
         _clienteService = clienteService;
@@ -38,6 +43,7 @@ public sealed class SyncService : ISyncService
         _atendimentoRepository = atendimentoRepository;
         _itemProdutoRepository = itemProdutoRepository;
         _itemServicoRepository = itemServicoRepository;
+        _logger = logger;
     }
 
     public async Task<SyncCargaResponse> CargaAsync(long empresaId, DateTime? ultimaSincronizacao, CancellationToken cancellationToken)
@@ -252,9 +258,15 @@ public sealed class SyncService : ISyncService
                     if (mesmoCpf is not null) clienteIdPorUuid[cpfUuid] = mesmoCpf.Id;
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is ArgumentException or NotFoundException)
             {
                 erros.Add($"Cliente '{clienteRequest.Nome}': {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Detalhe interno (banco, EF) fica no log; o device recebe só o aviso.
+                _logger.LogError(ex, "Falha ao importar cliente {Uuid} na Descarga.", clienteRequest.Uuid);
+                erros.Add($"Cliente '{clienteRequest.Nome}': erro interno ao gravar.");
             }
         }
 
@@ -289,6 +301,16 @@ public sealed class SyncService : ISyncService
                 }
 
                 var falhas = new List<string>();
+
+                // Datas fora de uma janela plausível distorcem agenda e métricas.
+                var limiteFuturo = DateTime.UtcNow.AddDays(1);
+                if (atendimentoRequest.DataRegistro < DataMinima || atendimentoRequest.DataRegistro > limiteFuturo)
+                    falhas.Add("Data de registro inválida.");
+                if (atendimentoRequest.DataAgendada is { } agendada
+                    && (agendada < DataMinima || agendada > DateTime.UtcNow.AddYears(2)))
+                    falhas.Add("Data agendada inválida.");
+                if (!Enum.IsDefined(atendimentoRequest.Status))
+                    falhas.Add("Status inválido.");
 
                 long? clienteId = atendimentoRequest.ClienteId;
                 if (atendimentoRequest.ClienteUuid is { } clienteUuidRef)
@@ -446,7 +468,8 @@ public sealed class SyncService : ISyncService
             {
                 await tx.RollbackAsync(cancellationToken);
                 _dbContext.ChangeTracker.Clear();
-                erros.Add($"{rotulo}: {ex.Message}");
+                _logger.LogError(ex, "Falha ao importar atendimento {Uuid} na Descarga.", atendimentoRequest.Uuid);
+                erros.Add($"{rotulo}: erro interno ao gravar.");
             }
         }
 

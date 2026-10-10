@@ -2,11 +2,12 @@ using MicroERP.Api.DTOs;
 using MicroERP.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MicroERP.Api.Authorization;
 
 namespace MicroERP.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = Policies.Dono)]
 [Route("api/metrics")]
 public sealed class MetricasController : ApiControllerBase
 {

@@ -1,4 +1,5 @@
-﻿using MicroERP.Api.Enums;
+﻿using System.ComponentModel.DataAnnotations;
+using MicroERP.Api.Enums;
 
 namespace MicroERP.Api.DTOs;
 
@@ -12,6 +13,8 @@ public sealed class AtendimentoSyncRequest
     // resolvido no servidor). Informe um dos dois; o uuid tem precedencia.
     public long? ClienteId { get; set; }
     public Guid? ClienteUuid { get; set; }
+    [MaxLength(100, ErrorMessage = "Maximo de 100 produtos por atendimento.")]
     public IReadOnlyList<ItemProdutoSyncRequest> ItensProduto { get; set; } = [];
+    [MaxLength(100, ErrorMessage = "Maximo de 100 servicos por atendimento.")]
     public IReadOnlyList<ItemServicoSyncRequest> ItensServico { get; set; } = [];
 }
