@@ -170,6 +170,7 @@ public sealed class SyncService : ISyncService
                 TipoOperacao = c.TipoOperacao,
                 ModoAgendaAgente = c.ModoAgendaAgente,
                 ControlaEstoque = c.ControlaEstoque,
+                AgenteCadastraServico = c.AgenteCadastraServico,
                 EmpresaId = c.EmpresaId,
                 CreatedAt = c.CreatedAt,
                 UpdatedAt = c.UpdatedAt
@@ -180,7 +181,8 @@ public sealed class SyncService : ISyncService
                 EmpresaId = empresaId,
                 TipoOperacao = TipoOperacao.Servico,
                 ModoAgendaAgente = ModoAgendaAgente.Flexivel,
-                ControlaEstoque = true
+                ControlaEstoque = true,
+                AgenteCadastraServico = true
             };
 
         return new SyncCargaResponse
@@ -195,10 +197,13 @@ public sealed class SyncService : ISyncService
         };
     }
 
-    public async Task<SyncDescargaResponse> DescargaAsync(long empresaId, long usuarioId, SyncDescargaRequest request, CancellationToken cancellationToken)
+    // porDono: serviço criado pelo Dono no app já nasce revisado e ignora a chave
+    // AgenteCadastraServico da Parametrização.
+    public async Task<SyncDescargaResponse> DescargaAsync(long empresaId, long usuarioId, SyncDescargaRequest request, CancellationToken cancellationToken, bool porDono = false)
     {
         var erros = new List<string>();
         var clientesImportados = 0;
+        var servicosImportados = 0;
         var atendimentosImportados = 0;
 
         var config = await _dbContext.Configuracoes
@@ -209,12 +214,15 @@ public sealed class SyncService : ISyncService
         // Modo Fixa: o agente nao pode agendar (walk-in liberado). Enforcement de
         // servidor — ignora DataAgendada vinda do device, mesmo em payload forjado.
         var agendaFixa = config?.ModoAgendaAgente == ModoAgendaAgente.Fixa;
+        var podeCadastrarServico = porDono || (config?.AgenteCadastraServico ?? true);
 
         // Uuids que o device pode marcar como sincronizados: importados agora ou
         // ja presentes no servidor (reenvio). O que nao estiver aqui segue pendente.
         var clientesSincronizados = new List<Guid>();
         var atendimentosSincronizados = new List<Guid>();
         var clienteIdPorUuid = new Dictionary<Guid, long>();
+        var servicosSincronizados = new List<Guid>();
+        var servicoIdPorUuid = new Dictionary<Guid, long>();
 
         // Importa clientes novos
         foreach (var clienteRequest in request.Clientes)
@@ -274,6 +282,91 @@ public sealed class SyncService : ISyncService
                 // Detalhe interno (banco, EF) fica no log; o device recebe só o aviso.
                 _logger.LogError(ex, "Falha ao importar cliente {Uuid} na Descarga.", clienteRequest.Uuid);
                 erros.Add($"Cliente '{clienteRequest.Nome}': erro interno ao gravar.");
+            }
+        }
+
+        // Importa servicos criados no app (DEC-36), antes dos atendimentos que os usam.
+        foreach (var servicoRequest in request.Servicos)
+        {
+            var descricao = servicoRequest.Descricao.Trim();
+            var rotuloServico = $"Servico '{descricao}'";
+            try
+            {
+                if (servicoRequest.Uuid == Guid.Empty)
+                {
+                    erros.Add($"{rotuloServico}: identificador invalido.");
+                    continue;
+                }
+
+                var existente = await _dbContext.Servicos
+                    .AsNoTracking()
+                    .Where(s => s.Uuid == servicoRequest.Uuid)
+                    .Select(s => new { s.Id, s.EmpresaId, s.DeletedAt })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                if (existente is not null)
+                {
+                    if (existente.EmpresaId == empresaId)
+                    {
+                        servicosSincronizados.Add(servicoRequest.Uuid);
+                        if (existente.DeletedAt is null) servicoIdPorUuid[servicoRequest.Uuid] = existente.Id;
+                    }
+                    else
+                    {
+                        erros.Add($"{rotuloServico}: identificador em conflito.");
+                    }
+                    continue;
+                }
+
+                if (!podeCadastrarServico)
+                {
+                    erros.Add($"{rotuloServico}: o cadastro de servico pelo app esta desligado. Fale com o responsavel pela empresa.");
+                    continue;
+                }
+
+                var empreitada = servicoRequest.TipoCobranca == TipoCobranca.Empreitada;
+                if (empreitada ? servicoRequest.ValorEmpreitada is null : servicoRequest.ValorHora is null)
+                {
+                    erros.Add($"{rotuloServico}: informe o valor do servico.");
+                    continue;
+                }
+
+                // Mesma descricao no catalogo: reaproveita em vez de duplicar. Os
+                // atendimentos usam o preco do catalogo, como para qualquer servico.
+                var mesmaDescricao = await _servicoRepository.GetByDescricaoAsync(empresaId, descricao, cancellationToken);
+                if (mesmaDescricao is not null)
+                {
+                    servicosSincronizados.Add(servicoRequest.Uuid);
+                    servicoIdPorUuid[servicoRequest.Uuid] = mesmaDescricao.Id;
+                    continue;
+                }
+
+                var agoraServico = DateTime.UtcNow;
+                var servico = new Servico
+                {
+                    Uuid = servicoRequest.Uuid,
+                    Descricao = descricao,
+                    TipoCobranca = servicoRequest.TipoCobranca,
+                    ValorHora = empreitada ? null : servicoRequest.ValorHora,
+                    ValorEmpreitada = empreitada ? servicoRequest.ValorEmpreitada : null,
+                    EmpresaId = empresaId,
+                    CriadoPorUsuarioId = usuarioId,
+                    Revisado = porDono,
+                    CreatedAt = agoraServico,
+                    UpdatedAt = agoraServico
+                };
+                await _servicoRepository.AddAsync(servico, cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
+                servicosImportados++;
+                servicosSincronizados.Add(servicoRequest.Uuid);
+                servicoIdPorUuid[servicoRequest.Uuid] = servico.Id;
+            }
+            catch (Exception ex)
+            {
+                _dbContext.ChangeTracker.Clear();
+                _logger.LogError(ex, "Falha ao importar servico {Uuid} na Descarga.", servicoRequest.Uuid);
+                erros.Add($"{rotuloServico}: erro interno ao gravar.");
             }
         }
 
@@ -377,24 +470,46 @@ public sealed class SyncService : ISyncService
                 }
 
                 var servicos = new Dictionary<long, Servico>();
+                var itensServico = new List<(long ServicoId, int Quantidade)>();
                 foreach (var itemServico in atendimentoRequest.ItensServico)
                 {
+                    var referencia = itemServico.ServicoUuid?.ToString() ?? itemServico.ServicoId?.ToString() ?? "sem identificador";
                     if (itemServico.Quantidade <= 0)
                     {
-                        falhas.Add($"Quantidade invalida para servico {itemServico.ServicoId}.");
+                        falhas.Add($"Quantidade invalida para servico {referencia}.");
                         continue;
                     }
 
-                    if (servicos.ContainsKey(itemServico.ServicoId)) continue;
-
-                    var servico = await _servicoRepository.GetByIdAsync(empresaId, itemServico.ServicoId, false, cancellationToken);
-                    if (servico is null)
+                    long? servicoId = itemServico.ServicoId;
+                    if (itemServico.ServicoUuid is { } servicoUuidRef)
                     {
-                        falhas.Add($"Servico {itemServico.ServicoId} nao encontrado.");
+                        servicoId = servicoIdPorUuid.TryGetValue(servicoUuidRef, out var mapeado)
+                            ? mapeado
+                            : await _dbContext.Servicos
+                                .AsNoTracking()
+                                .Where(s => s.Uuid == servicoUuidRef && s.EmpresaId == empresaId && s.DeletedAt == null)
+                                .Select(s => (long?)s.Id)
+                                .FirstOrDefaultAsync(cancellationToken);
+                    }
+
+                    if (servicoId is not { } idServico)
+                    {
+                        falhas.Add($"Servico {referencia} nao encontrado.");
                         continue;
                     }
 
-                    servicos[servico.Id] = servico;
+                    if (!servicos.ContainsKey(idServico))
+                    {
+                        var servico = await _servicoRepository.GetByIdAsync(empresaId, idServico, false, cancellationToken);
+                        if (servico is null)
+                        {
+                            falhas.Add($"Servico {referencia} nao encontrado.");
+                            continue;
+                        }
+                        servicos[servico.Id] = servico;
+                    }
+
+                    itensServico.Add((idServico, itemServico.Quantidade));
                 }
 
                 if (falhas.Count > 0)
@@ -442,7 +557,7 @@ public sealed class SyncService : ISyncService
                     });
                 }
 
-                foreach (var itemServico in atendimentoRequest.ItensServico)
+                foreach (var itemServico in itensServico)
                 {
                     var servico = servicos[itemServico.ServicoId];
                     var empreitada = servico.TipoCobranca == Enums.TipoCobranca.Empreitada;
@@ -484,6 +599,11 @@ public sealed class SyncService : ISyncService
         {
             AtendimentosImportados = atendimentosImportados,
             ClientesImportados = clientesImportados,
+            ServicosImportados = servicosImportados,
+            ServicosSincronizados = servicosSincronizados,
+            ServicosMapeados = servicoIdPorUuid
+                .Select(kv => new ServicoMapeadoResponse { Uuid = kv.Key, Id = kv.Value })
+                .ToList(),
             ClientesSincronizados = clientesSincronizados,
             AtendimentosSincronizados = atendimentosSincronizados,
             ClientesMapeados = clienteIdPorUuid

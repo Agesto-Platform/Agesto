@@ -11,7 +11,10 @@ import { getConfig, DEFAULT_CONFIG } from '@/lib/appConfig'
 import { getSugeridos } from '@/lib/sugeridos'
 import { isoAgendada, diaLabel } from '@/features/registrar/agendar'
 import { materiaisSugeridos } from '@/features/registrar/sugeridos'
-import type { Cliente, Configuracao, Produto, Servico, ServicoSugerido, StatusAtendimento } from '@/types/api'
+import { parseValor, toServicoInput, validateServico, type ServicoFormErrors } from '@/features/servicos/validateServico'
+import { uuid } from '@/lib/uuid'
+import type { PendingServico } from '@/db/types'
+import type { Cliente, Configuracao, Produto, Servico, ServicoSugerido, StatusAtendimento, TipoCobranca } from '@/types/api'
 
 const brl = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
@@ -38,6 +41,13 @@ export default function Registrar() {
   const [clientes, setClientes] = useState<ClienteOpcao[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [servicos, setServicos] = useState<Servico[]>([])
+  const [servicosNovos, setServicosNovos] = useState<PendingServico[]>([])
+  const [servicoNovoQty, setServicoNovoQty] = useState<Record<string, number>>({})
+  const [novoAberto, setNovoAberto] = useState(false)
+  const [novoDescricao, setNovoDescricao] = useState('')
+  const [novoTipo, setNovoTipo] = useState<TipoCobranca>('Empreitada')
+  const [novoValor, setNovoValor] = useState('')
+  const [novoErros, setNovoErros] = useState<ServicoFormErrors>({})
 
   const [clienteKey, setClienteKey] = useState<string | undefined>(undefined)
   const [servicoQty, setServicoQty] = useState<QtyMap>({})
@@ -63,6 +73,7 @@ export default function Registrar() {
       ])
       setProdutos(await db.getProdutos())
       setServicos(await db.getServicos())
+      setServicosNovos((await db.getPendingServicos()).filter((s) => s.syncedAt === null))
       setConfig(await getConfig(db))
       setSugeridos(await getSugeridos(db))
       setConfigLoaded(true)
@@ -90,15 +101,41 @@ export default function Registrar() {
 
   const estimate = useMemo(() => {
     const s = servicos.reduce((acc, sv) => acc + (servicoQty[sv.id] || 0) * (sv.valorHora ?? sv.valorEmpreitada ?? 0), 0)
+    const n = servicosNovos.reduce((acc, sv) => acc + (servicoNovoQty[sv.uuid] || 0) * (sv.valorHora ?? sv.valorEmpreitada ?? 0), 0)
     const p = produtos.reduce((acc, pr) => acc + (produtoQty[pr.id] || 0) * pr.preco, 0)
-    return s + p
-  }, [servicos, produtos, servicoQty, produtoQty])
+    return s + n + p
+  }, [servicos, servicosNovos, produtos, servicoQty, servicoNovoQty, produtoQty])
+
+  // Serviço fora do catálogo: entra pendente e vai para revisão do Dono (DEC-36).
+  const podeCriarServico = configLoaded && config.agenteCadastraServico !== false
+
+  function fecharNovoServico() {
+    setNovoAberto(false)
+    setNovoDescricao('')
+    setNovoValor('')
+    setNovoErros({})
+  }
+
+  async function adicionarServico() {
+    const e = validateServico({ descricao: novoDescricao, valor: novoValor })
+    setNovoErros(e)
+    if (Object.keys(e).length > 0) return
+    const novo: PendingServico = {
+      uuid: uuid(),
+      ...toServicoInput(novoDescricao, novoTipo, parseValor(novoValor)!),
+      syncedAt: null,
+    }
+    await db.addServico(novo)
+    setServicosNovos((l) => [...l, novo])
+    setServicoNovoQty((m) => ({ ...m, [novo.uuid]: 1 }))
+    fecharNovoServico()
+  }
 
   const cliente = clientes.find((c) => c.key === clienteKey)
 
   const podeSalvar =
     cliente !== undefined &&
-    hasItems(servicoQty, produtoQty) &&
+    hasItems(servicoQty, produtoQty, servicoNovoQty) &&
     (!agendando || dataAgendada !== null) &&
     !saving
 
@@ -114,6 +151,7 @@ export default function Registrar() {
           status: agendando ? 'Pendente' : status,
           servicoQty,
           produtoQty,
+          servicoNovoQty,
           dataAgendada,
         }),
       )
@@ -210,6 +248,70 @@ export default function Registrar() {
               <Stepper value={servicoQty[sv.id] || 0} onChange={(v) => setServicoQty((m) => ({ ...m, [sv.id]: v }))} />
             </View>
           ))}
+          {servicosNovos.map((sv) => (
+            <View key={sv.uuid} style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{sv.descricao}</Text>
+                <Text style={styles.rowSub}>
+                  {brl(sv.valorHora ?? sv.valorEmpreitada ?? 0)}
+                  {sv.tipoCobranca === 'PorHora' ? '/h' : ''} · Novo · não sincronizado
+                </Text>
+              </View>
+              <Stepper
+                value={servicoNovoQty[sv.uuid] || 0}
+                onChange={(v) => setServicoNovoQty((m) => ({ ...m, [sv.uuid]: v }))}
+              />
+            </View>
+          ))}
+
+          {podeCriarServico && !novoAberto && (
+            <Pressable onPress={() => setNovoAberto(true)} style={({ pressed }) => [styles.novoBtn, pressed && { opacity: 0.8 }]}>
+              <Ionicons name="add" size={18} color={colors.brandInk} />
+              <Text style={styles.novoBtnText}>Novo serviço</Text>
+            </Pressable>
+          )}
+
+          {novoAberto && (
+            <View style={styles.novoCard}>
+              <Text style={styles.novoTitulo}>Novo serviço</Text>
+              <TextInput
+                value={novoDescricao}
+                onChangeText={setNovoDescricao}
+                placeholder="Descrição (ex.: Limpeza de dreno)"
+                placeholderTextColor={colors.ink4}
+                maxLength={200}
+                style={[styles.input, novoErros.descricao && styles.inputErr]}
+              />
+              {novoErros.descricao && <Text style={styles.err}>{novoErros.descricao}</Text>}
+              <View style={styles.seg}>
+                {(['Empreitada', 'PorHora'] as TipoCobranca[]).map((t) => (
+                  <Pressable key={t} onPress={() => setNovoTipo(t)} style={[styles.segBtn, novoTipo === t && styles.segBtnOn]}>
+                    <Text style={[styles.segText, novoTipo === t && styles.segTextOn]}>
+                      {t === 'Empreitada' ? 'Preço fechado' : 'Por hora'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <TextInput
+                value={novoValor}
+                onChangeText={setNovoValor}
+                placeholder={novoTipo === 'PorHora' ? 'Valor da hora (R$)' : 'Valor do serviço (R$)'}
+                placeholderTextColor={colors.ink4}
+                keyboardType="decimal-pad"
+                style={[styles.input, novoErros.valor && styles.inputErr]}
+              />
+              {novoErros.valor && <Text style={styles.err}>{novoErros.valor}</Text>}
+              <Text style={styles.novoHint}>Entra no catálogo depois que o responsável revisar.</Text>
+              <View style={styles.novoAcoes}>
+                <Pressable onPress={fecharNovoServico} style={styles.novoCancelar}>
+                  <Text style={styles.novoCancelarText}>Cancelar</Text>
+                </Pressable>
+                <Pressable onPress={adicionarServico} style={styles.novoAdicionar}>
+                  <Text style={styles.novoAdicionarText}>Adicionar</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Materiais sugeridos dos serviços escolhidos */}
@@ -309,6 +411,20 @@ const styles = StyleSheet.create({
   rowOn: { borderColor: colors.brand, backgroundColor: colors.brandSoft },
   rowTitle: { fontSize: 15, fontWeight: '600', color: colors.ink },
   rowSub: { fontSize: 12.5, color: colors.ink3, marginTop: 2 },
+
+  novoBtn: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), alignSelf: 'flex-start', paddingVertical: space(2), paddingHorizontal: space(1) },
+  novoBtnText: { fontSize: 14, fontWeight: '700', color: colors.brandInk },
+  novoCard: { gap: space(2.5), backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.brand, borderRadius: radius.sm, padding: space(3.5) },
+  novoTitulo: { fontSize: 15, fontWeight: '700', color: colors.ink },
+  novoHint: { fontSize: 12, color: colors.ink3 },
+  novoAcoes: { flexDirection: 'row', justifyContent: 'flex-end', gap: space(2) },
+  novoCancelar: { paddingVertical: space(2.5), paddingHorizontal: space(4), borderRadius: radius.sm },
+  novoCancelarText: { fontSize: 14, fontWeight: '600', color: colors.ink3 },
+  novoAdicionar: { backgroundColor: colors.brand, paddingVertical: space(2.5), paddingHorizontal: space(4), borderRadius: radius.sm },
+  novoAdicionarText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  input: { fontSize: 15, color: colors.ink, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: space(2.5), paddingHorizontal: space(3) },
+  inputErr: { borderColor: colors.bad },
+  err: { fontSize: 12, color: colors.bad, marginTop: -space(1) },
 
   sugerido: { flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.brandSoft, borderRadius: radius.sm, paddingHorizontal: space(3.5), paddingVertical: space(3), alignSelf: 'flex-start' },
   sugeridoText: { fontSize: 13.5, fontWeight: '700', color: colors.brandInk },

@@ -151,6 +151,66 @@ describe('sync.carga (mock)', () => {
     post.mockRestore()
   })
 
+  it('descarga envia serviço criado offline e religa os itens ao id do servidor', async () => {
+    const mem = createMemoryDb()
+    await mem.addServico({
+      uuid: 's-novo', descricao: 'Limpeza de dreno', tipoCobranca: 'Empreitada',
+      valorHora: null, valorEmpreitada: 120, syncedAt: null,
+    })
+    for (const uuid of ['a-ok', 'a-ruim']) {
+      await mem.addAtendimento({
+        uuid, clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-17', dataAgendada: null,
+        itensProduto: [], itensServico: [{ servicoId: null, servicoUuid: 's-novo', quantidade: 1 }], syncedAt: null,
+      })
+    }
+    const post = jest.spyOn(api, 'post').mockResolvedValueOnce({
+      clientesImportados: 0,
+      servicosImportados: 1,
+      atendimentosImportados: 1,
+      clientesSincronizados: [],
+      servicosSincronizados: ['S-NOVO'],
+      servicosMapeados: [{ uuid: 'S-NOVO', id: 55 }],
+      atendimentosSincronizados: ['a-ok'],
+      erros: ["Atendimento 'a-ruim': Estoque insuficiente."],
+      sincronizadoEm: '2026-10-17T12:00:00Z',
+    })
+
+    const r = await descarga(mem)
+
+    const enviado = post.mock.calls[0][1] as SyncDescargaRequest
+    expect(enviado.servicos).toEqual([
+      { uuid: 's-novo', descricao: 'Limpeza de dreno', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 120 },
+    ])
+    expect(enviado.atendimentos[0].itensServico).toEqual([{ servicoId: null, servicoUuid: 's-novo', quantidade: 1 }])
+    expect(r.servicosImportados).toBe(1)
+    expect((await mem.getPendingServicos())[0].syncedAt).not.toBeNull()
+    const pendente = await mem.getPendingAtendimentos()
+    expect(pendente).toHaveLength(1)
+    expect(pendente[0].itensServico).toEqual([{ servicoId: 55, servicoUuid: null, quantidade: 1 }])
+    post.mockRestore()
+  })
+
+  it('serviço rejeitado pelo servidor segue pendente', async () => {
+    const mem = createMemoryDb()
+    await mem.addServico({
+      uuid: 's-ruim', descricao: 'Visita', tipoCobranca: 'PorHora', valorHora: 80, valorEmpreitada: null, syncedAt: null,
+    })
+    const post = jest.spyOn(api, 'post').mockResolvedValueOnce({
+      clientesImportados: 0,
+      atendimentosImportados: 0,
+      clientesSincronizados: [],
+      atendimentosSincronizados: [],
+      erros: ["Servico 'Visita': o cadastro de servico pelo app esta desligado."],
+      sincronizadoEm: '2026-10-17T12:00:00Z',
+    })
+
+    const r = await descarga(mem)
+
+    expect(r.erros).toHaveLength(1)
+    expect((await mem.getPendingServicos())[0].syncedAt).toBeNull()
+    post.mockRestore()
+  })
+
   it('carga é sempre completa, mesmo após uma sincronização anterior', async () => {
     const mem = createMemoryDb()
     await mem.init()

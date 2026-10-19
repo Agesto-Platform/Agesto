@@ -12,4 +12,8 @@ public sealed class ServicoResponse
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public TipoCobranca TipoCobranca { get; set; }
+    // false = criado pelo agente em campo, aguardando revisão do Dono.
+    public bool Revisado { get; set; } = true;
+    public long? CriadoPorUsuarioId { get; set; }
+    public string? CriadoPorNome { get; set; }
 }

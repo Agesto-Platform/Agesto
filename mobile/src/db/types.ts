@@ -1,7 +1,13 @@
-import type { AgendaItem, Cliente, ClienteInput, Produto, Servico, StatusAtendimento } from '@/types/api'
+import type { AgendaItem, Cliente, ClienteInput, ItemServicoSync, Produto, Servico, ServicoInput, StatusAtendimento } from '@/types/api'
 
 /** Cliente criado no device (offline). `syncedAt` null = pendente de envio. */
 export interface PendingCliente extends ClienteInput {
+  uuid: string
+  syncedAt: string | null
+}
+
+/** Serviço criado pelo agente no app (offline). `syncedAt` null = pendente de envio. */
+export interface PendingServico extends ServicoInput {
   uuid: string
   syncedAt: string | null
 }
@@ -21,7 +27,7 @@ export interface LocalAtendimento {
   /** Data agendada (futuro) — null quando é registro imediato. */
   dataAgendada: string | null
   itensProduto: { produtoId: number; quantidade: number }[]
-  itensServico: { servicoId: number; quantidade: number }[]
+  itensServico: ItemServicoSync[]
   syncedAt: string | null
 }
 
@@ -46,6 +52,13 @@ export interface LocalDb {
   addCliente(c: PendingCliente): Promise<void>
   getPendingClientes(): Promise<PendingCliente[]>
   markClientesSynced(uuids: string[], syncedAt: string): Promise<void>
+
+  // serviços criados offline (DEC-36)
+  addServico(s: PendingServico): Promise<void>
+  getPendingServicos(): Promise<PendingServico[]>
+  markServicosSynced(uuids: string[], syncedAt: string): Promise<void>
+  /** Religa itens de atendimento do serviço criado offline ao id do servidor. */
+  remapServico(servicoUuid: string, servicoId: number): Promise<void>
 
   // atendimentos criados offline
   addAtendimento(a: LocalAtendimento): Promise<void>

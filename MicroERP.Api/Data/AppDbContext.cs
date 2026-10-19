@@ -108,6 +108,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ValorEmpreitada)
             .HasColumnType("decimal(12,2)")
             .IsRequired(false);
+            entity.HasOne(e => e.CriadoPor)
+                .WithMany()
+                .HasForeignKey(e => e.CriadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Produto>(entity =>

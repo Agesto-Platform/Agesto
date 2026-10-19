@@ -29,6 +29,8 @@ export interface Configuracao {
   tipoOperacao: TipoOperacao
   modoAgendaAgente: ModoAgendaAgente
   controlaEstoque: boolean
+  /** Agente pode criar serviço fora do catálogo (vai para revisão do Dono). */
+  agenteCadastraServico?: boolean
 }
 
 /** Material sugerido de um serviço (kit), achatado — vem na Carga. */
@@ -114,7 +116,27 @@ export interface AtendimentoSyncRequest {
   clienteId: number | null
   clienteUuid?: string | null
   itensProduto: { produtoId: number; quantidade: number }[]
-  itensServico: { servicoId: number; quantidade: number }[]
+  itensServico: ItemServicoSync[]
+}
+
+/** Serviço do catálogo (servicoId) ou criado offline (servicoUuid, resolvido na Descarga). */
+export interface ItemServicoSync {
+  servicoId: number | null
+  servicoUuid?: string | null
+  quantidade: number
+}
+
+/** Campos para criar um serviço no app (espelha ServicoSyncRequest). */
+export interface ServicoInput {
+  descricao: string
+  tipoCobranca: TipoCobranca
+  valorHora: number | null
+  valorEmpreitada: number | null
+}
+
+/** Serviço pendente na Descarga: leva o UUID do device (idempotência). */
+export interface ServicoSyncInput extends ServicoInput {
+  uuid: string
 }
 
 /** Cliente pendente na Descarga: leva o UUID do device (idempotência). */
@@ -124,6 +146,7 @@ export interface ClienteSyncInput extends ClienteInput {
 
 export interface SyncDescargaRequest {
   clientes: ClienteSyncInput[]
+  servicos?: ServicoSyncInput[]
   atendimentos: AtendimentoSyncRequest[]
 }
 
@@ -135,6 +158,10 @@ export interface SyncDescargaResponse {
   atendimentosSincronizados: string[]
   /** uuid do device -> id do servidor dos clientes criados offline. */
   clientesMapeados?: { uuid: string; id: number }[]
+  servicosImportados?: number
+  servicosSincronizados?: string[]
+  /** uuid do device -> id do servidor dos serviços criados offline (ou reaproveitados). */
+  servicosMapeados?: { uuid: string; id: number }[]
   erros: string[]
   sincronizadoEm: string
 }

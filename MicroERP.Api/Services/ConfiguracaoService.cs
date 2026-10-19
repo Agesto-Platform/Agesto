@@ -37,6 +37,10 @@ public sealed class ConfiguracaoService : IConfiguracaoService
         {
             configuracao.ControlaEstoque = request.ControlaEstoque.Value;
         }
+        if (request.AgenteCadastraServico.HasValue)
+        {
+            configuracao.AgenteCadastraServico = request.AgenteCadastraServico.Value;
+        }
         configuracao.UpdatedAt = DateTime.UtcNow;
 
         await _configuracaoRepository.SaveChangesAsync(cancellationToken);
@@ -52,6 +56,7 @@ public sealed class ConfiguracaoService : IConfiguracaoService
             TipoOperacao = configuracao.TipoOperacao,
             ModoAgendaAgente = configuracao.ModoAgendaAgente,
             ControlaEstoque = configuracao.ControlaEstoque,
+            AgenteCadastraServico = configuracao.AgenteCadastraServico,
             EmpresaId = configuracao.EmpresaId,
             CreatedAt = configuracao.CreatedAt,
             UpdatedAt = configuracao.UpdatedAt

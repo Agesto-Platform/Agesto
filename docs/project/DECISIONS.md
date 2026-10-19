@@ -715,3 +715,20 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Impacto:** migration `AddUsuarioAtivoESenhaProvisoria` (3 colunas em `Usuarios`). API, web e app precisam subir juntos por causa do `deveTrocarSenha` no login.
 
+
+---
+
+## DEC-36 — Agente cadastra serviço no app, com revisão do Dono
+
+**Status:** 🟡 Implementado na branch `feature/servico-no-app`, aguardando autorização para commit, push e migration
+
+**Contexto:** no web, serviço fora do catálogo já vira cadastro rápido (DEC-22), mas o app não conseguia: toda a API de serviço exige perfil Dono e a Descarga só aceitava itens com id do servidor. Em campo o agente ficava sem como registrar um serviço novo.
+
+**Decisão:**
+1. **Mesmo caminho dos clientes offline (DEC-33).** O app cria o serviço com UUID do device e já pode usá-lo no atendimento. A Descarga aceita `Servicos` (até 100 por leva), cria antes dos atendimentos e devolve `ServicosSincronizados` e `ServicosMapeados`; o item de serviço aceita `ServicoUuid` no lugar de `ServicoId`. O app religa os itens ao id real.
+2. **Sem duplicar.** Reenvio com o mesmo UUID não cria de novo; descrição igual a um serviço ativo (sem diferenciar caixa e espaços) reaproveita o existente, e o atendimento usa o preço do catálogo.
+3. **Revisão do Dono.** `Servico.Revisado` e `Servico.CriadoPorUsuarioId`. Criado pelo agente nasce `Revisado = false`; no web aparece "A revisar · criado no app por Fulano", com filtro e botão para marcar como revisado (`POST /api/servico/{id}/revisar`). Editar pelo web também conta como revisão. Serviços existentes ficam revisados.
+4. **Chave em Parametrização.** `Configuracao.AgenteCadastraServico`, ligada por padrão. Desligada, a Descarga rejeita serviço novo do agente (o atendimento que o usa fica pendente no app com o motivo); o Dono continua podendo.
+
+**Impacto:** migration `AddServicoCriadoPeloAgente` (2 colunas em `Servicos` com FK para `Usuarios` `SET NULL`, 1 em `Configuracoes`). O contrato da Descarga só ganhou campos opcionais: app antigo continua funcionando.
+

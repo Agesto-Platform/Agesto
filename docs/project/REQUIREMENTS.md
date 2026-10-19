@@ -170,6 +170,7 @@ Dois fluxos distintos:
 - **[Implementado]** Login e autenticação (JWT, token guardado via `expo-secure-store` no device / `localStorage` no web)
 - **[Implementado]** Cadastro e consulta de Clientes (referência sincronizada + cadastro rápido offline)
 - **[Implementado]** Consulta de catálogo de Produtos e Serviços (via Carga)
+- **[Implementado]** Cadastro rápido de serviço no registrar, offline, enviado na Descarga e marcado para revisão do Dono; o Dono liga ou desliga em Parametrização (DEC-36)
 - **[Implementado]** Registro de Atendimentos (cliente + itens de catálogo por quantidade + status), salvo offline como pendente
 - Consulta de histórico de atendimentos próprios — não implementado nesta fase (fora do escopo de mob-01 a mob-07)
 - **[Implementado]** Sincronização manual (aba "Mais": pendentes, última sync, botão Sincronizar) — sincronização automática em background não implementada

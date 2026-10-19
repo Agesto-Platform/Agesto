@@ -1,5 +1,6 @@
 import type { AgendaItem, Cliente, Produto, Servico } from '@/types/api'
-import type { LocalDb, LocalAtendimento, PendingCliente } from './types'
+import type { LocalDb, LocalAtendimento, PendingCliente, PendingServico } from './types'
+import { remapItensServico } from './remap'
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T
 
@@ -10,6 +11,7 @@ export function createMemoryDb(): LocalDb {
   let servicos: Servico[] = []
   let agenda: AgendaItem[] = []
   let pendingClientes: PendingCliente[] = []
+  let pendingServicos: PendingServico[] = []
   let atendimentos: LocalAtendimento[] = []
   const meta = new Map<string, string>()
 
@@ -54,6 +56,20 @@ export function createMemoryDb(): LocalDb {
       )
     },
 
+    async addServico(s) {
+      pendingServicos = [...pendingServicos.filter((x) => x.uuid !== s.uuid), clone(s)]
+    },
+    async getPendingServicos() {
+      return clone(pendingServicos)
+    },
+    async markServicosSynced(uuids, syncedAt) {
+      const set = new Set(uuids)
+      pendingServicos = pendingServicos.map((s) => (set.has(s.uuid) ? { ...s, syncedAt } : s))
+    },
+    async remapServico(servicoUuid, servicoId) {
+      atendimentos = atendimentos.map((a) => remapItensServico(a, servicoUuid, servicoId) ?? a)
+    },
+
     async addAtendimento(a) {
       atendimentos.push(clone(a))
     },
@@ -88,6 +104,7 @@ export function createMemoryDb(): LocalDb {
       servicos = []
       agenda = []
       pendingClientes = []
+      pendingServicos = []
       atendimentos = []
       meta.clear()
     },

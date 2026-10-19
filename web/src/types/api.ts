@@ -191,6 +191,10 @@ export interface Servico {
   tipoCobranca: TipoCobranca
   valorHora: number | null
   valorEmpreitada: number | null
+  /** false = criado pelo agente no app, aguardando revisão do Dono. */
+  revisado: boolean
+  criadoPorUsuarioId: number | null
+  criadoPorNome: string | null
   createdAt: string
   updatedAt: string
 }
@@ -273,6 +277,8 @@ export interface Configuracao {
   tipoOperacao: TipoOperacao
   modoAgendaAgente: ModoAgendaAgente
   controlaEstoque: boolean
+  /** O agente pode cadastrar serviço novo pelo app (vai para revisão). */
+  agenteCadastraServico: boolean
   empresaId: number
   createdAt: string
   updatedAt: string
@@ -280,7 +286,7 @@ export interface Configuracao {
 
 /** Campos editáveis da configuração (patch parcial no PUT). */
 export type ConfiguracaoPatch = Partial<
-  Pick<Configuracao, 'tipoOperacao' | 'modoAgendaAgente' | 'controlaEstoque'>
+  Pick<Configuracao, 'tipoOperacao' | 'modoAgendaAgente' | 'controlaEstoque' | 'agenteCadastraServico'>
 >
 
 /** Material sugerido (kit) de um serviço. */

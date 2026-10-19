@@ -1,19 +1,41 @@
 import { http, HttpResponse } from 'msw'
 import type { Servico, ServicoSugerido, ServicoSugeridoInput } from '../../types/api'
-import { makeStore, crudHandlers, ok, type Store } from '../lib/http'
+import { makeStore, crudHandlers, fail, ok, type Store } from '../lib/http'
 import { produtoStore } from './produtos'
 
 const now = new Date().toISOString()
 
+const doDono = { revisado: true, criadoPorUsuarioId: null, criadoPorNome: null }
+
 const seed: Servico[] = [
-  { id: 1, uuid: crypto.randomUUID(), descricao: 'Instalação de AC', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 350, createdAt: now, updatedAt: now },
-  { id: 2, uuid: crypto.randomUUID(), descricao: 'Manutenção preventiva', tipoCobranca: 'PorHora', valorHora: 140, valorEmpreitada: null, createdAt: now, updatedAt: now },
-  { id: 3, uuid: crypto.randomUUID(), descricao: 'Limpeza / higienização', tipoCobranca: 'PorHora', valorHora: 90, valorEmpreitada: null, createdAt: now, updatedAt: now },
+  { id: 1, uuid: crypto.randomUUID(), descricao: 'Instalação de AC', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 350, ...doDono, createdAt: now, updatedAt: now },
+  { id: 2, uuid: crypto.randomUUID(), descricao: 'Manutenção preventiva', tipoCobranca: 'PorHora', valorHora: 140, valorEmpreitada: null, ...doDono, createdAt: now, updatedAt: now },
+  { id: 3, uuid: crypto.randomUUID(), descricao: 'Limpeza / higienização', tipoCobranca: 'PorHora', valorHora: 90, valorEmpreitada: null, ...doDono, createdAt: now, updatedAt: now },
+  // Criado pelo agente no app, aguardando revisão (DEC-36).
+  { id: 4, uuid: crypto.randomUUID(), descricao: 'Limpeza de dreno', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 120, revisado: false, criadoPorUsuarioId: 2, criadoPorNome: 'Carlos', createdAt: now, updatedAt: now },
 ]
 
 export const servicoStore: Store<Servico> = makeStore(seed)
 
-export const servicoHandlers = crudHandlers('/api/servico', servicoStore)
+export const servicoHandlers = [
+  http.post('*/api/servico/:id/revisar', ({ params }) => {
+    const s = servicoStore.update(Number(params.id), { revisado: true })
+    if (!s) return fail(404, 'Servico nao encontrado.')
+    return HttpResponse.json(ok(s, 'Servico revisado.'))
+  }),
+  // Criar ou editar pelo web é o Dono: já fica revisado, como no backend.
+  http.post('*/api/servico', async ({ request }) => {
+    const body = (await request.json()) as Omit<Servico, 'id' | 'uuid' | 'createdAt' | 'updatedAt'>
+    return HttpResponse.json(ok(servicoStore.create({ ...body, ...doDono }), 'Criado com sucesso.'))
+  }),
+  http.put('*/api/servico/:id', async ({ request, params }) => {
+    const body = (await request.json()) as Partial<Servico>
+    const s = servicoStore.update(Number(params.id), { ...body, revisado: true })
+    if (!s) return fail(404, 'Registro não encontrado.')
+    return HttpResponse.json(ok(s, 'Atualizado com sucesso.'))
+  }),
+  ...crudHandlers('/api/servico', servicoStore),
+]
 
 // Kit de materiais sugeridos por serviço (stateful em memória).
 const sugeridosPorServico = new Map<number, ServicoSugeridoInput[]>()

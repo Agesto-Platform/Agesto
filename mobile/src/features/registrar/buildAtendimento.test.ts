@@ -26,6 +26,21 @@ describe('buildAtendimento', () => {
     expect(a.dataAgendada).toBeNull() // registro imediato: sem data agendada
   })
 
+  it('leva serviço criado offline pelo uuid, sem id do servidor', () => {
+    const a = buildAtendimento({
+      clienteId: 1,
+      status: 'Concluido',
+      servicoQty: { 2: 1 },
+      produtoQty: {},
+      servicoNovoQty: { 's-novo': 1, 's-zerado': 0 },
+    })
+    expect(a.itensServico).toEqual([
+      { servicoId: 2, quantidade: 1 },
+      { servicoId: null, servicoUuid: 's-novo', quantidade: 1 },
+    ])
+    expect(hasItems({}, {}, { 's-novo': 1 })).toBe(true)
+  })
+
   it('agenda quando dataAgendada é informada', () => {
     const a = buildAtendimento({
       clienteId: 1,
