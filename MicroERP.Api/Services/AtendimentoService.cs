@@ -177,26 +177,10 @@ public sealed class AtendimentoService : IAtendimentoService
             ClienteId = a.ClienteId,
             ClienteNome = cliente?.Nome ?? string.Empty,
             ClienteTelefone = cliente?.Telefone,
-            EnderecoResumo = FormatEndereco(cliente),
+            EnderecoResumo = Enderecos.Resumo(cliente),
+            EnderecoCompleto = Enderecos.Completo(cliente),
             Resumo = resumo
         };
-    }
-
-    private static string? FormatEndereco(Cliente? cliente)
-    {
-        if (cliente is null) return null;
-
-        var partes = new List<string>();
-        if (!string.IsNullOrWhiteSpace(cliente.Logradouro))
-        {
-            var rua = cliente.Logradouro!;
-            if (!string.IsNullOrWhiteSpace(cliente.Numero)) rua += $", {cliente.Numero}";
-            partes.Add(rua);
-        }
-        var local = !string.IsNullOrWhiteSpace(cliente.Bairro) ? cliente.Bairro : cliente.Cidade;
-        if (!string.IsNullOrWhiteSpace(local)) partes.Add(local!);
-
-        return partes.Count > 0 ? string.Join(" — ", partes) : null;
     }
 
     // Periodo padrao da agenda: mes corrente (UTC).

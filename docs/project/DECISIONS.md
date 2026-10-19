@@ -732,3 +732,22 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Impacto:** migration `AddServicoCriadoPeloAgente` (2 colunas em `Servicos` com FK para `Usuarios` `SET NULL`, 1 em `Configuracoes`). O contrato da Descarga só ganhou campos opcionais: app antigo continua funcionando.
 
+
+---
+
+## DEC-37 — Rota do dia pelo endereço, sem geocodificação (fase 1)
+
+**Status:** 🟡 Implementado na branch `feature/rota-fase-1`, aguardando autorização para commit e push
+
+**Contexto:** o plano da rota pronta tem três fases e todas dependem de latitude e longitude do cliente, que exigem um serviço de geocodificação (custo, cota e envio do endereço a terceiro, ponto de LGPD ainda não decidido). Abrir o Google Maps com as paradas não precisa disso: a URL aceita endereços em texto.
+
+**Decisão:**
+1. A agenda (`AgendaItemResponse`) passa a trazer `EnderecoCompleto` (rua, número, bairro, cidade e CEP); null quando o cliente não tem rua.
+2. No app, a tela Início mostra "Iniciar rota · N paradas": abre o Google Maps com as visitas **pendentes de hoje**, na ordem dos horários, saindo da localização atual do celular. Limite de 10 paradas (destino + 9 da URL); o app avisa quem ficou de fora (sem endereço ou além do limite).
+3. Cada visita com endereço ganha um botão que abre a navegação só até aquele cliente.
+4. O endereço vai ao Google pelo próprio celular do agente, por ação dele, como já aconteceria copiando o endereço. Nada é enviado pelo servidor.
+
+**Pendente (fases seguintes):** escolher o serviço de geocodificação (sugestão: OpenRouteService), registrar a decisão de LGPD, `Cliente.Latitude/Longitude`, `Servico.DuracaoMinutos`, mapa com pinos no web e "Otimizar dia".
+
+**Impacto:** sem migration. Campo novo e opcional na agenda; app antigo ignora.
+

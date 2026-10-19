@@ -17,6 +17,8 @@ public sealed class AgendaItemResponse
     public string ClienteNome { get; set; } = string.Empty;
     public string? ClienteTelefone { get; set; }
     public string? EnderecoResumo { get; set; }
+    // Endereço para navegação ("Iniciar rota" no app); null quando o cliente não tem rua.
+    public string? EnderecoCompleto { get; set; }
 
     // Titulo curto do atendimento (primeiro servico; senao primeiro produto).
     public string Resumo { get; set; } = string.Empty;

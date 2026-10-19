@@ -92,6 +92,8 @@ export interface AgendaItem {
   clienteNome: string
   clienteTelefone: string | null
   enderecoResumo: string | null
+  /** Endereço para a navegação; null/ausente quando o cliente não tem rua. */
+  enderecoCompleto?: string | null
   resumo: string
 }
 
