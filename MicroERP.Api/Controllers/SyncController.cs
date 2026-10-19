@@ -49,7 +49,8 @@ public sealed class SyncController : ApiControllerBase
             return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
         }
 
-        var resultado = await _syncService.DescargaAsync(empresaId, usuarioId, request, cancellationToken);
+        var porDono = TryGetPerfil(out var perfil) && perfil == PerfilUsuario.Dono;
+        var resultado = await _syncService.DescargaAsync(empresaId, usuarioId, request, cancellationToken, porDono);
         return Ok(new ApiResponse
         {
             Success = true,

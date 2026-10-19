@@ -60,6 +60,15 @@ export const IconUsers = (p: IconProps) => (
   </Svg>
 )
 
+export const IconUserKey = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M15 21a6 6 0 0 0-12 0" />
+    <circle cx="17.5" cy="9.5" r="2" />
+    <path d="M17.5 11.5V16M17.5 14h1.8" />
+  </Svg>
+)
+
 export const IconBox = (p: IconProps) => (
   <Svg {...p}>
     <path d="M21 8 12 3 3 8l9 5 9-5Z" />

@@ -6,6 +6,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = 'Excluir',
+  loadingLabel = 'Excluindo…',
   loading = false,
   onConfirm,
   onCancel,
@@ -14,6 +15,7 @@ export function ConfirmDialog({
   title: string
   message: string
   confirmLabel?: string
+  loadingLabel?: string
   loading?: boolean
   onConfirm: () => void
   onCancel: () => void
@@ -35,7 +37,7 @@ export function ConfirmDialog({
             disabled={loading}
             className="inline-flex items-center justify-center gap-2 rounded-[10px] bg-bad px-4 py-2 text-[13px] font-semibold text-white transition hover:brightness-95 disabled:opacity-60"
           >
-            {loading ? 'Excluindo…' : confirmLabel}
+            {loading ? loadingLabel : confirmLabel}
           </button>
         </div>
       </div>

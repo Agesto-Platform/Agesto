@@ -2,8 +2,9 @@
 # CSP: só recursos do próprio domínio + a API. Fontes são do sistema (sem CDN).
 # style-src 'unsafe-inline': Recharts/React aplicam estilos inline nos gráficos.
 # Se VITE_API_BASE_URL mudar de host, atualize o connect-src.
+# img-src libera os blocos do mapa do OpenStreetMap (aba Mapa da Agenda, DEC-38).
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://agesto-api.onrender.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; font-src 'self' data:; connect-src 'self' https://agesto-api.onrender.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

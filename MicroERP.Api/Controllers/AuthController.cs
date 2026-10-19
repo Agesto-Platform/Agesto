@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MicroERP.Api.Authorization;
@@ -11,7 +12,7 @@ namespace MicroERP.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class AuthController : ControllerBase
+public sealed class AuthController : ApiControllerBase
 {
     private readonly IAuthService _authService;
     private readonly IConfiguration _configuration;
@@ -70,7 +71,20 @@ public sealed class AuthController : ControllerBase
     [EnableRateLimiting(RateLimits.Login)]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] AuthLoginRequest request, CancellationToken cancellationToken)
     {
-        var response = await _authService.LoginAsync(request, cancellationToken);
+        AuthResponse? response;
+        try
+        {
+            response = await _authService.LoginAsync(request, cancellationToken);
+        }
+        catch (UsuarioInativoException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new ApiResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+
         if (response is null)
         {
             return Unauthorized(new ApiResponse
@@ -86,5 +100,34 @@ public sealed class AuthController : ControllerBase
             Message = "Login realizado com sucesso.",
             Data = response
         });
+    }
+
+    // Qualquer perfil troca a própria senha; obrigatório no primeiro acesso de
+    // quem recebeu senha provisória do Dono.
+    [HttpPost("trocar-senha")]
+    [Authorize]
+    [EnableRateLimiting(RateLimits.Login)]
+    public async Task<ActionResult<ApiResponse>> TrocarSenha([FromBody] TrocarSenhaRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetUsuarioId(out var usuarioId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+
+        try
+        {
+            await _authService.TrocarSenhaAsync(usuarioId, request, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Senha alterada com sucesso." });
+        }
+        catch (SenhaAtualInvalidaException ex)
+        {
+            return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new ApiResponse { Success = false, Message = ex.Message });
+        }
     }
 }

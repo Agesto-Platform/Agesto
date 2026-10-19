@@ -62,6 +62,7 @@ SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER B
    - `Cors__AllowedOrigins__0`: a URL da web na Cloudflare Pages (passo 4). Se ainda não existir, use um valor provisório e troque depois. Aceita várias origens separadas por vírgula; a `/` final é ignorada.
    - `Jwt__Secret` é gerado pelo próprio Render. A API não sobe com segredo menor que 32 bytes.
    - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
+   - `Geocoding__OpenRouteServiceApiKey` (opcional): chave gratuita criada em openrouteservice.org (*Dashboard → Tokens*, plano Standard). Liga a geocodificação dos endereços dos clientes para o mapa da agenda (DEC-38); a API envia ao serviço só o endereço, nunca nome ou CPF. Sem ela, o mapa mostra que os clientes ainda não têm localização.
 4. O serviço publica a branch `develop` (provisório, até a promoção para `main`), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
 

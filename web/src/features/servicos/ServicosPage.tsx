@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { servicosResource } from './resource'
+import { aRevisar, servicosResource, useMarcarRevisado } from './resource'
 import { ServicoForm } from './ServicoForm'
 import {
   Button,
@@ -8,10 +8,11 @@ import {
   Drawer,
   ConfirmDialog,
   Money,
+  Pill,
   useToast,
   type Column,
 } from '../../components/ui'
-import { IconPlus, IconPencil, IconTrash } from '../../components/icons'
+import { IconCheck, IconPlus, IconPencil, IconTrash } from '../../components/icons'
 import { ApiError } from '../../lib/api'
 import type { Servico, ServicoInput } from '../../types/api'
 
@@ -27,7 +28,13 @@ export function ServicosPage() {
   const create = servicosResource.useCreate()
   const update = servicosResource.useUpdate()
   const remove = servicosResource.useRemove()
+  const revisar = useMarcarRevisado()
   const toast = useToast()
+  const [soARevisar, setSoARevisar] = useState(false)
+
+  const pendentes = aRevisar(list.data)
+  const filtrando = soARevisar && pendentes.length > 0
+  const rows = filtrando ? pendentes : list.data
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Servico | null>(null)
@@ -58,6 +65,13 @@ export function ServicosPage() {
     else create.mutate(input, { onSuccess, onError })
   }
 
+  function handleRevisar(s: Servico) {
+    revisar.mutate(s.id, {
+      onSuccess: () => toast.success(`"${s.descricao}" revisado.`),
+      onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Não foi possível revisar.'),
+    })
+  }
+
   function handleDelete() {
     if (!toDelete) return
     remove.mutate(toDelete.id, {
@@ -75,7 +89,19 @@ export function ServicosPage() {
   const columns: Column<Servico>[] = [
     {
       header: 'Descrição',
-      cell: (s) => <span className="font-medium text-ink">{s.descricao}</span>,
+      cell: (s) => (
+        <div className="flex flex-col gap-0.5">
+          <span className="flex items-center gap-2 font-medium text-ink">
+            {s.descricao}
+            {!s.revisado && <Pill tone="pend">A revisar</Pill>}
+          </span>
+          {!s.revisado && (
+            <span className="text-[12px] text-ink-3">
+              Criado no app por {s.criadoPorNome ?? 'um agente'}. Confira preço e descrição.
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       header: 'Cobrança',
@@ -105,6 +131,18 @@ export function ServicosPage() {
       align: 'right',
       cell: (s) => (
         <div className="flex justify-end gap-1">
+          {!s.revisado && (
+            <button
+              type="button"
+              onClick={() => handleRevisar(s)}
+              disabled={revisar.isPending}
+              aria-label="Marcar como revisado"
+              title="Marcar como revisado"
+              className={`${iconBtn} hover:text-good`}
+            >
+              <IconCheck className="h-[16px] w-[16px]" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => openEdit(s)}
@@ -134,15 +172,23 @@ export function ServicosPage() {
             <h2 className="text-[15px] font-semibold text-ink">Serviços</h2>
             <p className="text-[12.5px] text-ink-3">
               {list.data?.length ?? 0} cadastrados
+              {pendentes.length > 0 && ` · ${pendentes.length} a revisar`}
             </p>
           </div>
-          <Button onClick={openCreate}>
-            <IconPlus className="h-4 w-4" /> Novo
-          </Button>
+          <div className="flex items-center gap-2">
+            {pendentes.length > 0 && (
+              <Button variant="ghost" onClick={() => setSoARevisar((v) => !v)}>
+                {filtrando ? 'Ver todos' : `A revisar (${pendentes.length})`}
+              </Button>
+            )}
+            <Button onClick={openCreate}>
+              <IconPlus className="h-4 w-4" /> Novo
+            </Button>
+          </div>
         </div>
         <DataTable
           columns={columns}
-          rows={list.data}
+          rows={rows}
           loading={list.isLoading}
           getKey={(s) => s.id}
           emptyLabel="Nenhum serviço cadastrado."

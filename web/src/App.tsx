@@ -11,6 +11,8 @@ import { OrcamentosPage } from './features/orcamentos/OrcamentosPage'
 import { AtendimentosPage } from './features/atendimentos/AtendimentosPage'
 import { ParametrizacaoPage } from './features/parametrizacao/ParametrizacaoPage'
 import { RelatoriosPage } from './features/relatorios/RelatoriosPage'
+import { UsuariosPage } from './features/usuarios/UsuariosPage'
+import { TrocarSenha } from './pages/TrocarSenha'
 
 export default function App() {
   return (
@@ -18,6 +20,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
 
       <Route element={<ProtectedRoute />}>
+        <Route path="/trocar-senha" element={<TrocarSenha />} />
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="atendimentos" element={<AtendimentosPage />} />
@@ -26,6 +29,7 @@ export default function App() {
           <Route path="clientes" element={<ClientesPage />} />
           <Route path="produtos" element={<ProdutosPage />} />
           <Route path="servicos" element={<ServicosPage />} />
+          <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="relatorios" element={<RelatoriosPage />} />
           <Route path="parametrizacao" element={<ParametrizacaoPage />} />
         </Route>

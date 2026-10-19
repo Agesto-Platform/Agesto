@@ -28,6 +28,8 @@ public static class DadosPessoais
         cliente.Bairro = null;
         cliente.Cidade = null;
         cliente.Cep = null;
+        cliente.Latitude = null;
+        cliente.Longitude = null;
     }
 
     public static string CpfAnonimizado(long clienteId) => $"ANON{clienteId}";

@@ -11,6 +11,7 @@ using MicroERP.Api.DTOs;
 using MicroERP.Api.Repositories;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services;
+using MicroERP.Api.Services.Geocodificacao;
 using MicroERP.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -72,6 +73,11 @@ builder.Services.AddScoped<IMetricasRepository, MetricasRepository>();
 builder.Services.AddScoped<IMetricasService, MetricasService>();
 builder.Services.AddScoped<IOrcamentoRepository, OrcamentoRepository>();
 builder.Services.AddScoped<IOrcamentoService, OrcamentoService>();
+
+// Geocodificação dos clientes para o mapa da agenda (DEC-38). Sem chave, fica desligada.
+builder.Services.Configure<GeocodificacaoOptions>(builder.Configuration.GetSection(GeocodificacaoOptions.Secao));
+builder.Services.AddHttpClient<IGeocodificador, OpenRouteServiceGeocodificador>(client => client.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHostedService<GeocodificacaoWorker>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var jwtSecret = jwtSection["Secret"] ?? throw new InvalidOperationException("JWT secret not configured.");

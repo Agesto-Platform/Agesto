@@ -695,3 +695,75 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Verificação de email** antes de reabrir o cadastro. Depende de provedor de envio com API HTTP (o Render bloqueia SMTP; sugestão: Resend) e de domínio próprio verificado.
 - **Backup automático** do banco (o plano Free do Supabase não faz).
 - **Migração para .NET 10** (o .NET 8 perde suporte em 10/11/2026).
+
+
+---
+
+## DEC-35 — Gestão de usuários pelo Dono e responsável do atendimento
+
+**Status:** 🟡 Implementado na branch `feature/usuarios-agentes`, aguardando autorização para commit, push e migration
+
+**Contexto:** não havia como criar um usuário Agente (o cadastro só cria Dono) e todo atendimento ficava com quem o criou (`UsuarioId` = criador). O app do agente só funcionava com usuário inserido direto no banco.
+
+**Decisão:**
+1. **Aba Usuários no web (só Dono).** `GET/POST/PUT /api/usuario`, `POST /api/usuario/{id}/desativar`, `/reativar` e `/redefinir-senha`, todos com a policy `Dono`.
+2. **Sem convite por email.** O servidor gera uma senha provisória (10 caracteres, alfabeto sem ambíguos), mostrada uma única vez ao Dono, que repassa ao agente. O usuário nasce com `DeveTrocarSenha = true` e web e app levam para a tela de troca no primeiro acesso (`POST /api/auth/trocar-senha`). Email continua pendente da DEC-34.
+3. **Desativar em vez de excluir.** `Usuario.Ativo` (default `true` para quem já existe). Inativo não loga (403) e o `TokenRevalidator` derruba o token na hora. Histórico de atendimentos fica preservado.
+4. **Regras:** o Dono não desativa nem rebaixa a si mesmo; a empresa precisa de ao menos um Dono ativo.
+5. **Responsável do atendimento.** `ResponsavelId` opcional no create/update do atendimento; ausente = o próprio Dono (create) ou mantém (update). Validado contra a empresa e só usuário ativo. A agenda do agente passa a mostrar o que o Dono atribuiu; no web, filtro "Toda a equipe" e "Com {nome}".
+6. `UltimoAcessoEm` registrado no login, exibido na lista.
+
+**Impacto:** migration `AddUsuarioAtivoESenhaProvisoria` (3 colunas em `Usuarios`). API, web e app precisam subir juntos por causa do `deveTrocarSenha` no login.
+
+
+---
+
+## DEC-36 — Agente cadastra serviço no app, com revisão do Dono
+
+**Status:** 🟡 Implementado na branch `feature/servico-no-app`, aguardando autorização para commit, push e migration
+
+**Contexto:** no web, serviço fora do catálogo já vira cadastro rápido (DEC-22), mas o app não conseguia: toda a API de serviço exige perfil Dono e a Descarga só aceitava itens com id do servidor. Em campo o agente ficava sem como registrar um serviço novo.
+
+**Decisão:**
+1. **Mesmo caminho dos clientes offline (DEC-33).** O app cria o serviço com UUID do device e já pode usá-lo no atendimento. A Descarga aceita `Servicos` (até 100 por leva), cria antes dos atendimentos e devolve `ServicosSincronizados` e `ServicosMapeados`; o item de serviço aceita `ServicoUuid` no lugar de `ServicoId`. O app religa os itens ao id real.
+2. **Sem duplicar.** Reenvio com o mesmo UUID não cria de novo; descrição igual a um serviço ativo (sem diferenciar caixa e espaços) reaproveita o existente, e o atendimento usa o preço do catálogo.
+3. **Revisão do Dono.** `Servico.Revisado` e `Servico.CriadoPorUsuarioId`. Criado pelo agente nasce `Revisado = false`; no web aparece "A revisar · criado no app por Fulano", com filtro e botão para marcar como revisado (`POST /api/servico/{id}/revisar`). Editar pelo web também conta como revisão. Serviços existentes ficam revisados.
+4. **Chave em Parametrização.** `Configuracao.AgenteCadastraServico`, ligada por padrão. Desligada, a Descarga rejeita serviço novo do agente (o atendimento que o usa fica pendente no app com o motivo); o Dono continua podendo.
+
+**Impacto:** migration `AddServicoCriadoPeloAgente` (2 colunas em `Servicos` com FK para `Usuarios` `SET NULL`, 1 em `Configuracoes`). O contrato da Descarga só ganhou campos opcionais: app antigo continua funcionando.
+
+
+---
+
+## DEC-37 — Rota do dia pelo endereço, sem geocodificação (fase 1)
+
+**Status:** 🟡 Implementado na branch `feature/rota-fase-1`, aguardando autorização para commit e push
+
+**Contexto:** o plano da rota pronta tem três fases e todas dependem de latitude e longitude do cliente, que exigem um serviço de geocodificação (custo, cota e envio do endereço a terceiro, ponto de LGPD ainda não decidido). Abrir o Google Maps com as paradas não precisa disso: a URL aceita endereços em texto.
+
+**Decisão:**
+1. A agenda (`AgendaItemResponse`) passa a trazer `EnderecoCompleto` (rua, número, bairro, cidade e CEP); null quando o cliente não tem rua.
+2. No app, a tela Início mostra "Iniciar rota · N paradas": abre o Google Maps com as visitas **pendentes de hoje**, na ordem dos horários, saindo da localização atual do celular. Limite de 10 paradas (destino + 9 da URL); o app avisa quem ficou de fora (sem endereço ou além do limite).
+3. Cada visita com endereço ganha um botão que abre a navegação só até aquele cliente.
+4. O endereço vai ao Google pelo próprio celular do agente, por ação dele, como já aconteceria copiando o endereço. Nada é enviado pelo servidor.
+
+**Pendente (fases seguintes):** escolher o serviço de geocodificação (sugestão: OpenRouteService), registrar a decisão de LGPD, `Cliente.Latitude/Longitude`, `Servico.DuracaoMinutos`, mapa com pinos no web e "Otimizar dia".
+
+**Impacto:** sem migration. Campo novo e opcional na agenda; app antigo ignora.
+
+
+---
+
+## DEC-38 — Geocodificação com OpenRouteService e mapa da agenda com Leaflet
+
+**Status:** 🟡 Implementado na branch `feature/mapa-agenda`, aguardando autorização para commit, push e migration. Provedor aprovado por Diego em 17/10/2026.
+
+**Contexto:** o mapa da agenda e a otimização da rota (fase 2) precisam de latitude e longitude dos clientes, e o sistema só guarda o endereço em texto.
+
+**Decisão:**
+1. **Geocodificação:** OpenRouteService (plano gratuito, mesma plataforma que fará a otimização da fase 2), atrás da interface `IGeocodificador` para trocar de provedor sem mexer no resto. Chave em `Geocoding__OpenRouteServiceApiKey`; sem ela, a geocodificação fica desligada.
+2. **Em segundo plano:** um `BackgroundService` geocodifica clientes com rua e `GeocodificadoEm` nulo, em lotes de 25 com 1,5 s entre chamadas (dentro da cota de ~100 por minuto). Cadastro e sync não esperam pelo provedor. Endereço não encontrado fica marcado e não é repetido; falha de rede ou cota deixa pendente e o worker espera 10 minutos. Mudar o endereço apaga as coordenadas para geocodificar de novo. Os clientes que já existem são convertidos na primeira execução.
+3. **LGPD:** só o endereço (rua, número, bairro, cidade, CEP e "Brasil") vai ao provedor, nunca nome, CPF ou telefone; a chave vai no cabeçalho, fora da URL. Cliente excluído tem as coordenadas apagadas junto com o endereço.
+4. **Mapa no web:** aba "Mapa" na Agenda, um dia por vez, pinos numerados pela ordem dos horários e coloridos por responsável, com popup do atendimento e lista de quem está sem localização. Leaflet com blocos do OpenStreetMap, carregado só ao abrir a aba. O CSP do painel libera `https://tile.openstreetmap.org` em `img-src`.
+
+**Impacto:** migration `AddClienteCoordenadas` (3 colunas em `Clientes` + índice). Nova variável no Render. Dependência nova no web: `leaflet` (+ `@types/leaflet`). A política de uso dos blocos do OpenStreetMap vale para volume baixo; se o uso crescer, trocar por um provedor de blocos (ex.: MapTiler) é só mudar a URL e o CSP.

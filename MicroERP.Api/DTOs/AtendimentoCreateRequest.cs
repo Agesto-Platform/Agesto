@@ -17,4 +17,8 @@ public sealed class AtendimentoCreateRequest
 
     // Data/hora marcada para o atendimento (agenda de campo). Opcional.
     public DateTime? DataAgendada { get; set; }
+
+    // Agente responsável, escolhido pelo Dono e validado contra a empresa.
+    // Não é identidade: quem chama continua vindo do JWT. Ausente = o próprio Dono.
+    public long? ResponsavelId { get; set; }
 }

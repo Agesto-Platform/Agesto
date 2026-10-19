@@ -280,7 +280,7 @@ public sealed class OrcamentoServiceTests
 
         var itemProdutoService = new ItemProdutoService(itemProdutoRepo, atendimentoRepo, produtoRepo, itemServicoRepo, configuracaoRepo);
         var itemServicoService = new ItemServicoService(itemServicoRepo, atendimentoRepo, servicoRepo, itemProdutoRepo);
-        var atendimentoService = new AtendimentoService(atendimentoRepo, clienteRepo, itemProdutoRepo, itemServicoRepo, produtoRepo, configuracaoRepo);
+        var atendimentoService = new AtendimentoService(atendimentoRepo, clienteRepo, itemProdutoRepo, itemServicoRepo, produtoRepo, configuracaoRepo, new UsuarioRepository(db));
 
         return new OrcamentoService(db, orcamentoRepo, clienteRepo, atendimentoService, itemProdutoService, itemServicoService);
     }

@@ -52,6 +52,19 @@ const ESTOQUE: { value: boolean; titulo: string; desc: string }[] = [
   },
 ]
 
+const CADASTRO_SERVICO: { value: boolean; titulo: string; desc: string }[] = [
+  {
+    value: true,
+    titulo: 'Agente cadastra serviço',
+    desc: 'Serviço fora do catálogo pode ser criado no app. Ele aparece em Serviços como "a revisar".',
+  },
+  {
+    value: false,
+    titulo: 'Só o catálogo',
+    desc: 'O agente usa apenas os serviços cadastrados por você.',
+  },
+]
+
 /** Cartão de opção genérico (uma escolha dentro de um grupo). */
 function OpcaoCard({
   on,
@@ -107,18 +120,20 @@ export function ParametrizacaoPage() {
   const tipoOperacao = draft.tipoOperacao ?? atual?.tipoOperacao
   const modoAgenda = draft.modoAgendaAgente ?? atual?.modoAgendaAgente
   const controlaEstoque = draft.controlaEstoque ?? atual?.controlaEstoque
+  const agenteCadastraServico = draft.agenteCadastraServico ?? atual?.agenteCadastraServico
 
   const dirty =
     atual != null &&
     (tipoOperacao !== atual.tipoOperacao ||
       modoAgenda !== atual.modoAgendaAgente ||
-      controlaEstoque !== atual.controlaEstoque)
+      controlaEstoque !== atual.controlaEstoque ||
+      agenteCadastraServico !== atual.agenteCadastraServico)
   const podeSalvar = dirty && !update.isPending
 
   function salvar() {
     if (tipoOperacao == null || modoAgenda == null || controlaEstoque == null) return
     update.mutate(
-      { tipoOperacao, modoAgendaAgente: modoAgenda, controlaEstoque },
+      { tipoOperacao, modoAgendaAgente: modoAgenda, controlaEstoque, agenteCadastraServico },
       {
         onSuccess: () => {
           setDraft({})
@@ -184,6 +199,19 @@ export function ParametrizacaoPage() {
                 titulo={e.titulo}
                 desc={e.desc}
                 onClick={() => setDraft((d) => ({ ...d, controlaEstoque: e.value }))}
+              />
+            ))}
+          </div>
+
+          <SectionLabel>Cadastro de serviço pelo agente (app mobile)</SectionLabel>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {CADASTRO_SERVICO.map((c) => (
+              <OpcaoCard
+                key={String(c.value)}
+                on={agenteCadastraServico === c.value}
+                titulo={c.titulo}
+                desc={c.desc}
+                onClick={() => setDraft((d) => ({ ...d, agenteCadastraServico: c.value }))}
               />
             ))}
           </div>

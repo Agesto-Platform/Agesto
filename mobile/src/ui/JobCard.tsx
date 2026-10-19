@@ -1,6 +1,7 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native'
+import { View, Text, Pressable, StyleSheet, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, radius, space } from './theme'
+import { urlNavegacao } from '@/features/rota/montarRota'
 import type { AgendaItem } from '@/types/api'
 
 function hora(iso: string | null): string {
@@ -9,13 +10,13 @@ function hora(iso: string | null): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-/** Linha grande de agenda (toque fácil). `highlight` = próximo atendimento. */
+/**
+ * Linha grande de agenda. `highlight` = próximo atendimento. O botão da direita
+ * abre a navegação até o cliente quando há endereço completo.
+ */
 export function JobCard({ item, highlight = false }: { item: AgendaItem; highlight?: boolean }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      style={({ pressed }) => [styles.job, highlight && styles.next, pressed && { opacity: 0.9 }]}
-    >
+    <View style={[styles.job, highlight && styles.next]}>
       <View style={styles.time}>
         <Text style={styles.timeH}>{hora(item.dataAgendada)}</Text>
       </View>
@@ -38,10 +39,21 @@ export function JobCard({ item, highlight = false }: { item: AgendaItem; highlig
           </View>
         )}
       </View>
-      <View style={styles.go}>
-        <Ionicons name="chevron-forward" size={19} color={colors.brandInk} />
-      </View>
-    </Pressable>
+      {item.enderecoCompleto ? (
+        <Pressable
+          onPress={() => Linking.openURL(urlNavegacao(item.enderecoCompleto!))}
+          accessibilityRole="button"
+          accessibilityLabel={`Ir até ${item.clienteNome}`}
+          style={({ pressed }) => [styles.go, pressed && { opacity: 0.8 }]}
+        >
+          <Ionicons name="navigate" size={18} color={colors.brandInk} />
+        </Pressable>
+      ) : (
+        <View style={styles.go}>
+          <Ionicons name="chevron-forward" size={19} color={colors.brandInk} />
+        </View>
+      )}
+    </View>
   )
 }
 

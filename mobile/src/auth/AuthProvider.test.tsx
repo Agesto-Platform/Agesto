@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { AuthProvider } from './AuthProvider'
 import { useAuth } from './useAuth'
 import { db } from '@/db/instance'
-import { DEMO_EMAIL, DEMO_SENHA } from '@/mocks/handlers'
+import { DEMO_EMAIL, DEMO_SENHA, DEMO_PRIMEIRO_ACESSO_EMAIL, DEMO_SENHA_PROVISORIA } from '@/mocks/handlers'
 
 // No jest o preset resolve os adapters .native (SQLite/SecureStore): troca por memória.
 jest.mock('@/db/instance', () => ({
@@ -43,5 +43,26 @@ describe('AuthProvider (mock)', () => {
     expect(await db.getClientes()).toHaveLength(0)
     expect(await db.getMeta('lastSync')).toBeNull()
     expect(await db.getMeta('ownerSub')).toBeNull()
+  })
+
+  it('primeiro acesso com senha provisória exige troca até concluir', async () => {
+    const { result } = await renderHook(() => useAuth(), { wrapper })
+
+    await act(async () => {
+      await result.current.login(DEMO_PRIMEIRO_ACESSO_EMAIL, DEMO_SENHA_PROVISORIA)
+    })
+    expect(result.current.token).toBeTruthy()
+    expect(result.current.deveTrocarSenha).toBe(true)
+    expect(await db.getMeta('deveTrocarSenha')).toBe('1')
+
+    await act(async () => {
+      await result.current.trocarSenha(DEMO_SENHA_PROVISORIA, 'MinhaSenha9')
+    })
+    expect(result.current.deveTrocarSenha).toBe(false)
+    expect(await db.getMeta('deveTrocarSenha')).toBe('0')
+
+    await act(async () => {
+      await result.current.logout()
+    })
   })
 })

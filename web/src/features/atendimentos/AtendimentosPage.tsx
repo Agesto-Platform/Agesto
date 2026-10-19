@@ -11,6 +11,7 @@ import { StatusAtendimentoPill } from './status'
 import { clientesResource } from '../clientes/resource'
 import { produtosResource } from '../produtos/resource'
 import { servicosResource } from '../servicos/resource'
+import { useUsuarios, responsaveis, nomeUsuario } from '../usuarios/queries'
 import { Button, Card, DataTable, Drawer, Money, useToast, type Column } from '../../components/ui'
 import { IconPlus } from '../../components/icons'
 import { ApiError } from '../../lib/api'
@@ -31,6 +32,7 @@ export function AtendimentosPage() {
   const clientes = clientesResource.useList()
   const produtos = produtosResource.useList()
   const servicos = servicosResource.useList()
+  const usuarios = useUsuarios()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [detailId, setDetailId] = useState<number | null>(null)
@@ -53,13 +55,13 @@ export function AtendimentosPage() {
     })
   }
 
-  function handleUpdate(status: StatusAtendimento, dataAgendada: string | null) {
+  function handleUpdate(status: StatusAtendimento, dataAgendada: string | null, responsavelId: number) {
     if (detailId == null) return
     update.mutate(
-      { id: detailId, body: { status, dataAgendada } },
+      { id: detailId, body: { status, dataAgendada, responsavelId } },
       {
         onSuccess: () => toast.success('Atendimento atualizado.'),
-        onError: () => toast.error('Não foi possível atualizar.'),
+        onError: (e) => toast.error(e instanceof ApiError ? e.message : 'Não foi possível atualizar.'),
       },
     )
   }
@@ -77,6 +79,7 @@ export function AtendimentosPage() {
 
   const columns: Column<Atendimento>[] = [
     { header: 'Cliente', cell: (a) => <span className="font-medium text-ink">{clienteNome(a.clienteId)}</span> },
+    { header: 'Responsável', cell: (a) => <span className="text-ink-2">{nomeUsuario(usuarios.data, a.usuarioId)}</span> },
     { header: 'Agendada', cell: (a) => <span className="text-ink-3">{dataCurta(a.dataAgendada)}</span> },
     { header: 'Status', cell: (a) => <StatusAtendimentoPill status={a.status} /> },
     { header: 'Valor', align: 'right', cell: (a) => <Money value={a.valorTotal} cents /> },
@@ -121,6 +124,7 @@ export function AtendimentosPage() {
         {createOpen && (
           <AtendimentoForm
             clientes={clientes.data ?? []}
+            responsaveis={responsaveis(usuarios.data)}
             onSubmit={handleCreate}
             submitting={create.isPending}
             serverError={serverError}
@@ -138,6 +142,7 @@ export function AtendimentosPage() {
           <AtendimentoDetail
             atendimento={detail}
             clienteNome={clienteNome(detail.clienteId)}
+            responsaveis={usuarios.data ?? []}
             produtos={produtos.data ?? []}
             servicos={servicos.data ?? []}
             onUpdate={handleUpdate}

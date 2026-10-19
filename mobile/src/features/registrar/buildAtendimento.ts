@@ -11,14 +11,16 @@ export interface RegistroInput {
   status: StatusAtendimento
   servicoQty: QtyMap
   produtoQty: QtyMap
+  /** Serviços criados offline neste device, por uuid (resolvidos na Descarga). */
+  servicoNovoQty?: Record<string, number>
   /** Quando informado, o atendimento é agendado para essa data (futuro). */
   dataAgendada?: string | null
 }
 
 /** Verdadeiro se há ao menos um item (serviço ou produto) com quantidade > 0. */
-export function hasItems(servicoQty: QtyMap, produtoQty: QtyMap): boolean {
-  const any = (m: QtyMap) => Object.values(m).some((q) => q > 0)
-  return any(servicoQty) || any(produtoQty)
+export function hasItems(servicoQty: QtyMap, produtoQty: QtyMap, servicoNovoQty: Record<string, number> = {}): boolean {
+  const any = (m: Record<string | number, number>) => Object.values(m).some((q) => q > 0)
+  return any(servicoQty) || any(produtoQty) || any(servicoNovoQty)
 }
 
 /** Monta o atendimento offline (contrato enxuto: catálogo + quantidade). */
@@ -36,7 +38,12 @@ export function buildAtendimento(input: RegistroInput): LocalAtendimento {
     dataRegistro: new Date().toISOString(),
     dataAgendada: input.dataAgendada ?? null,
     itensProduto: toItens(input.produtoQty).map((x) => ({ produtoId: x.id, quantidade: x.quantidade })),
-    itensServico: toItens(input.servicoQty).map((x) => ({ servicoId: x.id, quantidade: x.quantidade })),
+    itensServico: [
+      ...toItens(input.servicoQty).map((x) => ({ servicoId: x.id, quantidade: x.quantidade })),
+      ...Object.entries(input.servicoNovoQty ?? {})
+        .filter(([, q]) => q > 0)
+        .map(([servicoUuid, q]) => ({ servicoId: null, servicoUuid, quantidade: q })),
+    ],
     syncedAt: null,
   }
 }

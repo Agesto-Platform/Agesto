@@ -13,4 +13,5 @@ public sealed class ConfiguracaoUpdateRequest
     [EnumDataType(typeof(ModoAgendaAgente), ErrorMessage = "Modo de agenda invalido.")]
     public ModoAgendaAgente? ModoAgendaAgente { get; set; }
     public bool? ControlaEstoque { get; set; }
+    public bool? AgenteCadastraServico { get; set; }
 }

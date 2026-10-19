@@ -18,18 +18,21 @@ export default function Mais() {
   const { logout } = useAuth()
   const [pendAt, setPendAt] = useState(0)
   const [pendCli, setPendCli] = useState(0)
+  const [pendServ, setPendServ] = useState(0)
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
-    const [at, cli, ls] = await Promise.all([
+    const [at, cli, serv, ls] = await Promise.all([
       db.getPendingAtendimentos(),
       db.getPendingClientes(),
+      db.getPendingServicos(),
       db.getMeta('lastSync'),
     ])
     setPendAt(at.length)
     setPendCli(cli.filter((c) => c.syncedAt === null).length)
+    setPendServ(serv.filter((s) => s.syncedAt === null).length)
     setLastSync(ls)
   }, [])
 
@@ -52,7 +55,8 @@ export default function Mais() {
       const r = await descarga()
       // Atualiza a referência: clientes recém-enviados passam a vir da Carga.
       await initialSync()
-      const enviados = `Enviados: ${r.atendimentosImportados} atendimento(s), ${r.clientesImportados} cliente(s).`
+      const servicos = r.servicosImportados > 0 ? `, ${r.servicosImportados} serviço(s) novo(s)` : ''
+      const enviados = `Enviados: ${r.atendimentosImportados} atendimento(s), ${r.clientesImportados} cliente(s)${servicos}.`
       setFlash(
         r.erros.length > 0
           ? `${enviados} ${r.erros.length} não enviado(s), seguem pendentes: ${r.erros[0]}`
@@ -85,7 +89,7 @@ export default function Mais() {
     ])
   }
 
-  const pendentes = pendAt + pendCli
+  const pendentes = pendAt + pendCli + pendServ
 
   return (
     <Screen>
@@ -100,7 +104,7 @@ export default function Mais() {
           <Text style={styles.status}>
             {pendentes === 0
               ? 'Tudo sincronizado.'
-              : `${pendAt} atendimento${pendAt === 1 ? '' : 's'} e ${pendCli} cliente${pendCli === 1 ? '' : 's'} pendentes de envio.`}
+              : `${pendAt} atendimento${pendAt === 1 ? '' : 's'}, ${pendCli} cliente${pendCli === 1 ? '' : 's'}${pendServ > 0 ? ` e ${pendServ} serviço${pendServ === 1 ? '' : 's'}` : ''} pendentes de envio.`}
           </Text>
           <Text style={styles.sub}>Última sincronização: {fmt(lastSync)}</Text>
           {flash && <Text style={styles.flash}>{flash}</Text>}

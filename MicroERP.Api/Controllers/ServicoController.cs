@@ -80,6 +80,23 @@ public sealed class ServicoController : ApiControllerBase
         }
     }
 
+    [HttpPost("{id:long}/revisar")]
+    public async Task<ActionResult<ApiResponse>> MarcarRevisado(long id, CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+
+        try
+        {
+            var servico = await _servicoService.MarcarRevisadoAsync(empresaId, id, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Servico revisado.", Data = servico });
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new ApiResponse { Success = false, Message = ex.Message });
+        }
+    }
+
     [HttpDelete("{id:long}")]
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)
     {

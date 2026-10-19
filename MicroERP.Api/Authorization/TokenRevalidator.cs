@@ -4,8 +4,8 @@ using MicroERP.Api.Data;
 
 namespace MicroERP.Api.Authorization;
 
-// O JWT vale por horas; sem esta checagem, um usuário excluído ou com perfil
-// alterado continuaria com acesso até o token expirar. Custa uma consulta por
+// O JWT vale por horas; sem esta checagem, um usuário excluído, desativado ou
+// com perfil alterado continuaria com acesso até o token expirar. Custa uma consulta por
 // chave primária a cada requisição autenticada.
 public static class TokenRevalidator
 {
@@ -22,10 +22,11 @@ public static class TokenRevalidator
         var usuario = await db.Usuarios
             .AsNoTracking()
             .Where(u => u.Id == usuarioId)
-            .Select(u => new { u.EmpresaId, u.Perfil })
+            .Select(u => new { u.EmpresaId, u.Perfil, u.Ativo })
             .FirstOrDefaultAsync(cancellationToken);
 
         return usuario is not null
+            && usuario.Ativo
             && usuario.EmpresaId == empresaId
             && usuario.Perfil.ToString() == perfil;
     }

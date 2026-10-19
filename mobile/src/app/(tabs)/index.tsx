@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ScrollView, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { JobCard } from '@/ui/JobCard'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
+import { montarRota } from '@/features/rota/montarRota'
 import type { AgendaItem } from '@/types/api'
 
 function dataHoje(): string {
@@ -36,6 +37,8 @@ export default function Inicio() {
 
   const proximo = agenda[0]
   const resto = agenda.slice(1)
+  const rota = montarRota(agenda)
+  const foraDaRota = rota.semEndereco.length + rota.excedentes.length
 
   return (
     <Screen>
@@ -77,6 +80,29 @@ export default function Inicio() {
           <Text style={styles.todayDate}>{dataHoje()}</Text>
           <Text style={styles.todayCount}>{agenda.length} na agenda</Text>
         </View>
+
+        {rota.url && (
+          <View style={{ gap: space(1.5) }}>
+            <Pressable
+              onPress={() => Linking.openURL(rota.url!)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.rota, pressed && { opacity: 0.9 }]}
+            >
+              <Ionicons name="navigate" size={18} color={colors.brandInk} />
+              <Text style={styles.rotaText}>
+                Iniciar rota · {rota.paradas.length} parada{rota.paradas.length === 1 ? '' : 's'}
+              </Text>
+            </Pressable>
+            {foraDaRota > 0 && (
+              <Text style={styles.rotaHint}>
+                {rota.semEndereco.length > 0 &&
+                  `${rota.semEndereco.length} visita${rota.semEndereco.length === 1 ? '' : 's'} sem endereço fica${rota.semEndereco.length === 1 ? '' : 'm'} de fora. `}
+                {rota.excedentes.length > 0 &&
+                  `O Maps aceita até ${rota.paradas.length} paradas; ${rota.excedentes.length === 1 ? 'a última fica' : `as últimas ${rota.excedentes.length} ficam`} para depois.`}
+              </Text>
+            )}
+          </View>
+        )}
 
         {proximo && (
           <View style={styles.section}>
@@ -131,6 +157,10 @@ const styles = StyleSheet.create({
   today: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space(1) },
   todayDate: { fontSize: 15, fontWeight: '600', color: colors.ink },
   todayCount: { fontSize: 13, color: colors.ink3 },
+
+  rota: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space(2), backgroundColor: colors.brandSoft, borderRadius: radius.sm, paddingVertical: space(3.25) },
+  rotaText: { fontSize: 15, fontWeight: '700', color: colors.brandInk },
+  rotaHint: { fontSize: 12.5, color: colors.ink3, paddingHorizontal: space(1) },
 
   section: { gap: space(2.5) },
   label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: colors.ink4, paddingHorizontal: space(1) },
