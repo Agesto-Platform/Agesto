@@ -19,6 +19,9 @@ public sealed class AgendaItemResponse
     public string? EnderecoResumo { get; set; }
     // Endereço para navegação ("Iniciar rota" no app); null quando o cliente não tem rua.
     public string? EnderecoCompleto { get; set; }
+    // Coordenadas do cliente para o mapa do web; null enquanto não geocodificado.
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 
     // Titulo curto do atendimento (primeiro servico; senao primeiro produto).
     public string Resumo { get; set; } = string.Empty;

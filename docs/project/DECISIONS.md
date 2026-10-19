@@ -751,3 +751,19 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Impacto:** sem migration. Campo novo e opcional na agenda; app antigo ignora.
 
+
+---
+
+## DEC-38 — Geocodificação com OpenRouteService e mapa da agenda com Leaflet
+
+**Status:** 🟡 Implementado na branch `feature/mapa-agenda`, aguardando autorização para commit, push e migration. Provedor aprovado por Diego em 17/10/2026.
+
+**Contexto:** o mapa da agenda e a otimização da rota (fase 2) precisam de latitude e longitude dos clientes, e o sistema só guarda o endereço em texto.
+
+**Decisão:**
+1. **Geocodificação:** OpenRouteService (plano gratuito, mesma plataforma que fará a otimização da fase 2), atrás da interface `IGeocodificador` para trocar de provedor sem mexer no resto. Chave em `Geocoding__OpenRouteServiceApiKey`; sem ela, a geocodificação fica desligada.
+2. **Em segundo plano:** um `BackgroundService` geocodifica clientes com rua e `GeocodificadoEm` nulo, em lotes de 25 com 1,5 s entre chamadas (dentro da cota de ~100 por minuto). Cadastro e sync não esperam pelo provedor. Endereço não encontrado fica marcado e não é repetido; falha de rede ou cota deixa pendente e o worker espera 10 minutos. Mudar o endereço apaga as coordenadas para geocodificar de novo. Os clientes que já existem são convertidos na primeira execução.
+3. **LGPD:** só o endereço (rua, número, bairro, cidade, CEP e "Brasil") vai ao provedor, nunca nome, CPF ou telefone; a chave vai no cabeçalho, fora da URL. Cliente excluído tem as coordenadas apagadas junto com o endereço.
+4. **Mapa no web:** aba "Mapa" na Agenda, um dia por vez, pinos numerados pela ordem dos horários e coloridos por responsável, com popup do atendimento e lista de quem está sem localização. Leaflet com blocos do OpenStreetMap, carregado só ao abrir a aba. O CSP do painel libera `https://tile.openstreetmap.org` em `img-src`.
+
+**Impacto:** migration `AddClienteCoordenadas` (3 colunas em `Clientes` + índice). Nova variável no Render. Dependência nova no web: `leaflet` (+ `@types/leaflet`). A política de uso dos blocos do OpenStreetMap vale para volume baixo; se o uso crescer, trocar por um provedor de blocos (ex.: MapTiler) é só mudar a URL e o CSP.

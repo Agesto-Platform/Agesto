@@ -90,6 +90,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Cidade).HasMaxLength(100);
             entity.Property(e => e.Cep).HasMaxLength(9);
             entity.HasIndex(e => new { e.EmpresaId, e.Cpf }).IsUnique();
+            entity.HasIndex(e => e.GeocodificadoEm);
             entity.HasIndex(e => e.Uuid).IsUnique();
             entity.HasIndex(e => e.EmpresaId);
         });

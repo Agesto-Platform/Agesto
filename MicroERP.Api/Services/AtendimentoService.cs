@@ -179,6 +179,8 @@ public sealed class AtendimentoService : IAtendimentoService
             ClienteTelefone = cliente?.Telefone,
             EnderecoResumo = Enderecos.Resumo(cliente),
             EnderecoCompleto = Enderecos.Completo(cliente),
+            Latitude = cliente?.Latitude,
+            Longitude = cliente?.Longitude,
             Resumo = resumo
         };
     }

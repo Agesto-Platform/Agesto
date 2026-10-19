@@ -119,9 +119,18 @@ namespace MicroERP.Api.Migrations
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTime?>("GeocodificadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
                     b.Property<string>("Logradouro")
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -148,6 +157,8 @@ namespace MicroERP.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EmpresaId");
+
+                    b.HasIndex("GeocodificadoEm");
 
                     b.HasIndex("Uuid")
                         .IsUnique();

@@ -389,5 +389,8 @@ export interface AgendaItem {
   clienteNome: string
   clienteTelefone: string | null
   enderecoResumo: string | null
+  /** Coordenadas do cliente para o mapa; null enquanto não geocodificado. */
+  latitude?: number | null
+  longitude?: number | null
   resumo: string
 }

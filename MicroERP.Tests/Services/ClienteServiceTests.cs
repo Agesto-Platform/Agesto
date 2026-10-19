@@ -238,4 +238,24 @@ public sealed class ClienteServiceTests
         Assert.Equal("Rua das Flores", response.Logradouro);
         Assert.Equal("Centro", response.Bairro);
     }
+
+    [Theory]
+    [InlineData("Rua Nova", true)]
+    [InlineData("Rua Velha", false)]
+    public async Task UpdateAsync_EnderecoMudou_DescartaCoordenadasParaGeocodificarDeNovo(string rua, bool descarta)
+    {
+        var cliente = new Cliente
+        {
+            Id = 7, EmpresaId = 1, Nome = "Maria", Cpf = "52998224725", Logradouro = "Rua Velha",
+            Latitude = -19.7, Longitude = -47.9, GeocodificadoEm = DateTime.UtcNow
+        };
+        _repositoryMock
+            .Setup(r => r.GetByIdAsync(1, 7, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cliente);
+
+        await _service.UpdateAsync(1, 7, new ClienteUpdateRequest { Nome = "Maria Silva", Cpf = "52998224725", Logradouro = rua }, CancellationToken.None);
+
+        Assert.Equal(descarta, cliente.GeocodificadoEm is null);
+        Assert.Equal(descarta, cliente.Latitude is null);
+    }
 }
