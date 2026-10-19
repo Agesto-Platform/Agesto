@@ -1,6 +1,7 @@
 import { uuid } from '@/lib/uuid'
 import type { LocalAtendimento } from '@/db/types'
 import type { StatusAtendimento } from '@/types/api'
+import type { ItemAvulso } from './itemAvulso'
 
 export type QtyMap = Record<number, number>
 
@@ -13,14 +14,21 @@ export interface RegistroInput {
   produtoQty: QtyMap
   /** Serviços criados offline neste device, por uuid (resolvidos na Descarga). */
   servicoNovoQty?: Record<string, number>
+  /** Itens fora do catálogo (produtoId null); não mexem no estoque. */
+  avulsos?: ItemAvulso[]
   /** Quando informado, o atendimento é agendado para essa data (futuro). */
   dataAgendada?: string | null
 }
 
-/** Verdadeiro se há ao menos um item (serviço ou produto) com quantidade > 0. */
-export function hasItems(servicoQty: QtyMap, produtoQty: QtyMap, servicoNovoQty: Record<string, number> = {}): boolean {
+/** Verdadeiro se há ao menos um item (serviço, produto ou avulso) com quantidade > 0. */
+export function hasItems(
+  servicoQty: QtyMap,
+  produtoQty: QtyMap,
+  servicoNovoQty: Record<string, number> = {},
+  avulsos: ItemAvulso[] = [],
+): boolean {
   const any = (m: Record<string | number, number>) => Object.values(m).some((q) => q > 0)
-  return any(servicoQty) || any(produtoQty) || any(servicoNovoQty)
+  return any(servicoQty) || any(produtoQty) || any(servicoNovoQty) || avulsos.length > 0
 }
 
 /** Monta o atendimento offline (contrato enxuto: catálogo + quantidade). */
@@ -37,7 +45,15 @@ export function buildAtendimento(input: RegistroInput): LocalAtendimento {
     status: input.status,
     dataRegistro: new Date().toISOString(),
     dataAgendada: input.dataAgendada ?? null,
-    itensProduto: toItens(input.produtoQty).map((x) => ({ produtoId: x.id, quantidade: x.quantidade })),
+    itensProduto: [
+      ...toItens(input.produtoQty).map((x) => ({ produtoId: x.id, quantidade: x.quantidade })),
+      ...(input.avulsos ?? []).map((a) => ({
+        produtoId: null,
+        descricao: a.descricao,
+        precoUnitario: a.precoUnitario,
+        quantidade: a.quantidade,
+      })),
+    ],
     itensServico: [
       ...toItens(input.servicoQty).map((x) => ({ servicoId: x.id, quantidade: x.quantidade })),
       ...Object.entries(input.servicoNovoQty ?? {})

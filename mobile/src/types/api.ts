@@ -117,8 +117,16 @@ export interface AtendimentoSyncRequest {
   /** Id do servidor, ou null quando o cliente foi criado offline (usa clienteUuid). */
   clienteId: number | null
   clienteUuid?: string | null
-  itensProduto: { produtoId: number; quantidade: number }[]
+  itensProduto: ItemProdutoSync[]
   itensServico: ItemServicoSync[]
+}
+
+/** Produto do catálogo (produtoId) ou item avulso (produtoId null, com descrição e valor). */
+export interface ItemProdutoSync {
+  produtoId: number | null
+  descricao?: string | null
+  precoUnitario?: number | null
+  quantidade: number
 }
 
 /** Serviço do catálogo (servicoId) ou criado offline (servicoUuid, resolvido na Descarga). */

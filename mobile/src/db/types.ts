@@ -1,4 +1,4 @@
-import type { AgendaItem, Cliente, ClienteInput, ItemServicoSync, Produto, Servico, ServicoInput, StatusAtendimento } from '@/types/api'
+import type { AgendaItem, Cliente, ClienteInput, ItemProdutoSync, ItemServicoSync, Produto, Servico, ServicoInput, StatusAtendimento } from '@/types/api'
 
 /** Cliente criado no device (offline). `syncedAt` null = pendente de envio. */
 export interface PendingCliente extends ClienteInput {
@@ -26,7 +26,7 @@ export interface LocalAtendimento {
   dataRegistro: string
   /** Data agendada (futuro) — null quando é registro imediato. */
   dataAgendada: string | null
-  itensProduto: { produtoId: number; quantidade: number }[]
+  itensProduto: ItemProdutoSync[]
   itensServico: ItemServicoSync[]
   syncedAt: string | null
 }

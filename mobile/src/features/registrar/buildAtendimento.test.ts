@@ -26,6 +26,21 @@ describe('buildAtendimento', () => {
     expect(a.dataAgendada).toBeNull() // registro imediato: sem data agendada
   })
 
+  it('leva item avulso sem produtoId, com descrição e valor', () => {
+    const a = buildAtendimento({
+      clienteId: 1,
+      status: 'Concluido',
+      servicoQty: {},
+      produtoQty: { 5: 1 },
+      avulsos: [{ descricao: 'Tubo de cobre', quantidade: 2, precoUnitario: 30 }],
+    })
+    expect(a.itensProduto).toEqual([
+      { produtoId: 5, quantidade: 1 },
+      { produtoId: null, descricao: 'Tubo de cobre', precoUnitario: 30, quantidade: 2 },
+    ])
+    expect(hasItems({}, {}, {}, [{ descricao: 'x', quantidade: 1, precoUnitario: 0 }])).toBe(true)
+  })
+
   it('leva serviço criado offline pelo uuid, sem id do servidor', () => {
     const a = buildAtendimento({
       clienteId: 1,

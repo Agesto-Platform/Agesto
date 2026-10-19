@@ -437,18 +437,30 @@ public sealed class SyncService : ISyncService
                 var produtos = new Dictionary<long, Produto>();
                 foreach (var itemProduto in atendimentoRequest.ItensProduto)
                 {
-                    if (itemProduto.Quantidade <= 0)
+                    if (itemProduto.ProdutoId is not { } produtoId)
                     {
-                        falhas.Add($"Quantidade invalida para produto {itemProduto.ProdutoId}.");
+                        // Item avulso: fora do catalogo, sem estoque.
+                        if (itemProduto.Quantidade <= 0)
+                            falhas.Add("Quantidade invalida para item avulso.");
+                        if (string.IsNullOrWhiteSpace(itemProduto.Descricao))
+                            falhas.Add("Item avulso sem descricao.");
+                        if (itemProduto.PrecoUnitario is null or < 0)
+                            falhas.Add("Item avulso sem valor.");
                         continue;
                     }
 
-                    if (produtos.ContainsKey(itemProduto.ProdutoId)) continue;
+                    if (itemProduto.Quantidade <= 0)
+                    {
+                        falhas.Add($"Quantidade invalida para produto {produtoId}.");
+                        continue;
+                    }
 
-                    var produto = await _produtoRepository.GetByIdAsync(empresaId, itemProduto.ProdutoId, true, cancellationToken);
+                    if (produtos.ContainsKey(produtoId)) continue;
+
+                    var produto = await _produtoRepository.GetByIdAsync(empresaId, produtoId, true, cancellationToken);
                     if (produto is null)
                     {
-                        falhas.Add($"Produto {itemProduto.ProdutoId} nao encontrado.");
+                        falhas.Add($"Produto {produtoId} nao encontrado.");
                         continue;
                     }
 
@@ -459,8 +471,8 @@ public sealed class SyncService : ISyncService
                 {
                     // Soma por produto: o mesmo produto pode aparecer em mais de um item.
                     var demanda = atendimentoRequest.ItensProduto
-                        .Where(i => i.Quantidade > 0 && produtos.ContainsKey(i.ProdutoId))
-                        .GroupBy(i => i.ProdutoId)
+                        .Where(i => i.Quantidade > 0 && i.ProdutoId is { } id && produtos.ContainsKey(id))
+                        .GroupBy(i => i.ProdutoId!.Value)
                         .Select(g => new { Produto = produtos[g.Key], Quantidade = g.Sum(i => i.Quantidade) });
 
                     foreach (var d in demanda.Where(d => d.Produto.QuantidadeEstoque < d.Quantidade))
@@ -538,7 +550,23 @@ public sealed class SyncService : ISyncService
 
                 foreach (var itemProduto in atendimentoRequest.ItensProduto)
                 {
-                    var produto = produtos[itemProduto.ProdutoId];
+                    if (itemProduto.ProdutoId is not { } produtoId)
+                    {
+                        var preco = itemProduto.PrecoUnitario!.Value;
+                        atendimento.ItensProduto.Add(new ItemProduto
+                        {
+                            Uuid = Guid.NewGuid(),
+                            Descricao = itemProduto.Descricao!.Trim(),
+                            Quantidade = itemProduto.Quantidade,
+                            PrecoUnitario = preco,
+                            Subtotal = itemProduto.Quantidade * preco,
+                            CreatedAt = agora,
+                            UpdatedAt = agora
+                        });
+                        continue;
+                    }
+
+                    var produto = produtos[produtoId];
                     if (controlaEstoque)
                     {
                         produto.QuantidadeEstoque -= itemProduto.Quantidade;

@@ -238,6 +238,46 @@ public sealed class SyncServiceTests
     }
 
     [Fact]
+    public async Task DescargaAsync_ItemAvulso_GravaSemProdutoESemMexerNoEstoque()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 10, empresaId: 1, preco: 25m, estoque: 5);
+        await db.SaveChangesAsync();
+        var at = Atendimento(Guid.NewGuid(), clienteId: 1, (10, 1));
+        at.ItensProduto = [.. at.ItensProduto, new ItemProdutoSyncRequest { Descricao = "  Tubo de cobre 1/4  ", PrecoUnitario = 30m, Quantidade = 2 }];
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(at), CancellationToken.None);
+
+        Assert.Empty(res.Erros);
+        var gravado = await db.Atendimentos.Include(a => a.ItensProduto).SingleAsync();
+        Assert.Equal(85m, gravado.ValorTotal);
+        var avulso = Assert.Single(gravado.ItensProduto, i => i.ProdutoId == null);
+        Assert.Equal("Tubo de cobre 1/4", avulso.Descricao);
+        Assert.Equal(60m, avulso.Subtotal);
+        Assert.Equal(4, (await db.Produtos.SingleAsync()).QuantidadeEstoque); // so o item de catalogo baixou
+    }
+
+    [Theory]
+    [InlineData(" ", 10.0, 1)]
+    [InlineData("Conexao", null, 1)]
+    [InlineData("Conexao", 10.0, 0)]
+    public async Task DescargaAsync_ItemAvulsoIncompleto_RejeitaAtendimento(string descricao, double? preco, int quantidade)
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        await db.SaveChangesAsync();
+        var at = Atendimento(Guid.NewGuid(), clienteId: 1);
+        at.ItensProduto = [new ItemProdutoSyncRequest { Descricao = descricao, PrecoUnitario = (decimal?)preco, Quantidade = quantidade }];
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(at), CancellationToken.None);
+
+        Assert.Empty(res.AtendimentosSincronizados);
+        Assert.Contains(res.Erros, e => e.Contains("avulso"));
+        Assert.False(await db.Atendimentos.AnyAsync());
+    }
+
+    [Fact]
     public async Task DescargaAsync_ProdutoInexistente_RejeitaAtendimentoInteiro()
     {
         await using var db = CreateContext();

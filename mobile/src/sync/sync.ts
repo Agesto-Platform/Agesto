@@ -146,3 +146,31 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
     erros: res.erros,
   }
 }
+
+export interface SincronizacaoResult {
+  enviado: DescargaResult
+  recebido: SyncResult
+}
+
+/**
+ * Sincronização completa: envia o que está pendente (se houver) e sempre baixa
+ * a Carga e a agenda, para o que o Dono criou no web chegar ao app mesmo sem
+ * nada a enviar.
+ */
+export async function sincronizar(database: LocalDb = db): Promise<SincronizacaoResult> {
+  const enviado = await descarga(database)
+  const recebido = await initialSync(database)
+  return { enviado, recebido }
+}
+
+/** Resumo de uma sincronização para mostrar ao agente. */
+export function resumoSincronizacao({ enviado, recebido }: SincronizacaoResult): string {
+  const agenda = `Agenda de hoje: ${recebido.agenda} visita${recebido.agenda === 1 ? '' : 's'}.`
+  const nada = enviado.atendimentosImportados + enviado.clientesImportados + enviado.servicosImportados === 0
+  if (nada && enviado.erros.length === 0) return `Dados atualizados. ${agenda}`
+  const servicos = enviado.servicosImportados > 0 ? `, ${enviado.servicosImportados} serviço(s) novo(s)` : ''
+  const enviados = `Enviados: ${enviado.atendimentosImportados} atendimento(s), ${enviado.clientesImportados} cliente(s)${servicos}.`
+  return enviado.erros.length > 0
+    ? `${enviados} ${enviado.erros.length} não enviado(s), seguem pendentes: ${enviado.erros[0]}`
+    : `${enviados} ${agenda}`
+}

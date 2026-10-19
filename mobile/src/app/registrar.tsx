@@ -12,6 +12,7 @@ import { getSugeridos } from '@/lib/sugeridos'
 import { isoAgendada, diaLabel } from '@/features/registrar/agendar'
 import { materiaisSugeridos } from '@/features/registrar/sugeridos'
 import { parseValor, toServicoInput, validateServico, type ServicoFormErrors } from '@/features/servicos/validateServico'
+import { toItemAvulso, validateItemAvulso, type ItemAvulso, type ItemAvulsoErrors } from '@/features/registrar/itemAvulso'
 import { uuid } from '@/lib/uuid'
 import type { PendingServico } from '@/db/types'
 import type { Cliente, Configuracao, Produto, Servico, ServicoSugerido, StatusAtendimento, TipoCobranca } from '@/types/api'
@@ -48,6 +49,12 @@ export default function Registrar() {
   const [novoTipo, setNovoTipo] = useState<TipoCobranca>('Empreitada')
   const [novoValor, setNovoValor] = useState('')
   const [novoErros, setNovoErros] = useState<ServicoFormErrors>({})
+  const [avulsos, setAvulsos] = useState<ItemAvulso[]>([])
+  const [avulsoAberto, setAvulsoAberto] = useState(false)
+  const [avulsoDescricao, setAvulsoDescricao] = useState('')
+  const [avulsoQtd, setAvulsoQtd] = useState('1')
+  const [avulsoValor, setAvulsoValor] = useState('')
+  const [avulsoErros, setAvulsoErros] = useState<ItemAvulsoErrors>({})
 
   const [clienteKey, setClienteKey] = useState<string | undefined>(undefined)
   const [servicoQty, setServicoQty] = useState<QtyMap>({})
@@ -103,8 +110,9 @@ export default function Registrar() {
     const s = servicos.reduce((acc, sv) => acc + (servicoQty[sv.id] || 0) * (sv.valorHora ?? sv.valorEmpreitada ?? 0), 0)
     const n = servicosNovos.reduce((acc, sv) => acc + (servicoNovoQty[sv.uuid] || 0) * (sv.valorHora ?? sv.valorEmpreitada ?? 0), 0)
     const p = produtos.reduce((acc, pr) => acc + (produtoQty[pr.id] || 0) * pr.preco, 0)
-    return s + n + p
-  }, [servicos, servicosNovos, produtos, servicoQty, servicoNovoQty, produtoQty])
+    const a = avulsos.reduce((acc, it) => acc + it.quantidade * it.precoUnitario, 0)
+    return s + n + p + a
+  }, [servicos, servicosNovos, produtos, servicoQty, servicoNovoQty, produtoQty, avulsos])
 
   // Serviço fora do catálogo: entra pendente e vai para revisão do Dono (DEC-36).
   const podeCriarServico = configLoaded && config.agenteCadastraServico !== false
@@ -131,11 +139,29 @@ export default function Registrar() {
     fecharNovoServico()
   }
 
+  function fecharAvulso() {
+    setAvulsoAberto(false)
+    setAvulsoDescricao('')
+    setAvulsoQtd('1')
+    setAvulsoValor('')
+    setAvulsoErros({})
+  }
+
+  // Item fora do catálogo, como o "Item avulso" do web: não mexe no estoque.
+  function adicionarAvulso() {
+    const form = { descricao: avulsoDescricao, quantidade: avulsoQtd, valor: avulsoValor }
+    const e = validateItemAvulso(form)
+    setAvulsoErros(e)
+    if (Object.keys(e).length > 0) return
+    setAvulsos((l) => [...l, toItemAvulso(form)])
+    fecharAvulso()
+  }
+
   const cliente = clientes.find((c) => c.key === clienteKey)
 
   const podeSalvar =
     cliente !== undefined &&
-    hasItems(servicoQty, produtoQty, servicoNovoQty) &&
+    hasItems(servicoQty, produtoQty, servicoNovoQty, avulsos) &&
     (!agendando || dataAgendada !== null) &&
     !saving
 
@@ -152,6 +178,7 @@ export default function Registrar() {
           servicoQty,
           produtoQty,
           servicoNovoQty,
+          avulsos,
           dataAgendada,
         }),
       )
@@ -339,6 +366,77 @@ export default function Registrar() {
               <Stepper value={produtoQty[p.id] || 0} onChange={(v) => setProdutoQty((m) => ({ ...m, [p.id]: v }))} />
             </View>
           ))}
+          {avulsos.map((it, i) => (
+            <View key={`avulso-${i}`} style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{it.descricao}</Text>
+                <Text style={styles.rowSub}>
+                  {it.quantidade} × {brl(it.precoUnitario)} · Avulso
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setAvulsos((l) => l.filter((_, j) => j !== i))}
+                accessibilityLabel={`Remover ${it.descricao}`}
+                style={styles.close}
+              >
+                <Ionicons name="trash-outline" size={18} color={colors.ink3} />
+              </Pressable>
+            </View>
+          ))}
+
+          {!avulsoAberto && (
+            <Pressable onPress={() => setAvulsoAberto(true)} style={({ pressed }) => [styles.novoBtn, pressed && { opacity: 0.8 }]}>
+              <Ionicons name="add" size={18} color={colors.brandInk} />
+              <Text style={styles.novoBtnText}>Item avulso</Text>
+            </Pressable>
+          )}
+
+          {avulsoAberto && (
+            <View style={styles.novoCard}>
+              <Text style={styles.novoTitulo}>Item avulso</Text>
+              <TextInput
+                value={avulsoDescricao}
+                onChangeText={setAvulsoDescricao}
+                placeholder="Descrição (ex.: Tubo de cobre 1/4)"
+                placeholderTextColor={colors.ink4}
+                maxLength={200}
+                style={[styles.input, avulsoErros.descricao && styles.inputErr]}
+              />
+              {avulsoErros.descricao && <Text style={styles.err}>{avulsoErros.descricao}</Text>}
+              <View style={styles.avulsoLinha}>
+                <TextInput
+                  value={avulsoQtd}
+                  onChangeText={setAvulsoQtd}
+                  placeholder="Qtd."
+                  placeholderTextColor={colors.ink4}
+                  keyboardType="number-pad"
+                  maxLength={4}
+                  accessibilityLabel="Quantidade"
+                  style={[styles.input, styles.avulsoQtd, avulsoErros.quantidade && styles.inputErr]}
+                />
+                <TextInput
+                  value={avulsoValor}
+                  onChangeText={setAvulsoValor}
+                  placeholder="Valor unitário (R$)"
+                  placeholderTextColor={colors.ink4}
+                  keyboardType="decimal-pad"
+                  style={[styles.input, { flex: 1 }, avulsoErros.valor && styles.inputErr]}
+                />
+              </View>
+              {(avulsoErros.quantidade || avulsoErros.valor) && (
+                <Text style={styles.err}>{avulsoErros.quantidade ?? avulsoErros.valor}</Text>
+              )}
+              <Text style={styles.novoHint}>Fica só neste atendimento e não mexe no estoque.</Text>
+              <View style={styles.novoAcoes}>
+                <Pressable onPress={fecharAvulso} style={styles.novoCancelar}>
+                  <Text style={styles.novoCancelarText}>Cancelar</Text>
+                </Pressable>
+                <Pressable onPress={adicionarAvulso} style={styles.novoAdicionar}>
+                  <Text style={styles.novoAdicionarText}>Adicionar</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* Status — oculto ao agendar (agendamento entra como Pendente) */}
@@ -425,6 +523,8 @@ const styles = StyleSheet.create({
   input: { fontSize: 15, color: colors.ink, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: space(2.5), paddingHorizontal: space(3) },
   inputErr: { borderColor: colors.bad },
   err: { fontSize: 12, color: colors.bad, marginTop: -space(1) },
+  avulsoLinha: { flexDirection: 'row', gap: space(2) },
+  avulsoQtd: { width: 80, textAlign: 'center' },
 
   sugerido: { flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.brandSoft, borderRadius: radius.sm, paddingHorizontal: space(3.5), paddingVertical: space(3), alignSelf: 'flex-start' },
   sugeridoText: { fontSize: 13.5, fontWeight: '700', color: colors.brandInk },

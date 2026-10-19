@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ScrollView, Linking } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ScrollView, Linking, RefreshControl } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
@@ -7,6 +7,7 @@ import { JobCard } from '@/ui/JobCard'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { montarRota } from '@/features/rota/montarRota'
+import { sincronizar } from '@/sync/sync'
 import type { AgendaItem } from '@/types/api'
 
 function dataHoje(): string {
@@ -18,22 +19,38 @@ export default function Inicio() {
   const router = useRouter()
   const [agenda, setAgenda] = useState<AgendaItem[]>([])
   const [pending, setPending] = useState(0)
+  const [atualizando, setAtualizando] = useState(false)
+
+  const carregar = useCallback(async (ativo: () => boolean = () => true) => {
+    const [items, pend] = await Promise.all([db.getAgenda(), db.getPendingAtendimentos()])
+    if (!ativo()) return
+    items.sort((a, b) => String(a.dataAgendada).localeCompare(String(b.dataAgendada)))
+    setAgenda(items)
+    setPending(pend.length)
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
       let active = true
-      ;(async () => {
-        const [items, pend] = await Promise.all([db.getAgenda(), db.getPendingAtendimentos()])
-        if (!active) return
-        items.sort((a, b) => String(a.dataAgendada).localeCompare(String(b.dataAgendada)))
-        setAgenda(items)
-        setPending(pend.length)
-      })()
+      void carregar(() => active)
       return () => {
         active = false
       }
-    }, []),
+    }, [carregar]),
   )
+
+  // Puxar para baixo: envia o pendente e baixa o que o Dono mudou no web.
+  async function atualizar() {
+    setAtualizando(true)
+    try {
+      await sincronizar()
+    } catch {
+      // Sem internet: segue com o que já está no aparelho.
+    } finally {
+      await carregar()
+      setAtualizando(false)
+    }
+  }
 
   const proximo = agenda[0]
   const resto = agenda.slice(1)
@@ -52,7 +69,10 @@ export default function Inicio() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} />}
+      >
         <Pressable
           onPress={() => router.push('/registrar')}
           style={({ pressed }) => [styles.register, pressed && { opacity: 0.9 }]}

@@ -7,7 +7,7 @@ import { colors, radius, space } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
 import { countPendentes } from '@/auth/localData'
 import { db } from '@/db/instance'
-import { descarga, initialSync } from '@/sync/sync'
+import { resumoSincronizacao, sincronizar as sincronizarTudo } from '@/sync/sync'
 
 function fmt(iso: string | null): string {
   if (!iso) return '—'
@@ -52,16 +52,8 @@ export default function Mais() {
     setSyncing(true)
     setFlash(null)
     try {
-      const r = await descarga()
-      // Atualiza a referência: clientes recém-enviados passam a vir da Carga.
-      await initialSync()
-      const servicos = r.servicosImportados > 0 ? `, ${r.servicosImportados} serviço(s) novo(s)` : ''
-      const enviados = `Enviados: ${r.atendimentosImportados} atendimento(s), ${r.clientesImportados} cliente(s)${servicos}.`
-      setFlash(
-        r.erros.length > 0
-          ? `${enviados} ${r.erros.length} não enviado(s), seguem pendentes: ${r.erros[0]}`
-          : enviados,
-      )
+      // Envia o pendente (se houver) e sempre baixa o que mudou no web.
+      setFlash(resumoSincronizacao(await sincronizarTudo()))
       await reload()
     } catch {
       setFlash('Falha ao sincronizar. Tente novamente com internet.')
@@ -103,15 +95,15 @@ export default function Mais() {
           </View>
           <Text style={styles.status}>
             {pendentes === 0
-              ? 'Tudo sincronizado.'
+              ? 'Nada pendente de envio.'
               : `${pendAt} atendimento${pendAt === 1 ? '' : 's'}, ${pendCli} cliente${pendCli === 1 ? '' : 's'}${pendServ > 0 ? ` e ${pendServ} serviço${pendServ === 1 ? '' : 's'}` : ''} pendentes de envio.`}
           </Text>
           <Text style={styles.sub}>Última sincronização: {fmt(lastSync)}</Text>
           {flash && <Text style={styles.flash}>{flash}</Text>}
           <Pressable
             onPress={sincronizar}
-            disabled={syncing || pendentes === 0}
-            style={({ pressed }) => [styles.syncBtn, (syncing || pendentes === 0 || pressed) && { opacity: 0.6 }]}
+            disabled={syncing}
+            style={({ pressed }) => [styles.syncBtn, (syncing || pressed) && { opacity: 0.6 }]}
           >
             {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>Sincronizar agora</Text>}
           </Pressable>

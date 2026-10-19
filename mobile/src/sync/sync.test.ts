@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import { carga, initialSync, descarga } from './sync'
+import { carga, initialSync, descarga, sincronizar, resumoSincronizacao } from './sync'
 import { api } from '@/lib/api'
 import type { SyncDescargaRequest } from '@/types/api'
 import { createMemoryDb } from '@/db/memoryDb'
@@ -228,5 +228,29 @@ describe('sync.carga (mock)', () => {
     const r = await descarga(mem)
     expect(r.atendimentosImportados).toBe(0)
     expect(r.clientesImportados).toBe(0)
+  })
+})
+
+describe('sync.sincronizar', () => {
+  it('sem nada pendente, ainda baixa a Carga e a agenda', async () => {
+    const mem = createMemoryDb()
+    await mem.init()
+
+    const r = await sincronizar(mem)
+
+    expect(r.enviado.atendimentosImportados).toBe(0)
+    expect(r.recebido.agenda).toBe(3)
+    expect((await mem.getClientes()).length).toBe(3)
+    expect(resumoSincronizacao(r)).toBe('Dados atualizados. Agenda de hoje: 3 visitas.')
+  })
+
+  it('resumo cita o que foi enviado e o que ficou pendente', () => {
+    const recebido = { clientes: 0, produtos: 0, servicos: 0, agenda: 1 }
+    expect(
+      resumoSincronizacao({ enviado: { clientesImportados: 1, servicosImportados: 0, atendimentosImportados: 2, erros: [] }, recebido }),
+    ).toBe('Enviados: 2 atendimento(s), 1 cliente(s). Agenda de hoje: 1 visita.')
+    expect(
+      resumoSincronizacao({ enviado: { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, erros: ['A: x'] }, recebido }),
+    ).toContain('1 não enviado(s)')
   })
 })
