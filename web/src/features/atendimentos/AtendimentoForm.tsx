@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import type { Cliente, AtendimentoInput, StatusAtendimento } from '../../types/api'
+import type { Cliente, AtendimentoInput, StatusAtendimento, Usuario } from '../../types/api'
 import { Button } from '../../components/ui'
 
 const selectCls =
@@ -7,12 +7,14 @@ const selectCls =
 
 export function AtendimentoForm({
   clientes,
+  responsaveis,
   onSubmit,
   submitting,
   serverError,
   onCancel,
 }: {
   clientes: Cliente[]
+  responsaveis: Usuario[]
   onSubmit: (input: AtendimentoInput) => void
   submitting: boolean
   serverError?: string | null
@@ -21,6 +23,7 @@ export function AtendimentoForm({
   const [clienteId, setClienteId] = useState<number | undefined>(undefined)
   const [status, setStatus] = useState<StatusAtendimento>('Pendente')
   const [agenda, setAgenda] = useState('')
+  const [responsavel, setResponsavel] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   function handleSubmit(e: FormEvent) {
@@ -34,6 +37,7 @@ export function AtendimentoForm({
       clienteId,
       status,
       dataAgendada: agenda ? new Date(agenda).toISOString() : null,
+      responsavelId: responsavel ? Number(responsavel) : null,
     })
   }
 
@@ -78,6 +82,22 @@ export function AtendimentoForm({
             <option value="Concluido">Concluído</option>
             <option value="Cancelado">Cancelado</option>
           </select>
+        </label>
+
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12.5px] font-semibold text-ink-2">Responsável</span>
+          <select value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={selectCls}>
+            <option value="">Eu mesmo</option>
+            {responsaveis.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+                {u.perfil === 'Dono' ? ' (dono)' : ''}
+              </option>
+            ))}
+          </select>
+          <span className="text-[12px] text-ink-4">
+            O atendimento aparece na agenda do app de quem for o responsável.
+          </span>
         </label>
 
         <label className="flex flex-col gap-1.5">

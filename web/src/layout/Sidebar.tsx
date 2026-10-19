@@ -67,7 +67,9 @@ export function Sidebar() {
           <div className="truncate text-[13px] font-semibold text-ink">
             {email || 'Minha conta'}
           </div>
-          <div className="text-[11px] text-ink-4">{user?.perfil ?? 'Dono'}</div>
+          <NavLink to="/trocar-senha" className="text-[11px] text-ink-4 hover:text-brand-ink">
+            Alterar senha
+          </NavLink>
         </div>
         <button
           type="button"

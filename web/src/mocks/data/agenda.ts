@@ -38,6 +38,7 @@ const agendaSeed: AgendaItem[] = seeds.map((s, i) => ({
   dataAgendada: at(s.day, s.hour, s.min),
   status: s.status,
   valorTotal: s.valor,
+  usuarioId: (i % 3) + 1,
   clienteId: i + 1,
   clienteNome: s.nome,
   clienteTelefone: s.tel,

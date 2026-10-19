@@ -189,7 +189,7 @@ Dois fluxos distintos:
 - **[Implementado]** Agenda (timeline agrupada por dia), Orçamentos (editor de itens, status, conversão em atendimento) e Atendimentos (itens/estoque/margem)
 - **[Implementado]** Relatórios — abas Rentabilidade/Serviços/Produtos/Estoque
 - Visualização de atendimentos de todos os agentes — implementado
-- Gestão de usuários da empresa (convidar agentes) — não implementado, futuro
+- **[Implementado]** Gestão de usuários da empresa: o Dono cadastra agentes com senha provisória, edita, desativa/reativa e redefine senha; atribui atendimentos a um agente (DEC-35)
 - Consome hoje um mock stateful (MSW) enquanto o banco/API real não sobe; ver DEC-25
 
 ---

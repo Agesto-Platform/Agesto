@@ -11,6 +11,7 @@ public sealed class AgendaItemResponse
     public DateTime? DataAgendada { get; set; }
     public StatusAtendimento Status { get; set; }
     public decimal ValorTotal { get; set; }
+    public long UsuarioId { get; set; }
 
     public long ClienteId { get; set; }
     public string ClienteNome { get; set; } = string.Empty;

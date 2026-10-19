@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom'
 import type { ShellContext } from '../../layout/AppShell'
 import { Card, Money, Pill } from '../../components/ui'
 import { useAgenda } from '../../lib/queries'
+import { useUsuarios, nomeUsuario } from '../usuarios/queries'
 import { ApiError } from '../../lib/api'
 import type { AgendaItem, StatusAtendimento } from '../../types/api'
 
@@ -61,10 +62,14 @@ export function AgendaPage() {
   const { period } = useOutletContext<ShellContext>()
   const { data, isLoading, isError, error } = useAgenda(period)
   const [filtro, setFiltro] = useState<Filtro>('todos')
+  const [agente, setAgente] = useState('')
+  const usuarios = useUsuarios()
+  // Só mostra o seletor quando há mais de uma pessoa recebendo atendimentos.
+  const pessoas = (usuarios.data ?? []).filter((u) => u.ativo)
 
-  const filtered = (data ?? []).filter((i) =>
-    filtro === 'todos' ? true : i.status === filtro,
-  )
+  const filtered = (data ?? [])
+    .filter((i) => (filtro === 'todos' ? true : i.status === filtro))
+    .filter((i) => (agente ? i.usuarioId === Number(agente) : true))
   const groups = groupByDay(filtered)
 
   return (
@@ -77,6 +82,22 @@ export function AgendaPage() {
               {filtered.length} atendimento{filtered.length === 1 ? '' : 's'} no período
             </p>
           </div>
+          <div className="flex items-center gap-2">
+          {pessoas.length > 1 && (
+            <select
+              value={agente}
+              onChange={(e) => setAgente(e.target.value)}
+              aria-label="Filtrar por responsável"
+              className="rounded-[10px] border border-line bg-surface px-3 py-2 text-[12.5px] font-semibold text-ink-2 outline-none focus:border-brand"
+            >
+              <option value="">Toda a equipe</option>
+              {pessoas.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome}
+                </option>
+              ))}
+            </select>
+          )}
           <div className="flex rounded-[10px] border border-line bg-surface-2 p-[3px]">
             {FILTROS.map((f) => (
               <button
@@ -92,6 +113,7 @@ export function AgendaPage() {
                 {f.label}
               </button>
             ))}
+          </div>
           </div>
         </div>
       </Card>
@@ -146,6 +168,11 @@ export function AgendaPage() {
                     </div>
                     {item.enderecoResumo && (
                       <div className="text-[12px] text-ink-3">{item.enderecoResumo}</div>
+                    )}
+                    {pessoas.length > 1 && (
+                      <div className="text-[12px] text-ink-4">
+                        Com {nomeUsuario(usuarios.data, item.usuarioId)}
+                      </div>
                     )}
                   </div>
                   <div className="flex flex-none flex-col items-end gap-1">

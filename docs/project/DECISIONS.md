@@ -695,3 +695,23 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Verificação de email** antes de reabrir o cadastro. Depende de provedor de envio com API HTTP (o Render bloqueia SMTP; sugestão: Resend) e de domínio próprio verificado.
 - **Backup automático** do banco (o plano Free do Supabase não faz).
 - **Migração para .NET 10** (o .NET 8 perde suporte em 10/11/2026).
+
+
+---
+
+## DEC-35 — Gestão de usuários pelo Dono e responsável do atendimento
+
+**Status:** 🟡 Implementado na branch `feature/usuarios-agentes`, aguardando autorização para commit, push e migration
+
+**Contexto:** não havia como criar um usuário Agente (o cadastro só cria Dono) e todo atendimento ficava com quem o criou (`UsuarioId` = criador). O app do agente só funcionava com usuário inserido direto no banco.
+
+**Decisão:**
+1. **Aba Usuários no web (só Dono).** `GET/POST/PUT /api/usuario`, `POST /api/usuario/{id}/desativar`, `/reativar` e `/redefinir-senha`, todos com a policy `Dono`.
+2. **Sem convite por email.** O servidor gera uma senha provisória (10 caracteres, alfabeto sem ambíguos), mostrada uma única vez ao Dono, que repassa ao agente. O usuário nasce com `DeveTrocarSenha = true` e web e app levam para a tela de troca no primeiro acesso (`POST /api/auth/trocar-senha`). Email continua pendente da DEC-34.
+3. **Desativar em vez de excluir.** `Usuario.Ativo` (default `true` para quem já existe). Inativo não loga (403) e o `TokenRevalidator` derruba o token na hora. Histórico de atendimentos fica preservado.
+4. **Regras:** o Dono não desativa nem rebaixa a si mesmo; a empresa precisa de ao menos um Dono ativo.
+5. **Responsável do atendimento.** `ResponsavelId` opcional no create/update do atendimento; ausente = o próprio Dono (create) ou mantém (update). Validado contra a empresa e só usuário ativo. A agenda do agente passa a mostrar o que o Dono atribuiu; no web, filtro "Toda a equipe" e "Com {nome}".
+6. `UltimoAcessoEm` registrado no login, exibido na lista.
+
+**Impacto:** migration `AddUsuarioAtivoESenhaProvisoria` (3 colunas em `Usuarios`). API, web e app precisam subir juntos por causa do `deveTrocarSenha` no login.
+

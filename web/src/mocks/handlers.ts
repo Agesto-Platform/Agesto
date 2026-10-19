@@ -10,6 +10,7 @@ import { agendaHandlers } from './data/agenda'
 import { atendimentoHandlers } from './data/atendimentos'
 import { orcamentoHandlers } from './data/orcamentos'
 import { configuracaoHandlers } from './data/configuracao'
+import { usuarioHandlers } from './data/usuarios'
 
 /**
  * Handlers do MSW. O `*` casa com qualquer origem, então funciona
@@ -44,4 +45,5 @@ export const handlers = [
   ...servicoHandlers,
   ...orcamentoHandlers,
   ...configuracaoHandlers,
+  ...usuarioHandlers,
 ]

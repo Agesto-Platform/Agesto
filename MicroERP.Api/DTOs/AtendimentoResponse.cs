@@ -13,6 +13,7 @@ public sealed class AtendimentoResponse
     public decimal CustoTotal { get; set; }
     public decimal Margem { get; set; }
     public long ClienteId { get; set; }
+    public long UsuarioId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

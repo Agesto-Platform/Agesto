@@ -27,6 +27,17 @@ public sealed class TokenRevalidatorTests
         Assert.False(await TokenRevalidator.IsValidAsync(db, Principal(sub, empresaId, perfil), CancellationToken.None));
     }
 
+    [Fact]
+    public async Task UsuarioDesativado_EhInvalido()
+    {
+        await using var db = await Seed();
+        var usuario = await db.Usuarios.SingleAsync();
+        usuario.Ativo = false;
+        await db.SaveChangesAsync();
+
+        Assert.False(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono"), CancellationToken.None));
+    }
+
     private static async Task<AppDbContext> Seed()
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()

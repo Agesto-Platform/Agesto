@@ -13,6 +13,8 @@ export interface ApiResponse<T> {
 export interface AuthResponse {
   token: string
   expiresAt: string
+  /** Senha provisória definida pelo Dono: o app exige a troca antes de seguir. */
+  deveTrocarSenha?: boolean
 }
 
 export type StatusAtendimento = 'Pendente' | 'Concluido' | 'Cancelado'
