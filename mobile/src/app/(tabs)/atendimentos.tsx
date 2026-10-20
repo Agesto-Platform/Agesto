@@ -78,8 +78,16 @@ export default function Atendimentos() {
       <ScrollView contentContainerStyle={styles.body}>
         {rows.map((r) => {
           const s = STATUS[r.status]
+          // Ainda não enviado: toque para corrigir ou excluir.
           return (
-            <View key={r.key} style={styles.row}>
+            <Pressable
+              key={r.key}
+              onPress={r.pending ? () => router.push(`/registrar?editar=${r.key}`) : undefined}
+              disabled={!r.pending}
+              accessibilityRole={r.pending ? 'button' : undefined}
+              accessibilityLabel={r.pending ? `Corrigir atendimento de ${r.cliente}` : undefined}
+              style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            >
               <View style={{ flex: 1, gap: space(1) }}>
                 <Text style={styles.rowName}>{r.cliente}</Text>
                 <Text style={styles.rowSub}>
@@ -97,7 +105,8 @@ export default function Atendimentos() {
                   </View>
                 )}
               </View>
-            </View>
+              {r.pending && <Ionicons name="chevron-forward" size={18} color={colors.ink4} />}
+            </Pressable>
           )
         })}
         {rows.length === 0 && (

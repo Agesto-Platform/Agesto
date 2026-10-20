@@ -85,6 +85,8 @@ export interface Servico {
 /** Item de agenda enriquecido (GET /api/atendimento/agenda). */
 export interface AgendaItem {
   id: number
+  /** Uuid do atendimento no servidor; é a chave para concluí-lo no app. */
+  uuid: string
   dataAgendada: string | null
   status: StatusAtendimento
   valorTotal: number
@@ -95,6 +97,15 @@ export interface AgendaItem {
   /** Endereço para a navegação; null/ausente quando o cliente não tem rua. */
   enderecoCompleto?: string | null
   resumo: string
+  /** Itens já lançados (ex.: pelo Dono no web). Ausente em respostas antigas. */
+  itens?: AgendaItemLinha[]
+}
+
+export interface AgendaItemLinha {
+  descricao: string
+  quantidade: number
+  precoUnitario: number
+  subtotal: number
 }
 
 /* ---- Sincronização (Carga/Descarga) ---- */
@@ -117,15 +128,37 @@ export interface AtendimentoSyncRequest {
   /** Id do servidor, ou null quando o cliente foi criado offline (usa clienteUuid). */
   clienteId: number | null
   clienteUuid?: string | null
-  itensProduto: { produtoId: number; quantidade: number }[]
+  itensProduto: ItemProdutoSync[]
   itensServico: ItemServicoSync[]
+}
+
+/** Produto do catálogo (produtoId) ou item avulso (produtoId null, com descrição e valor). */
+export interface ItemProdutoSync {
+  /** Gerado no device; na conclusão evita duplicar o item num reenvio. */
+  uuid?: string
+  produtoId: number | null
+  descricao?: string | null
+  /** Avulso: obrigatório. Catálogo: valor ajustado no atendimento; ausente = preço do catálogo. */
+  precoUnitario?: number | null
+  quantidade: number
 }
 
 /** Serviço do catálogo (servicoId) ou criado offline (servicoUuid, resolvido na Descarga). */
 export interface ItemServicoSync {
+  uuid?: string
   servicoId: number | null
   servicoUuid?: string | null
+  /** Valor ajustado no atendimento; ausente = valor do catálogo. */
+  precoUnitario?: number | null
   quantidade: number
+}
+
+/** Atendimento do servidor concluído no app: novo status e itens acrescentados. */
+export interface AtendimentoConclusaoSync {
+  uuid: string
+  status: StatusAtendimento
+  itensProduto: ItemProdutoSync[]
+  itensServico: ItemServicoSync[]
 }
 
 /** Campos para criar um serviço no app (espelha ServicoSyncRequest). */
@@ -150,6 +183,7 @@ export interface SyncDescargaRequest {
   clientes: ClienteSyncInput[]
   servicos?: ServicoSyncInput[]
   atendimentos: AtendimentoSyncRequest[]
+  conclusoes?: AtendimentoConclusaoSync[]
 }
 
 export interface SyncDescargaResponse {
@@ -164,6 +198,8 @@ export interface SyncDescargaResponse {
   servicosSincronizados?: string[]
   /** uuid do device -> id do servidor dos serviços criados offline (ou reaproveitados). */
   servicosMapeados?: { uuid: string; id: number }[]
+  conclusoesImportadas?: number
+  conclusoesSincronizadas?: string[]
   erros: string[]
   sincronizadoEm: string
 }

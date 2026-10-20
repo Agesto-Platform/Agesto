@@ -11,4 +11,7 @@ public sealed class SyncDescargaRequest
     public IReadOnlyList<ServicoSyncRequest> Servicos { get; set; } = [];
     [MaxLength(500, ErrorMessage = "Maximo de 500 atendimentos por sincronizacao.")]
     public IReadOnlyList<AtendimentoSyncRequest> Atendimentos { get; set; } = [];
+    // Atendimentos do servidor concluidos no app (ex.: visita agendada pelo Dono).
+    [MaxLength(500, ErrorMessage = "Maximo de 500 conclusoes por sincronizacao.")]
+    public IReadOnlyList<AtendimentoConclusaoSyncRequest> Conclusoes { get; set; } = [];
 }

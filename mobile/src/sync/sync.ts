@@ -70,6 +70,8 @@ export interface DescargaResult {
   clientesImportados: number
   servicosImportados: number
   atendimentosImportados: number
+  /** Atendimentos do servidor (ex.: agendados pelo Dono) concluídos no app. */
+  conclusoesImportadas: number
   erros: string[]
 }
 
@@ -83,7 +85,7 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
   const atendPend = await database.getPendingAtendimentos()
 
   if (clientesPend.length === 0 && servicosPend.length === 0 && atendPend.length === 0) {
-    return { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, erros: [] }
+    return { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, conclusoesImportadas: 0, erros: [] }
   }
 
   const body: SyncDescargaRequest = {
@@ -95,10 +97,13 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
       uuid: s.uuid, descricao: s.descricao, tipoCobranca: s.tipoCobranca,
       valorHora: s.valorHora, valorEmpreitada: s.valorEmpreitada,
     })),
-    atendimentos: atendPend.map((a) => ({
+    atendimentos: atendPend.filter((a) => !a.existente).map((a) => ({
       uuid: a.uuid, dataRegistro: a.dataRegistro, dataAgendada: a.dataAgendada,
       status: a.status, clienteId: a.clienteId, clienteUuid: a.clienteUuid ?? null,
       itensProduto: a.itensProduto, itensServico: a.itensServico,
+    })),
+    conclusoes: atendPend.filter((a) => a.existente).map((a) => ({
+      uuid: a.uuid, status: a.status, itensProduto: a.itensProduto, itensServico: a.itensServico,
     })),
   }
 
@@ -123,7 +128,7 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
   const aceitos = (uuids: string[] | undefined) => new Set((uuids ?? []).map((u) => u.toLowerCase()))
   const clientesOk = aceitos(res.clientesSincronizados)
   const servicosOk = aceitos(res.servicosSincronizados)
-  const atendOk = aceitos(res.atendimentosSincronizados)
+  const atendOk = aceitos([...(res.atendimentosSincronizados ?? []), ...(res.conclusoesSincronizadas ?? [])])
 
   await database.markClientesSynced(
     clientesPend.map((c) => c.uuid).filter((u) => clientesOk.has(u.toLowerCase())),
@@ -143,6 +148,36 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
     clientesImportados: res.clientesImportados,
     servicosImportados: res.servicosImportados ?? 0,
     atendimentosImportados: res.atendimentosImportados,
+    conclusoesImportadas: res.conclusoesImportadas ?? 0,
     erros: res.erros,
   }
+}
+
+export interface SincronizacaoResult {
+  enviado: DescargaResult
+  recebido: SyncResult
+}
+
+/**
+ * Sincronização completa: envia o que está pendente (se houver) e sempre baixa
+ * a Carga e a agenda, para o que o Dono criou no web chegar ao app mesmo sem
+ * nada a enviar.
+ */
+export async function sincronizar(database: LocalDb = db): Promise<SincronizacaoResult> {
+  const enviado = await descarga(database)
+  const recebido = await initialSync(database)
+  return { enviado, recebido }
+}
+
+/** Resumo de uma sincronização para mostrar ao agente. */
+export function resumoSincronizacao({ enviado, recebido }: SincronizacaoResult): string {
+  const agenda = `Agenda de hoje: ${recebido.agenda} visita${recebido.agenda === 1 ? '' : 's'}.`
+  const atendimentos = enviado.atendimentosImportados + enviado.conclusoesImportadas
+  const nada = atendimentos + enviado.clientesImportados + enviado.servicosImportados === 0
+  if (nada && enviado.erros.length === 0) return `Dados atualizados. ${agenda}`
+  const servicos = enviado.servicosImportados > 0 ? `, ${enviado.servicosImportados} serviço(s) novo(s)` : ''
+  const enviados = `Enviados: ${atendimentos} atendimento(s), ${enviado.clientesImportados} cliente(s)${servicos}.`
+  return enviado.erros.length > 0
+    ? `${enviados} ${enviado.erros.length} não enviado(s), seguem pendentes: ${enviado.erros[0]}`
+    : `${enviados} ${agenda}`
 }

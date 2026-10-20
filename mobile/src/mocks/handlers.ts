@@ -69,8 +69,10 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
       clientes: { uuid: string }[]
       servicos?: { uuid: string }[]
       atendimentos: { uuid: string }[]
+      conclusoes?: { uuid: string }[]
     }
     const servicos = b.servicos ?? []
+    const conclusoes = b.conclusoes ?? []
     return {
       clientesImportados: b.clientes.length,
       servicosImportados: servicos.length,
@@ -79,6 +81,8 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
       atendimentosImportados: b.atendimentos.length,
       clientesSincronizados: b.clientes.map((c) => c.uuid),
       atendimentosSincronizados: b.atendimentos.map((a) => a.uuid),
+      conclusoesImportadas: conclusoes.length,
+      conclusoesSincronizadas: conclusoes.map((a) => a.uuid),
       clientesMapeados: b.clientes.map((c, i) => ({ uuid: c.uuid, id: 1000 + i })),
       erros: [],
       sincronizadoEm: new Date().toISOString(),

@@ -1,4 +1,4 @@
-import type { AgendaItem, Cliente, ClienteInput, ItemServicoSync, Produto, Servico, ServicoInput, StatusAtendimento } from '@/types/api'
+import type { AgendaItem, Cliente, ClienteInput, ItemProdutoSync, ItemServicoSync, Produto, Servico, ServicoInput, StatusAtendimento } from '@/types/api'
 
 /** Cliente criado no device (offline). `syncedAt` null = pendente de envio. */
 export interface PendingCliente extends ClienteInput {
@@ -26,8 +26,13 @@ export interface LocalAtendimento {
   dataRegistro: string
   /** Data agendada (futuro) — null quando é registro imediato. */
   dataAgendada: string | null
-  itensProduto: { produtoId: number; quantidade: number }[]
+  itensProduto: ItemProdutoSync[]
   itensServico: ItemServicoSync[]
+  /**
+   * true = conclusão de um atendimento que já existe no servidor (agendado
+   * pelo Dono, por exemplo). O uuid é o do servidor e os itens são acréscimos.
+   */
+  existente?: boolean
   syncedAt: string | null
 }
 
@@ -61,7 +66,10 @@ export interface LocalDb {
   remapServico(servicoUuid: string, servicoId: number): Promise<void>
 
   // atendimentos criados offline
+  /** Grava ou substitui (mesmo uuid) o atendimento local. */
   addAtendimento(a: LocalAtendimento): Promise<void>
+  /** Apaga o atendimento local, só se ainda não foi enviado. */
+  deleteAtendimento(uuid: string): Promise<void>
   getAtendimentos(): Promise<LocalAtendimento[]>
   getPendingAtendimentos(): Promise<LocalAtendimento[]>
   markSynced(uuids: string[], syncedAt: string): Promise<void>

@@ -25,4 +25,15 @@ public sealed class AgendaItemResponse
 
     // Titulo curto do atendimento (primeiro servico; senao primeiro produto).
     public string Resumo { get; set; } = string.Empty;
+
+    // Itens ja lancados, para o agente ver o que foi combinado antes de concluir.
+    public IReadOnlyList<AgendaItemLinhaResponse> Itens { get; set; } = [];
+}
+
+public sealed class AgendaItemLinhaResponse
+{
+    public string Descricao { get; set; } = string.Empty;
+    public int Quantidade { get; set; }
+    public decimal PrecoUnitario { get; set; }
+    public decimal Subtotal { get; set; }
 }

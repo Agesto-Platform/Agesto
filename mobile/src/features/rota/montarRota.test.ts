@@ -7,7 +7,7 @@ const em = (h: number, m = 0, d = 17) => new Date(2026, 9, d, h, m).toISOString(
 
 function visita(id: number, dataAgendada: string | null, endereco: string | null, status: AgendaItem['status'] = 'Pendente'): AgendaItem {
   return {
-    id, dataAgendada, status, valorTotal: 0, clienteId: id, clienteNome: `Cliente ${id}`, clienteTelefone: null,
+    id, uuid: `at-${id}`, dataAgendada, status, valorTotal: 0, clienteId: id, clienteNome: `Cliente ${id}`, clienteTelefone: null,
     enderecoResumo: null, enderecoCompleto: endereco, resumo: 'Visita',
   }
 }

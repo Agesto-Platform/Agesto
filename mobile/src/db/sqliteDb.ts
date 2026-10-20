@@ -118,6 +118,10 @@ export function createSqliteDb(): LocalDb {
         a.syncedAt,
       )
     },
+    async deleteAtendimento(uuid) {
+      const d = await conn()
+      await d.runAsync(`DELETE FROM atendimentos WHERE uuid = ? AND syncedAt IS NULL`, uuid)
+    },
     async getAtendimentos() {
       const d = await conn()
       const rows = await d.getAllAsync<AtRow>(`SELECT json, syncedAt FROM atendimentos`)

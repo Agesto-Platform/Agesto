@@ -181,7 +181,24 @@ public sealed class AtendimentoService : IAtendimentoService
             EnderecoCompleto = Enderecos.Completo(cliente),
             Latitude = cliente?.Latitude,
             Longitude = cliente?.Longitude,
-            Resumo = resumo
+            Resumo = resumo,
+            Itens = a.ItensServico.Where(i => i.DeletedAt == null)
+                .Select(i => new AgendaItemLinhaResponse
+                {
+                    Descricao = i.Servico?.Descricao ?? "Servico",
+                    Quantidade = i.Quantidade,
+                    PrecoUnitario = i.PrecoUnitario,
+                    Subtotal = i.Subtotal
+                })
+                .Concat(a.ItensProduto.Where(i => i.DeletedAt == null)
+                    .Select(i => new AgendaItemLinhaResponse
+                    {
+                        Descricao = i.Descricao ?? i.Produto?.Nome ?? "Produto",
+                        Quantidade = i.Quantidade,
+                        PrecoUnitario = i.PrecoUnitario,
+                        Subtotal = i.Subtotal
+                    }))
+                .ToList()
         };
     }
 
