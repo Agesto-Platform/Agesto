@@ -618,7 +618,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-32 — API no Render e banco no Supabase em N. Virginia
 
-**Status:** 🟡 Decidido em 08/10/2026 — provisionamento pendente
+**Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo cron-job.org
 
 **Decisão:** substitui a parte de API e banco da DEC-30:
 - **API (.NET 8):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `develop` (provisório, até a promoção para `main`) só depois que o CI passa (`autoDeployTrigger: checksPass`).
@@ -635,7 +635,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Trocar a arquitetura da API** (TypeScript no Cloudflare Workers ou Supabase direto com RLS) → reescrever ~5.500 linhas e 51 endpoints já testados para resolver só a hospedagem; contraria o princípio de mudanças pequenas no MVP.
 
 **Riscos e mitigações:**
-- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo chama `/health` a cada 10 min (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h).
+- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo (cron-job.org) chama `/health` a cada 10 min (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h).
 - **Pausa do Supabase Free** após 7 dias sem atividade → o mesmo ping, porque o `/health` executa `SELECT 1`.
 - **512 MB de RAM e 0,1 CPU** → suficiente para o MVP; reavaliar no primeiro sinal de lentidão.
 - **Sem disco persistente** → a API não grava arquivos hoje; uploads futuros precisam de storage externo.
