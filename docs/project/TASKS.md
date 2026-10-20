@@ -107,9 +107,9 @@
 |------|-----------|------------|------------|
 | Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Campo de duração (não modelado) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje o sync de orçamento é só Carga (leitura) | Média | Decisão de produto |
-| Gestão de usuários (DEC-35) | Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Implementado na branch `feature/usuarios-agentes`; falta autorização para commit, push e migration | Alta | Autorização do Davi |
-| Serviço no app (DEC-36) | Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Implementado na branch `feature/servico-no-app` (sobre a de usuários); falta autorização para commit, push e migration | Alta | Autorização do Davi |
-| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38): "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Branches `feature/rota-fase-1` e `feature/mapa-agenda`. Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
+| ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
+| ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
+| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | Revisão de Davi |
@@ -330,19 +330,16 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 ## Ordem de execução recomendada (próximas sprints)
 
-> O MVP possui backend, Web e Mobile funcionais contra mocks e publicados em `Agesto-Platform/Agesto`. Organização, time `Core`, CI e linha principal já estão configurados. Antes da infraestrutura, restam os rulesets, a auditoria documental e a formalização das responsabilidades e da propriedade intelectual. Depois disso, será provisionado um PostgreSQL novo, as migrations serão aplicadas em ambiente controlado e os clientes trocarão os mocks pela API real.
+> O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados. Restam a auditoria documental e a formalização das responsabilidades e da propriedade intelectual.
 
 ### Sprint imediata
-1. Configurar rulesets em `develop` e `main` com PR, revisão e status checks
-2. Concluir a auditoria de `REQUIREMENTS.md`
-3. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
-4. Depois da auditoria, remover a documentação legada em tarefa separada
-5. **Provisionar PostgreSQL novo e aplicar migrations pendentes** em ambiente controlado
-6. Subir a API real e desligar os mocks no Web e no Mobile
-7. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
+1. Concluir a auditoria de `REQUIREMENTS.md`
+2. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
+3. Depois da auditoria, remover a documentação legada em tarefa separada
+4. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
 
 ### Sprint seguinte
-8. Débitos residuais: margem/hora do KAN-79 (após campo de duração), roteirização/lat-lng (DEC-17), descarga de Orçamento no sync, agenda na Carga do sync mobile, mapear uuid→id do cliente na Descarga mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
+5. Débitos residuais: margem/hora do KAN-79 (após campo de duração), "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
 
 ---
 

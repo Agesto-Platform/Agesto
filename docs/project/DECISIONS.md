@@ -541,7 +541,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-29 — Retomada do desenvolvimento em equipe e propriedade organizacional
 
-**Status:** 🟡 Em implementação — organização, transferência e equipe concluídas em 19/08/2026; rulesets e formalização jurídica ainda pendentes
+**Status:** 🟡 Em implementação — organização, transferência e equipe concluídas em 19/08/2026; ruleset `Protected branches` ativo (revisto em 10/10/2026); formalização jurídica ainda pendente
 
 **Decisão:** O Agesto deixa de operar como projeto mantido por uma única pessoa e volta ao desenvolvimento em equipe. Davi continua responsável pelas decisões de produto. O repositório foi transferido para a organização `Agesto-Platform`, preservando histórico, branches e contribuições.
 
@@ -550,7 +550,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Regras iniciais:**
 - monorepo mantido enquanto backend, web e mobile evoluírem de forma acoplada;
 - fluxo `feature/* → develop → main` por pull request;
-- `develop` e `main` protegidas por revisão e verificações automatizadas;
+- `develop` e `main` protegidas por PR obrigatório e pelos checks Backend, Web e Mobile, sem aprovação obrigatória (revisto em 10/10/2026);
 - permissões concedidas por função e com privilégio mínimo;
 - documentação oficial versionada em `docs/project/`;
 - equipe fundadora registrada como Davi Gomes Rocha (Founder e Product Owner), Depowo (Cofounder, foco inicial em infraestrutura) e ghzpro034 (Cofounder, atuação generalista);
@@ -618,7 +618,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-32 — API no Render e banco no Supabase em N. Virginia
 
-**Status:** 🟡 Decidido em 08/10/2026 — provisionamento pendente
+**Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo cron-job.org
 
 **Decisão:** substitui a parte de API e banco da DEC-30:
 - **API (.NET 8):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `develop` (provisório, até a promoção para `main`) só depois que o CI passa (`autoDeployTrigger: checksPass`).
@@ -635,7 +635,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Trocar a arquitetura da API** (TypeScript no Cloudflare Workers ou Supabase direto com RLS) → reescrever ~5.500 linhas e 51 endpoints já testados para resolver só a hospedagem; contraria o princípio de mudanças pequenas no MVP.
 
 **Riscos e mitigações:**
-- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo chama `/health` a cada 10 min (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h).
+- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo (cron-job.org) chama `/health` a cada 10 min (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h).
 - **Pausa do Supabase Free** após 7 dias sem atividade → o mesmo ping, porque o `/health` executa `SELECT 1`.
 - **512 MB de RAM e 0,1 CPU** → suficiente para o MVP; reavaliar no primeiro sinal de lentidão.
 - **Sem disco persistente** → a API não grava arquivos hoje; uploads futuros precisam de storage externo.
@@ -650,7 +650,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-33 — Sincronização confiável: Carga completa, Descarga por atendimento e cliente offline por UUID
 
-**Status:** 🟡 Proposta implementada em `feature/sync-fixes` — aguardando revisão e aprovação de Davi
+**Status:** 🟢 Implementado em `develop` (PR #43, 10/10/2026)
 
 **Contexto:** revisão do ciclo Carga/Descarga encontrou perda de dados no mobile:
 - a Carga era incremental (`ultimaSincronizacao`), mas o app substitui a tabela local inteira a cada Carga — a partir da segunda sincronização, clientes/produtos/serviços sem alteração sumiam do device; exclusões (soft delete) nunca chegavam ao device;
@@ -701,7 +701,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-35 — Gestão de usuários pelo Dono e responsável do atendimento
 
-**Status:** 🟡 Implementado na branch `feature/usuarios-agentes`, aguardando autorização para commit, push e migration
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
 
 **Contexto:** não havia como criar um usuário Agente (o cadastro só cria Dono) e todo atendimento ficava com quem o criou (`UsuarioId` = criador). O app do agente só funcionava com usuário inserido direto no banco.
 
@@ -720,7 +720,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-36 — Agente cadastra serviço no app, com revisão do Dono
 
-**Status:** 🟡 Implementado na branch `feature/servico-no-app`, aguardando autorização para commit, push e migration
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
 
 **Contexto:** no web, serviço fora do catálogo já vira cadastro rápido (DEC-22), mas o app não conseguia: toda a API de serviço exige perfil Dono e a Descarga só aceitava itens com id do servidor. Em campo o agente ficava sem como registrar um serviço novo.
 
@@ -737,7 +737,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-37 — Rota do dia pelo endereço, sem geocodificação (fase 1)
 
-**Status:** 🟡 Implementado na branch `feature/rota-fase-1`, aguardando autorização para commit e push
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026)
 
 **Contexto:** o plano da rota pronta tem três fases e todas dependem de latitude e longitude do cliente, que exigem um serviço de geocodificação (custo, cota e envio do endereço a terceiro, ponto de LGPD ainda não decidido). Abrir o Google Maps com as paradas não precisa disso: a URL aceita endereços em texto.
 
@@ -756,7 +756,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-38 — Geocodificação com OpenRouteService e mapa da agenda com Leaflet
 
-**Status:** 🟡 Implementado na branch `feature/mapa-agenda`, aguardando autorização para commit, push e migration. Provedor aprovado por Diego em 17/10/2026.
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase. Provedor aprovado por Diego em 17/10/2026.
 
 **Contexto:** o mapa da agenda e a otimização da rota (fase 2) precisam de latitude e longitude dos clientes, e o sistema só guarda o endereço em texto.
 
@@ -772,7 +772,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-39 — Atendimento no app no mesmo nível do web
 
-**Status:** 🟡 Implementado na branch `fix/mobile-sincronizar-item-avulso`, aguardando autorização para push e merge. Pedido por Diego em 20/10/2026, depois do levantamento web × app (`modulos/atendimento-web-vs-app.md`).
+**Status:** 🟢 Implementado em `develop` (PR #48, 20/10/2026). Pedido por Diego em 20/10/2026, depois do levantamento web × app (`modulos/atendimento-web-vs-app.md`).
 
 **Contexto:** no app o agente só usava o preço do catálogo, não conseguia concluir uma visita agendada (só criar outro atendimento), não corrigia nada depois de salvar e via um "Estimado" diferente do que o servidor cobrava na empreitada com quantidade 2.
 
