@@ -550,7 +550,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Regras iniciais:**
 - monorepo mantido enquanto backend, web e mobile evoluírem de forma acoplada;
 - fluxo `feature/* → develop → main` por pull request;
-- `develop` e `main` protegidas por revisão e verificações automatizadas;
+- `develop` e `main` protegidas por PR obrigatório e pelos checks Backend, Web e Mobile, sem aprovação obrigatória (revisto em 10/10/2026);
 - permissões concedidas por função e com privilégio mínimo;
 - documentação oficial versionada em `docs/project/`;
 - equipe fundadora registrada como Davi Gomes Rocha (Founder e Product Owner), Depowo (Cofounder, foco inicial em infraestrutura) e ghzpro034 (Cofounder, atuação generalista);
