@@ -18,6 +18,7 @@ import type {
   Produto,
   Servico,
   StatusAtendimento,
+  Usuario,
 } from '../../types/api'
 
 const selectCls =
@@ -35,6 +36,7 @@ function toLocalInput(iso: string | null): string {
 export function AtendimentoDetail({
   atendimento,
   clienteNome,
+  responsaveis,
   produtos,
   servicos,
   onUpdate,
@@ -43,9 +45,10 @@ export function AtendimentoDetail({
 }: {
   atendimento: Atendimento
   clienteNome: string
+  responsaveis: Usuario[]
   produtos: Produto[]
   servicos: Servico[]
-  onUpdate: (status: StatusAtendimento, dataAgendada: string | null) => void
+  onUpdate: (status: StatusAtendimento, dataAgendada: string | null, responsavelId: number) => void
   onDelete: () => void
   busy: { update: boolean; delete: boolean }
 }) {
@@ -63,6 +66,9 @@ export function AtendimentoDetail({
 
   const [status, setStatus] = useState<StatusAtendimento>(at.status)
   const [agenda, setAgenda] = useState(toLocalInput(at.dataAgendada))
+  const [responsavel, setResponsavel] = useState(at.usuarioId)
+  // O responsável atual pode estar desativado: continua na lista para não sumir do select.
+  const opcoesResponsavel = responsaveis.filter((u) => u.ativo || u.id === at.usuarioId)
 
   const [tipo, setTipo] = useState<Tipo>('produto')
   const [refId, setRefId] = useState('')
@@ -125,10 +131,21 @@ export function AtendimentoDetail({
 
     if (tipo === 'servico') {
       if (!refId) return setDraftError('Escolha um serviço.')
-      addServ.mutate(
-        { atendimentoId: at.id, servicoId: Number(refId), precoUnitario: preco ?? null, quantidade: qtd },
-        { onSuccess: () => { toast.success('Item adicionado.'); resetDraft() }, onError },
-      )
+      // Empreitada não multiplica pela quantidade (DEC-04): cada unidade vira uma linha.
+      const empreitada = servicos.find((s) => s.id === Number(refId))?.tipoCobranca === 'Empreitada'
+      if (empreitada && qtd > 20) return setDraftError('Na empreitada, adicione até 20 unidades por vez.')
+      const linhas = empreitada ? qtd : 1
+      const body = { atendimentoId: at.id, servicoId: Number(refId), precoUnitario: preco ?? null, quantidade: empreitada ? 1 : qtd }
+      // Uma de cada vez: cada inclusão recalcula o total do atendimento no servidor.
+      void (async () => {
+        try {
+          for (let i = 0; i < linhas; i++) await addServ.mutateAsync(body)
+          toast.success(linhas > 1 ? `${linhas} itens adicionados.` : 'Item adicionado.')
+          resetDraft()
+        } catch (e) {
+          onError(e)
+        }
+      })()
       return
     }
 
@@ -371,7 +388,21 @@ export function AtendimentoDetail({
 
         {/* Status / reagendamento */}
         <div className="flex flex-col gap-3 border-t border-line pt-4">
-          <span className="text-[12.5px] font-semibold text-ink-2">Status e agenda</span>
+          <span className="text-[12.5px] font-semibold text-ink-2">Responsável, status e agenda</span>
+          <select
+            value={responsavel}
+            onChange={(e) => setResponsavel(Number(e.target.value))}
+            aria-label="Responsável"
+            className={selectCls}
+          >
+            {opcoesResponsavel.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome}
+                {u.perfil === 'Dono' ? ' (dono)' : ''}
+                {u.ativo ? '' : ' (desativado)'}
+              </option>
+            ))}
+          </select>
           <div className="grid grid-cols-2 gap-3">
             <select value={status} onChange={(e) => setStatus(e.target.value as StatusAtendimento)} className={selectCls}>
               <option value="Pendente">Pendente</option>
@@ -382,11 +413,11 @@ export function AtendimentoDetail({
           </div>
           <Button
             type="button"
-            onClick={() => onUpdate(status, agenda ? new Date(agenda).toISOString() : null)}
+            onClick={() => onUpdate(status, agenda ? new Date(agenda).toISOString() : null, responsavel)}
             disabled={busy.update}
             className="self-start"
           >
-            {busy.update ? 'Salvando…' : 'Salvar status/agenda'}
+            {busy.update ? 'Salvando…' : 'Salvar alterações'}
           </Button>
         </div>
       </div>

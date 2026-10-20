@@ -28,6 +28,12 @@ describe('navVisivel', () => {
     expect(r).toContain('/parametrizacao')
   })
 
+  it('Usuários aparece em todos os modos', () => {
+    for (const tipo of ['Hibrido', 'Servico', 'Venda'] as const) {
+      expect(rotas(tipo)).toContain('/usuarios')
+    }
+  })
+
   it('sem config (undefined) mostra tudo', () => {
     expect(rotas(undefined)).toContain('/servicos')
   })

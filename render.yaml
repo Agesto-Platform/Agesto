@@ -27,3 +27,7 @@ services:
         generateValue: true
       - key: Cors__AllowedOrigins__0
         sync: false
+      # Chave do OpenRouteService para o mapa da agenda (DEC-38). Opcional:
+      # sem ela, a geocodificação fica desligada e o mapa mostra só a lista.
+      - key: Geocoding__OpenRouteServiceApiKey
+        sync: false

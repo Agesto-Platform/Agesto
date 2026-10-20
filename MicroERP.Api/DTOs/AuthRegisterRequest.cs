@@ -11,13 +11,16 @@ public sealed class AuthRegisterRequest
 
     [Required(ErrorMessage = "Nome obrigatório.")]
     [MinLength(2, ErrorMessage = "Nome deve ter no mínimo 2 caracteres.")]
+    [MaxLength(120, ErrorMessage = "Nome deve ter no máximo 120 caracteres.")]
     public string Nome { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Email obrigatório.")]
     [EmailAddress(ErrorMessage = "Email inválido.")]
+    [MaxLength(150, ErrorMessage = "Email deve ter no máximo 150 caracteres.")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Senha obrigatória.")]
     [MinLength(8, ErrorMessage = "Senha deve ter no mínimo 8 caracteres.")]
+    [MaxLength(128, ErrorMessage = "Senha deve ter no máximo 128 caracteres.")]
     public string Senha { get; set; } = string.Empty;
 }

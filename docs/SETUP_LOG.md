@@ -41,7 +41,7 @@ gh auth status                             # confirmou Depowo como Active
 gh api user/memberships/orgs/Auto-academic-erp   # role: admin, state: active
 ```
 
-**Pendência:** o fine-grained PAT antigo continua ativo no GitHub. Revogar em https://github.com/settings/tokens ao fim da sessão.
+**Pendência:** revogar em https://github.com/settings/tokens os PATs criados nesta configuração que não estiverem mais em uso.
 
 ### 2. Criação da Organização GitHub (Fase 1.2)
 
@@ -152,10 +152,9 @@ Cada commit antes de push e cada PR antes de merge passa por inspeção contra: 
 
 1. **Senha do Supabase:** será gerada (32 chars random) na criação do projeto. Não pode ser recuperada — só resetada. **Salvar em vault (Bitwarden/1Password)** e compartilhar via canal seguro.
 2. **`appsettings.Development.json`** com a connection string está coberto pelo `.gitignore` do template VS. Sempre confirmar com `git check-ignore -v` antes do primeiro commit que tocar nele.
-3. **PG Local na máquina do Diego:** PostgreSQL 18.3 instalado parcialmente em `C:\Program Files\PostgreSQL\18` (binários OK, cluster não inicializado). Senha do superuser cadastrada como `6130`. **Não está em uso** — projeto roda contra Supabase. Pode desinstalar via Painel de Controle ou deixar.
+3. **PG Local na máquina do Diego:** PostgreSQL 18.3 instalado parcialmente em `C:\Program Files\PostgreSQL\18` (binários OK, cluster não inicializado). **Não está em uso** — projeto roda contra Supabase. Pode desinstalar via Painel de Controle ou deixar.
 4. **Free tier Supabase pausa após 7 dias sem uso.** Combinar com o time pra acessar o dashboard 1x por semana, ou upgrade pro Pro ($25/mês) na semana do CP IV (18/06).
-5. **Token classic PAT** do Depowo com escopos amplos (`admin:org`, `delete_repo`). Expiração 90 dias. Rotacionar após CP IV.
-6. **Fine-grained PAT antigo continua ativo** — revogar em https://github.com/settings/tokens.
+5. **PATs desta configuração** (classic com `admin:org`/`delete_repo` e o fine-grained antigo): revogar os que não estiverem mais em uso.
 7. **Cloud para deploy ainda não decidida.** PROJETO_CONTEXTO menciona Azure, mas a realidade pragmática (acadêmico, free tier) sugere Render para hosting da API + Supabase para banco + GitHub Actions para CI. Azure for Students ($100 USD/ano) vale ativar como backup.
 
 ---

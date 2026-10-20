@@ -11,4 +11,7 @@ public sealed class AtendimentoUpdateRequest
 
     // Reagendamento (full-replace): envie o valor atual para mantê-lo.
     public DateTime? DataAgendada { get; set; }
+
+    // Troca o agente responsável. Ausente = mantém o atual.
+    public long? ResponsavelId { get; set; }
 }

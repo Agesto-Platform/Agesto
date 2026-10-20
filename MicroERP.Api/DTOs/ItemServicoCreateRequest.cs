@@ -14,9 +14,9 @@ public sealed class ItemServicoCreateRequest
 
     // Opcional: sobrescreve o valor do catalogo (ValorHora/ValorEmpreitada) conforme
     // dificuldade/situacao (DEC-23). Se nulo, usa o valor do catalogo como default.
-    [Range(0, double.MaxValue, ErrorMessage = "Valor unitário inválido.")]
+    [Range(0, 999999.99, ErrorMessage = "Valor unitário inválido.")]
     public decimal? PrecoUnitario { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Quantidade inválida.")]
+    [Range(1, 9999, ErrorMessage = "Quantidade inválida.")]
     public int Quantidade { get; set; }
 }

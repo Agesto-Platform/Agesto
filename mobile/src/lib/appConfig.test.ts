@@ -25,11 +25,18 @@ describe('appConfig', () => {
 
   it('saveConfig persiste e getConfig lê de volta', async () => {
     const db = createMemoryDb()
-    await saveConfig(db, { tipoOperacao: 'Hibrido', modoAgendaAgente: 'Fixa', controlaEstoque: false })
+    await saveConfig(db, { tipoOperacao: 'Hibrido', modoAgendaAgente: 'Fixa', controlaEstoque: false, agenteCadastraServico: false })
     expect(await getConfig(db)).toEqual({
       tipoOperacao: 'Hibrido',
       modoAgendaAgente: 'Fixa',
       controlaEstoque: false,
+      agenteCadastraServico: false,
     })
+  })
+
+  it('servidor antigo sem agenteCadastraServico mantém o cadastro de serviço ligado', async () => {
+    const db = createMemoryDb()
+    await saveConfig(db, { tipoOperacao: 'Servico', modoAgendaAgente: 'Flexivel', controlaEstoque: true })
+    expect((await getConfig(db)).agenteCadastraServico).toBe(true)
   })
 })

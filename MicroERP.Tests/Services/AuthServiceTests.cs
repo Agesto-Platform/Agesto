@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
@@ -141,6 +142,78 @@ public sealed class AuthServiceTests
             }, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task LoginAsync_WhenUsuarioInativo_ThrowsUsuarioInativoException()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "inativo@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        usuario.Ativo = false;
+        await dbContext.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<UsuarioInativoException>(() =>
+            service.LoginAsync(new AuthLoginRequest { Email = "inativo@teste.com", Senha = "Senha123!" }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task LoginAsync_WhenUsuarioInativoAndPasswordWrong_ReturnsNull()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "inativo2@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        usuario.Ativo = false;
+        await dbContext.SaveChangesAsync();
+
+        Assert.Null(await service.LoginAsync(new AuthLoginRequest { Email = "inativo2@teste.com", Senha = "Errada123!" }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task LoginAsync_RegistraUltimoAcessoEDevolveDeveTrocarSenha()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "acesso@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        usuario.DeveTrocarSenha = true;
+        await dbContext.SaveChangesAsync();
+
+        var response = await service.LoginAsync(new AuthLoginRequest { Email = "acesso@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+
+        Assert.True(response!.DeveTrocarSenha);
+        Assert.NotNull((await dbContext.Usuarios.SingleAsync()).UltimoAcessoEm);
+    }
+
+    [Fact]
+    public async Task TrocarSenhaAsync_ComSenhaAtualCorreta_TrocaELimpaPendencia()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "troca@teste.com", Senha = "Provisoria1" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        usuario.DeveTrocarSenha = true;
+        await dbContext.SaveChangesAsync();
+
+        await service.TrocarSenhaAsync(usuario.Id, new TrocarSenhaRequest { SenhaAtual = "Provisoria1", NovaSenha = "NovaSenha2" }, CancellationToken.None);
+
+        Assert.False((await dbContext.Usuarios.SingleAsync()).DeveTrocarSenha);
+        Assert.Null(await service.LoginAsync(new AuthLoginRequest { Email = "troca@teste.com", Senha = "Provisoria1" }, CancellationToken.None));
+        Assert.NotNull(await service.LoginAsync(new AuthLoginRequest { Email = "troca@teste.com", Senha = "NovaSenha2" }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task TrocarSenhaAsync_ComSenhaAtualErrada_Lanca()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "troca2@teste.com", Senha = "Provisoria1" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+
+        await Assert.ThrowsAsync<SenhaAtualInvalidaException>(() =>
+            service.TrocarSenhaAsync(usuario.Id, new TrocarSenhaRequest { SenhaAtual = "Errada0000", NovaSenha = "NovaSenha2" }, CancellationToken.None));
+    }
+
     private static IConfiguration CreateConfiguration()
     {
         return new ConfigurationBuilder()
@@ -158,6 +231,7 @@ public sealed class AuthServiceTests
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
         return new AppDbContext(options);

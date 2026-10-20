@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import { carga, initialSync, descarga } from './sync'
+import { carga, initialSync, descarga, sincronizar, resumoSincronizacao } from './sync'
 import { api } from '@/lib/api'
 import type { SyncDescargaRequest } from '@/types/api'
 import { createMemoryDb } from '@/db/memoryDb'
@@ -82,6 +82,43 @@ describe('sync.carga (mock)', () => {
     expect((await mem.getPendingClientes())[0].syncedAt).not.toBeNull()
   })
 
+  it('descarga manda a conclusão de atendimento do servidor separada dos novos', async () => {
+    const mem = createMemoryDb()
+    await mem.addAtendimento({
+      uuid: 'novo', clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-20', dataAgendada: null,
+      itensProduto: [{ uuid: 'i1', produtoId: 1, quantidade: 1 }], itensServico: [], syncedAt: null,
+    })
+    await mem.addAtendimento({
+      uuid: 'at-101', clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-20', dataAgendada: null,
+      itensProduto: [{ uuid: 'i2', produtoId: 1, precoUnitario: 60, quantidade: 1 }], itensServico: [], existente: true, syncedAt: null,
+    })
+    const post = jest.spyOn(api, 'post')
+
+    const r = await descarga(mem)
+
+    const enviado = post.mock.calls[0][1] as SyncDescargaRequest
+    expect(enviado.atendimentos.map((a) => a.uuid)).toEqual(['novo'])
+    expect(enviado.conclusoes).toEqual([
+      { uuid: 'at-101', status: 'Concluido', itensProduto: [{ uuid: 'i2', produtoId: 1, precoUnitario: 60, quantidade: 1 }], itensServico: [] },
+    ])
+    expect(r.conclusoesImportadas).toBe(1)
+    expect(await mem.getPendingAtendimentos()).toHaveLength(0)
+    post.mockRestore()
+  })
+
+  it('apaga só atendimento ainda não enviado', async () => {
+    const mem = createMemoryDb()
+    for (const [uuid, syncedAt] of [['pend', null], ['enviado', '2026-10-20T12:00:00Z']] as const) {
+      await mem.addAtendimento({
+        uuid, clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-20', dataAgendada: null,
+        itensProduto: [], itensServico: [], syncedAt,
+      })
+    }
+    await mem.deleteAtendimento('pend')
+    await mem.deleteAtendimento('enviado')
+    expect((await mem.getAtendimentos()).map((a) => a.uuid)).toEqual(['enviado'])
+  })
+
   it('descarga mantém pendente o que o servidor rejeitou', async () => {
     const mem = createMemoryDb()
     await mem.addCliente({
@@ -151,6 +188,66 @@ describe('sync.carga (mock)', () => {
     post.mockRestore()
   })
 
+  it('descarga envia serviço criado offline e religa os itens ao id do servidor', async () => {
+    const mem = createMemoryDb()
+    await mem.addServico({
+      uuid: 's-novo', descricao: 'Limpeza de dreno', tipoCobranca: 'Empreitada',
+      valorHora: null, valorEmpreitada: 120, syncedAt: null,
+    })
+    for (const uuid of ['a-ok', 'a-ruim']) {
+      await mem.addAtendimento({
+        uuid, clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-17', dataAgendada: null,
+        itensProduto: [], itensServico: [{ servicoId: null, servicoUuid: 's-novo', quantidade: 1 }], syncedAt: null,
+      })
+    }
+    const post = jest.spyOn(api, 'post').mockResolvedValueOnce({
+      clientesImportados: 0,
+      servicosImportados: 1,
+      atendimentosImportados: 1,
+      clientesSincronizados: [],
+      servicosSincronizados: ['S-NOVO'],
+      servicosMapeados: [{ uuid: 'S-NOVO', id: 55 }],
+      atendimentosSincronizados: ['a-ok'],
+      erros: ["Atendimento 'a-ruim': Estoque insuficiente."],
+      sincronizadoEm: '2026-10-17T12:00:00Z',
+    })
+
+    const r = await descarga(mem)
+
+    const enviado = post.mock.calls[0][1] as SyncDescargaRequest
+    expect(enviado.servicos).toEqual([
+      { uuid: 's-novo', descricao: 'Limpeza de dreno', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 120 },
+    ])
+    expect(enviado.atendimentos[0].itensServico).toEqual([{ servicoId: null, servicoUuid: 's-novo', quantidade: 1 }])
+    expect(r.servicosImportados).toBe(1)
+    expect((await mem.getPendingServicos())[0].syncedAt).not.toBeNull()
+    const pendente = await mem.getPendingAtendimentos()
+    expect(pendente).toHaveLength(1)
+    expect(pendente[0].itensServico).toEqual([{ servicoId: 55, servicoUuid: null, quantidade: 1 }])
+    post.mockRestore()
+  })
+
+  it('serviço rejeitado pelo servidor segue pendente', async () => {
+    const mem = createMemoryDb()
+    await mem.addServico({
+      uuid: 's-ruim', descricao: 'Visita', tipoCobranca: 'PorHora', valorHora: 80, valorEmpreitada: null, syncedAt: null,
+    })
+    const post = jest.spyOn(api, 'post').mockResolvedValueOnce({
+      clientesImportados: 0,
+      atendimentosImportados: 0,
+      clientesSincronizados: [],
+      atendimentosSincronizados: [],
+      erros: ["Servico 'Visita': o cadastro de servico pelo app esta desligado."],
+      sincronizadoEm: '2026-10-17T12:00:00Z',
+    })
+
+    const r = await descarga(mem)
+
+    expect(r.erros).toHaveLength(1)
+    expect((await mem.getPendingServicos())[0].syncedAt).toBeNull()
+    post.mockRestore()
+  })
+
   it('carga é sempre completa, mesmo após uma sincronização anterior', async () => {
     const mem = createMemoryDb()
     await mem.init()
@@ -168,5 +265,29 @@ describe('sync.carga (mock)', () => {
     const r = await descarga(mem)
     expect(r.atendimentosImportados).toBe(0)
     expect(r.clientesImportados).toBe(0)
+  })
+})
+
+describe('sync.sincronizar', () => {
+  it('sem nada pendente, ainda baixa a Carga e a agenda', async () => {
+    const mem = createMemoryDb()
+    await mem.init()
+
+    const r = await sincronizar(mem)
+
+    expect(r.enviado.atendimentosImportados).toBe(0)
+    expect(r.recebido.agenda).toBe(3)
+    expect((await mem.getClientes()).length).toBe(3)
+    expect(resumoSincronizacao(r)).toBe('Dados atualizados. Agenda de hoje: 3 visitas.')
+  })
+
+  it('resumo cita o que foi enviado e o que ficou pendente', () => {
+    const recebido = { clientes: 0, produtos: 0, servicos: 0, agenda: 1 }
+    expect(
+      resumoSincronizacao({ enviado: { clientesImportados: 1, servicosImportados: 0, atendimentosImportados: 1, conclusoesImportadas: 1, erros: [] }, recebido }),
+    ).toBe('Enviados: 2 atendimento(s), 1 cliente(s). Agenda de hoje: 1 visita.')
+    expect(
+      resumoSincronizacao({ enviado: { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, conclusoesImportadas: 0, erros: ['A: x'] }, recebido }),
+    ).toContain('1 não enviado(s)')
   })
 })

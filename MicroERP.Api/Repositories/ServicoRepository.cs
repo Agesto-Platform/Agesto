@@ -18,6 +18,7 @@ public sealed class ServicoRepository : IServicoRepository
     {
         return await _dbContext.Servicos
             .AsNoTracking()
+            .Include(s => s.CriadoPor)
             .Where(s => s.EmpresaId == empresaId && s.DeletedAt == null)
             .OrderBy(s => s.Descricao)
             .ToListAsync(cancellationToken);
@@ -26,6 +27,7 @@ public sealed class ServicoRepository : IServicoRepository
     public async Task<Servico?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)
     {
         var query = _dbContext.Servicos
+            .Include(s => s.CriadoPor)
             .Where(s => s.EmpresaId == empresaId && s.Id == id && s.DeletedAt == null);
 
         if (!track)
@@ -34,6 +36,16 @@ public sealed class ServicoRepository : IServicoRepository
         }
 
         return await query.FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<Servico?> GetByDescricaoAsync(long empresaId, string descricao, CancellationToken cancellationToken)
+    {
+        var alvo = descricao.Trim().ToLower();
+        return await _dbContext.Servicos
+            .AsNoTracking()
+            .Where(s => s.EmpresaId == empresaId && s.DeletedAt == null && s.Descricao.ToLower() == alvo)
+            .OrderBy(s => s.Id)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task AddAsync(Servico servico, CancellationToken cancellationToken)

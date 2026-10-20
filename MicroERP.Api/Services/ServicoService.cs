@@ -66,8 +66,22 @@ public sealed class ServicoService : IServicoService
         servico.TipoCobranca = request.TipoCobranca;
         servico.ValorEmpreitada = request.ValorEmpreitada;
         servico.ValorHora = request.ValorHora;
+        // Editar pelo web é o Dono revisando: tira o selo de "criado pelo agente".
+        servico.Revisado = true;
         servico.UpdatedAt = DateTime.UtcNow;
 
+        await _servicoRepository.SaveChangesAsync(cancellationToken);
+
+        return MapResponse(servico);
+    }
+
+    public async Task<ServicoResponse> MarcarRevisadoAsync(long empresaId, long id, CancellationToken cancellationToken)
+    {
+        var servico = await _servicoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
+        if (servico is null) throw new NotFoundException("Servico nao encontrado.");
+
+        servico.Revisado = true;
+        servico.UpdatedAt = DateTime.UtcNow;
         await _servicoRepository.SaveChangesAsync(cancellationToken);
 
         return MapResponse(servico);
@@ -94,6 +108,9 @@ public sealed class ServicoService : IServicoService
             TipoCobranca = servico.TipoCobranca,
             ValorHora = servico.ValorHora,
             ValorEmpreitada = servico.ValorEmpreitada,
+            Revisado = servico.Revisado,
+            CriadoPorUsuarioId = servico.CriadoPorUsuarioId,
+            CriadoPorNome = servico.CriadoPor?.Nome,
             CreatedAt = servico.CreatedAt,
             UpdatedAt = servico.UpdatedAt
         };

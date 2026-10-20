@@ -11,6 +11,7 @@ export const DEFAULT_CONFIG: Configuracao = {
   tipoOperacao: 'Servico',
   modoAgendaAgente: 'Flexivel',
   controlaEstoque: true,
+  agenteCadastraServico: true,
 }
 
 /** Persiste a configuração da empresa (vinda da Carga) no banco local. */

@@ -78,6 +78,9 @@ public sealed class ClienteServiceTests
             Id = 3,
             Nome = "Cliente",
             Cpf = "12345678910",
+            Telefone = "11999999999",
+            Logradouro = "Rua A",
+            Cidade = "Cidade",
             EmpresaId = 1
         };
 
@@ -91,6 +94,12 @@ public sealed class ClienteServiceTests
         await _service.DeleteAsync(1, 3, CancellationToken.None);
 
         Assert.NotNull(cliente.DeletedAt);
+        // LGPD: a linha fica para o histórico, sem dados que identifiquem a pessoa.
+        Assert.Equal("Cliente removido", cliente.Nome);
+        Assert.Equal("ANON3", cliente.Cpf);
+        Assert.Null(cliente.Telefone);
+        Assert.Null(cliente.Logradouro);
+        Assert.Null(cliente.Cidade);
         _repositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -228,5 +237,25 @@ public sealed class ClienteServiceTests
         Assert.Equal("38000-000", added.Cep);
         Assert.Equal("Rua das Flores", response.Logradouro);
         Assert.Equal("Centro", response.Bairro);
+    }
+
+    [Theory]
+    [InlineData("Rua Nova", true)]
+    [InlineData("Rua Velha", false)]
+    public async Task UpdateAsync_EnderecoMudou_DescartaCoordenadasParaGeocodificarDeNovo(string rua, bool descarta)
+    {
+        var cliente = new Cliente
+        {
+            Id = 7, EmpresaId = 1, Nome = "Maria", Cpf = "52998224725", Logradouro = "Rua Velha",
+            Latitude = -19.7, Longitude = -47.9, GeocodificadoEm = DateTime.UtcNow
+        };
+        _repositoryMock
+            .Setup(r => r.GetByIdAsync(1, 7, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(cliente);
+
+        await _service.UpdateAsync(1, 7, new ClienteUpdateRequest { Nome = "Maria Silva", Cpf = "52998224725", Logradouro = rua }, CancellationToken.None);
+
+        Assert.Equal(descarta, cliente.GeocodificadoEm is null);
+        Assert.Equal(descarta, cliente.Latitude is null);
     }
 }

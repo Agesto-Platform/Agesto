@@ -74,6 +74,15 @@ public sealed class ClienteService : IClienteService
             }
         }
 
+        // Endereço novo: descarta as coordenadas antigas para o mapa geocodificar de novo.
+        if (cliente.Logradouro != request.Logradouro || cliente.Numero != request.Numero
+            || cliente.Bairro != request.Bairro || cliente.Cidade != request.Cidade || cliente.Cep != request.Cep)
+        {
+            cliente.Latitude = null;
+            cliente.Longitude = null;
+            cliente.GeocodificadoEm = null;
+        }
+
         cliente.Nome = request.Nome;
         cliente.Telefone = request.Telefone;
         cliente.Cpf = cpf;
@@ -94,6 +103,7 @@ public sealed class ClienteService : IClienteService
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
         if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
 
+        DadosPessoais.Anonimizar(cliente);
         cliente.DeletedAt = DateTime.UtcNow;
         cliente.UpdatedAt = DateTime.UtcNow;
 

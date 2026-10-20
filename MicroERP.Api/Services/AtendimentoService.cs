@@ -14,6 +14,7 @@ public sealed class AtendimentoService : IAtendimentoService
     private readonly IItemServicoRepository _itemServicoRepository;
     private readonly IProdutoRepository _produtoRepository;
     private readonly IConfiguracaoRepository _configuracaoRepository;
+    private readonly IUsuarioRepository _usuarioRepository;
 
     public AtendimentoService(
         IAtendimentoRepository atendimentoRepository,
@@ -21,7 +22,8 @@ public sealed class AtendimentoService : IAtendimentoService
         IItemProdutoRepository itemProdutoRepository,
         IItemServicoRepository itemServicoRepository,
         IProdutoRepository produtoRepository,
-        IConfiguracaoRepository configuracaoRepository)
+        IConfiguracaoRepository configuracaoRepository,
+        IUsuarioRepository usuarioRepository)
     {
         _atendimentoRepository = atendimentoRepository;
         _clienteRepository = clienteRepository;
@@ -29,6 +31,14 @@ public sealed class AtendimentoService : IAtendimentoService
         _itemServicoRepository = itemServicoRepository;
         _produtoRepository = produtoRepository;
         _configuracaoRepository = configuracaoRepository;
+        _usuarioRepository = usuarioRepository;
+    }
+
+    // O responsável precisa ser um usuário ativo da mesma empresa.
+    private async Task ValidarResponsavelAsync(long empresaId, long usuarioId, CancellationToken cancellationToken)
+    {
+        var usuario = await _usuarioRepository.GetByIdAsync(empresaId, usuarioId, cancellationToken);
+        if (usuario is null || !usuario.Ativo) throw new NotFoundException("Agente nao encontrado.");
     }
 
     // Default seguro: controla. Quando false, o cancelamento nao devolve estoque.
@@ -63,11 +73,17 @@ public sealed class AtendimentoService : IAtendimentoService
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, request.ClienteId, false, cancellationToken);
         if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
 
+        if (request.ResponsavelId is { } responsavelId && responsavelId != usuarioId)
+        {
+            await ValidarResponsavelAsync(empresaId, responsavelId, cancellationToken);
+            usuarioId = responsavelId;
+        }
+
         var atendimento = new Atendimento
         {
             Uuid = Guid.NewGuid(),
             EmpresaId = empresaId,         // isolamento multi-tenant
-            UsuarioId = usuarioId,          // agente que registrou
+            UsuarioId = usuarioId,          // agente responsável (default: quem registrou)
             ClienteId = request.ClienteId,
             Status = request.Status,
             DataRegistro = request.DataRegistro ?? DateTime.UtcNow,
@@ -87,6 +103,12 @@ public sealed class AtendimentoService : IAtendimentoService
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
         if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
+
+        if (request.ResponsavelId is { } responsavelId && responsavelId != atendimento.UsuarioId)
+        {
+            await ValidarResponsavelAsync(empresaId, responsavelId, cancellationToken);
+            atendimento.UsuarioId = responsavelId;
+        }
 
         atendimento.Status = request.Status;
         atendimento.DataAgendada = request.DataAgendada;
@@ -151,29 +173,33 @@ public sealed class AtendimentoService : IAtendimentoService
             DataAgendada = a.DataAgendada,
             Status = a.Status,
             ValorTotal = a.ValorTotal,
+            UsuarioId = a.UsuarioId,
             ClienteId = a.ClienteId,
             ClienteNome = cliente?.Nome ?? string.Empty,
             ClienteTelefone = cliente?.Telefone,
-            EnderecoResumo = FormatEndereco(cliente),
-            Resumo = resumo
+            EnderecoResumo = Enderecos.Resumo(cliente),
+            EnderecoCompleto = Enderecos.Completo(cliente),
+            Latitude = cliente?.Latitude,
+            Longitude = cliente?.Longitude,
+            Resumo = resumo,
+            Itens = a.ItensServico.Where(i => i.DeletedAt == null)
+                .Select(i => new AgendaItemLinhaResponse
+                {
+                    Descricao = i.Servico?.Descricao ?? "Servico",
+                    Quantidade = i.Quantidade,
+                    PrecoUnitario = i.PrecoUnitario,
+                    Subtotal = i.Subtotal
+                })
+                .Concat(a.ItensProduto.Where(i => i.DeletedAt == null)
+                    .Select(i => new AgendaItemLinhaResponse
+                    {
+                        Descricao = i.Descricao ?? i.Produto?.Nome ?? "Produto",
+                        Quantidade = i.Quantidade,
+                        PrecoUnitario = i.PrecoUnitario,
+                        Subtotal = i.Subtotal
+                    }))
+                .ToList()
         };
-    }
-
-    private static string? FormatEndereco(Cliente? cliente)
-    {
-        if (cliente is null) return null;
-
-        var partes = new List<string>();
-        if (!string.IsNullOrWhiteSpace(cliente.Logradouro))
-        {
-            var rua = cliente.Logradouro!;
-            if (!string.IsNullOrWhiteSpace(cliente.Numero)) rua += $", {cliente.Numero}";
-            partes.Add(rua);
-        }
-        var local = !string.IsNullOrWhiteSpace(cliente.Bairro) ? cliente.Bairro : cliente.Cidade;
-        if (!string.IsNullOrWhiteSpace(local)) partes.Add(local!);
-
-        return partes.Count > 0 ? string.Join(" — ", partes) : null;
     }
 
     // Periodo padrao da agenda: mes corrente (UTC).
@@ -198,6 +224,7 @@ public sealed class AtendimentoService : IAtendimentoService
             CustoTotal = atendimento.CustoTotal,
             Margem = atendimento.ValorTotal - atendimento.CustoTotal,
             ClienteId = atendimento.ClienteId,
+            UsuarioId = atendimento.UsuarioId,
             CreatedAt = atendimento.CreatedAt,
             UpdatedAt = atendimento.UpdatedAt
         };

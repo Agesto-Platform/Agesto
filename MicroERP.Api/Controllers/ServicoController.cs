@@ -3,11 +3,12 @@ using MicroERP.Api.Services.Exceptions;
 using MicroERP.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using MicroERP.Api.Authorization;
 
 namespace MicroERP.Api.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = Policies.Dono)]
 [Route("api/[controller]")]
 public sealed class ServicoController : ApiControllerBase
 {
@@ -72,6 +73,23 @@ public sealed class ServicoController : ApiControllerBase
         {
             var servico = await _servicoService.UpdateAsync(empresaId, id, request, cancellationToken);
             return Ok(new ApiResponse { Success = true, Message = "Serviço atualizado com sucesso.", Data = servico });
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new ApiResponse { Success = false, Message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id:long}/revisar")]
+    public async Task<ActionResult<ApiResponse>> MarcarRevisado(long id, CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+
+        try
+        {
+            var servico = await _servicoService.MarcarRevisadoAsync(empresaId, id, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Servico revisado.", Data = servico });
         }
         catch (NotFoundException ex)
         {

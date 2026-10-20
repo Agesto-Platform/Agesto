@@ -119,9 +119,18 @@ namespace MicroERP.Api.Migrations
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTime?>("GeocodificadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
                     b.Property<string>("Logradouro")
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -149,6 +158,8 @@ namespace MicroERP.Api.Migrations
 
                     b.HasIndex("EmpresaId");
 
+                    b.HasIndex("GeocodificadoEm");
+
                     b.HasIndex("Uuid")
                         .IsUnique();
 
@@ -165,6 +176,9 @@ namespace MicroERP.Api.Migrations
                         .HasColumnType("bigint");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("AgenteCadastraServico")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("ControlaEstoque")
                         .HasColumnType("boolean");
@@ -507,6 +521,9 @@ namespace MicroERP.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long?>("CriadoPorUsuarioId")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -517,6 +534,9 @@ namespace MicroERP.Api.Migrations
 
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
+
+                    b.Property<bool>("Revisado")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("SyncedAt")
                         .HasColumnType("timestamp with time zone");
@@ -539,6 +559,8 @@ namespace MicroERP.Api.Migrations
                         .HasColumnType("decimal(12,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CriadoPorUsuarioId");
 
                     b.HasIndex("EmpresaId");
 
@@ -594,8 +616,14 @@ namespace MicroERP.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("DeveTrocarSenha")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -619,6 +647,9 @@ namespace MicroERP.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("UltimoAcessoEm")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -746,11 +777,18 @@ namespace MicroERP.Api.Migrations
 
             modelBuilder.Entity("MicroERP.Api.Models.Servico", b =>
                 {
+                    b.HasOne("MicroERP.Api.Models.Usuario", "CriadoPor")
+                        .WithMany()
+                        .HasForeignKey("CriadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MicroERP.Api.Models.Empresa", "Empresa")
                         .WithMany()
                         .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("CriadoPor");
 
                     b.Navigation("Empresa");
                 });

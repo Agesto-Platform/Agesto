@@ -12,7 +12,7 @@
 | Definir integrantes, papéis e focos iniciais | 🟢 Concluído — Davi (Produto), Depowo (Infra), ghzpro034 (Generalista) |
 | Criar organização GitHub e transferir para `Agesto-Platform/Agesto` | 🟢 Concluído |
 | Configurar time `Core`, acessos mínimos e segundo Owner | 🟢 Concluído — Davi e Depowo são Owners |
-| Proteger `develop` e `main` com PR, revisão e status checks | 🔴 Pendente |
+| Proteger `develop` e `main` com PR, revisão e status checks | 🟢 Concluído — ruleset exige PR e os checks Backend, Web e Mobile; sem aprovação obrigatória (decisão de 10/10/2026) |
 | Adicionar CI para backend, web e mobile | 🟢 Concluído — validado na promoção de governança |
 | Auditar `REQUIREMENTS.md` reconstruído | 🟡 Em andamento |
 | Publicar a linha local consolidada em `main` | 🟢 Concluído — merge `72b021b` |
@@ -107,7 +107,9 @@
 |------|-----------|------------|------------|
 | Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Campo de duração (não modelado) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje o sync de orçamento é só Carga (leitura) | Média | Decisão de produto |
-| Roteirização/geolocalização | Lat/lng no `Cliente`, ordenação da rota do dia por proximidade — fase posterior da DEC-17 | Média | — |
+| Gestão de usuários (DEC-35) | Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Implementado na branch `feature/usuarios-agentes`; falta autorização para commit, push e migration | Alta | Autorização do Davi |
+| Serviço no app (DEC-36) | Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Implementado na branch `feature/servico-no-app` (sobre a de usuários); falta autorização para commit, push e migration | Alta | Autorização do Davi |
+| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38): "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Branches `feature/rota-fase-1` e `feature/mapa-agenda`. Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | Revisão de Davi |
@@ -124,20 +126,49 @@
 | KAN-13 | Projeto ASP.NET Core .NET 8 | Davi Gomes |
 | KAN-35 | Testes de endpoints | Diego |
 | KAN-16 | CI para backend, web e mobile | Equipe Agesto |
+| KAN-15 | Provedores: API no Render, banco no Supabase, web na Cloudflare Pages (DEC-32) | Equipe Agesto |
+| KAN-17 | Deploy da API em produção (`agesto-api.onrender.com`) | Equipe Agesto |
+| KAN-18 | Processo de deploy documentado em `deploy/README.md` | Equipe Agesto |
+| — | Banco e API reais no ar; mocks desligados no Web e no Mobile | Equipe Agesto |
 
 ### 🔴 Pendentes
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
 | KAN-14 | PostgreSQL de desenvolvimento + migrations | Alta | A definir |
-| KAN-15 | Escolher provedor e ambientes | Alta | Equipe |
-| KAN-17 | Deploy inicial da API | Média | A definir |
-| KAN-18 | Documentar processo de deploy | Baixa | A definir |
 | KAN-54 | Agents de QA automatizados | Baixa | Diego |
-| — | Configurar rulesets em `develop` e `main` | Alta | Davi Gomes |
 | — | Instalar dotnet ef global na máquina | Média | Davi Gomes |
 | — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
-| — | Subir banco/API real e trocar `VITE_USE_MOCKS`/`config.useMocks` para `false` no Web e no Mobile | Alta | Davi Gomes |
+| — | Backup automático do banco (Supabase Free não faz) — DEC-34 | Alta | A definir |
+| — | Migrar para .NET 10 (o .NET 8 perde suporte em 10/11/2026) — DEC-34 | Alta | A definir |
+
+---
+
+## Segurança (DEC-34)
+
+### ✅ Concluídas e validadas em produção — 10/10/2026
+
+| Item | Detalhe |
+|------|---------|
+| Auditoria de API, front, banco e infra | Achados e correções registrados na DEC-34 |
+| Rate limiting | Login, cadastro (por IP) e sync (por usuário) |
+| Cadastro fechado | `Auth__RegistrationKey` + header `X-Registration-Key`; ver `deploy/README.md` |
+| Perfis Dono/Agente no back | Policy `Dono` nas rotas de gestão, com teste de cobertura |
+| Revogação de token | JWT revalidado no banco a cada requisição |
+| JWT endurecido | HS256 fixo; issuer, audience e segredo ≥ 32 bytes obrigatórios |
+| Headers de segurança | API (HSTS, nosniff, frame-ancestors) e Web (CSP via `_headers`) |
+| LGPD de clientes | CPF mascarado para o Agente; anonimização na exclusão |
+| Banco | RLS em todas as tabelas; role `agesto_api` só com DML; TLS `VerifyFull` |
+| Mobile | Mock só em dev; dados locais apagados no logout e na troca de usuário; sem backup Android |
+| Web | Painel só para o Dono; cache limpo no logout |
+
+### 🔴 Pendentes
+
+| Item | Descrição | Prioridade |
+|------|-----------|------------|
+| Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio | Média |
+| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP) | Baixa |
+| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7 | Baixa |
 
 ---
 

@@ -6,9 +6,11 @@ public sealed class AuthLoginRequest
 {
     [Required(ErrorMessage = "Email obrigatório.")]
     [EmailAddress(ErrorMessage = "Email inválido.")]
+    [MaxLength(150, ErrorMessage = "Email deve ter no máximo 150 caracteres.")]
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Senha obrigatória.")]
     [MinLength(8, ErrorMessage = "Senha deve ter no mínimo 8 caracteres.")]
+    [MaxLength(128, ErrorMessage = "Senha deve ter no máximo 128 caracteres.")]
     public string Senha { get; set; } = string.Empty;
 }

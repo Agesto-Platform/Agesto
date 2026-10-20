@@ -13,6 +13,12 @@ public class Servico
     public long EmpresaId { get; set; }
     public Empresa? Empresa { get; set; }
 
+    // Serviço criado pelo agente em campo (DEC-36): entra no catálogo na hora e
+    // fica marcado até o Dono revisar preço e descrição. Criado pelo Dono = revisado.
+    public long? CriadoPorUsuarioId { get; set; }
+    public Usuario? CriadoPor { get; set; }
+    public bool Revisado { get; set; } = true;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? SyncedAt { get; set; }

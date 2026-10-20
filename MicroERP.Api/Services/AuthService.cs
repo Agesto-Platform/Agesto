@@ -19,6 +19,11 @@ public sealed class AuthService : IAuthService
     private readonly IConfiguration _configuration;
     private readonly PasswordHasher<Usuario> _passwordHasher = new();
 
+    // Hash de uma senha qualquer, verificado quando o email não existe: o login
+    // leva o mesmo tempo nos dois casos e não revela quais emails têm conta.
+    private static readonly string HashFicticio = new PasswordHasher<Usuario>()
+        .HashPassword(new Usuario(), Guid.NewGuid().ToString());
+
     public AuthService(AppDbContext dbContext, IConfiguration configuration)
     {
         _dbContext = dbContext;
@@ -39,6 +44,9 @@ public sealed class AuthService : IAuthService
         {
             throw new EmailAlreadyExistsException("Email já cadastrado.");
         }
+
+        // Empresa, usuário e configuração nascem juntos ou nenhum deles.
+        await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var empresa = new Empresa
         {
@@ -73,6 +81,7 @@ public sealed class AuthService : IAuthService
         _dbContext.Configuracoes.Add(configuracao);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
     }
 
     public async Task<AuthResponse?> LoginAsync(AuthLoginRequest request, CancellationToken cancellationToken)
@@ -80,11 +89,11 @@ public sealed class AuthService : IAuthService
         var email = NormalizeEmail(request.Email);
 
         var usuario = await _dbContext.Usuarios
-            .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
 
         if (usuario is null)
         {
+            _passwordHasher.VerifyHashedPassword(new Usuario(), HashFicticio, request.Senha);
             return null;
         }
 
@@ -94,7 +103,39 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
+        // Só depois da senha correta: não revela a quem não sabe a senha que a conta existe.
+        if (!usuario.Ativo)
+        {
+            throw new UsuarioInativoException("Acesso desativado. Fale com o responsavel pela empresa.");
+        }
+
+        usuario.UltimoAcessoEm = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
         return GenerateToken(usuario);
+    }
+
+    public async Task TrocarSenhaAsync(long usuarioId, TrocarSenhaRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await _dbContext.Usuarios
+            .FirstOrDefaultAsync(u => u.Id == usuarioId, cancellationToken)
+            ?? throw new NotFoundException("Usuario nao encontrado.");
+
+        var verification = _passwordHasher.VerifyHashedPassword(usuario, usuario.Senha, request.SenhaAtual);
+        if (verification == PasswordVerificationResult.Failed)
+        {
+            throw new SenhaAtualInvalidaException("Senha atual incorreta.");
+        }
+
+        if (request.NovaSenha == request.SenhaAtual)
+        {
+            throw new ArgumentException("A nova senha deve ser diferente da atual.");
+        }
+
+        usuario.Senha = _passwordHasher.HashPassword(usuario, request.NovaSenha);
+        usuario.DeveTrocarSenha = false;
+        usuario.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static string NormalizeEmail(string email)
@@ -133,7 +174,8 @@ public sealed class AuthService : IAuthService
         return new AuthResponse
         {
             Token = tokenValue,
-            ExpiresAt = expiresAt
+            ExpiresAt = expiresAt,
+            DeveTrocarSenha = usuario.DeveTrocarSenha
         };
     }
 }

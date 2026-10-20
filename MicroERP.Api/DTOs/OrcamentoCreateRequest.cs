@@ -9,6 +9,7 @@ public sealed class OrcamentoCreateRequest
     [Range(1, long.MaxValue, ErrorMessage = "Cliente inválido.")]
     public long ClienteId { get; set; }
 
+    [EnumDataType(typeof(StatusOrcamento), ErrorMessage = "Status inválido.")]
     public StatusOrcamento Status { get; set; } = StatusOrcamento.Rascunho;
 
     [MinLength(1, ErrorMessage = "Informe ao menos um item.")]
@@ -27,12 +28,12 @@ public sealed class ItemOrcamentoRequest
     [MaxLength(200, ErrorMessage = "Descrição deve ter no máximo 200 caracteres.")]
     public string? Descricao { get; set; }
 
-    [Range(1, int.MaxValue, ErrorMessage = "Quantidade inválida.")]
+    [Range(1, 9999, ErrorMessage = "Quantidade inválida.")]
     public int Quantidade { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "Valor unitário inválido.")]
+    [Range(0, 999999.99, ErrorMessage = "Valor unitário inválido.")]
     public decimal PrecoUnitario { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "Custo inválido.")]
+    [Range(0, 999999.99, ErrorMessage = "Custo inválido.")]
     public decimal? Custo { get; set; }
 }

@@ -23,3 +23,10 @@ export function decodeJwt(token: string): JwtClaims | null {
 export function isExpired(claims: JwtClaims): boolean {
   return typeof claims.exp === 'number' && claims.exp * 1000 <= Date.now()
 }
+
+export const MSG_SO_DONO = 'Este painel é exclusivo do dono da empresa.'
+
+/** Verdadeiro se o perfil do token é Dono (único com acesso ao painel). */
+export function isDono(claims: JwtClaims): boolean {
+  return claims.perfil === 'Dono'
+}

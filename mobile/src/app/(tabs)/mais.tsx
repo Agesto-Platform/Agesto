@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
+import { countPendentes } from '@/auth/localData'
 import { db } from '@/db/instance'
-import { descarga, initialSync } from '@/sync/sync'
+import { resumoSincronizacao, sincronizar as sincronizarTudo } from '@/sync/sync'
 
 function fmt(iso: string | null): string {
   if (!iso) return '—'
@@ -17,18 +18,21 @@ export default function Mais() {
   const { logout } = useAuth()
   const [pendAt, setPendAt] = useState(0)
   const [pendCli, setPendCli] = useState(0)
+  const [pendServ, setPendServ] = useState(0)
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
-    const [at, cli, ls] = await Promise.all([
+    const [at, cli, serv, ls] = await Promise.all([
       db.getPendingAtendimentos(),
       db.getPendingClientes(),
+      db.getPendingServicos(),
       db.getMeta('lastSync'),
     ])
     setPendAt(at.length)
     setPendCli(cli.filter((c) => c.syncedAt === null).length)
+    setPendServ(serv.filter((s) => s.syncedAt === null).length)
     setLastSync(ls)
   }, [])
 
@@ -48,15 +52,8 @@ export default function Mais() {
     setSyncing(true)
     setFlash(null)
     try {
-      const r = await descarga()
-      // Atualiza a referência: clientes recém-enviados passam a vir da Carga.
-      await initialSync()
-      const enviados = `Enviados: ${r.atendimentosImportados} atendimento(s), ${r.clientesImportados} cliente(s).`
-      setFlash(
-        r.erros.length > 0
-          ? `${enviados} ${r.erros.length} não enviado(s), seguem pendentes: ${r.erros[0]}`
-          : enviados,
-      )
+      // Envia o pendente (se houver) e sempre baixa o que mudou no web.
+      setFlash(resumoSincronizacao(await sincronizarTudo()))
       await reload()
     } catch {
       setFlash('Falha ao sincronizar. Tente novamente com internet.')
@@ -65,7 +62,26 @@ export default function Mais() {
     }
   }
 
-  const pendentes = pendAt + pendCli
+  // Sair apaga o banco local: se há pendências, confirma antes de perdê-las.
+  async function sair() {
+    const n = await countPendentes(db)
+    if (n === 0) {
+      await logout()
+      return
+    }
+    const msg = `Há ${n} registro(s) não sincronizado(s). Sair vai apagá-los deste aparelho.`
+    // No web o Alert do RN não tem botões: usa o confirm do navegador.
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) await logout()
+      return
+    }
+    Alert.alert('Sair', msg, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair mesmo assim', style: 'destructive', onPress: () => void logout() },
+    ])
+  }
+
+  const pendentes = pendAt + pendCli + pendServ
 
   return (
     <Screen>
@@ -79,21 +95,21 @@ export default function Mais() {
           </View>
           <Text style={styles.status}>
             {pendentes === 0
-              ? 'Tudo sincronizado.'
-              : `${pendAt} atendimento${pendAt === 1 ? '' : 's'} e ${pendCli} cliente${pendCli === 1 ? '' : 's'} pendentes de envio.`}
+              ? 'Nada pendente de envio.'
+              : `${pendAt} atendimento${pendAt === 1 ? '' : 's'}, ${pendCli} cliente${pendCli === 1 ? '' : 's'}${pendServ > 0 ? ` e ${pendServ} serviço${pendServ === 1 ? '' : 's'}` : ''} pendentes de envio.`}
           </Text>
           <Text style={styles.sub}>Última sincronização: {fmt(lastSync)}</Text>
           {flash && <Text style={styles.flash}>{flash}</Text>}
           <Pressable
             onPress={sincronizar}
-            disabled={syncing || pendentes === 0}
-            style={({ pressed }) => [styles.syncBtn, (syncing || pendentes === 0 || pressed) && { opacity: 0.6 }]}
+            disabled={syncing}
+            style={({ pressed }) => [styles.syncBtn, (syncing || pressed) && { opacity: 0.6 }]}
           >
             {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>Sincronizar agora</Text>}
           </Pressable>
         </View>
 
-        <Pressable onPress={logout} style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
+        <Pressable onPress={sair} style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
           <Ionicons name="log-out-outline" size={20} color={colors.bad} />
           <Text style={styles.rowText}>Sair</Text>
         </Pressable>

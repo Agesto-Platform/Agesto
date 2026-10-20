@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
@@ -48,6 +49,27 @@ public sealed class SyncServiceTests
         Assert.Equal(StatusOrcamento.Enviado, carga.Orcamentos[0].Status);
         Assert.Single(carga.Orcamentos[0].Itens);
         Assert.Equal(5, carga.Orcamentos[0].Itens[0].ServicoId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CargaAsync_ParaAgente_MascaraCpfEOcultaCusto(bool agente)
+    {
+        await using var db = CreateContext();
+        db.Clientes.Add(new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Maria", Cpf = "12345678901", EmpresaId = 1 });
+        db.Orcamentos.Add(new Orcamento
+        {
+            Id = 1, Uuid = Guid.NewGuid(), EmpresaId = 1, UsuarioId = 1, ClienteId = 1,
+            Status = StatusOrcamento.Enviado, DataRegistro = DateTime.UtcNow, ValorTotal = 100m, UpdatedAt = DateTime.UtcNow,
+            Itens = new List<ItemOrcamento> { new() { Uuid = Guid.NewGuid(), Quantidade = 1, PrecoUnitario = 100m, Subtotal = 100m, Custo = 60m } }
+        });
+        await db.SaveChangesAsync();
+
+        var carga = await BuildSync(db).CargaAsync(1, null, CancellationToken.None, restringirDadosSensiveis: agente);
+
+        Assert.Equal(agente ? "***.456.789-**" : "12345678901", carga.Clientes.Single().Cpf);
+        Assert.Equal(agente ? null : 60m, carga.Orcamentos.Single().Itens.Single().Custo);
     }
 
     [Fact]
@@ -132,6 +154,37 @@ public sealed class SyncServiceTests
         Assert.Null(at.DataAgendada); // Fixa: agendamento vindo do agente é ignorado no servidor
     }
 
+    [Theory]
+    [InlineData(1900)]
+    [InlineData(2999)]
+    public async Task DescargaAsync_DataRegistroImplausivel_RejeitaAtendimento(int ano)
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        await db.SaveChangesAsync();
+
+        var uuid = Guid.NewGuid();
+        var req = new SyncDescargaRequest
+        {
+            Atendimentos =
+            [
+                new AtendimentoSyncRequest
+                {
+                    Uuid = uuid,
+                    DataRegistro = new DateTime(ano, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    Status = StatusAtendimento.Concluido,
+                    ClienteId = 1,
+                },
+            ],
+        };
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, req, CancellationToken.None);
+
+        Assert.Equal(0, res.AtendimentosImportados);
+        Assert.DoesNotContain(uuid, res.AtendimentosSincronizados);
+        Assert.Contains(res.Erros, e => e.Contains("Data de registro inválida."));
+    }
+
     [Fact]
     public async Task DescargaAsync_ModoFlexivel_MantemDataAgendada()
     {
@@ -182,6 +235,46 @@ public sealed class SyncServiceTests
         Assert.Equal(50m, at.ValorTotal);
         Assert.Single(at.ItensProduto);
         Assert.Equal(3, (await db.Produtos.SingleAsync()).QuantidadeEstoque);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ItemAvulso_GravaSemProdutoESemMexerNoEstoque()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 10, empresaId: 1, preco: 25m, estoque: 5);
+        await db.SaveChangesAsync();
+        var at = Atendimento(Guid.NewGuid(), clienteId: 1, (10, 1));
+        at.ItensProduto = [.. at.ItensProduto, new ItemProdutoSyncRequest { Descricao = "  Tubo de cobre 1/4  ", PrecoUnitario = 30m, Quantidade = 2 }];
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(at), CancellationToken.None);
+
+        Assert.Empty(res.Erros);
+        var gravado = await db.Atendimentos.Include(a => a.ItensProduto).SingleAsync();
+        Assert.Equal(85m, gravado.ValorTotal);
+        var avulso = Assert.Single(gravado.ItensProduto, i => i.ProdutoId == null);
+        Assert.Equal("Tubo de cobre 1/4", avulso.Descricao);
+        Assert.Equal(60m, avulso.Subtotal);
+        Assert.Equal(4, (await db.Produtos.SingleAsync()).QuantidadeEstoque); // so o item de catalogo baixou
+    }
+
+    [Theory]
+    [InlineData(" ", 10.0, 1)]
+    [InlineData("Conexao", null, 1)]
+    [InlineData("Conexao", 10.0, 0)]
+    public async Task DescargaAsync_ItemAvulsoIncompleto_RejeitaAtendimento(string descricao, double? preco, int quantidade)
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        await db.SaveChangesAsync();
+        var at = Atendimento(Guid.NewGuid(), clienteId: 1);
+        at.ItensProduto = [new ItemProdutoSyncRequest { Descricao = descricao, PrecoUnitario = (decimal?)preco, Quantidade = quantidade }];
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(at), CancellationToken.None);
+
+        Assert.Empty(res.AtendimentosSincronizados);
+        Assert.Contains(res.Erros, e => e.Contains("avulso"));
+        Assert.False(await db.Atendimentos.AnyAsync());
     }
 
     [Fact]
@@ -361,6 +454,238 @@ public sealed class SyncServiceTests
         Assert.False(await db.Atendimentos.AnyAsync());
     }
 
+    [Fact]
+    public async Task DescargaAsync_ServicoNovoDoAgente_CriaParaRevisaoEAtendimentoResolvePeloUuid()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        await db.SaveChangesAsync();
+        var servicoUuid = Guid.NewGuid();
+        var atendimento = Atendimento(Guid.NewGuid(), clienteId: 1);
+        atendimento.ItensServico = [new ItemServicoSyncRequest { ServicoUuid = servicoUuid, Quantidade = 1 }];
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, new SyncDescargaRequest
+        {
+            Servicos = [ServicoNovo(servicoUuid, "Limpeza de dreno", empreitada: 150m)],
+            Atendimentos = [atendimento],
+        }, CancellationToken.None);
+
+        Assert.Empty(res.Erros);
+        var servico = await db.Servicos.SingleAsync();
+        Assert.Equal(servicoUuid, servico.Uuid);
+        Assert.False(servico.Revisado);
+        Assert.Equal(1, servico.CriadoPorUsuarioId);
+        Assert.Equal([servicoUuid], res.ServicosSincronizados);
+        Assert.Contains(res.ServicosMapeados, m => m.Uuid == servicoUuid && m.Id == servico.Id);
+        var at = await db.Atendimentos.Include(a => a.ItensServico).SingleAsync();
+        Assert.Equal(servico.Id, at.ItensServico.Single().ServicoId);
+        Assert.Equal(150m, at.ValorTotal);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ServicoNovoReenviado_NaoDuplica()
+    {
+        await using var db = CreateContext();
+        var service = BuildSync(db);
+        var req = new SyncDescargaRequest { Servicos = [ServicoNovo(Guid.NewGuid(), "Higienizacao", hora: 80m)] };
+
+        await service.DescargaAsync(1, 1, req, CancellationToken.None);
+        var reenvio = await service.DescargaAsync(1, 1, req, CancellationToken.None);
+
+        Assert.Equal(1, await db.Servicos.CountAsync());
+        Assert.Equal(0, reenvio.ServicosImportados);
+        Assert.Single(reenvio.ServicosSincronizados);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ServicoComMesmaDescricao_ReaproveitaOExistente()
+    {
+        await using var db = CreateContext();
+        db.Servicos.Add(new Servico { Id = 30, Uuid = Guid.NewGuid(), EmpresaId = 1, Descricao = "Limpeza de Dreno", TipoCobranca = TipoCobranca.Empreitada, ValorEmpreitada = 120m });
+        await db.SaveChangesAsync();
+        var servicoUuid = Guid.NewGuid();
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, new SyncDescargaRequest
+        {
+            Servicos = [ServicoNovo(servicoUuid, "  limpeza de dreno ", empreitada: 150m)],
+        }, CancellationToken.None);
+
+        Assert.Equal(1, await db.Servicos.CountAsync());
+        Assert.Equal(0, res.ServicosImportados);
+        Assert.Contains(res.ServicosMapeados, m => m.Uuid == servicoUuid && m.Id == 30);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task DescargaAsync_CadastroDeServicoDesligado_SoODonoCria(bool porDono, bool criado)
+    {
+        await using var db = CreateContext();
+        db.Configuracoes.Add(new Configuracao { Id = 1, EmpresaId = 1, AgenteCadastraServico = false });
+        await db.SaveChangesAsync();
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, new SyncDescargaRequest
+        {
+            Servicos = [ServicoNovo(Guid.NewGuid(), "Troca de capacitor", hora: 90m)],
+        }, CancellationToken.None, porDono);
+
+        Assert.Equal(criado, await db.Servicos.AnyAsync());
+        Assert.Equal(criado, res.Erros.Count == 0);
+        if (criado) Assert.True((await db.Servicos.SingleAsync()).Revisado);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ServicoNaoAceito_RejeitaOAtendimentoQueOUsa()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        await db.SaveChangesAsync();
+        var servicoUuid = Guid.NewGuid();
+        var atendimento = Atendimento(Guid.NewGuid(), clienteId: 1);
+        atendimento.ItensServico = [new ItemServicoSyncRequest { ServicoUuid = servicoUuid, Quantidade = 1 }];
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, new SyncDescargaRequest
+        {
+            Servicos = [new ServicoSyncRequest { Uuid = servicoUuid, Descricao = "Sem valor", TipoCobranca = TipoCobranca.PorHora }],
+            Atendimentos = [atendimento],
+        }, CancellationToken.None);
+
+        Assert.Empty(res.ServicosSincronizados);
+        Assert.Empty(res.AtendimentosSincronizados);
+        Assert.False(await db.Atendimentos.AnyAsync());
+        Assert.Equal(2, res.Erros.Count);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ValorAjustadoNoApp_CobraOValorInformado()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 10, empresaId: 1, preco: 25m, estoque: 5);
+        SeedServico(db, id: 20, empresaId: 1, empreitada: 100m);
+        await db.SaveChangesAsync();
+        var at = Atendimento(Guid.NewGuid(), clienteId: 1);
+        at.ItensProduto = [new ItemProdutoSyncRequest { ProdutoId = 10, PrecoUnitario = 20m, Quantidade = 2 }];
+        at.ItensServico = [new ItemServicoSyncRequest { ServicoId = 20, PrecoUnitario = 150m, Quantidade = 1 }];
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(at), CancellationToken.None);
+
+        Assert.Empty(res.Erros);
+        var gravado = await db.Atendimentos.Include(a => a.ItensProduto).Include(a => a.ItensServico).SingleAsync();
+        Assert.Equal(20m, Assert.Single(gravado.ItensProduto).PrecoUnitario);
+        Assert.Equal(150m, Assert.Single(gravado.ItensServico).Subtotal);
+        Assert.Equal(190m, gravado.ValorTotal);
+        Assert.Equal(3, (await db.Produtos.SingleAsync()).QuantidadeEstoque);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ConclusaoDeAtendimentoAgendado_AcrescentaItensEReenvioNaoDuplica()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 10, empresaId: 1, preco: 25m, estoque: 5);
+        SeedServico(db, id: 20, empresaId: 1, empreitada: 100m);
+        var uuid = SeedAgendado(db, responsavelId: 1, servicoId: 20, valor: 100m);
+        await db.SaveChangesAsync();
+        var conclusao = Conclusao(uuid, StatusAtendimento.Concluido, new ItemProdutoSyncRequest { Uuid = Guid.NewGuid(), ProdutoId = 10, Quantidade = 1 });
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(conclusao), CancellationToken.None);
+        var reenvio = await BuildSync(db).DescargaAsync(1, 1, Descarga(conclusao), CancellationToken.None);
+
+        Assert.Empty(res.Erros);
+        Assert.Equal(1, res.ConclusoesImportadas);
+        Assert.Equal([uuid], res.ConclusoesSincronizadas);
+        Assert.Empty(reenvio.Erros);
+        Assert.Equal(0, reenvio.ConclusoesImportadas);
+        Assert.Equal([uuid], reenvio.ConclusoesSincronizadas);
+        var at = await db.Atendimentos.Include(a => a.ItensProduto).Include(a => a.ItensServico).SingleAsync();
+        Assert.Equal(StatusAtendimento.Concluido, at.Status);
+        Assert.Single(at.ItensProduto);
+        Assert.Single(at.ItensServico);
+        Assert.Equal(125m, at.ValorTotal);
+        Assert.Equal(4, (await db.Produtos.SingleAsync()).QuantidadeEstoque);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task DescargaAsync_ConclusaoDeAtendimentoDeOutroResponsavel_SoODonoConclui(bool porDono, bool concluido)
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedServico(db, id: 20, empresaId: 1, empreitada: 100m);
+        var uuid = SeedAgendado(db, responsavelId: 2, servicoId: 20, valor: 100m);
+        await db.SaveChangesAsync();
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(Conclusao(uuid, StatusAtendimento.Concluido)), CancellationToken.None, porDono);
+
+        Assert.Equal(concluido, res.Erros.Count == 0);
+        Assert.Equal(concluido ? StatusAtendimento.Concluido : StatusAtendimento.Pendente, (await db.Atendimentos.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ConclusaoDeAtendimentoJaConcluidoNoWeb_RejeitaItensNovos()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 10, empresaId: 1, preco: 25m, estoque: 5);
+        SeedServico(db, id: 20, empresaId: 1, empreitada: 100m);
+        var uuid = SeedAgendado(db, responsavelId: 1, servicoId: 20, valor: 100m, status: StatusAtendimento.Concluido);
+        await db.SaveChangesAsync();
+        var comItem = Conclusao(uuid, StatusAtendimento.Concluido, new ItemProdutoSyncRequest { Uuid = Guid.NewGuid(), ProdutoId = 10, Quantidade = 1 });
+        var soStatus = Conclusao(uuid, StatusAtendimento.Concluido);
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, new SyncDescargaRequest { Conclusoes = [comItem, soStatus] }, CancellationToken.None);
+
+        Assert.Single(res.Erros);
+        Assert.Equal([uuid], res.ConclusoesSincronizadas); // a que so repete o status ja vale
+        Assert.Equal(5, (await db.Produtos.SingleAsync()).QuantidadeEstoque);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_ConclusaoComItemSemUuid_Rejeita()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 10, empresaId: 1, preco: 25m, estoque: 5);
+        SeedServico(db, id: 20, empresaId: 1, empreitada: 100m);
+        var uuid = SeedAgendado(db, responsavelId: 1, servicoId: 20, valor: 100m);
+        await db.SaveChangesAsync();
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(Conclusao(uuid, StatusAtendimento.Concluido, new ItemProdutoSyncRequest { ProdutoId = 10, Quantidade = 1 })), CancellationToken.None);
+
+        Assert.Single(res.Erros);
+        Assert.Empty(res.ConclusoesSincronizadas);
+        Assert.Equal(StatusAtendimento.Pendente, (await db.Atendimentos.SingleAsync()).Status);
+    }
+
+    private static void SeedServico(AppDbContext db, long id, long empresaId, decimal empreitada) =>
+        db.Servicos.Add(new Servico { Id = id, Uuid = Guid.NewGuid(), EmpresaId = empresaId, Descricao = $"Servico {id}", TipoCobranca = TipoCobranca.Empreitada, ValorEmpreitada = empreitada });
+
+    // Atendimento agendado no web para o responsavel, ja com um servico lancado.
+    private static Guid SeedAgendado(AppDbContext db, long responsavelId, long servicoId, decimal valor, StatusAtendimento status = StatusAtendimento.Pendente)
+    {
+        var uuid = Guid.NewGuid();
+        db.Atendimentos.Add(new Atendimento
+        {
+            Id = 50, Uuid = uuid, EmpresaId = 1, UsuarioId = responsavelId, ClienteId = 1, Status = status,
+            DataRegistro = DateTime.UtcNow, DataAgendada = DateTime.UtcNow.AddHours(2), ValorTotal = valor,
+            ItensServico = [new ItemServico { Uuid = Guid.NewGuid(), ServicoId = servicoId, Quantidade = 1, PrecoUnitario = valor, Subtotal = valor }],
+        });
+        return uuid;
+    }
+
+    private static AtendimentoConclusaoSyncRequest Conclusao(Guid uuid, StatusAtendimento status, params ItemProdutoSyncRequest[] itens) => new()
+    {
+        Uuid = uuid,
+        Status = status,
+        ItensProduto = itens,
+        ItensServico = [],
+    };
+
+    private static SyncDescargaRequest Descarga(params AtendimentoConclusaoSyncRequest[] conclusoes) =>
+        new() { Clientes = [], Conclusoes = conclusoes };
+
     private static void SeedCliente(AppDbContext db, long id, long empresaId) =>
         db.Clientes.Add(new Cliente { Id = id, Uuid = Guid.NewGuid(), EmpresaId = empresaId, Nome = $"Cliente {id}", Cpf = $"{id:D11}" });
 
@@ -377,6 +702,15 @@ public sealed class SyncServiceTests
         ItensServico = [],
     };
 
+    private static ServicoSyncRequest ServicoNovo(Guid uuid, string descricao, decimal? hora = null, decimal? empreitada = null) => new()
+    {
+        Uuid = uuid,
+        Descricao = descricao,
+        TipoCobranca = empreitada is null ? TipoCobranca.PorHora : TipoCobranca.Empreitada,
+        ValorHora = hora,
+        ValorEmpreitada = empreitada,
+    };
+
     private static SyncDescargaRequest Descarga(params AtendimentoSyncRequest[] atendimentos) =>
         new() { Clientes = [], Atendimentos = atendimentos };
 
@@ -391,7 +725,8 @@ public sealed class SyncServiceTests
             new ServicoRepository(db),
             new AtendimentoRepository(db),
             new ItemProdutoRepository(db),
-            new ItemServicoRepository(db));
+            new ItemServicoRepository(db),
+            NullLogger<SyncService>.Instance);
     }
 
     private static AppDbContext CreateContext() =>

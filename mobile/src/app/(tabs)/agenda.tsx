@@ -7,6 +7,8 @@ import { JobCard } from '@/ui/JobCard'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { getConfig } from '@/lib/appConfig'
+import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
+import type { LocalAtendimento } from '@/db/types'
 import type { AgendaItem } from '@/types/api'
 
 interface DayGroup {
@@ -63,13 +65,15 @@ export default function Agenda() {
   const router = useRouter()
   const [groups, setGroups] = useState<DayGroup[]>([])
   const [podeAgendar, setPodeAgendar] = useState(false)
+  const [pendentes, setPendentes] = useState<LocalAtendimento[]>([])
 
   useFocusEffect(
     useCallback(() => {
       let active = true
       ;(async () => {
-        const [items, config] = await Promise.all([db.getAgenda(), getConfig(db)])
+        const [items, config, pend] = await Promise.all([db.getAgenda(), getConfig(db), db.getPendingAtendimentos()])
         if (!active) return
+        setPendentes(pend)
         setGroups(agrupar(items))
         setPodeAgendar(config.modoAgendaAgente === 'Flexivel')
       })()
@@ -104,9 +108,17 @@ export default function Agenda() {
           <View key={g.key} style={styles.group}>
             <Text style={styles.dayLabel}>{g.label}</Text>
             <View style={{ gap: space(2.75) }}>
-              {g.items.map((item) => (
-                <JobCard key={item.id} item={item} />
-              ))}
+              {g.items.map((item) => {
+                const { rota: destino, etiqueta } = acaoDaAgenda(item, pendentes)
+                return (
+                  <JobCard
+                    key={item.id}
+                    item={item}
+                    etiqueta={etiqueta}
+                    onPress={destino ? () => router.push(destino) : undefined}
+                  />
+                )
+              })}
             </View>
           </View>
         ))}
