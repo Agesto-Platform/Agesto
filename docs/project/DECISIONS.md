@@ -650,7 +650,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-33 — Sincronização confiável: Carga completa, Descarga por atendimento e cliente offline por UUID
 
-**Status:** 🟡 Proposta implementada em `feature/sync-fixes` — aguardando revisão e aprovação de Davi
+**Status:** 🟢 Implementado em `develop` (PR #43, 10/10/2026)
 
 **Contexto:** revisão do ciclo Carga/Descarga encontrou perda de dados no mobile:
 - a Carga era incremental (`ultimaSincronizacao`), mas o app substitui a tabela local inteira a cada Carga — a partir da segunda sincronização, clientes/produtos/serviços sem alteração sumiam do device; exclusões (soft delete) nunca chegavam ao device;
@@ -701,7 +701,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-35 — Gestão de usuários pelo Dono e responsável do atendimento
 
-**Status:** 🟡 Implementado na branch `feature/usuarios-agentes`, aguardando autorização para commit, push e migration
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
 
 **Contexto:** não havia como criar um usuário Agente (o cadastro só cria Dono) e todo atendimento ficava com quem o criou (`UsuarioId` = criador). O app do agente só funcionava com usuário inserido direto no banco.
 
@@ -720,7 +720,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-36 — Agente cadastra serviço no app, com revisão do Dono
 
-**Status:** 🟡 Implementado na branch `feature/servico-no-app`, aguardando autorização para commit, push e migration
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
 
 **Contexto:** no web, serviço fora do catálogo já vira cadastro rápido (DEC-22), mas o app não conseguia: toda a API de serviço exige perfil Dono e a Descarga só aceitava itens com id do servidor. Em campo o agente ficava sem como registrar um serviço novo.
 
@@ -737,7 +737,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-37 — Rota do dia pelo endereço, sem geocodificação (fase 1)
 
-**Status:** 🟡 Implementado na branch `feature/rota-fase-1`, aguardando autorização para commit e push
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026)
 
 **Contexto:** o plano da rota pronta tem três fases e todas dependem de latitude e longitude do cliente, que exigem um serviço de geocodificação (custo, cota e envio do endereço a terceiro, ponto de LGPD ainda não decidido). Abrir o Google Maps com as paradas não precisa disso: a URL aceita endereços em texto.
 
@@ -756,7 +756,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-38 — Geocodificação com OpenRouteService e mapa da agenda com Leaflet
 
-**Status:** 🟡 Implementado na branch `feature/mapa-agenda`, aguardando autorização para commit, push e migration. Provedor aprovado por Diego em 17/10/2026.
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase. Provedor aprovado por Diego em 17/10/2026.
 
 **Contexto:** o mapa da agenda e a otimização da rota (fase 2) precisam de latitude e longitude dos clientes, e o sistema só guarda o endereço em texto.
 
@@ -772,7 +772,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-39 — Atendimento no app no mesmo nível do web
 
-**Status:** 🟡 Implementado na branch `fix/mobile-sincronizar-item-avulso`, aguardando autorização para push e merge. Pedido por Diego em 20/10/2026, depois do levantamento web × app (`modulos/atendimento-web-vs-app.md`).
+**Status:** 🟢 Implementado em `develop` (PR #48, 20/10/2026). Pedido por Diego em 20/10/2026, depois do levantamento web × app (`modulos/atendimento-web-vs-app.md`).
 
 **Contexto:** no app o agente só usava o preço do catálogo, não conseguia concluir uma visita agendada (só criar outro atendimento), não corrigia nada depois de salvar e via um "Estimado" diferente do que o servidor cobrava na empreitada com quantidade 2.
 
