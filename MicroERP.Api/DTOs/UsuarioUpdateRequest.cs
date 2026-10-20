@@ -5,12 +5,12 @@ namespace MicroERP.Api.DTOs;
 
 public sealed class UsuarioUpdateRequest
 {
-    [Required(ErrorMessage = "Nome obrigatorio.")]
-    [MinLength(2, ErrorMessage = "Nome deve ter no minimo 2 caracteres.")]
-    [MaxLength(120, ErrorMessage = "Nome deve ter no maximo 120 caracteres.")]
+    [Required(ErrorMessage = "Nome obrigatório.")]
+    [MinLength(2, ErrorMessage = "Nome deve ter no mínimo 2 caracteres.")]
+    [MaxLength(120, ErrorMessage = "Nome deve ter no máximo 120 caracteres.")]
     public string Nome { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Perfil obrigatorio.")]
-    [EnumDataType(typeof(PerfilUsuario), ErrorMessage = "Perfil invalido.")]
+    [Required(ErrorMessage = "Perfil obrigatório.")]
+    [EnumDataType(typeof(PerfilUsuario), ErrorMessage = "Perfil inválido.")]
     public PerfilUsuario Perfil { get; set; }
 }

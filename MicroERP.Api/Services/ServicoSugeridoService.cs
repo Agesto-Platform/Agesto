@@ -50,7 +50,7 @@ public sealed class ServicoSugeridoService : IServicoSugeridoService
         {
             var produto = await _produtoRepository.GetByIdAsync(empresaId, item.ProdutoId, false, cancellationToken);
             if (produto is null)
-                throw new NotFoundException($"Produto {item.ProdutoId} nao encontrado.");
+                throw new NotFoundException($"Produto {item.ProdutoId} não encontrado.");
 
             novos.Add(new ServicoItemSugerido
             {
@@ -77,6 +77,6 @@ public sealed class ServicoSugeridoService : IServicoSugeridoService
     {
         var servico = await _servicoRepository.GetByIdAsync(empresaId, servicoId, false, cancellationToken);
         if (servico is null)
-            throw new NotFoundException("Servico nao encontrado.");
+            throw new NotFoundException("Serviço não encontrado.");
     }
 }

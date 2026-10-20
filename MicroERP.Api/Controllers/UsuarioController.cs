@@ -24,10 +24,10 @@ public sealed class UsuarioController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetAll(CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         var usuarios = await _usuarioService.GetAllAsync(empresaId, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Usuarios encontrados.", Data = usuarios });
+        return Ok(new ApiResponse { Success = true, Message = "Usuários encontrados.", Data = usuarios });
     }
 
     [HttpPost]
@@ -35,7 +35,7 @@ public sealed class UsuarioController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Create([FromBody] UsuarioCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -43,7 +43,7 @@ public sealed class UsuarioController : ApiControllerBase
             return StatusCode(StatusCodes.Status201Created, new ApiResponse
             {
                 Success = true,
-                Message = "Usuario criado com sucesso.",
+                Message = "Usuário criado com sucesso.",
                 Data = criado
             });
         }
@@ -62,11 +62,11 @@ public sealed class UsuarioController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Update(long id, [FromBody] UsuarioUpdateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var donoId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         return await Executar(
             () => _usuarioService.UpdateAsync(empresaId, donoId, id, request, cancellationToken),
-            "Usuario atualizado com sucesso.");
+            "Usuário atualizado com sucesso.");
     }
 
     [HttpPost("{id:long}/desativar")]
@@ -74,11 +74,11 @@ public sealed class UsuarioController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Desativar(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var donoId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         return await Executar(
             () => _usuarioService.SetAtivoAsync(empresaId, donoId, id, false, cancellationToken),
-            "Usuario desativado.");
+            "Usuário desativado.");
     }
 
     [HttpPost("{id:long}/reativar")]
@@ -86,11 +86,11 @@ public sealed class UsuarioController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Reativar(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var donoId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         return await Executar(
             () => _usuarioService.SetAtivoAsync(empresaId, donoId, id, true, cancellationToken),
-            "Usuario reativado.");
+            "Usuário reativado.");
     }
 
     [HttpPost("{id:long}/redefinir-senha")]
@@ -98,7 +98,7 @@ public sealed class UsuarioController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> RedefinirSenha(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         return await Executar(
             () => _usuarioService.RedefinirSenhaAsync(empresaId, id, cancellationToken),
@@ -111,7 +111,7 @@ public sealed class UsuarioController : ApiControllerBase
     {
         if (!TryGetUsuarioId(out var usuarioId) || !TryGetEmpresaId(out var empresaId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
         }
 
         try
@@ -119,7 +119,7 @@ public sealed class UsuarioController : ApiControllerBase
             var deleted = await _usuarioService.DeleteAsync(usuarioId, empresaId, cancellationToken);
             if (!deleted)
             {
-                return NotFound(new ApiResponse { Success = false, Message = "Usuario nao encontrado." });
+                return NotFound(new ApiResponse { Success = false, Message = "Usuário não encontrado." });
             }
 
             return Ok(new ApiResponse

@@ -54,7 +54,7 @@ public sealed class AuthController : ApiControllerBase
             return Ok(new ApiResponse
             {
                 Success = true,
-                Message = "Usuario cadastrado com sucesso."
+                Message = "Usuário cadastrado com sucesso."
             });
         }
         catch (EmailAlreadyExistsException ex)
@@ -90,7 +90,7 @@ public sealed class AuthController : ApiControllerBase
             return Unauthorized(new ApiResponse
             {
                 Success = false,
-                Message = "Credenciais invalidas."
+                Message = "Credenciais inválidas."
             });
         }
 
@@ -110,7 +110,7 @@ public sealed class AuthController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> TrocarSenha([FromBody] TrocarSenhaRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetUsuarioId(out var usuarioId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         try
         {

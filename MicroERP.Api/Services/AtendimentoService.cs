@@ -38,7 +38,7 @@ public sealed class AtendimentoService : IAtendimentoService
     private async Task ValidarResponsavelAsync(long empresaId, long usuarioId, CancellationToken cancellationToken)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(empresaId, usuarioId, cancellationToken);
-        if (usuario is null || !usuario.Ativo) throw new NotFoundException("Agente nao encontrado.");
+        if (usuario is null || !usuario.Ativo) throw new NotFoundException("Agente não encontrado.");
     }
 
     // Default seguro: controla. Quando false, o cancelamento nao devolve estoque.
@@ -64,14 +64,14 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task<AtendimentoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
         return MapResponse(atendimento);
     }
 
     public async Task<AtendimentoResponse> CreateAsync(long empresaId, long usuarioId, AtendimentoCreateRequest request, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, request.ClienteId, false, cancellationToken);
-        if (cliente is null) throw new NotFoundException("Cliente nao encontrado.");
+        if (cliente is null) throw new NotFoundException("Cliente não encontrado.");
 
         if (request.ResponsavelId is { } responsavelId && responsavelId != usuarioId)
         {
@@ -102,7 +102,7 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task<AtendimentoResponse> UpdateAsync(long empresaId, long id, AtendimentoUpdateRequest request, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
 
         if (request.ResponsavelId is { } responsavelId && responsavelId != atendimento.UsuarioId)
         {
@@ -122,7 +122,7 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
 
         var now = DateTime.UtcNow;
 
@@ -185,7 +185,7 @@ public sealed class AtendimentoService : IAtendimentoService
             Itens = a.ItensServico.Where(i => i.DeletedAt == null)
                 .Select(i => new AgendaItemLinhaResponse
                 {
-                    Descricao = i.Servico?.Descricao ?? "Servico",
+                    Descricao = i.Servico?.Descricao ?? "Serviço",
                     Quantidade = i.Quantidade,
                     PrecoUnitario = i.PrecoUnitario,
                     Subtotal = i.Subtotal

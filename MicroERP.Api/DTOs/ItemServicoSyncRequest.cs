@@ -12,7 +12,7 @@ public sealed class ItemServicoSyncRequest
     public long? ServicoId { get; set; }
     public Guid? ServicoUuid { get; set; }
     // Valor ajustado no atendimento (DEC-23); nulo cobra o valor do catalogo.
-    [Range(0, 999999.99, ErrorMessage = "Valor unitario invalido.")]
+    [Range(0, 999999.99, ErrorMessage = "Valor unitário inválido.")]
     public decimal? PrecoUnitario { get; set; }
     public int Quantidade { get; set; }
 }

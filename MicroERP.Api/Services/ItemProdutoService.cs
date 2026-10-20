@@ -45,14 +45,14 @@ public sealed class ItemProdutoService : IItemProdutoService
     public async Task<ItemProdutoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var item = await _itemProdutoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (item is null) throw new NotFoundException("Item de produto nao encontrado.");
+        if (item is null) throw new NotFoundException("Item de produto não encontrado.");
         return MapResponse(item);
     }
 
     public async Task<ItemProdutoResponse> CreateAsync(long empresaId, ItemProdutoCreateRequest request, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, request.AtendimentoId, true, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
 
         decimal precoUnitario;
         string? descricao;
@@ -61,7 +61,7 @@ public sealed class ItemProdutoService : IItemProdutoService
         {
             // Item de catalogo: baixa estoque; catalogo sugere o valor (editavel).
             var produto = await _produtoRepository.GetByIdAsync(empresaId, request.ProdutoId.Value, true, cancellationToken);
-            if (produto is null) throw new NotFoundException("Produto nao encontrado.");
+            if (produto is null) throw new NotFoundException("Produto não encontrado.");
 
             if (await ControlaEstoqueAsync(empresaId, cancellationToken))
             {
@@ -81,7 +81,7 @@ public sealed class ItemProdutoService : IItemProdutoService
         {
             // Item avulso (ex: material comprado na loja): nao baixa estoque, exige descricao.
             if (string.IsNullOrWhiteSpace(request.Descricao))
-                throw new ArgumentException("Descricao obrigatoria para item avulso.");
+                throw new ArgumentException("Descrição obrigatória para item avulso.");
 
             precoUnitario = request.PrecoUnitario ?? 0m;
             descricao = request.Descricao;
@@ -112,13 +112,13 @@ public sealed class ItemProdutoService : IItemProdutoService
     public async Task<ItemProdutoResponse> UpdateAsync(long empresaId, long id, ItemProdutoUpdateRequest request, CancellationToken cancellationToken)
     {
         var item = await _itemProdutoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (item is null) throw new NotFoundException("Item de produto nao encontrado.");
+        if (item is null) throw new NotFoundException("Item de produto não encontrado.");
 
         // Ajuste de estoque apenas para itens de catalogo (com ProdutoId) quando a empresa controla estoque.
         if (item.ProdutoId.HasValue && await ControlaEstoqueAsync(empresaId, cancellationToken))
         {
             var produto = await _produtoRepository.GetByIdAsync(empresaId, item.ProdutoId.Value, true, cancellationToken);
-            if (produto is null) throw new NotFoundException("Produto nao encontrado.");
+            if (produto is null) throw new NotFoundException("Produto não encontrado.");
 
             var diferenca = request.Quantidade - item.Quantidade;
             if (diferenca > 0 && produto.QuantidadeEstoque < diferenca)
@@ -154,7 +154,7 @@ public sealed class ItemProdutoService : IItemProdutoService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var item = await _itemProdutoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (item is null) throw new NotFoundException("Item de produto nao encontrado.");
+        if (item is null) throw new NotFoundException("Item de produto não encontrado.");
 
         // Devolve estoque apenas para itens de catalogo (avulso nao movimentou
         // estoque) e apenas quando a empresa controla estoque.

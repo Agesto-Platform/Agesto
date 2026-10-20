@@ -5,9 +5,9 @@ namespace MicroERP.Api.DTOs;
 public sealed class ItemServicoUpdateRequest
 {
     // Opcional: sobrescreve o valor unitario. Se nulo, mantem o valor atual (snapshot).
-    [Range(0, 999999.99, ErrorMessage = "Valor unitario invalido.")]
+    [Range(0, 999999.99, ErrorMessage = "Valor unitário inválido.")]
     public decimal? PrecoUnitario { get; set; }
 
-    [Range(1, 9999, ErrorMessage = "Quantidade invalida.")]
+    [Range(1, 9999, ErrorMessage = "Quantidade inválida.")]
     public int Quantidade { get; set; }
 }
