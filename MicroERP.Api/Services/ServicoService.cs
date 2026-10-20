@@ -78,7 +78,7 @@ public sealed class ServicoService : IServicoService
     public async Task<ServicoResponse> MarcarRevisadoAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (servico is null) throw new NotFoundException("Servico nao encontrado.");
+        if (servico is null) throw new NotFoundException("Serviço não encontrado.");
 
         servico.Revisado = true;
         servico.UpdatedAt = DateTime.UtcNow;

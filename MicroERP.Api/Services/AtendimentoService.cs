@@ -38,7 +38,7 @@ public sealed class AtendimentoService : IAtendimentoService
     private async Task ValidarResponsavelAsync(long empresaId, long usuarioId, CancellationToken cancellationToken)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(empresaId, usuarioId, cancellationToken);
-        if (usuario is null || !usuario.Ativo) throw new NotFoundException("Agente nao encontrado.");
+        if (usuario is null || !usuario.Ativo) throw new NotFoundException("Agente não encontrado.");
     }
 
     // Default seguro: controla. Quando false, o cancelamento nao devolve estoque.
@@ -185,7 +185,7 @@ public sealed class AtendimentoService : IAtendimentoService
             Itens = a.ItensServico.Where(i => i.DeletedAt == null)
                 .Select(i => new AgendaItemLinhaResponse
                 {
-                    Descricao = i.Servico?.Descricao ?? "Servico",
+                    Descricao = i.Servico?.Descricao ?? "Serviço",
                     Quantidade = i.Quantidade,
                     PrecoUnitario = i.PrecoUnitario,
                     Subtotal = i.Subtotal

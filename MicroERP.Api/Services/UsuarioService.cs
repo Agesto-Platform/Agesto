@@ -59,7 +59,7 @@ public sealed class UsuarioService : IUsuarioService
         var email = request.Email.Trim().ToLowerInvariant();
         if (await _usuarioRepository.EmailExistsAsync(email, cancellationToken))
         {
-            throw new EmailAlreadyExistsException("Email ja cadastrado.");
+            throw new EmailAlreadyExistsException("Email já cadastrado.");
         }
 
         var senha = GerarSenhaProvisoria();
@@ -91,7 +91,7 @@ public sealed class UsuarioService : IUsuarioService
         if (usuario.Perfil == PerfilUsuario.Dono && request.Perfil != PerfilUsuario.Dono)
         {
             if (usuario.Id == donoId)
-                throw new RegraUsuarioException("Voce nao pode remover o seu proprio perfil de Dono.");
+                throw new RegraUsuarioException("Você não pode remover o seu próprio perfil de Dono.");
             if (usuario.Ativo && await _usuarioRepository.CountDonosAtivos(empresaId, cancellationToken) <= 1)
                 throw new RegraUsuarioException("A empresa precisa de pelo menos um Dono ativo.");
         }
@@ -111,7 +111,7 @@ public sealed class UsuarioService : IUsuarioService
         if (!ativo)
         {
             if (usuario.Id == donoId)
-                throw new RegraUsuarioException("Voce nao pode desativar o seu proprio acesso.");
+                throw new RegraUsuarioException("Você não pode desativar o seu próprio acesso.");
             if (usuario.Perfil == PerfilUsuario.Dono && usuario.Ativo
                 && await _usuarioRepository.CountDonosAtivos(empresaId, cancellationToken) <= 1)
                 throw new RegraUsuarioException("A empresa precisa de pelo menos um Dono ativo.");
@@ -140,13 +140,13 @@ public sealed class UsuarioService : IUsuarioService
     private async Task<Usuario> ObterAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(empresaId, id, cancellationToken);
-        return usuario ?? throw new NotFoundException("Usuario nao encontrado.");
+        return usuario ?? throw new NotFoundException("Usuário não encontrado.");
     }
 
     private static void ValidarPerfil(PerfilUsuario perfil)
     {
         if (perfil is not (PerfilUsuario.Dono or PerfilUsuario.Agente))
-            throw new ArgumentException("Perfil invalido.");
+            throw new ArgumentException("Perfil inválido.");
     }
 
     private static string GerarSenhaProvisoria()

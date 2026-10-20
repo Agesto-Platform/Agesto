@@ -12,12 +12,12 @@ public sealed class ItemProdutoSyncRequest
     // PrecoUnitario e nao movimenta estoque, como no web.
     public long? ProdutoId { get; set; }
 
-    [MaxLength(200, ErrorMessage = "Descricao deve ter no maximo 200 caracteres.")]
+    [MaxLength(200, ErrorMessage = "Descrição deve ter no máximo 200 caracteres.")]
     public string? Descricao { get; set; }
 
     // Obrigatorio no item avulso. No item de catalogo, ajusta o valor no
     // atendimento (DEC-23); nulo cobra o preco do produto.
-    [Range(0, 999999.99, ErrorMessage = "Valor unitario invalido.")]
+    [Range(0, 999999.99, ErrorMessage = "Valor unitário inválido.")]
     public decimal? PrecoUnitario { get; set; }
 
     public int Quantidade { get; set; }

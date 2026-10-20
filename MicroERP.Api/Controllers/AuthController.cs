@@ -110,7 +110,7 @@ public sealed class AuthController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> TrocarSenha([FromBody] TrocarSenhaRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetUsuarioId(out var usuarioId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
 
         try
         {

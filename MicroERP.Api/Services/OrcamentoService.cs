@@ -72,13 +72,13 @@ public sealed class OrcamentoService : IOrcamentoService
             if (itemRequest.ProdutoId is { } produtoId && !await _dbContext.Produtos.AnyAsync(
                     p => p.Id == produtoId && p.EmpresaId == empresaId && p.DeletedAt == null, cancellationToken))
             {
-                throw new NotFoundException($"Produto {produtoId} nao encontrado.");
+                throw new NotFoundException($"Produto {produtoId} não encontrado.");
             }
 
             if (itemRequest.ServicoId is { } servicoId && !await _dbContext.Servicos.AnyAsync(
                     s => s.Id == servicoId && s.EmpresaId == empresaId && s.DeletedAt == null, cancellationToken))
             {
-                throw new NotFoundException($"Servico {servicoId} nao encontrado.");
+                throw new NotFoundException($"Serviço {servicoId} não encontrado.");
             }
 
             itens.Add(new ItemOrcamento

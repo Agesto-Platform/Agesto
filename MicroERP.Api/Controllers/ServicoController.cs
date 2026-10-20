@@ -84,12 +84,12 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> MarcarRevisado(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var servico = await _servicoService.MarcarRevisadoAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Servico revisado.", Data = servico });
+            return Ok(new ApiResponse { Success = true, Message = "Serviço revisado.", Data = servico });
         }
         catch (NotFoundException ex)
         {
