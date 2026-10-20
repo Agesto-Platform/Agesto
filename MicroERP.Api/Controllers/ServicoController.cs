@@ -25,22 +25,22 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetAll(CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         var servicos = await _servicoService.GetAllAsync(empresaId, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Servicos encontrados.", Data = servicos });
+        return Ok(new ApiResponse { Success = true, Message = "Serviços encontrados.", Data = servicos });
     }
 
     [HttpGet("{id:long}")]
     public async Task<ActionResult<ApiResponse>> GetById(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var servico = await _servicoService.GetByIdAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Servico encontrado.", Data = servico });
+            return Ok(new ApiResponse { Success = true, Message = "Serviço encontrado.", Data = servico });
         }
         catch (NotFoundException ex)
         {
@@ -52,13 +52,13 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Create([FromBody] ServicoCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         var servico = await _servicoService.CreateAsync(empresaId, request, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { id = servico.Id }, new ApiResponse
         {
             Success = true,
-            Message = "Servico criado com sucesso.",
+            Message = "Serviço criado com sucesso.",
             Data = servico
         });
     }
@@ -67,12 +67,12 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Update(long id, [FromBody] ServicoUpdateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var servico = await _servicoService.UpdateAsync(empresaId, id, request, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Servico atualizado com sucesso.", Data = servico });
+            return Ok(new ApiResponse { Success = true, Message = "Serviço atualizado com sucesso.", Data = servico });
         }
         catch (NotFoundException ex)
         {
@@ -84,12 +84,12 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> MarcarRevisado(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             var servico = await _servicoService.MarcarRevisadoAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Servico revisado.", Data = servico });
+            return Ok(new ApiResponse { Success = true, Message = "Serviço revisado.", Data = servico });
         }
         catch (NotFoundException ex)
         {
@@ -101,12 +101,12 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
             await _servicoService.DeleteAsync(empresaId, id, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Servico removido com sucesso." });
+            return Ok(new ApiResponse { Success = true, Message = "Serviço removido com sucesso." });
         }
         catch (NotFoundException ex)
         {
@@ -120,7 +120,7 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> GetSugeridos(long id, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {
@@ -137,7 +137,7 @@ public sealed class ServicoController : ApiControllerBase
     public async Task<ActionResult<ApiResponse>> PutSugeridos(long id, [FromBody] List<ServicoSugeridoRequest> request, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
         try
         {

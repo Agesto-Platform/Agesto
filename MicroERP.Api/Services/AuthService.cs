@@ -42,7 +42,7 @@ public sealed class AuthService : IAuthService
 
         if (emailExists)
         {
-            throw new EmailAlreadyExistsException("Email ja cadastrado.");
+            throw new EmailAlreadyExistsException("Email já cadastrado.");
         }
 
         // Empresa, usuário e configuração nascem juntos ou nenhum deles.
@@ -106,7 +106,7 @@ public sealed class AuthService : IAuthService
         // Só depois da senha correta: não revela a quem não sabe a senha que a conta existe.
         if (!usuario.Ativo)
         {
-            throw new UsuarioInativoException("Acesso desativado. Fale com o responsavel pela empresa.");
+            throw new UsuarioInativoException("Acesso desativado. Fale com o responsável pela empresa.");
         }
 
         usuario.UltimoAcessoEm = DateTime.UtcNow;
@@ -119,7 +119,7 @@ public sealed class AuthService : IAuthService
     {
         var usuario = await _dbContext.Usuarios
             .FirstOrDefaultAsync(u => u.Id == usuarioId, cancellationToken)
-            ?? throw new NotFoundException("Usuario nao encontrado.");
+            ?? throw new NotFoundException("Usuário não encontrado.");
 
         var verification = _passwordHasher.VerifyHashedPassword(usuario, usuario.Senha, request.SenhaAtual);
         if (verification == PasswordVerificationResult.Failed)

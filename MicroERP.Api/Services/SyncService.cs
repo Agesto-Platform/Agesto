@@ -291,12 +291,12 @@ public sealed class SyncService : ISyncService
         foreach (var servicoRequest in request.Servicos)
         {
             var descricao = servicoRequest.Descricao.Trim();
-            var rotuloServico = $"Servico '{descricao}'";
+            var rotuloServico = $"Serviço '{descricao}'";
             try
             {
                 if (servicoRequest.Uuid == Guid.Empty)
                 {
-                    erros.Add($"{rotuloServico}: identificador invalido.");
+                    erros.Add($"{rotuloServico}: identificador inválido.");
                     continue;
                 }
 
@@ -322,14 +322,14 @@ public sealed class SyncService : ISyncService
 
                 if (!podeCadastrarServico)
                 {
-                    erros.Add($"{rotuloServico}: o cadastro de servico pelo app esta desligado. Fale com o responsavel pela empresa.");
+                    erros.Add($"{rotuloServico}: o cadastro de serviço pelo app está desligado. Fale com o responsável pela empresa.");
                     continue;
                 }
 
                 var empreitada = servicoRequest.TipoCobranca == TipoCobranca.Empreitada;
                 if (empreitada ? servicoRequest.ValorEmpreitada is null : servicoRequest.ValorHora is null)
                 {
-                    erros.Add($"{rotuloServico}: informe o valor do servico.");
+                    erros.Add($"{rotuloServico}: informe o valor do serviço.");
                     continue;
                 }
 
@@ -432,8 +432,8 @@ public sealed class SyncService : ISyncService
                 if (cliente is null)
                 {
                     falhas.Add(atendimentoRequest.ClienteUuid is { } u
-                        ? $"Cliente {u} nao encontrado."
-                        : $"Cliente {atendimentoRequest.ClienteId} nao encontrado.");
+                        ? $"Cliente {u} não encontrado."
+                        : $"Cliente {atendimentoRequest.ClienteId} não encontrado.");
                 }
 
                 var itens = await ValidarItensAsync(empresaId, atendimentoRequest.ItensProduto, atendimentoRequest.ItensServico, servicoIdPorUuid, controlaEstoque, falhas, cancellationToken);
@@ -499,11 +499,11 @@ public sealed class SyncService : ISyncService
                 var falhas = new List<string>();
                 if (atendimento is null)
                 {
-                    falhas.Add("Atendimento nao encontrado. Ele pode ter sido excluido no web.");
+                    falhas.Add("Atendimento não encontrado. Ele pode ter sido excluído no web.");
                 }
                 else if (!porDono && atendimento.UsuarioId != usuarioId)
                 {
-                    falhas.Add("Atendimento de outro responsavel.");
+                    falhas.Add("Atendimento de outro responsável.");
                 }
 
                 if (falhas.Count == 0)
@@ -525,7 +525,7 @@ public sealed class SyncService : ISyncService
                     }
 
                     if (atendimento.Status != StatusAtendimento.Pendente)
-                        falhas.Add("Este atendimento ja foi finalizado. Descarte esta conclusao no app.");
+                        falhas.Add("Este atendimento já foi finalizado. Descarte esta conclusão no app.");
                     if (!Enum.IsDefined(conclusao.Status))
                         falhas.Add("Status inválido.");
                     if (uuidsItens.Any(u => u is null || u == Guid.Empty))
@@ -610,9 +610,9 @@ public sealed class SyncService : ISyncService
             {
                 // Item avulso: fora do catalogo, sem estoque.
                 if (itemProduto.Quantidade <= 0)
-                    falhas.Add("Quantidade invalida para item avulso.");
+                    falhas.Add("Quantidade inválida para item avulso.");
                 if (string.IsNullOrWhiteSpace(itemProduto.Descricao))
-                    falhas.Add("Item avulso sem descricao.");
+                    falhas.Add("Item avulso sem descrição.");
                 if (itemProduto.PrecoUnitario is null or < 0)
                     falhas.Add("Item avulso sem valor.");
                 continue;
@@ -620,14 +620,14 @@ public sealed class SyncService : ISyncService
 
             if (itemProduto.Quantidade <= 0)
             {
-                falhas.Add($"Quantidade invalida para produto {produtoId}.");
+                falhas.Add($"Quantidade inválida para produto {produtoId}.");
                 continue;
             }
 
             // Valor ajustado no atendimento (DEC-23); nulo usa o preco do catalogo.
             if (itemProduto.PrecoUnitario is < 0)
             {
-                falhas.Add($"Valor invalido para produto {produtoId}.");
+                falhas.Add($"Valor inválido para produto {produtoId}.");
                 continue;
             }
 
@@ -636,7 +636,7 @@ public sealed class SyncService : ISyncService
             var produto = await _produtoRepository.GetByIdAsync(empresaId, produtoId, true, cancellationToken);
             if (produto is null)
             {
-                falhas.Add($"Produto {produtoId} nao encontrado.");
+                falhas.Add($"Produto {produtoId} não encontrado.");
                 continue;
             }
 
@@ -664,13 +664,13 @@ public sealed class SyncService : ISyncService
             var referencia = itemServico.ServicoUuid?.ToString() ?? itemServico.ServicoId?.ToString() ?? "sem identificador";
             if (itemServico.Quantidade <= 0)
             {
-                falhas.Add($"Quantidade invalida para servico {referencia}.");
+                falhas.Add($"Quantidade inválida para serviço {referencia}.");
                 continue;
             }
 
             if (itemServico.PrecoUnitario is < 0)
             {
-                falhas.Add($"Valor invalido para servico {referencia}.");
+                falhas.Add($"Valor inválido para serviço {referencia}.");
                 continue;
             }
 
@@ -688,7 +688,7 @@ public sealed class SyncService : ISyncService
 
             if (servicoId is not { } idServico)
             {
-                falhas.Add($"Servico {referencia} nao encontrado.");
+                falhas.Add($"Serviço {referencia} não encontrado.");
                 continue;
             }
 
@@ -697,7 +697,7 @@ public sealed class SyncService : ISyncService
                 servico = await _servicoRepository.GetByIdAsync(empresaId, idServico, false, cancellationToken);
                 if (servico is null)
                 {
-                    falhas.Add($"Servico {referencia} nao encontrado.");
+                    falhas.Add($"Serviço {referencia} não encontrado.");
                     continue;
                 }
                 servicos[servico.Id] = servico;

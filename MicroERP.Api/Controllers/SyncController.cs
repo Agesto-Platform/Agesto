@@ -26,7 +26,7 @@ public sealed class SyncController : ApiControllerBase
     {
         if (!TryGetEmpresaId(out var empresaId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa nao identificada no token." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
         }
 
         // Sem perfil identificável, trata como Agente (o mais restrito).
@@ -35,7 +35,7 @@ public sealed class SyncController : ApiControllerBase
         return Ok(new ApiResponse
         {
             Success = true,
-            Message = "Carga concluida.",
+            Message = "Carga concluída.",
             Data = resultado
         });
     }
@@ -46,7 +46,7 @@ public sealed class SyncController : ApiControllerBase
     {
         if (!TryGetEmpresaId(out var empresaId) || !TryGetUsuarioId(out var usuarioId))
         {
-            return Unauthorized(new ApiResponse { Success = false, Message = "Token invalido." });
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
         }
 
         var porDono = TryGetPerfil(out var perfil) && perfil == PerfilUsuario.Dono;
@@ -54,7 +54,7 @@ public sealed class SyncController : ApiControllerBase
         return Ok(new ApiResponse
         {
             Success = true,
-            Message = "Descarga concluida.",
+            Message = "Descarga concluída.",
             Data = resultado
         });
     }
