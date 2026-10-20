@@ -131,10 +131,21 @@ export function AtendimentoDetail({
 
     if (tipo === 'servico') {
       if (!refId) return setDraftError('Escolha um serviço.')
-      addServ.mutate(
-        { atendimentoId: at.id, servicoId: Number(refId), precoUnitario: preco ?? null, quantidade: qtd },
-        { onSuccess: () => { toast.success('Item adicionado.'); resetDraft() }, onError },
-      )
+      // Empreitada não multiplica pela quantidade (DEC-04): cada unidade vira uma linha.
+      const empreitada = servicos.find((s) => s.id === Number(refId))?.tipoCobranca === 'Empreitada'
+      if (empreitada && qtd > 20) return setDraftError('Na empreitada, adicione até 20 unidades por vez.')
+      const linhas = empreitada ? qtd : 1
+      const body = { atendimentoId: at.id, servicoId: Number(refId), precoUnitario: preco ?? null, quantidade: empreitada ? 1 : qtd }
+      // Uma de cada vez: cada inclusão recalcula o total do atendimento no servidor.
+      void (async () => {
+        try {
+          for (let i = 0; i < linhas; i++) await addServ.mutateAsync(body)
+          toast.success(linhas > 1 ? `${linhas} itens adicionados.` : 'Item adicionado.')
+          resetDraft()
+        } catch (e) {
+          onError(e)
+        }
+      })()
       return
     }
 

@@ -767,3 +767,19 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 4. **Mapa no web:** aba "Mapa" na Agenda, um dia por vez, pinos numerados pela ordem dos horários e coloridos por responsável, com popup do atendimento e lista de quem está sem localização. Leaflet com blocos do OpenStreetMap, carregado só ao abrir a aba. O CSP do painel libera `https://tile.openstreetmap.org` em `img-src`.
 
 **Impacto:** migration `AddClienteCoordenadas` (3 colunas em `Clientes` + índice). Nova variável no Render. Dependência nova no web: `leaflet` (+ `@types/leaflet`). A política de uso dos blocos do OpenStreetMap vale para volume baixo; se o uso crescer, trocar por um provedor de blocos (ex.: MapTiler) é só mudar a URL e o CSP.
+
+---
+
+## DEC-39 — Atendimento no app no mesmo nível do web
+
+**Status:** 🟡 Implementado na branch `fix/mobile-sincronizar-item-avulso`, aguardando autorização para push e merge. Pedido por Diego em 20/10/2026, depois do levantamento web × app (`modulos/atendimento-web-vs-app.md`).
+
+**Contexto:** no app o agente só usava o preço do catálogo, não conseguia concluir uma visita agendada (só criar outro atendimento), não corrigia nada depois de salvar e via um "Estimado" diferente do que o servidor cobrava na empreitada com quantidade 2.
+
+**Decisão:**
+1. **Valor ajustado (DEC-23 no app):** a Descarga aceita `PrecoUnitario` opcional no item de produto de catálogo e no item de serviço; nulo cobra o catálogo. No app, o valor de cada item é editável e aparece marcado como "ajustado".
+2. **Concluir atendimento existente:** nova lista `Conclusoes` na Descarga, com o uuid do atendimento do servidor, o novo status e itens acrescentados (os já gravados não mudam). O Agente só conclui atendimentos dos quais é responsável; o Dono conclui qualquer um. Cada item leva um `Uuid` do device, e o reenvio é reconhecido por ele, sem duplicar. Atendimento já finalizado rejeita itens novos. A agenda passa a trazer os itens já lançados (`Itens`) para o agente ver o que foi combinado.
+3. **Corrigir antes de enviar:** atendimento e conclusão ainda não enviados podem ser reabertos, alterados ou excluídos no aparelho.
+4. **Empreitada:** mantém a DEC-04. App e web lançam uma linha por unidade (quantidade 2 = duas linhas), e o estimado do app bate com o que o servidor cobra.
+
+**Impacto:** sem migration. Contrato da Descarga e da agenda só ganha campos opcionais, então um app antigo continua funcionando.

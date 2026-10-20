@@ -11,12 +11,30 @@ function hora(iso: string | null): string {
 }
 
 /**
- * Linha grande de agenda. `highlight` = próximo atendimento. O botão da direita
- * abre a navegação até o cliente quando há endereço completo.
+ * Linha grande de agenda. `highlight` = próximo atendimento. Tocar no cartão
+ * abre a conclusão (`onPress`); o botão da direita abre a navegação até o
+ * cliente quando há endereço completo.
  */
-export function JobCard({ item, highlight = false }: { item: AgendaItem; highlight?: boolean }) {
+export function JobCard({
+  item,
+  highlight = false,
+  onPress,
+  etiqueta,
+}: {
+  item: AgendaItem
+  highlight?: boolean
+  onPress?: () => void
+  etiqueta?: string | null
+}) {
   return (
     <View style={[styles.job, highlight && styles.next]}>
+      <Pressable
+        onPress={onPress}
+        disabled={!onPress}
+        accessibilityRole={onPress ? 'button' : undefined}
+        accessibilityLabel={onPress ? `Concluir atendimento de ${item.clienteNome}` : undefined}
+        style={({ pressed }) => [styles.main, pressed && { opacity: 0.7 }]}
+      >
       <View style={styles.time}>
         <Text style={styles.timeH}>{hora(item.dataAgendada)}</Text>
       </View>
@@ -33,12 +51,19 @@ export function JobCard({ item, highlight = false }: { item: AgendaItem; highlig
             </Text>
           </View>
         )}
-        {highlight && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>Iniciar agora</Text>
+        {etiqueta ? (
+          <View style={styles.etiqueta}>
+            <Text style={styles.etiquetaText}>{etiqueta}</Text>
           </View>
+        ) : (
+          highlight && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>Iniciar agora</Text>
+            </View>
+          )
         )}
       </View>
+      </Pressable>
       {item.enderecoCompleto ? (
         <Pressable
           onPress={() => Linking.openURL(urlNavegacao(item.enderecoCompleto!))}
@@ -68,6 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space(3.75),
   },
+  main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space(3.5) },
   next: { borderColor: colors.good, backgroundColor: colors.goodSoft },
   time: { width: 52, alignItems: 'center' },
   timeH: { fontSize: 19, fontWeight: '700', color: colors.ink },
@@ -78,5 +104,7 @@ const styles = StyleSheet.create({
   addr: { flex: 1, fontSize: 13, color: colors.ink3 },
   badge: { marginTop: space(1), backgroundColor: colors.good, borderRadius: radius.pill, paddingHorizontal: space(2.25), paddingVertical: space(1), alignSelf: 'flex-start' },
   badgeText: { color: '#fff', fontSize: 11.5, fontWeight: '700' },
+  etiqueta: { marginTop: space(1), backgroundColor: colors.surface2, borderRadius: radius.pill, paddingHorizontal: space(2.25), paddingVertical: space(1), alignSelf: 'flex-start' },
+  etiquetaText: { color: colors.ink2, fontSize: 11.5, fontWeight: '700' },
   go: { width: 40, height: 40, borderRadius: 11, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
 })

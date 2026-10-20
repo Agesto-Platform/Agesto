@@ -82,6 +82,43 @@ describe('sync.carga (mock)', () => {
     expect((await mem.getPendingClientes())[0].syncedAt).not.toBeNull()
   })
 
+  it('descarga manda a conclusão de atendimento do servidor separada dos novos', async () => {
+    const mem = createMemoryDb()
+    await mem.addAtendimento({
+      uuid: 'novo', clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-20', dataAgendada: null,
+      itensProduto: [{ uuid: 'i1', produtoId: 1, quantidade: 1 }], itensServico: [], syncedAt: null,
+    })
+    await mem.addAtendimento({
+      uuid: 'at-101', clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-20', dataAgendada: null,
+      itensProduto: [{ uuid: 'i2', produtoId: 1, precoUnitario: 60, quantidade: 1 }], itensServico: [], existente: true, syncedAt: null,
+    })
+    const post = jest.spyOn(api, 'post')
+
+    const r = await descarga(mem)
+
+    const enviado = post.mock.calls[0][1] as SyncDescargaRequest
+    expect(enviado.atendimentos.map((a) => a.uuid)).toEqual(['novo'])
+    expect(enviado.conclusoes).toEqual([
+      { uuid: 'at-101', status: 'Concluido', itensProduto: [{ uuid: 'i2', produtoId: 1, precoUnitario: 60, quantidade: 1 }], itensServico: [] },
+    ])
+    expect(r.conclusoesImportadas).toBe(1)
+    expect(await mem.getPendingAtendimentos()).toHaveLength(0)
+    post.mockRestore()
+  })
+
+  it('apaga só atendimento ainda não enviado', async () => {
+    const mem = createMemoryDb()
+    for (const [uuid, syncedAt] of [['pend', null], ['enviado', '2026-10-20T12:00:00Z']] as const) {
+      await mem.addAtendimento({
+        uuid, clienteId: 1, status: 'Concluido', dataRegistro: '2026-10-20', dataAgendada: null,
+        itensProduto: [], itensServico: [], syncedAt,
+      })
+    }
+    await mem.deleteAtendimento('pend')
+    await mem.deleteAtendimento('enviado')
+    expect((await mem.getAtendimentos()).map((a) => a.uuid)).toEqual(['enviado'])
+  })
+
   it('descarga mantém pendente o que o servidor rejeitou', async () => {
     const mem = createMemoryDb()
     await mem.addCliente({
@@ -247,10 +284,10 @@ describe('sync.sincronizar', () => {
   it('resumo cita o que foi enviado e o que ficou pendente', () => {
     const recebido = { clientes: 0, produtos: 0, servicos: 0, agenda: 1 }
     expect(
-      resumoSincronizacao({ enviado: { clientesImportados: 1, servicosImportados: 0, atendimentosImportados: 2, erros: [] }, recebido }),
+      resumoSincronizacao({ enviado: { clientesImportados: 1, servicosImportados: 0, atendimentosImportados: 1, conclusoesImportadas: 1, erros: [] }, recebido }),
     ).toBe('Enviados: 2 atendimento(s), 1 cliente(s). Agenda de hoje: 1 visita.')
     expect(
-      resumoSincronizacao({ enviado: { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, erros: ['A: x'] }, recebido }),
+      resumoSincronizacao({ enviado: { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, conclusoesImportadas: 0, erros: ['A: x'] }, recebido }),
     ).toContain('1 não enviado(s)')
   })
 })

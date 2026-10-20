@@ -71,7 +71,10 @@ export function createMemoryDb(): LocalDb {
     },
 
     async addAtendimento(a) {
-      atendimentos.push(clone(a))
+      atendimentos = [...atendimentos.filter((x) => x.uuid !== a.uuid), clone(a)]
+    },
+    async deleteAtendimento(uuid) {
+      atendimentos = atendimentos.filter((a) => a.uuid !== uuid || a.syncedAt !== null)
     },
     async getAtendimentos() {
       return clone(atendimentos)

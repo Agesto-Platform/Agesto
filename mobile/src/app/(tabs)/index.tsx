@@ -8,6 +8,8 @@ import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { montarRota } from '@/features/rota/montarRota'
 import { sincronizar } from '@/sync/sync'
+import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
+import type { LocalAtendimento } from '@/db/types'
 import type { AgendaItem } from '@/types/api'
 
 function dataHoje(): string {
@@ -18,7 +20,7 @@ function dataHoje(): string {
 export default function Inicio() {
   const router = useRouter()
   const [agenda, setAgenda] = useState<AgendaItem[]>([])
-  const [pending, setPending] = useState(0)
+  const [pendentes, setPendentes] = useState<LocalAtendimento[]>([])
   const [atualizando, setAtualizando] = useState(false)
 
   const carregar = useCallback(async (ativo: () => boolean = () => true) => {
@@ -26,7 +28,7 @@ export default function Inicio() {
     if (!ativo()) return
     items.sort((a, b) => String(a.dataAgendada).localeCompare(String(b.dataAgendada)))
     setAgenda(items)
-    setPending(pend.length)
+    setPendentes(pend)
   }, [])
 
   useFocusEffect(
@@ -50,6 +52,20 @@ export default function Inicio() {
       await carregar()
       setAtualizando(false)
     }
+  }
+
+  const pending = pendentes.length
+  const card = (item: AgendaItem, highlight = false) => {
+    const { rota: destino, etiqueta } = acaoDaAgenda(item, pendentes)
+    return (
+      <JobCard
+        key={item.id}
+        item={item}
+        highlight={highlight}
+        etiqueta={etiqueta}
+        onPress={destino ? () => router.push(destino) : undefined}
+      />
+    )
   }
 
   const proximo = agenda[0]
@@ -127,7 +143,7 @@ export default function Inicio() {
         {proximo && (
           <View style={styles.section}>
             <Text style={styles.label}>Próximo</Text>
-            <JobCard item={proximo} highlight />
+            {card(proximo, true)}
           </View>
         )}
 
@@ -135,9 +151,7 @@ export default function Inicio() {
           <View style={styles.section}>
             <Text style={styles.label}>Ainda hoje</Text>
             <View style={{ gap: space(2.75) }}>
-              {resto.map((item) => (
-                <JobCard key={item.id} item={item} />
-              ))}
+              {resto.map((item) => card(item))}
             </View>
           </View>
         )}
