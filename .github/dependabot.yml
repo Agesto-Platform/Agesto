@@ -1,21 +1,29 @@
 version: 2
 updates:
-  # NuGet (backend C# / .NET 8)
+  # NuGet (backend C# / .NET 8). Api e Tests juntos para que o grupo
+  # abaixo suba EF Core e ASP.NET Core na mesma versao nos dois projetos (DEC-13).
+  # Revisores vem do CODEOWNERS (@Agesto-Platform/core).
   - package-ecosystem: "nuget"
-    directory: "/MicroERP.Api"
+    directories:
+      - "/MicroERP.Api"
+      - "/MicroERP.Tests"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "08:00"
       timezone: "America/Sao_Paulo"
     open-pull-requests-limit: 5
-    reviewers:
-      - "falkz-cmd"
     commit-message:
       prefix: "chore(deps)"
     labels:
       - "dependencies"
       - "backend"
+    groups:
+      microsoft-aspnetcore-efcore:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.EntityFrameworkCore*"
     # Bloqueia atualizacoes major automaticas. Decisao do time em 2026-05-11
     # apos o PR #5 (Swashbuckle 6 -> 10) ter sido mergeado sem validacao.
     # Major upgrades viram tarefa manual no Jira com revisao + smoke test.
@@ -23,36 +31,15 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  - package-ecosystem: "nuget"
-    directory: "/MicroERP.Tests"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "08:00"
-      timezone: "America/Sao_Paulo"
-    open-pull-requests-limit: 5
-    reviewers:
-      - "falkz-cmd"
-    commit-message:
-      prefix: "chore(deps)"
-    labels:
-      - "dependencies"
-      - "backend"
-      - "tests"
-    ignore:
-      - dependency-name: "*"
-        update-types: ["version-update:semver-major"]
-
   - package-ecosystem: "npm"
     directory: "/web"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "08:15"
       timezone: "America/Sao_Paulo"
     open-pull-requests-limit: 5
-    reviewers:
-      - "falkz-cmd"
     commit-message:
       prefix: "chore(deps-web)"
     labels:
@@ -64,14 +51,13 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/mobile"
+    target-branch: "develop"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "08:30"
       timezone: "America/Sao_Paulo"
     open-pull-requests-limit: 5
-    reviewers:
-      - "falkz-cmd"
     commit-message:
       prefix: "chore(deps-mobile)"
     labels:
@@ -80,10 +66,15 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # O Expo SDK fixa estas versoes; atualizar com `npx expo install --fix`.
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
 
   # GitHub Actions usadas pelo CI
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 3
