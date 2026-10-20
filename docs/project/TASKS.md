@@ -330,19 +330,16 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 ## Ordem de execução recomendada (próximas sprints)
 
-> O MVP possui backend, Web e Mobile funcionais contra mocks e publicados em `Agesto-Platform/Agesto`. Organização, time `Core`, CI e linha principal já estão configurados. Antes da infraestrutura, restam os rulesets, a auditoria documental e a formalização das responsabilidades e da propriedade intelectual. Depois disso, será provisionado um PostgreSQL novo, as migrations serão aplicadas em ambiente controlado e os clientes trocarão os mocks pela API real.
+> O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados. Restam a auditoria documental e a formalização das responsabilidades e da propriedade intelectual.
 
 ### Sprint imediata
-1. Configurar rulesets em `develop` e `main` com PR, revisão e status checks
-2. Concluir a auditoria de `REQUIREMENTS.md`
-3. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
-4. Depois da auditoria, remover a documentação legada em tarefa separada
-5. **Provisionar PostgreSQL novo e aplicar migrations pendentes** em ambiente controlado
-6. Subir a API real e desligar os mocks no Web e no Mobile
-7. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
+1. Concluir a auditoria de `REQUIREMENTS.md`
+2. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
+3. Depois da auditoria, remover a documentação legada em tarefa separada
+4. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
 
 ### Sprint seguinte
-8. Débitos residuais: margem/hora do KAN-79 (após campo de duração), roteirização/lat-lng (DEC-17), descarga de Orçamento no sync, agenda na Carga do sync mobile, mapear uuid→id do cliente na Descarga mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
+5. Débitos residuais: margem/hora do KAN-79 (após campo de duração), "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
 
 ---
 

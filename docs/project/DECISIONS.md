@@ -541,7 +541,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-29 — Retomada do desenvolvimento em equipe e propriedade organizacional
 
-**Status:** 🟡 Em implementação — organização, transferência e equipe concluídas em 19/08/2026; rulesets e formalização jurídica ainda pendentes
+**Status:** 🟡 Em implementação — organização, transferência e equipe concluídas em 19/08/2026; ruleset `Protected branches` ativo (revisto em 10/10/2026); formalização jurídica ainda pendente
 
 **Decisão:** O Agesto deixa de operar como projeto mantido por uma única pessoa e volta ao desenvolvimento em equipe. Davi continua responsável pelas decisões de produto. O repositório foi transferido para a organização `Agesto-Platform`, preservando histórico, branches e contribuições.
 
