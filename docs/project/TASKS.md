@@ -288,7 +288,7 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 
 ## Mobile (React Native) — App do Agente
 
-**Status:** 🟢 Completo (mob-01 a mob-07, com evoluções das DEC-33, DEC-36, DEC-37 e DEC-39 em `develop`) — contra a API real, no monorepo `Agesto-Platform/Agesto`, em `mobile/`. Offline-first, action-first. Decisões de stack e arquitetura registradas em DEC-26 (`DECISIONS.md`) e na seção 11 do `DESIGN.md`.
+**Status:** 🟢 Completo (mob-01 a mob-07, com evoluções das DEC-33, DEC-36, DEC-37 e DEC-39) — contra a API real, no monorepo `Agesto-Platform/Agesto`, em `mobile/`. Offline-first, action-first. Decisões de stack e arquitetura registradas em DEC-26 (`DECISIONS.md`) e na seção 11 do `DESIGN.md`.
 
 **Stack:** React Native + TypeScript via Expo (prebuild) · Expo Router · tokens do protótipo (azul `#243FA6` + verde `#12B886`, tema claro) · tema + StyleSheet (não NativeWind) · `expo-sqlite` (device) / adapter em memória (Web/testes) atrás da interface `LocalDb` · cliente de API com camada de mock em código (`config.useMocks`) · JWT via `expo-secure-store`/`localStorage`. Login demo (mock): `agente@agesto.app` / `agesto123`.
 
@@ -333,8 +333,6 @@ Tracking local (Jira offline); numeração `mob-0x`.
 > O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados. Restam a auditoria documental e a formalização das responsabilidades e da propriedade intelectual.
 
 ### Sprint imediata
-> Antes dos itens abaixo: promover a `develop` para a `main`, que ainda não tem os marcos de outubro/2026.
-
 1. Concluir a auditoria de `REQUIREMENTS.md`
 2. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
 3. Depois da auditoria, remover a documentação legada em tarefa separada

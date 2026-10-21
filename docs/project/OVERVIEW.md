@@ -76,7 +76,7 @@ Os três integram o time visível `@Agesto-Platform/core`. Os papéis indicam o 
 ## Status atual
 
 - **Fase:** MVP em produção (API, banco e web reais, DEC-32), em desenvolvimento em equipe
-- **Branch principal:** `main` (repositório `Agesto-Platform/Agesto`). A `develop` é publicada no Render depois do CI e concentra os marcos de outubro/2026, ainda não promovidos para a `main`
+- **Branch principal:** `main` (repositório `Agesto-Platform/Agesto`). A `main` é a produção (Render e Cloudflare Pages publicam a `main` depois do CI) e recebeu os marcos de outubro/2026 em 21/10/2026; a `develop` é integração e teste local (DEC-41)
 - **Repositório:** [`Agesto-Platform/Agesto`](https://github.com/Agesto-Platform/Agesto) — repo próprio, **público** (portfólio + comercial, licença restritiva; ver DEC-24). O acadêmico original `github.com/Auto-academic-erp/micro-erp-auto` fica como legado abandonado.
 - **Banco:** Supabase em N. Virginia, com a `InitialCreate` única (DEC-31) e as migrations seguintes aplicadas; backup automático ainda pendente (DEC-34)
 - **Testes:** backend 261, web 33 e mobile 77 testes passando no CI da `develop` (21/10/2026)
