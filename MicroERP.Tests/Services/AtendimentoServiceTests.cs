@@ -16,6 +16,7 @@ public sealed class AtendimentoServiceTests
     private readonly Mock<IItemServicoRepository> _itemServicoRepoMock = new();
     private readonly Mock<IProdutoRepository> _produtoRepoMock = new();
     private readonly Mock<IConfiguracaoRepository> _configuracaoRepoMock = new();
+    private readonly Mock<IUsuarioRepository> _usuarioRepoMock = new();
     private readonly AtendimentoService _service;
 
     public AtendimentoServiceTests()
@@ -26,7 +27,8 @@ public sealed class AtendimentoServiceTests
             _itemProdutoRepoMock.Object,
             _itemServicoRepoMock.Object,
             _produtoRepoMock.Object,
-            _configuracaoRepoMock.Object);
+            _configuracaoRepoMock.Object,
+            _usuarioRepoMock.Object);
     }
 
     [Fact]
@@ -64,6 +66,68 @@ public sealed class AtendimentoServiceTests
         _atendimentoRepoMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(StatusAtendimento.Pendente, result.Status);
         Assert.Equal(0m, result.ValorTotal);
+    }
+
+    [Fact]
+    public async Task CreateAsync_ComAgenteResponsavel_AtribuiAoAgente()
+    {
+        _clienteRepoMock
+            .Setup(r => r.GetByIdAsync(1, 5, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Cliente { Id = 5, Nome = "João" });
+        _usuarioRepoMock
+            .Setup(r => r.GetByIdAsync(1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Usuario { Id = 20, EmpresaId = 1, Perfil = PerfilUsuario.Agente, Ativo = true });
+
+        var result = await _service.CreateAsync(1, 10, new AtendimentoCreateRequest { ClienteId = 5, Status = StatusAtendimento.Pendente, ResponsavelId = 20 }, CancellationToken.None);
+
+        Assert.Equal(20, result.UsuarioId);
+    }
+
+    [Theory]
+    [InlineData(false)] // agente desativado
+    [InlineData(null)]  // agente de outra empresa (não encontrado no escopo)
+    public async Task CreateAsync_ComAgenteInvalido_ThrowsNotFound(bool? ativo)
+    {
+        _clienteRepoMock
+            .Setup(r => r.GetByIdAsync(1, 5, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Cliente { Id = 5, Nome = "João" });
+        _usuarioRepoMock
+            .Setup(r => r.GetByIdAsync(1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ativo is null ? null : new Usuario { Id = 20, EmpresaId = 1, Ativo = ativo.Value });
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _service.CreateAsync(1, 10, new AtendimentoCreateRequest { ClienteId = 5, Status = StatusAtendimento.Pendente, ResponsavelId = 20 }, CancellationToken.None));
+        _atendimentoRepoMock.Verify(r => r.AddAsync(It.IsAny<Atendimento>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ComNovoAgente_Reatribui()
+    {
+        var atendimento = new Atendimento { Id = 7, EmpresaId = 1, UsuarioId = 10, Status = StatusAtendimento.Pendente };
+        _atendimentoRepoMock
+            .Setup(r => r.GetByIdAsync(1, 7, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(atendimento);
+        _usuarioRepoMock
+            .Setup(r => r.GetByIdAsync(1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Usuario { Id = 20, EmpresaId = 1, Ativo = true });
+
+        var result = await _service.UpdateAsync(1, 7, new AtendimentoUpdateRequest { Status = StatusAtendimento.Pendente, ResponsavelId = 20 }, CancellationToken.None);
+
+        Assert.Equal(20, result.UsuarioId);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SemAgente_MantemOAtual()
+    {
+        var atendimento = new Atendimento { Id = 7, EmpresaId = 1, UsuarioId = 10, Status = StatusAtendimento.Pendente };
+        _atendimentoRepoMock
+            .Setup(r => r.GetByIdAsync(1, 7, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(atendimento);
+
+        var result = await _service.UpdateAsync(1, 7, new AtendimentoUpdateRequest { Status = StatusAtendimento.Concluido }, CancellationToken.None);
+
+        Assert.Equal(10, result.UsuarioId);
+        _usuarioRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

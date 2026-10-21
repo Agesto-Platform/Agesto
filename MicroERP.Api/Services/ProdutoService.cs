@@ -24,7 +24,7 @@ public sealed class ProdutoService : IProdutoService
     public async Task<ProdutoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var produto = await _produtoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (produto is null) throw new NotFoundException("Produto nao encontrado.");
+        if (produto is null) throw new NotFoundException("Produto não encontrado.");
         return MapResponse(produto);
     }
 
@@ -50,7 +50,7 @@ public sealed class ProdutoService : IProdutoService
     public async Task<ProdutoResponse> UpdateAsync(long empresaId, long id, ProdutoUpdateRequest request, CancellationToken cancellationToken)
     {
         var produto = await _produtoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (produto is null) throw new NotFoundException("Produto nao encontrado.");
+        if (produto is null) throw new NotFoundException("Produto não encontrado.");
 
         produto.Nome = request.Nome;
         produto.Preco = request.Preco;
@@ -65,7 +65,7 @@ public sealed class ProdutoService : IProdutoService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var produto = await _produtoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (produto is null) throw new NotFoundException("Produto nao encontrado.");
+        if (produto is null) throw new NotFoundException("Produto não encontrado.");
 
         produto.DeletedAt = DateTime.UtcNow;
         produto.UpdatedAt = DateTime.UtcNow;

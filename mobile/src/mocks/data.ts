@@ -28,7 +28,7 @@ export function seedCarga(): SyncCargaResponse {
       { servicoId: 1, produtoId: 1, quantidadePadrao: 2 },
       { servicoId: 1, produtoId: 3, quantidadePadrao: 1 },
     ],
-    configuracao: { tipoOperacao: 'Servico', modoAgendaAgente: 'Flexivel', controlaEstoque: true },
+    configuracao: { tipoOperacao: 'Servico', modoAgendaAgente: 'Flexivel', controlaEstoque: true, agenteCadastraServico: true },
     sincronizadoEm: new Date().toISOString(),
   }
 }
@@ -42,8 +42,8 @@ function hoje(hour: number, min = 0): string {
 /** Agenda do dia do agente (GET /api/atendimento/agenda). */
 export function seedAgenda(): AgendaItem[] {
   return [
-    { id: 101, dataAgendada: hoje(9, 0), status: 'Pendente', valorTotal: 1200, clienteId: 1, clienteNome: 'Vó Joana', clienteTelefone: '(34) 99999-0000', enderecoResumo: 'R. das Acácias, 120 — Centro', resumo: 'Instalação de ar-condicionado' },
-    { id: 102, dataAgendada: hoje(11, 30), status: 'Pendente', valorTotal: 380, clienteId: 2, clienteNome: 'Marina Alves', clienteTelefone: '(34) 98888-1010', enderecoResumo: 'Av. Leopoldino, 45 — Fabrício', resumo: 'Manutenção preventiva' },
-    { id: 103, dataAgendada: hoje(15, 0), status: 'Pendente', valorTotal: 1640, clienteId: 3, clienteNome: 'Renata Vieira', clienteTelefone: null, enderecoResumo: 'Centro', resumo: 'Orçamento — troca de compressor' },
+    { id: 101, uuid: 'at-101', dataAgendada: hoje(9, 0), status: 'Pendente', valorTotal: 1200, clienteId: 1, clienteNome: 'Vó Joana', clienteTelefone: '(34) 99999-0000', enderecoResumo: 'R. das Acácias, 120 — Centro', enderecoCompleto: 'R. das Acácias, 120, Centro, Uberaba', resumo: 'Instalação de ar-condicionado', itens: [{ descricao: 'Instalação de AC', quantidade: 1, precoUnitario: 1200, subtotal: 1200 }] },
+    { id: 102, uuid: 'at-102', dataAgendada: hoje(11, 30), status: 'Pendente', valorTotal: 380, clienteId: 2, clienteNome: 'Marina Alves', clienteTelefone: '(34) 98888-1010', enderecoResumo: 'Av. Leopoldino, 45 — Fabrício', enderecoCompleto: 'Av. Leopoldino de Oliveira, 45, Fabrício, Uberaba', resumo: 'Manutenção preventiva', itens: [{ descricao: 'Manutenção preventiva', quantidade: 2, precoUnitario: 140, subtotal: 280 }, { descricao: 'Cano de dreno (m)', quantidade: 5, precoUnitario: 20, subtotal: 100 }] },
+    { id: 103, uuid: 'at-103', dataAgendada: hoje(15, 0), status: 'Pendente', valorTotal: 1640, clienteId: 3, clienteNome: 'Renata Vieira', clienteTelefone: null, enderecoResumo: 'Centro', enderecoCompleto: null, resumo: 'Orçamento — troca de compressor', itens: [] },
   ]
 }

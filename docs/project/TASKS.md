@@ -12,7 +12,7 @@
 | Definir integrantes, papéis e focos iniciais | 🟢 Concluído — Davi (Produto), Depowo (Infra), ghzpro034 (Generalista) |
 | Criar organização GitHub e transferir para `Agesto-Platform/Agesto` | 🟢 Concluído |
 | Configurar time `Core`, acessos mínimos e segundo Owner | 🟢 Concluído — Davi e Depowo são Owners |
-| Proteger `develop` e `main` com PR, revisão e status checks | 🔴 Pendente |
+| Proteger `develop` e `main` com PR, revisão e status checks | 🟢 Concluído — ruleset exige PR e os checks Backend, Web e Mobile; sem aprovação obrigatória (decisão de 10/10/2026) |
 | Adicionar CI para backend, web e mobile | 🟢 Concluído — validado na promoção de governança |
 | Auditar `REQUIREMENTS.md` reconstruído | 🟡 Em andamento |
 | Publicar a linha local consolidada em `main` | 🟢 Concluído — merge `72b021b` |
@@ -27,10 +27,10 @@
 | KAN-19 | Backend Core (C# / ASP.NET) | 🟢 Essencialmente completo |
 | KAN-30 | Módulo IA/Insights (Python) | ⚫ Obsoleto — descartado (DEC-21 resolvida: IA roda em C# no backend) |
 | KAN-37 | Documentação & QA | 🟡 Em andamento |
-| KAN-44 | Frontend Web (React) — Módulo Dono | 🟢 Completo (web-01 a web-14, sidebar 100% funcional + testes base, ver DEC-25) — resta só trocar mock por API real quando a infra subir |
-| KAN-69 | Domínio Prestador de Serviço (Orçamento, Agenda, Item genérico, valor editável) | 🟢 Backend essencialmente completo — falta lat/lng/roteirização, descarga de orçamento no sync e aplicar migrations no banco |
+| KAN-44 | Frontend Web (React) — Módulo Dono | 🟢 Completo (web-01 a web-14, sidebar 100% funcional + testes base, ver DEC-25) — em produção contra a API real (DEC-32) |
+| KAN-69 | Domínio Prestador de Serviço (Orçamento, Agenda, Item genérico, valor editável) | 🟢 Backend essencialmente completo — migrations aplicadas e rota fase 1 entregue (DEC-37/38); falta descarga de orçamento no sync e "Otimizar dia" (fase 2) |
 | KAN-77 | Camada de Métricas & Dashboards | 🟡 Em andamento |
-| — | Mobile (React Native) — App do Agente | 🟢 Completo (mob-01 a mob-07, offline-first, ver DEC-26) — resta só trocar mock por API real quando a infra subir |
+| — | Mobile (React Native) — App do Agente | 🟢 Completo (mob-01 a mob-07, offline-first, ver DEC-26) — em produção contra a API real (DEC-32), atendimento no nível do web (DEC-39) |
 
 ---
 
@@ -73,13 +73,13 @@
 |-----|-----------|------------|-------------|------------|
 | — | Paginação no GetAllAsync | Baixa | A definir | — |
 
-> Backend Core está essencialmente completo: no último marco validado, build verde e 90 testes xUnit aprovados. `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A integração real com PostgreSQL ainda depende da nova infraestrutura.
+> Backend Core está essencialmente completo: em 21/10/2026, build verde e 261 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
 
 ---
 
 ## Domínio Prestador de Serviço (KAN-69)
 
-> Épico que reúne os refinamentos do pivô de produto (DEC-15 a DEC-19, DEC-22, DEC-23): Orçamento, Agenda/Rota e item de atendimento genérico. As branches do batch já fazem parte da linha local atual de `develop`/`main`; a publicação desse histórico no GitHub ainda está pendente.
+> Épico que reúne os refinamentos do pivô de produto (DEC-15 a DEC-19, DEC-22, DEC-23): Orçamento, Agenda/Rota e item de atendimento genérico. O batch está publicado nas linhas `develop` e `main` de `Agesto-Platform/Agesto`.
 
 ### ✅ Concluídas
 
@@ -107,10 +107,12 @@
 |------|-----------|------------|------------|
 | Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Campo de duração (não modelado) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje o sync de orçamento é só Carga (leitura) | Média | Decisão de produto |
-| Roteirização/geolocalização | Lat/lng no `Cliente`, ordenação da rota do dia por proximidade — fase posterior da DEC-17 | Média | — |
-| Aplicar migrations no banco novo | Migrations geradas offline; aplicação pendente até provisionar e validar a nova infraestrutura PostgreSQL | Alta | Nova infraestrutura |
+| ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
+| ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
+| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
+| ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
-| **Mapear uuid→id do cliente na Descarga** | Um atendimento criado offline não pode referenciar um cliente também criado offline (`PendingCliente`), porque a Descarga não devolve o mapeamento uuid→id do cliente pendente antes de processar o atendimento pendente da mesma leva (delta identificado em mob-06, ver DEC-26) | Média | Decisão de produto (ordem de processamento na Descarga) |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | Revisão de Davi |
 
 ---
 
@@ -124,20 +126,49 @@
 | KAN-13 | Projeto ASP.NET Core .NET 8 | Davi Gomes |
 | KAN-35 | Testes de endpoints | Diego |
 | KAN-16 | CI para backend, web e mobile | Equipe Agesto |
+| KAN-15 | Provedores: API no Render, banco no Supabase, web na Cloudflare Pages (DEC-32) | Equipe Agesto |
+| KAN-17 | Deploy da API em produção (`agesto-api.onrender.com`) | Equipe Agesto |
+| KAN-18 | Processo de deploy documentado em `deploy/README.md` | Equipe Agesto |
+| — | Banco e API reais no ar; mocks desligados no Web e no Mobile | Equipe Agesto |
 
 ### 🔴 Pendentes
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
 | KAN-14 | PostgreSQL de desenvolvimento + migrations | Alta | A definir |
-| KAN-15 | Escolher provedor e ambientes | Alta | Equipe |
-| KAN-17 | Deploy inicial da API | Média | A definir |
-| KAN-18 | Documentar processo de deploy | Baixa | A definir |
 | KAN-54 | Agents de QA automatizados | Baixa | Diego |
-| — | Configurar rulesets em `develop` e `main` | Alta | Davi Gomes |
-| — | Instalar dotnet ef global na máquina | Média | Davi Gomes |
-| — | Aplicar migrations pendentes no novo PostgreSQL | Alta | A definir |
-| — | Subir banco/API real e trocar `VITE_USE_MOCKS`/`config.useMocks` para `false` no Web e no Mobile | Alta | Davi Gomes |
+| — | ~~Instalar dotnet ef global na máquina~~ ✅ 21/10/2026 — `dotnet-ef` 10.0.13 | Média | — |
+| — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
+| — | Backup automático do banco (Supabase Free não faz) — DEC-34 | Alta | A definir |
+| — | ~~Migrar para .NET 10 (o .NET 8 perde suporte em 10/11/2026)~~ ✅ DEC-40 | Alta | — |
+
+---
+
+## Segurança (DEC-34)
+
+### ✅ Concluídas e validadas em produção — 10/10/2026
+
+| Item | Detalhe |
+|------|---------|
+| Auditoria de API, front, banco e infra | Achados e correções registrados na DEC-34 |
+| Rate limiting | Login, cadastro (por IP) e sync (por usuário) |
+| Cadastro fechado | `Auth__RegistrationKey` + header `X-Registration-Key`; ver `deploy/README.md` |
+| Perfis Dono/Agente no back | Policy `Dono` nas rotas de gestão, com teste de cobertura |
+| Revogação de token | JWT revalidado no banco a cada requisição |
+| JWT endurecido | HS256 fixo; issuer, audience e segredo ≥ 32 bytes obrigatórios |
+| Headers de segurança | API (HSTS, nosniff, frame-ancestors) e Web (CSP via `_headers`) |
+| LGPD de clientes | CPF mascarado para o Agente; anonimização na exclusão |
+| Banco | RLS em todas as tabelas; role `agesto_api` só com DML; TLS `VerifyFull` |
+| Mobile | Mock só em dev; dados locais apagados no logout e na troca de usuário; sem backup Android |
+| Web | Painel só para o Dono; cache limpo no logout |
+
+### 🔴 Pendentes
+
+| Item | Descrição | Prioridade |
+|------|-----------|------------|
+| Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio | Média |
+| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP) | Baixa |
+| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7 | Baixa |
 
 ---
 
@@ -200,10 +231,10 @@
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
 | KAN-39 | Documentação de API (Swagger/OpenAPI) | Média | Richard |
-| KAN-40 | Documentação de deploy | Baixa | Richard |
+| KAN-40 | ~~Documentação de deploy~~ ✅ `deploy/README.md` (ver KAN-18) | Baixa | — |
 | KAN-41 | Testes de integração ponta-a-ponta | Baixa | Richard |
 | KAN-42 | Manual do usuário | Baixa | Richard |
-| KAN-43 | Atualizar README | Média | Richard |
+| KAN-43 | ~~Atualizar README~~ ✅ 21/10/2026 (PR #56) | Média | — |
 | — | Diagrama de Arquitetura (componentes) | Alta | Richard |
 | — | Diagrama de Sequência (Atendimento Híbrido) | Alta | Richard |
 
@@ -211,7 +242,7 @@
 
 ## Frontend Web (React) — Módulo Dono
 
-**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (tokens do protótipo) · React Router · TanStack Query · MSW (mock enquanto não há banco/API no ar) · Recharts. Vive em `web/` no monorepo (`Agesto-Platform/Agesto`). Rodar: `cd web && npm install && npm run dev` (mock ligado via `.env`: `VITE_USE_MOCKS=true`). Login demo (mock): `dono@agesto.app` / `agesto123`. Decisões de stack e arquitetura registradas em DEC-25 (`DECISIONS.md`) e na seção 10 do `DESIGN.md`.
+**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (tokens do protótipo) · React Router · TanStack Query · MSW (mock só para desenvolvimento local) · Recharts. Vive em `web/` no monorepo (`Agesto-Platform/Agesto`). Rodar: `cd web && npm install && npm run dev` (mock ligado via `.env`: `VITE_USE_MOCKS=true`). Login demo (mock): `dono@agesto.app` / `agesto123`. Decisões de stack e arquitetura registradas em DEC-25 (`DECISIONS.md`) e na seção 10 do `DESIGN.md`.
 
 ### ✅ Concluídas — fatia inicial navegável (integrada na `main`)
 
@@ -232,7 +263,7 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 | web-11 | — | **Atendimentos** — itens/estoque/margem + dashboard honesto | `6c0e700` |
 | web-12 | KAN-49 | **Parametrização** — modo de operação (TipoOperacao) | `d922b61` |
 | web-13 | — | **Relatórios** — abas Rentabilidade/Serviços/Produtos/Estoque | `4576e25` |
-| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente para 21 testes | `cee7fb9` + evoluções posteriores |
+| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente; 33 testes em 21/10/2026 | `cee7fb9` + evoluções posteriores |
 
 > \*Épico Operação: numeração KAN a atribuir no Jira quando reconectar.
 
@@ -244,7 +275,7 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 |-----|-----------|------------|
 | — | Ampliar cobertura de testes (só a base foi coberta) | Baixa |
 | — | Lazy-load do Recharts (bundle ~640kB) | Baixa |
-| — | Trocar mocks pela API real quando o backend/DB subir (`VITE_USE_MOCKS=false`) | Alta |
+| — | ~~Trocar mocks pela API real (`VITE_USE_MOCKS=false`)~~ ✅ em produção contra a API real (DEC-32) | Alta |
 
 ### ✅ Deltas de backend resolvidos / pendentes
 
@@ -276,42 +307,39 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
 | — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
 
-**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 29 testes Jest; typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 77 testes Jest (21/10/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 
 | Item | Descrição | Prioridade |
 |------|-----------|------------|
 | Agenda na Carga do sync | Ver seção "Domínio Prestador de Serviço" acima — a Carga deveria idealmente incluir a agenda, eliminando o contorno `syncAgenda` | Média |
-| Mapear uuid→id do cliente na Descarga | Ver seção "Domínio Prestador de Serviço" acima — necessário para atendimento offline referenciar cliente criado offline | Média |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33) | — |
 
 ### 🔴 Pendências do próprio Mobile
 
 | Item | Descrição | Prioridade |
 |------|-----------|------------|
 | Histórico de atendimentos próprios | Não implementado nesta fase (fora do escopo mob-01 a mob-07) | Baixa |
-| Roteirização/geolocalização | Depende de lat/lng no `Cliente` (DEC-17), ainda pendente no backend | Média |
+| Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2) | Média |
 | Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa |
-| Trocar mock pela API real | `config.useMocks = false` quando o backend/DB subir | Alta |
+| ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta |
 | Sincronização automática em background | Hoje só manual (aba "Mais") | Baixa |
 
 ---
 
 ## Ordem de execução recomendada (próximas sprints)
 
-> O MVP possui backend, Web e Mobile funcionais contra mocks e publicados em `Agesto-Platform/Agesto`. Organização, time `Core`, CI e linha principal já estão configurados. Antes da infraestrutura, restam os rulesets, a auditoria documental e a formalização das responsabilidades e da propriedade intelectual. Depois disso, será provisionado um PostgreSQL novo, as migrations serão aplicadas em ambiente controlado e os clientes trocarão os mocks pela API real.
+> O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados. Restam a auditoria documental e a formalização das responsabilidades e da propriedade intelectual.
 
 ### Sprint imediata
-1. Configurar rulesets em `develop` e `main` com PR, revisão e status checks
-2. Concluir a auditoria de `REQUIREMENTS.md`
-3. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
-4. Depois da auditoria, remover a documentação legada em tarefa separada
-5. **Provisionar PostgreSQL novo e aplicar migrations pendentes** em ambiente controlado
-6. Subir a API real e desligar os mocks no Web e no Mobile
-7. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
+1. Concluir a auditoria de `REQUIREMENTS.md`
+2. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
+3. Depois da auditoria, remover a documentação legada em tarefa separada
+4. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
 
 ### Sprint seguinte
-8. Débitos residuais: margem/hora do KAN-79 (após campo de duração), roteirização/lat-lng (DEC-17), descarga de Orçamento no sync, agenda na Carga do sync mobile, mapear uuid→id do cliente na Descarga mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
+5. Débitos residuais: margem/hora do KAN-79 (após campo de duração), "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
 
 ---
 

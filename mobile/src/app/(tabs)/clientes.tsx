@@ -24,7 +24,7 @@ export default function Clientes() {
         const [ref, pend] = await Promise.all([db.getClientes(), db.getPendingClientes()])
         if (!active) return
         setRows([
-          ...pend.map((c) => ({ key: `p${c.uuid}`, nome: c.nome, sub: c.telefone ?? c.cpf, pending: true })),
+          ...pend.filter((c) => c.syncedAt === null).map((c) => ({ key: `p${c.uuid}`, nome: c.nome, sub: c.telefone ?? c.cpf, pending: true })),
           ...ref.map((c) => ({ key: `r${c.id}`, nome: c.nome, sub: c.telefone ?? c.cidade ?? c.cpf, pending: false })),
         ])
       })()

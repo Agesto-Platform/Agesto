@@ -170,6 +170,7 @@ Dois fluxos distintos:
 - **[Implementado]** Login e autenticação (JWT, token guardado via `expo-secure-store` no device / `localStorage` no web)
 - **[Implementado]** Cadastro e consulta de Clientes (referência sincronizada + cadastro rápido offline)
 - **[Implementado]** Consulta de catálogo de Produtos e Serviços (via Carga)
+- **[Implementado]** Cadastro rápido de serviço no registrar, offline, enviado na Descarga e marcado para revisão do Dono; o Dono liga ou desliga em Parametrização (DEC-36)
 - **[Implementado]** Registro de Atendimentos (cliente + itens de catálogo por quantidade + status), salvo offline como pendente
 - Consulta de histórico de atendimentos próprios — não implementado nesta fase (fora do escopo de mob-01 a mob-07)
 - **[Implementado]** Sincronização manual (aba "Mais": pendentes, última sync, botão Sincronizar) — sincronização automática em background não implementada
@@ -189,7 +190,7 @@ Dois fluxos distintos:
 - **[Implementado]** Agenda (timeline agrupada por dia), Orçamentos (editor de itens, status, conversão em atendimento) e Atendimentos (itens/estoque/margem)
 - **[Implementado]** Relatórios — abas Rentabilidade/Serviços/Produtos/Estoque
 - Visualização de atendimentos de todos os agentes — implementado
-- Gestão de usuários da empresa (convidar agentes) — não implementado, futuro
+- **[Implementado]** Gestão de usuários da empresa: o Dono cadastra agentes com senha provisória, edita, desativa/reativa e redefine senha; atribui atendimentos a um agente (DEC-35)
 - Consome hoje um mock stateful (MSW) enquanto o banco/API real não sobe; ver DEC-25
 
 ---

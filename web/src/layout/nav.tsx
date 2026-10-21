@@ -6,6 +6,7 @@ import {
   IconList,
   IconCalendar,
   IconUsers,
+  IconUserKey,
   IconBox,
   IconWrench,
   IconChart,
@@ -42,6 +43,7 @@ export const NAV: NavGroup[] = [
       { to: '/clientes', label: 'Clientes', icon: IconUsers },
       { to: '/produtos', label: 'Produtos', icon: IconBox },
       { to: '/servicos', label: 'Serviços', icon: IconWrench },
+      { to: '/usuarios', label: 'Usuários', icon: IconUserKey },
     ],
   },
   {

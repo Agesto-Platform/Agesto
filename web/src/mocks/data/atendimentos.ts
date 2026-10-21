@@ -40,6 +40,7 @@ function seedAtendimento(
   cliente: number,
   status: Atendimento['status'],
   dataAgendada: string | null,
+  usuarioId = 1,
 ): Atendimento {
   const now = new Date().toISOString()
   const at: Atendimento = {
@@ -52,6 +53,7 @@ function seedAtendimento(
     custoTotal: 0,
     margem: 0,
     clienteId: cliente,
+    usuarioId,
     createdAt: now,
     updatedAt: now,
   }
@@ -75,7 +77,7 @@ function d(offsetDays: number, hour = 10): string {
 const a1 = seedAtendimento(1, 'Concluido', d(-3, 9))
 seedItemServ(a1.id, 1, 1, 350)
 seedItemProd(a1.id, 1, null, 2, 70, 90)
-const a2 = seedAtendimento(2, 'Pendente', d(2, 14))
+const a2 = seedAtendimento(2, 'Pendente', d(2, 14), 2)
 seedItemServ(a2.id, 2, 1, 140)
 const a3 = seedAtendimento(3, 'Concluido', d(-1, 11))
 seedItemProd(a3.id, null, 'Cabo especial', 1, 30, 12)
@@ -97,6 +99,7 @@ export const atendimentoHandlers = [
       custoTotal: 0,
       margem: 0,
       clienteId: b.clienteId,
+      usuarioId: b.responsavelId ?? 1,
       createdAt: now,
       updatedAt: now,
     }
@@ -110,6 +113,7 @@ export const atendimentoHandlers = [
     if (!at) return fail(404, 'Atendimento não encontrado.')
     at.status = b.status
     at.dataAgendada = b.dataAgendada ?? null
+    if (b.responsavelId != null) at.usuarioId = b.responsavelId
     at.updatedAt = new Date().toISOString()
     return HttpResponse.json(ok(at, 'Atendimento atualizado.'))
   }),

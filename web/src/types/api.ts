@@ -16,6 +16,45 @@ export interface ApiResponse<T> {
 export interface AuthResponse {
   token: string
   expiresAt: string // ISO
+  /** Senha provisória definida pelo Dono: exige troca antes de usar o painel. */
+  deveTrocarSenha?: boolean
+}
+
+export interface TrocarSenhaInput {
+  senhaAtual: string
+  novaSenha: string
+}
+
+/* ---------- Usuários da empresa (Dono e agentes) ---------- */
+
+export type PerfilUsuario = 'Dono' | 'Agente'
+
+export interface Usuario {
+  id: number
+  nome: string
+  email: string
+  perfil: PerfilUsuario
+  ativo: boolean
+  deveTrocarSenha: boolean
+  ultimoAcessoEm: string | null
+  createdAt: string
+}
+
+export interface UsuarioCreateInput {
+  nome: string
+  email: string
+  perfil: PerfilUsuario
+}
+
+export interface UsuarioUpdateInput {
+  nome: string
+  perfil: PerfilUsuario
+}
+
+/** Resposta de criação e redefinição: a senha só aparece aqui, uma vez. */
+export interface UsuarioSenhaProvisoria {
+  usuario: Usuario
+  senhaProvisoria: string
 }
 
 /* ---------- Métricas / Dashboard ---------- */
@@ -152,6 +191,10 @@ export interface Servico {
   tipoCobranca: TipoCobranca
   valorHora: number | null
   valorEmpreitada: number | null
+  /** false = criado pelo agente no app, aguardando revisão do Dono. */
+  revisado: boolean
+  criadoPorUsuarioId: number | null
+  criadoPorNome: string | null
   createdAt: string
   updatedAt: string
 }
@@ -234,6 +277,8 @@ export interface Configuracao {
   tipoOperacao: TipoOperacao
   modoAgendaAgente: ModoAgendaAgente
   controlaEstoque: boolean
+  /** O agente pode cadastrar serviço novo pelo app (vai para revisão). */
+  agenteCadastraServico: boolean
   empresaId: number
   createdAt: string
   updatedAt: string
@@ -241,7 +286,7 @@ export interface Configuracao {
 
 /** Campos editáveis da configuração (patch parcial no PUT). */
 export type ConfiguracaoPatch = Partial<
-  Pick<Configuracao, 'tipoOperacao' | 'modoAgendaAgente' | 'controlaEstoque'>
+  Pick<Configuracao, 'tipoOperacao' | 'modoAgendaAgente' | 'controlaEstoque' | 'agenteCadastraServico'>
 >
 
 /** Material sugerido (kit) de um serviço. */
@@ -269,6 +314,8 @@ export interface Atendimento {
   custoTotal: number
   margem: number
   clienteId: number
+  /** Agente responsável (quem executa). */
+  usuarioId: number
   createdAt: string
   updatedAt: string
 }
@@ -277,11 +324,15 @@ export interface AtendimentoInput {
   clienteId: number
   status: StatusAtendimento
   dataAgendada?: string | null
+  /** Agente responsável. Ausente = o próprio Dono. */
+  responsavelId?: number | null
 }
 
 export interface AtendimentoUpdate {
   status: StatusAtendimento
   dataAgendada?: string | null
+  /** Ausente = mantém o responsável atual. */
+  responsavelId?: number | null
 }
 
 export interface ItemProdutoResp {
@@ -333,9 +384,13 @@ export interface AgendaItem {
   dataAgendada: string | null
   status: StatusAtendimento
   valorTotal: number
+  usuarioId: number
   clienteId: number
   clienteNome: string
   clienteTelefone: string | null
   enderecoResumo: string | null
+  /** Coordenadas do cliente para o mapa; null enquanto não geocodificado. */
+  latitude?: number | null
+  longitude?: number | null
   resumo: string
 }

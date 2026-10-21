@@ -10,6 +10,7 @@ let config: Configuracao = {
   tipoOperacao: 'Servico',
   modoAgendaAgente: 'Flexivel',
   controlaEstoque: true,
+  agenteCadastraServico: true,
   empresaId: 1,
   createdAt: now,
   updatedAt: now,
@@ -24,6 +25,7 @@ export const configuracaoHandlers = [
       ...(body.tipoOperacao !== undefined && { tipoOperacao: body.tipoOperacao }),
       ...(body.modoAgendaAgente !== undefined && { modoAgendaAgente: body.modoAgendaAgente }),
       ...(body.controlaEstoque !== undefined && { controlaEstoque: body.controlaEstoque }),
+      ...(body.agenteCadastraServico !== undefined && { agenteCadastraServico: body.agenteCadastraServico }),
       updatedAt: new Date().toISOString(),
     }
     return HttpResponse.json(ok(config, 'Configuração atualizada.'))

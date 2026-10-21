@@ -52,6 +52,9 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "setupFiles": [
+      "<rootDir>/jest.setup.ts"
+    ],
     "moduleNameMapper": {
       "^@/db$": "<rootDir>/src/db/index.ts",
       "^@/(.*)$": "<rootDir>/src/$1"

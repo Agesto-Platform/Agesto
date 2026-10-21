@@ -12,6 +12,13 @@ public class Cliente
     public string? Bairro { get; set; }
     public string? Cidade { get; set; }
     public string? Cep { get; set; }
+
+    // Coordenadas para o mapa e a rota (DEC-38), preenchidas em segundo plano a
+    // partir do endereço. GeocodificadoEm null = pendente; preenchido com
+    // coordenadas nulas = endereço não encontrado (não tenta de novo até mudar).
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public DateTime? GeocodificadoEm { get; set; }
     public long EmpresaId { get; set; }
     public Empresa? Empresa { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

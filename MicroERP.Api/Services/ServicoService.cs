@@ -25,7 +25,7 @@ public sealed class ServicoService : IServicoService
     public async Task<ServicoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (servico is null) throw new NotFoundException("Servico nao encontrado.");
+        if (servico is null) throw new NotFoundException("Serviço não encontrado.");
         return MapResponse(servico);
     }
 
@@ -36,7 +36,7 @@ public sealed class ServicoService : IServicoService
             throw new ArgumentException("ValorEmpreitada é obrigatório para TipoCobranca Empreitada.");
 
         if (request.TipoCobranca == TipoCobranca.PorHora && request.ValorHora is null)
-            throw new ArgumentException("ValorHora obrigatorio para cobranca por Hora.");
+            throw new ArgumentException("ValorHora obrigatório para cobrança por Hora.");
 
         var servico = new Servico
         {
@@ -60,14 +60,28 @@ public sealed class ServicoService : IServicoService
     public async Task<ServicoResponse> UpdateAsync(long empresaId, long id, ServicoUpdateRequest request, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (servico is null) throw new NotFoundException("Servico nao encontrado.");
+        if (servico is null) throw new NotFoundException("Serviço não encontrado.");
 
         servico.Descricao = request.Descricao;
         servico.TipoCobranca = request.TipoCobranca;
         servico.ValorEmpreitada = request.ValorEmpreitada;
         servico.ValorHora = request.ValorHora;
+        // Editar pelo web é o Dono revisando: tira o selo de "criado pelo agente".
+        servico.Revisado = true;
         servico.UpdatedAt = DateTime.UtcNow;
 
+        await _servicoRepository.SaveChangesAsync(cancellationToken);
+
+        return MapResponse(servico);
+    }
+
+    public async Task<ServicoResponse> MarcarRevisadoAsync(long empresaId, long id, CancellationToken cancellationToken)
+    {
+        var servico = await _servicoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
+        if (servico is null) throw new NotFoundException("Serviço não encontrado.");
+
+        servico.Revisado = true;
+        servico.UpdatedAt = DateTime.UtcNow;
         await _servicoRepository.SaveChangesAsync(cancellationToken);
 
         return MapResponse(servico);
@@ -76,7 +90,7 @@ public sealed class ServicoService : IServicoService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (servico is null) throw new NotFoundException("Servico nao encontrado.");
+        if (servico is null) throw new NotFoundException("Serviço não encontrado.");
 
         servico.DeletedAt = DateTime.UtcNow;
         servico.UpdatedAt = DateTime.UtcNow;
@@ -94,6 +108,9 @@ public sealed class ServicoService : IServicoService
             TipoCobranca = servico.TipoCobranca,
             ValorHora = servico.ValorHora,
             ValorEmpreitada = servico.ValorEmpreitada,
+            Revisado = servico.Revisado,
+            CriadoPorUsuarioId = servico.CriadoPorUsuarioId,
+            CriadoPorNome = servico.CriadoPor?.Nome,
             CreatedAt = servico.CreatedAt,
             UpdatedAt = servico.UpdatedAt
         };

@@ -35,17 +35,17 @@ public sealed class ItemServicoService : IItemServicoService
     public async Task<ItemServicoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var item = await _itemServicoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
-        if (item is null) throw new NotFoundException("Item de servico nao encontrado.");
+        if (item is null) throw new NotFoundException("Item de serviço não encontrado.");
         return MapResponse(item);
     }
 
     public async Task<ItemServicoResponse> CreateAsync(long empresaId, ItemServicoCreateRequest request, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, request.AtendimentoId, true, cancellationToken);
-        if (atendimento is null) throw new NotFoundException("Atendimento nao encontrado.");
+        if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
 
         var servico = await _servicoRepository.GetByIdAsync(empresaId, request.ServicoId, false, cancellationToken);
-        if (servico is null) throw new NotFoundException("Servico nao encontrado.");
+        if (servico is null) throw new NotFoundException("Serviço não encontrado.");
 
         // Valor editavel (DEC-23): o catalogo sugere o valor; o prestador pode sobrescrever.
         var precoUnitario = request.PrecoUnitario ?? DefaultValorCatalogo(servico);
@@ -75,10 +75,10 @@ public sealed class ItemServicoService : IItemServicoService
     public async Task<ItemServicoResponse> UpdateAsync(long empresaId, long id, ItemServicoUpdateRequest request, CancellationToken cancellationToken)
     {
         var item = await _itemServicoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (item is null) throw new NotFoundException("Item de servico nao encontrado.");
+        if (item is null) throw new NotFoundException("Item de serviço não encontrado.");
 
         var servico = await _servicoRepository.GetByIdAsync(empresaId, item.ServicoId, false, cancellationToken);
-        if (servico is null) throw new NotFoundException("Servico nao encontrado.");
+        if (servico is null) throw new NotFoundException("Serviço não encontrado.");
 
         // Valor editavel (DEC-23): sobrescreve se informado, senao mantem o snapshot atual.
         var precoUnitario = request.PrecoUnitario ?? item.PrecoUnitario;
@@ -103,7 +103,7 @@ public sealed class ItemServicoService : IItemServicoService
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var item = await _itemServicoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
-        if (item is null) throw new NotFoundException("Item de servico nao encontrado.");
+        if (item is null) throw new NotFoundException("Item de serviço não encontrado.");
 
         item.DeletedAt = DateTime.UtcNow;
         item.UpdatedAt = DateTime.UtcNow;

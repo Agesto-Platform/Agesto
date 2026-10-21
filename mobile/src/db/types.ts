@@ -1,7 +1,13 @@
-import type { AgendaItem, Cliente, ClienteInput, Produto, Servico, StatusAtendimento } from '@/types/api'
+import type { AgendaItem, Cliente, ClienteInput, ItemProdutoSync, ItemServicoSync, Produto, Servico, ServicoInput, StatusAtendimento } from '@/types/api'
 
 /** Cliente criado no device (offline). `syncedAt` null = pendente de envio. */
 export interface PendingCliente extends ClienteInput {
+  uuid: string
+  syncedAt: string | null
+}
+
+/** Serviço criado pelo agente no app (offline). `syncedAt` null = pendente de envio. */
+export interface PendingServico extends ServicoInput {
   uuid: string
   syncedAt: string | null
 }
@@ -12,13 +18,21 @@ export interface PendingCliente extends ClienteInput {
  */
 export interface LocalAtendimento {
   uuid: string
-  clienteId: number
+  /** Id do servidor; null enquanto o cliente foi criado offline e não sincronizou. */
+  clienteId: number | null
+  /** UUID do cliente criado offline (PendingCliente), resolvido na Descarga. */
+  clienteUuid?: string | null
   status: StatusAtendimento
   dataRegistro: string
   /** Data agendada (futuro) — null quando é registro imediato. */
   dataAgendada: string | null
-  itensProduto: { produtoId: number; quantidade: number }[]
-  itensServico: { servicoId: number; quantidade: number }[]
+  itensProduto: ItemProdutoSync[]
+  itensServico: ItemServicoSync[]
+  /**
+   * true = conclusão de um atendimento que já existe no servidor (agendado
+   * pelo Dono, por exemplo). O uuid é o do servidor e os itens são acréscimos.
+   */
+  existente?: boolean
   syncedAt: string | null
 }
 
@@ -44,11 +58,23 @@ export interface LocalDb {
   getPendingClientes(): Promise<PendingCliente[]>
   markClientesSynced(uuids: string[], syncedAt: string): Promise<void>
 
+  // serviços criados offline (DEC-36)
+  addServico(s: PendingServico): Promise<void>
+  getPendingServicos(): Promise<PendingServico[]>
+  markServicosSynced(uuids: string[], syncedAt: string): Promise<void>
+  /** Religa itens de atendimento do serviço criado offline ao id do servidor. */
+  remapServico(servicoUuid: string, servicoId: number): Promise<void>
+
   // atendimentos criados offline
+  /** Grava ou substitui (mesmo uuid) o atendimento local. */
   addAtendimento(a: LocalAtendimento): Promise<void>
+  /** Apaga o atendimento local, só se ainda não foi enviado. */
+  deleteAtendimento(uuid: string): Promise<void>
   getAtendimentos(): Promise<LocalAtendimento[]>
   getPendingAtendimentos(): Promise<LocalAtendimento[]>
   markSynced(uuids: string[], syncedAt: string): Promise<void>
+  /** Religa atendimentos do cliente criado offline ao id que o servidor atribuiu. */
+  remapCliente(clienteUuid: string, clienteId: number): Promise<void>
 
   // metadados (ex.: última sincronização)
   getMeta(key: string): Promise<string | null>

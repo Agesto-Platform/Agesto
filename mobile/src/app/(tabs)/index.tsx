@@ -1,11 +1,15 @@
 import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ScrollView, Linking, RefreshControl } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { JobCard } from '@/ui/JobCard'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
+import { montarRota } from '@/features/rota/montarRota'
+import { sincronizar } from '@/sync/sync'
+import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
+import type { LocalAtendimento } from '@/db/types'
 import type { AgendaItem } from '@/types/api'
 
 function dataHoje(): string {
@@ -16,26 +20,58 @@ function dataHoje(): string {
 export default function Inicio() {
   const router = useRouter()
   const [agenda, setAgenda] = useState<AgendaItem[]>([])
-  const [pending, setPending] = useState(0)
+  const [pendentes, setPendentes] = useState<LocalAtendimento[]>([])
+  const [atualizando, setAtualizando] = useState(false)
+
+  const carregar = useCallback(async (ativo: () => boolean = () => true) => {
+    const [items, pend] = await Promise.all([db.getAgenda(), db.getPendingAtendimentos()])
+    if (!ativo()) return
+    items.sort((a, b) => String(a.dataAgendada).localeCompare(String(b.dataAgendada)))
+    setAgenda(items)
+    setPendentes(pend)
+  }, [])
 
   useFocusEffect(
     useCallback(() => {
       let active = true
-      ;(async () => {
-        const [items, pend] = await Promise.all([db.getAgenda(), db.getPendingAtendimentos()])
-        if (!active) return
-        items.sort((a, b) => String(a.dataAgendada).localeCompare(String(b.dataAgendada)))
-        setAgenda(items)
-        setPending(pend.length)
-      })()
+      void carregar(() => active)
       return () => {
         active = false
       }
-    }, []),
+    }, [carregar]),
   )
+
+  // Puxar para baixo: envia o pendente e baixa o que o Dono mudou no web.
+  async function atualizar() {
+    setAtualizando(true)
+    try {
+      await sincronizar()
+    } catch {
+      // Sem internet: segue com o que já está no aparelho.
+    } finally {
+      await carregar()
+      setAtualizando(false)
+    }
+  }
+
+  const pending = pendentes.length
+  const card = (item: AgendaItem, highlight = false) => {
+    const { rota: destino, etiqueta } = acaoDaAgenda(item, pendentes)
+    return (
+      <JobCard
+        key={item.id}
+        item={item}
+        highlight={highlight}
+        etiqueta={etiqueta}
+        onPress={destino ? () => router.push(destino) : undefined}
+      />
+    )
+  }
 
   const proximo = agenda[0]
   const resto = agenda.slice(1)
+  const rota = montarRota(agenda)
+  const foraDaRota = rota.semEndereco.length + rota.excedentes.length
 
   return (
     <Screen>
@@ -49,7 +85,10 @@ export default function Inicio() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView
+        contentContainerStyle={styles.body}
+        refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} />}
+      >
         <Pressable
           onPress={() => router.push('/registrar')}
           style={({ pressed }) => [styles.register, pressed && { opacity: 0.9 }]}
@@ -78,10 +117,33 @@ export default function Inicio() {
           <Text style={styles.todayCount}>{agenda.length} na agenda</Text>
         </View>
 
+        {rota.url && (
+          <View style={{ gap: space(1.5) }}>
+            <Pressable
+              onPress={() => Linking.openURL(rota.url!)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.rota, pressed && { opacity: 0.9 }]}
+            >
+              <Ionicons name="navigate" size={18} color={colors.brandInk} />
+              <Text style={styles.rotaText}>
+                Iniciar rota · {rota.paradas.length} parada{rota.paradas.length === 1 ? '' : 's'}
+              </Text>
+            </Pressable>
+            {foraDaRota > 0 && (
+              <Text style={styles.rotaHint}>
+                {rota.semEndereco.length > 0 &&
+                  `${rota.semEndereco.length} visita${rota.semEndereco.length === 1 ? '' : 's'} sem endereço fica${rota.semEndereco.length === 1 ? '' : 'm'} de fora. `}
+                {rota.excedentes.length > 0 &&
+                  `O Maps aceita até ${rota.paradas.length} paradas; ${rota.excedentes.length === 1 ? 'a última fica' : `as últimas ${rota.excedentes.length} ficam`} para depois.`}
+              </Text>
+            )}
+          </View>
+        )}
+
         {proximo && (
           <View style={styles.section}>
             <Text style={styles.label}>Próximo</Text>
-            <JobCard item={proximo} highlight />
+            {card(proximo, true)}
           </View>
         )}
 
@@ -89,9 +151,7 @@ export default function Inicio() {
           <View style={styles.section}>
             <Text style={styles.label}>Ainda hoje</Text>
             <View style={{ gap: space(2.75) }}>
-              {resto.map((item) => (
-                <JobCard key={item.id} item={item} />
-              ))}
+              {resto.map((item) => card(item))}
             </View>
           </View>
         )}
@@ -131,6 +191,10 @@ const styles = StyleSheet.create({
   today: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space(1) },
   todayDate: { fontSize: 15, fontWeight: '600', color: colors.ink },
   todayCount: { fontSize: 13, color: colors.ink3 },
+
+  rota: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space(2), backgroundColor: colors.brandSoft, borderRadius: radius.sm, paddingVertical: space(3.25) },
+  rotaText: { fontSize: 15, fontWeight: '700', color: colors.brandInk },
+  rotaHint: { fontSize: 12.5, color: colors.ink3, paddingHorizontal: space(1) },
 
   section: { gap: space(2.5) },
   label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: colors.ink4, paddingHorizontal: space(1) },

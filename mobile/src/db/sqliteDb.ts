@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite'
 import type { AgendaItem, Cliente, Produto, Servico } from '@/types/api'
-import type { LocalDb, LocalAtendimento, PendingCliente } from './types'
+import type { LocalDb, LocalAtendimento, PendingCliente, PendingServico } from './types'
+import { remapItensServico } from './remap'
 
 type Row = { json: string }
 type AtRow = { json: string; syncedAt: string | null }
@@ -37,6 +38,7 @@ export function createSqliteDb(): LocalDb {
         CREATE TABLE IF NOT EXISTS servicos (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS agenda (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS pending_clientes (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
+        CREATE TABLE IF NOT EXISTS pending_servicos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
         CREATE TABLE IF NOT EXISTS atendimentos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
         CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
       `)
@@ -74,6 +76,39 @@ export function createSqliteDb(): LocalDb {
       })
     },
 
+    async addServico(s) {
+      const d = await conn()
+      await d.runAsync(
+        `INSERT OR REPLACE INTO pending_servicos (uuid, json, syncedAt) VALUES (?, ?, ?)`,
+        s.uuid,
+        JSON.stringify(s),
+        s.syncedAt,
+      )
+    },
+    async getPendingServicos() {
+      const d = await conn()
+      const rows = await d.getAllAsync<AtRow>(`SELECT json, syncedAt FROM pending_servicos`)
+      return rows.map((r) => ({ ...(JSON.parse(r.json) as PendingServico), syncedAt: r.syncedAt }))
+    },
+    async markServicosSynced(uuids, syncedAt) {
+      const d = await conn()
+      await d.withTransactionAsync(async () => {
+        for (const uuid of uuids) {
+          await d.runAsync(`UPDATE pending_servicos SET syncedAt = ? WHERE uuid = ?`, syncedAt, uuid)
+        }
+      })
+    },
+    async remapServico(servicoUuid, servicoId) {
+      const d = await conn()
+      const rows = await d.getAllAsync<{ uuid: string; json: string }>(`SELECT uuid, json FROM atendimentos`)
+      await d.withTransactionAsync(async () => {
+        for (const r of rows) {
+          const novo = remapItensServico(JSON.parse(r.json) as LocalAtendimento, servicoUuid, servicoId)
+          if (novo) await d.runAsync(`UPDATE atendimentos SET json = ? WHERE uuid = ?`, JSON.stringify(novo), r.uuid)
+        }
+      })
+    },
+
     async addAtendimento(a) {
       const d = await conn()
       await d.runAsync(
@@ -82,6 +117,10 @@ export function createSqliteDb(): LocalDb {
         JSON.stringify(a),
         a.syncedAt,
       )
+    },
+    async deleteAtendimento(uuid) {
+      const d = await conn()
+      await d.runAsync(`DELETE FROM atendimentos WHERE uuid = ? AND syncedAt IS NULL`, uuid)
     },
     async getAtendimentos() {
       const d = await conn()
@@ -101,6 +140,21 @@ export function createSqliteDb(): LocalDb {
         }
       })
     },
+    async remapCliente(clienteUuid, clienteId) {
+      const d = await conn()
+      const rows = await d.getAllAsync<{ uuid: string; json: string }>(`SELECT uuid, json FROM atendimentos`)
+      await d.withTransactionAsync(async () => {
+        for (const r of rows) {
+          const a = JSON.parse(r.json) as LocalAtendimento
+          if (a.clienteUuid !== clienteUuid) continue
+          await d.runAsync(
+            `UPDATE atendimentos SET json = ? WHERE uuid = ?`,
+            JSON.stringify({ ...a, clienteId, clienteUuid: null }),
+            r.uuid,
+          )
+        }
+      })
+    },
 
     async getMeta(key) {
       const d = await conn()
@@ -114,7 +168,7 @@ export function createSqliteDb(): LocalDb {
 
     async reset() {
       const d = await conn()
-      await d.execAsync(`DELETE FROM clientes; DELETE FROM produtos; DELETE FROM servicos; DELETE FROM agenda; DELETE FROM pending_clientes; DELETE FROM atendimentos; DELETE FROM meta;`)
+      await d.execAsync(`DELETE FROM clientes; DELETE FROM produtos; DELETE FROM servicos; DELETE FROM agenda; DELETE FROM pending_clientes; DELETE FROM pending_servicos; DELETE FROM atendimentos; DELETE FROM meta;`)
     },
   }
 }

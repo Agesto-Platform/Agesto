@@ -216,9 +216,9 @@ builder.Services.AddCors(options =>
 
 ---
 
-## 6. Rate limiting (KAN pendente)
+## 6. Rate limiting
 
-**Quando ler isto:** quando atacar a KAN futura sobre rate limiting de auth.
+> ✅ **Implementado (DEC-34):** login 10 a cada 5 min e cadastro 5 por hora por IP; sync 30/min por usuário. O lockout por conta abaixo continua como melhoria futura.
 
 ### Por que importa
 
@@ -257,6 +257,8 @@ Após N falhas consecutivas em **um email específico** (não IP), bloquear cont
 ---
 
 ## 7. LGPD — direito ao esquecimento (KAN-55)
+
+> ✅ **Clientes (DEC-34):** soft delete + anonimização. Nome, CPF, telefone e endereço são apagados na exclusão; a linha fica para histórico e métricas. O Agente recebe CPF mascarado e orçamentos sem custo. A exclusão de **Usuario** segue o desenho abaixo.
 
 **Quando ler isto:** quando implementar `DELETE /api/usuario` (KAN-55).
 
@@ -308,3 +310,4 @@ A migration **InitialCreate** ainda não foi gerada. Será criada quando provisi
 | Data | Quem | Mudança |
 |------|------|---------|
 | 2026-05-12 | Diego Mendes (Depowo) | Criação inicial — coletânea pós security review do PR #1 |
+| 2026-10-10 | Equipe Agesto | Auditoria completa e endurecimento validado em produção (DEC-34): rate limiting, perfis, revogação de token, LGPD de clientes, RLS, role `agesto_api` e TLS verificado |

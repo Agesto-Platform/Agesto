@@ -4,6 +4,9 @@ import { seedCarga, seedAgenda } from './data'
 
 export const DEMO_EMAIL = 'agente@agesto.app'
 export const DEMO_SENHA = 'agesto123'
+/** Agente recém-cadastrado pelo Dono: entra com senha provisória e precisa trocar. */
+export const DEMO_PRIMEIRO_ACESSO_EMAIL = 'novo@agesto.app'
+export const DEMO_SENHA_PROVISORIA = 'provisoria1'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -33,14 +36,24 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
 
   if (method === 'POST' && path === '/api/auth/login') {
     const b = (body ?? {}) as { email?: string; senha?: string }
-    if (b.email === DEMO_EMAIL && b.senha === DEMO_SENHA) {
+    const primeiroAcesso = b.email === DEMO_PRIMEIRO_ACESSO_EMAIL && b.senha === DEMO_SENHA_PROVISORIA
+    if ((b.email === DEMO_EMAIL && b.senha === DEMO_SENHA) || primeiroAcesso) {
       const res: AuthResponse = {
         token: buildMockJwt(),
         expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        deveTrocarSenha: primeiroAcesso,
       }
       return res as T
     }
     throw new ApiError(401, 'Credenciais inválidas.')
+  }
+
+  if (method === 'POST' && path === '/api/auth/trocar-senha') {
+    const b = (body ?? {}) as { senhaAtual?: string; novaSenha?: string }
+    if (b.senhaAtual !== DEMO_SENHA_PROVISORIA && b.senhaAtual !== DEMO_SENHA) {
+      throw new ApiError(400, 'Senha atual incorreta.')
+    }
+    return null as T
   }
 
   if (method === 'GET' && path.startsWith('/api/sync/carga')) {
@@ -53,12 +66,24 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
 
   if (method === 'POST' && path.startsWith('/api/sync/descarga')) {
     const b = (body ?? { clientes: [], atendimentos: [] }) as {
-      clientes: unknown[]
-      atendimentos: unknown[]
+      clientes: { uuid: string }[]
+      servicos?: { uuid: string }[]
+      atendimentos: { uuid: string }[]
+      conclusoes?: { uuid: string }[]
     }
+    const servicos = b.servicos ?? []
+    const conclusoes = b.conclusoes ?? []
     return {
       clientesImportados: b.clientes.length,
+      servicosImportados: servicos.length,
+      servicosSincronizados: servicos.map((s) => s.uuid),
+      servicosMapeados: servicos.map((s, i) => ({ uuid: s.uuid, id: 2000 + i })),
       atendimentosImportados: b.atendimentos.length,
+      clientesSincronizados: b.clientes.map((c) => c.uuid),
+      atendimentosSincronizados: b.atendimentos.map((a) => a.uuid),
+      conclusoesImportadas: conclusoes.length,
+      conclusoesSincronizadas: conclusoes.map((a) => a.uuid),
+      clientesMapeados: b.clientes.map((c, i) => ({ uuid: c.uuid, id: 1000 + i })),
       erros: [],
       sincronizadoEm: new Date().toISOString(),
     } as T

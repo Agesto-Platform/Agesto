@@ -37,14 +37,18 @@ export default function Atendimentos() {
     useCallback(() => {
       let active = true
       ;(async () => {
-        const [atends, clientes] = await Promise.all([db.getAtendimentos(), db.getClientes()])
+        const [atends, clientes, pend] = await Promise.all([db.getAtendimentos(), db.getClientes(), db.getPendingClientes()])
         if (!active) return
         const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
+        const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
         const list = [...atends]
           .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
           .map((a) => ({
             key: a.uuid,
-            cliente: nomePorId.get(a.clienteId) ?? `Cliente #${a.clienteId}`,
+            cliente:
+              (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
+              (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
+              `Cliente #${a.clienteId ?? 'novo'}`,
             data: dataCurta(a.dataRegistro),
             itens: a.itensProduto.length + a.itensServico.length,
             status: a.status,
@@ -74,8 +78,16 @@ export default function Atendimentos() {
       <ScrollView contentContainerStyle={styles.body}>
         {rows.map((r) => {
           const s = STATUS[r.status]
+          // Ainda não enviado: toque para corrigir ou excluir.
           return (
-            <View key={r.key} style={styles.row}>
+            <Pressable
+              key={r.key}
+              onPress={r.pending ? () => router.push(`/registrar?editar=${r.key}`) : undefined}
+              disabled={!r.pending}
+              accessibilityRole={r.pending ? 'button' : undefined}
+              accessibilityLabel={r.pending ? `Corrigir atendimento de ${r.cliente}` : undefined}
+              style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            >
               <View style={{ flex: 1, gap: space(1) }}>
                 <Text style={styles.rowName}>{r.cliente}</Text>
                 <Text style={styles.rowSub}>
@@ -93,7 +105,8 @@ export default function Atendimentos() {
                   </View>
                 )}
               </View>
-            </View>
+              {r.pending && <Ionicons name="chevron-forward" size={18} color={colors.ink4} />}
+            </Pressable>
           )
         })}
         {rows.length === 0 && (

@@ -111,4 +111,33 @@ public sealed class ServicoServiceTests
         Assert.NotNull(servico.DeletedAt);
         _repositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateAsync_ServicoCriadoPeloAgente_FicaRevisado()
+    {
+        var servico = new Servico { Id = 1, Uuid = Guid.NewGuid(), Descricao = "Dreno", TipoCobranca = TipoCobranca.PorHora, ValorHora = 50m, Revisado = false, CriadoPorUsuarioId = 2 };
+        _repositoryMock
+            .Setup(r => r.GetByIdAsync(1, 1, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(servico);
+
+        var res = await _service.UpdateAsync(1, 1, new ServicoUpdateRequest { Descricao = "Limpeza de dreno", TipoCobranca = TipoCobranca.PorHora, ValorHora = 70m }, CancellationToken.None);
+
+        Assert.True(res.Revisado);
+        Assert.Equal(2, res.CriadoPorUsuarioId);
+    }
+
+    [Fact]
+    public async Task MarcarRevisadoAsync_TiraOSeloSemMudarPreco()
+    {
+        var servico = new Servico { Id = 1, Uuid = Guid.NewGuid(), Descricao = "Dreno", TipoCobranca = TipoCobranca.PorHora, ValorHora = 50m, Revisado = false };
+        _repositoryMock
+            .Setup(r => r.GetByIdAsync(1, 1, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(servico);
+
+        var res = await _service.MarcarRevisadoAsync(1, 1, CancellationToken.None);
+
+        Assert.True(res.Revisado);
+        Assert.Equal(50m, res.ValorHora);
+        _repositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 }

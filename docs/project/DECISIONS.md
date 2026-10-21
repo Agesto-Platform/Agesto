@@ -541,7 +541,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-29 — Retomada do desenvolvimento em equipe e propriedade organizacional
 
-**Status:** 🟡 Em implementação — organização, transferência e equipe concluídas em 19/08/2026; rulesets e formalização jurídica ainda pendentes
+**Status:** 🟡 Em implementação — organização, transferência e equipe concluídas em 19/08/2026; ruleset `Protected branches` ativo (revisto em 10/10/2026); formalização jurídica ainda pendente
 
 **Decisão:** O Agesto deixa de operar como projeto mantido por uma única pessoa e volta ao desenvolvimento em equipe. Davi continua responsável pelas decisões de produto. O repositório foi transferido para a organização `Agesto-Platform`, preservando histórico, branches e contribuições.
 
@@ -550,7 +550,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Regras iniciais:**
 - monorepo mantido enquanto backend, web e mobile evoluírem de forma acoplada;
 - fluxo `feature/* → develop → main` por pull request;
-- `develop` e `main` protegidas por revisão e verificações automatizadas;
+- `develop` e `main` protegidas por PR obrigatório e pelos checks Backend, Web e Mobile, sem aprovação obrigatória (revisto em 10/10/2026);
 - permissões concedidas por função e com privilégio mínimo;
 - documentação oficial versionada em `docs/project/`;
 - equipe fundadora registrada como Davi Gomes Rocha (Founder e Product Owner), Depowo (Cofounder, foco inicial em infraestrutura) e ghzpro034 (Cofounder, atuação generalista);
@@ -558,3 +558,242 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - propriedade intelectual e responsabilidades definitivas por módulo ainda precisam ser formalizadas.
 
 **Impacto em decisões anteriores:** menções a “dev solo” permanecem como contexto histórico da decisão original e não representam a composição atual. A escolha de React Native, C# e monorepo não muda automaticamente com a retomada da equipe; qualquer revisão será uma nova decisão explícita.
+
+---
+
+## DEC-30 — Hospedagem do MVP em tiers gratuitos: Cloudflare Pages + Oracle Cloud + Supabase
+
+**Status:** ⚠️ Parcialmente substituída pela DEC-32 em 08/10/2026 — a web segue na Cloudflare Pages; a API saiu da Oracle para o Render e o banco foi recriado no Supabase em N. Virginia
+
+**Decisão:** O MVP será hospedado apenas em tiers gratuitos:
+- **Web (Módulo Dono):** Cloudflare Pages, servindo o build estático do Vite.
+- **API (.NET 8):** VM Ampere A1 (ARM) do Oracle Cloud Always Free, com a API em container Docker atrás de um proxy reverso com HTTPS.
+- **Banco:** Supabase (PostgreSQL), plano Free, usado apenas como Postgres gerenciado; a autenticação continua sendo o JWT próprio da API.
+- **Região:** São Paulo para a API (`sa-saopaulo-1`, como home region da conta Oracle) e para o banco (Supabase South America), mantendo a API ao lado do banco.
+
+**Motivo:** custo zero na fase de MVP. A VM Oracle fica ligada 24h, sem cold start, e permite colocar a API no Brasil junto do banco. A Cloudflare Pages permite uso comercial no plano gratuito.
+
+**Alternativas descartadas:**
+- **Vercel Hobby** para a web → proíbe uso comercial.
+- **Render** para a API → sem região no Brasil e cold start de cerca de 1 minuto no plano gratuito.
+- **Google Cloud Run** para a API → exige cartão e cobrança fora da cota; preterido pela equipe.
+- **Azure App Service F1** → limite de 60 min de CPU por dia, sem suporte para produção.
+- **Neon** para o banco → equipe optou por manter Supabase, já usado no setup inicial (KAN-14).
+
+**Riscos e mitigações:**
+- **Pausa do Supabase Free** após 7 dias sem atividade → endpoint `/health` da API consulta o banco e é chamado periodicamente por um monitor externo.
+- **Sem backup automático no Supabase Free** → `pg_dump` periódico agendado, guardado fora do Supabase.
+- **Data API do Supabase expõe o schema `public`** pela API REST com a chave `anon` (pública) → Data API desativada no projeto; o banco é acessado só pela API .NET.
+- **Oracle recupera VMs ociosas de contas Always Free** (7 dias com CPU, rede e memória abaixo de 20%), e a API do MVP fica ociosa a maior parte do tempo → **conta convertida para Pay As You Go** com alerta de orçamento; a VM sai da regra de recuperação e segue sem custo dentro dos limites Always Free. A Oracle também alterou os limites sem aviso em 2026 (A1 reduzido para 2 OCPUs / 12 GB) → dimensionar dentro do limite atual e manter o deploy reproduzível (Dockerfile + compose em `deploy/oracle/`) para recriar a VM.
+- **Home region da Oracle é definitiva** e a capacidade A1 não é garantida → confirmar São Paulo na criação da conta.
+- **Domínio provisório:** enquanto não houver domínio próprio, a API usa `api.<IP>.sslip.io` para o HTTPS automático → IP público reservado na Oracle para o endereço não mudar; ao adotar domínio próprio, trocar a URL na web e no mobile.
+- **Operação da VM** (SO, Docker, HTTPS, firewall, atualizações) fica com a equipe de infraestrutura (Depowo).
+- **Segredos** (connection string, chave JWT) apenas em variáveis de ambiente na VM, nunca no Git.
+
+**Impacto em documentos anteriores:** substitui a menção a Azure em `docs/PROJETO_CONTEXTO.md` (contexto histórico) e define a hospedagem que `DESIGN.md` seção 8 deixava em aberto. O `SETUP_LOG.md`, registro histórico do Supabase de desenvolvimento original, foi removido em 21/10/2026 por conter dados pessoais de ex-integrantes; continua acessível no histórico do Git.
+
+**Revisão:** os tiers gratuitos não são recomendados pelos provedores para produção. Ao surgir receita, reavaliar Supabase Pro (sem pausa, com backup) e a hospedagem da API.
+
+---
+
+## DEC-31 — Migrations consolidadas numa `InitialCreate` única para o banco novo
+
+**Status:** ✅ Aplicada em 08/10/2026 no Supabase de São Paulo pelo SQL Editor; `__EFMigrationsHistory` contém só `20261008213822_InitialCreate` e as 12 tabelas foram conferidas. Com a DEC-32, o banco é recriado em N. Virginia com o mesmo script
+
+**Contexto:** ao gerar o script idempotente para o banco novo (DEC-30), constatou-se que a migration `20260618193156_ConvertEnumsToString` tem o `Up()` vazio: o schema correspondente tinha sido aplicado manualmente no Supabase antigo e a migration foi esvaziada só para alinhar o histórico. Num banco novo, o script rodaria sem erro, mas criaria o schema **sem a tabela `Empresas` e sem as colunas `EmpresaId`**. O snapshot do EF estava correto, por isso `has-pending-model-changes` não acusava nada.
+
+**Decisão:** substituir as 10 migrations anteriores por uma `InitialCreate` única (`20261008213822_InitialCreate`), gerada a partir do modelo atual. Possível porque nenhum banco em uso depende do histórico antigo: o Supabase antigo será substituído.
+
+**Verificação:** o `AppDbContextModelSnapshot.cs` gerado difere do anterior só pela correção de `ModoAgendaAgente` abaixo; o script tem as 12 tabelas, incluindo `Empresas`, e nenhuma operação destrutiva; build e 90 testes verdes.
+
+**Alternativa descartada:** reescrever à mão o `Up()` da `ConvertEnumsToString` espelhando o `Down()` (28 operações) → preservaria o histórico, mas com risco de erro manual sem como provar a equivalência com o modelo.
+
+**Divergências do modelo encontradas na revisão:**
+- `Configuracao.ModoAgendaAgente` era persistido como `integer`, sem `HasConversion<string>()`, contrariando o invariante de enums como string → **corrigido** na mesma migration (`varchar(10)`), aproveitando o banco ainda vazio.
+- `Orcamentos` e `ServicoItemSugeridos` têm `EmpresaId` indexado, mas sem chave estrangeira para `Empresas` → não alterado; aguarda decisão.
+
+**Regra a partir daqui:** nenhuma migration pode ter o `Up()` esvaziado para "sincronizar histórico". Mudança aplicada manualmente em algum banco deve ser revertida ou reproduzida pela migration.
+
+---
+
+## DEC-32 — API no Render e banco no Supabase em N. Virginia
+
+**Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo cron-job.org
+
+**Decisão:** substitui a parte de API e banco da DEC-30:
+- **API (.NET 8):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `develop` (provisório, até a promoção para `main`) só depois que o CI passa (`autoDeployTrigger: checksPass`).
+- **Banco:** projeto Supabase novo em **East US (N. Virginia)**, ao lado da API, com a mesma `InitialCreate` da DEC-31. O projeto de São Paulo deixa de ser usado.
+- **Web:** sem mudança, segue na Cloudflare Pages.
+
+**Motivo:** a VM da Oracle exige operação (SO, Docker, HTTPS, firewall) e, sem Pay As You Go, pode ser parada por ociosidade; com Pay As You Go, exige cartão. O Render não pede cartão nem servidor para manter.
+
+**Por que mudar o banco de região:** o Render não tem região no Brasil. Com a API em Virginia e o banco em São Paulo, cada consulta atravessaria EUA↔Brasil (~120 ms cada, várias por requisição). Com os dois em Virginia, o usuário no Brasil paga essa distância uma vez por requisição. A troca foi feita enquanto o banco ainda estava vazio.
+
+**Alternativas descartadas:**
+- **Manter Oracle** → operação da VM e risco de recuperação por ociosidade (ver DEC-30).
+- **Google Cloud Run** em São Paulo → exige cartão.
+- **Trocar a arquitetura da API** (TypeScript no Cloudflare Workers ou Supabase direto com RLS) → reescrever ~5.500 linhas e 51 endpoints já testados para resolver só a hospedagem; contraria o princípio de mudanças pequenas no MVP.
+
+**Riscos e mitigações:**
+- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo (cron-job.org) chama `/health` a cada 10 min (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h).
+- **Pausa do Supabase Free** após 7 dias sem atividade → o mesmo ping, porque o `/health` executa `SELECT 1`.
+- **512 MB de RAM e 0,1 CPU** → suficiente para o MVP; reavaliar no primeiro sinal de lentidão.
+- **Sem disco persistente** → a API não grava arquivos hoje; uploads futuros precisam de storage externo.
+- **SMTP bloqueado** no plano Free → envio de e-mail futuro por API HTTP.
+- **Latência Brasil↔EUA** (~120 ms por requisição) → aceita no MVP; o mobile é offline-first.
+
+**Impacto no código:** nenhum na lógica. `deploy/oracle/` foi removido (fica no histórico do Git); o passo a passo está em `deploy/README.md`.
+
+**Revisão:** ao surgir receita, reavaliar Render Starter (sem dormir) e Supabase Pro (sem pausa, com backup).
+
+---
+
+## DEC-33 — Sincronização confiável: Carga completa, Descarga por atendimento e cliente offline por UUID
+
+**Status:** 🟢 Implementado em `develop` (PR #43, 10/10/2026)
+
+**Contexto:** revisão do ciclo Carga/Descarga encontrou perda de dados no mobile:
+- a Carga era incremental (`ultimaSincronizacao`), mas o app substitui a tabela local inteira a cada Carga — a partir da segunda sincronização, clientes/produtos/serviços sem alteração sumiam do device; exclusões (soft delete) nunca chegavam ao device;
+- o app marcava **todos** os pendentes como sincronizados, mesmo os que o servidor rejeitou (só reportados em `Erros`), perdendo-os;
+- a Descarga gravava o atendimento sem os itens inválidos (produto inexistente, estoque insuficiente), com `ValorTotal` menor; não validava `ClienteId` contra a empresa; quantidade negativa aumentava o estoque.
+
+**Decisão:**
+1. **Carga sempre completa** no mobile (sem `ultimaSincronizacao`). O parâmetro continua aceito pelo backend, mas o app não o usa. Volume de catálogo do público-alvo torna o custo irrelevante; ganha-se propagação de exclusões sem tombstones.
+2. **Descarga tudo-ou-nada por atendimento:** cliente, itens, quantidades (> 0) e estoque (somado por produto) são validados antes de gravar; qualquer falha rejeita o atendimento inteiro, que segue pendente no device. Falha de um atendimento não bloqueia os demais da leva.
+3. **Confirmação explícita:** `SyncDescargaResponse` devolve `ClientesSincronizados` e `AtendimentosSincronizados` (importados agora ou já existentes). O device só marca como sincronizado o que estiver nessas listas.
+4. **UUID do cliente nasce no device:** `ClienteCreateRequest.Uuid` (opcional; ausente = gerado no servidor). Reenvio do mesmo cliente é idempotente.
+5. **Atendimento referencia cliente criado offline** por `AtendimentoSyncRequest.ClienteUuid` (`ClienteId` passa a ser opcional). Clientes são processados antes dos atendimentos na mesma leva; a resposta traz `ClientesMapeados` (uuid → id) e o device religa os atendimentos locais ao id do servidor. Cliente offline com CPF já existente é mapeado para o cliente existente (coerente com a DEC-06).
+6. O botão Sincronizar do mobile passa a fazer Descarga seguida de Carga + agenda, e informa quantos itens não foram enviados.
+
+**Impacto:** contrato da Descarga mudou — API e mobile precisam ser publicados juntos. Resolve as pendências "Mapear uuid→id do cliente na Descarga" (DEC-26) e a perda de dados acima. Testes: backend 127, mobile 32 — verdes.
+
+
+---
+
+## DEC-34 — Endurecimento de segurança pós-auditoria
+
+**Status:** 🟢 Implementado e validado em produção em 10/10/2026 (PRs #44 e #45)
+
+**Contexto:** auditoria de API, front, banco e infraestrutura com o sistema já em produção. Não havia vazamento ativo (Data API do Supabase desligada), mas havia brechas exploráveis: sem limite de tentativas, sem checagem de perfil, cadastro aberto, token irrevogável, dados pessoais completos no celular do agente.
+
+**Decisão:**
+1. **Cadastro fechado.** `POST /api/auth/register` só funciona com `Auth:RegistrationKey` configurada e enviada em `X-Registration-Key`; sem a chave, responde 404. Reabrir exige verificação de email (pendente).
+2. **Perfis no back.** Policy `Dono` em toda rota de gestão; o Agente usa só sync e a própria agenda. Um teste falha se uma action nova não declarar a policy.
+3. **Rate limiting** por IP no login e cadastro e por usuário no sync.
+4. **Token revalidado a cada requisição:** usuário excluído, de outra empresa ou com perfil alterado perde o acesso na hora, sem esperar o JWT expirar.
+5. **LGPD:** o Agente recebe CPF mascarado e orçamentos sem custo na Carga; cliente excluído é anonimizado (nome, CPF, telefone e endereço), mantendo a linha para o histórico.
+6. **Banco:** RLS em todas as tabelas sem acesso para `anon`/`authenticated`; a API conecta com o role `agesto_api` (só DML, `deploy/api-role.sql`) e TLS `VerifyFull` com a CA do Supabase.
+
+**Validação em produção (10/10/2026):**
+- Supabase: Data API desligada e `pg_graphql` não instalado (sem acesso público às tabelas); RLS ativo em todas as tabelas.
+- API: headers de segurança e HSTS presentes; cadastro responde 404; login e cadastro bloqueiam com 429 após o limite; payload acima do limite recusado com 413 (testado localmente).
+- Web (Cloudflare): CSP, `X-Frame-Options` e HSTS presentes; a CSP libera só a API usada pelo bundle de produção.
+- Banco: API conectando como `agesto_api` com `SSL Mode=VerifyFull`; CA do Supabase conferida com `openssl` nos poolers `aws-0` e `aws-1` de us-east-1. O `ssl = false` em `pg_stat_ssl` refere-se ao trecho interno pooler → Postgres.
+- Login, configuração, clientes, produtos, serviços, orçamentos, atendimentos, agenda, sync e dashboard respondendo 200 com a conta de teste depois de todas as mudanças.
+
+**Pendências:**
+- **Verificação de email** antes de reabrir o cadastro. Depende de provedor de envio com API HTTP (o Render bloqueia SMTP; sugestão: Resend) e de domínio próprio verificado.
+- **Backup automático** do banco (o plano Free do Supabase não faz).
+- ~~**Migração para .NET 10** (o .NET 8 perde suporte em 10/11/2026).~~ Feita na DEC-40.
+
+
+---
+
+## DEC-35 — Gestão de usuários pelo Dono e responsável do atendimento
+
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
+
+**Contexto:** não havia como criar um usuário Agente (o cadastro só cria Dono) e todo atendimento ficava com quem o criou (`UsuarioId` = criador). O app do agente só funcionava com usuário inserido direto no banco.
+
+**Decisão:**
+1. **Aba Usuários no web (só Dono).** `GET/POST/PUT /api/usuario`, `POST /api/usuario/{id}/desativar`, `/reativar` e `/redefinir-senha`, todos com a policy `Dono`.
+2. **Sem convite por email.** O servidor gera uma senha provisória (10 caracteres, alfabeto sem ambíguos), mostrada uma única vez ao Dono, que repassa ao agente. O usuário nasce com `DeveTrocarSenha = true` e web e app levam para a tela de troca no primeiro acesso (`POST /api/auth/trocar-senha`). Email continua pendente da DEC-34.
+3. **Desativar em vez de excluir.** `Usuario.Ativo` (default `true` para quem já existe). Inativo não loga (403) e o `TokenRevalidator` derruba o token na hora. Histórico de atendimentos fica preservado.
+4. **Regras:** o Dono não desativa nem rebaixa a si mesmo; a empresa precisa de ao menos um Dono ativo.
+5. **Responsável do atendimento.** `ResponsavelId` opcional no create/update do atendimento; ausente = o próprio Dono (create) ou mantém (update). Validado contra a empresa e só usuário ativo. A agenda do agente passa a mostrar o que o Dono atribuiu; no web, filtro "Toda a equipe" e "Com {nome}".
+6. `UltimoAcessoEm` registrado no login, exibido na lista.
+
+**Impacto:** migration `AddUsuarioAtivoESenhaProvisoria` (3 colunas em `Usuarios`). API, web e app precisam subir juntos por causa do `deveTrocarSenha` no login.
+
+
+---
+
+## DEC-36 — Agente cadastra serviço no app, com revisão do Dono
+
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
+
+**Contexto:** no web, serviço fora do catálogo já vira cadastro rápido (DEC-22), mas o app não conseguia: toda a API de serviço exige perfil Dono e a Descarga só aceitava itens com id do servidor. Em campo o agente ficava sem como registrar um serviço novo.
+
+**Decisão:**
+1. **Mesmo caminho dos clientes offline (DEC-33).** O app cria o serviço com UUID do device e já pode usá-lo no atendimento. A Descarga aceita `Servicos` (até 100 por leva), cria antes dos atendimentos e devolve `ServicosSincronizados` e `ServicosMapeados`; o item de serviço aceita `ServicoUuid` no lugar de `ServicoId`. O app religa os itens ao id real.
+2. **Sem duplicar.** Reenvio com o mesmo UUID não cria de novo; descrição igual a um serviço ativo (sem diferenciar caixa e espaços) reaproveita o existente, e o atendimento usa o preço do catálogo.
+3. **Revisão do Dono.** `Servico.Revisado` e `Servico.CriadoPorUsuarioId`. Criado pelo agente nasce `Revisado = false`; no web aparece "A revisar · criado no app por Fulano", com filtro e botão para marcar como revisado (`POST /api/servico/{id}/revisar`). Editar pelo web também conta como revisão. Serviços existentes ficam revisados.
+4. **Chave em Parametrização.** `Configuracao.AgenteCadastraServico`, ligada por padrão. Desligada, a Descarga rejeita serviço novo do agente (o atendimento que o usa fica pendente no app com o motivo); o Dono continua podendo.
+
+**Impacto:** migration `AddServicoCriadoPeloAgente` (2 colunas em `Servicos` com FK para `Usuarios` `SET NULL`, 1 em `Configuracoes`). O contrato da Descarga só ganhou campos opcionais: app antigo continua funcionando.
+
+
+---
+
+## DEC-37 — Rota do dia pelo endereço, sem geocodificação (fase 1)
+
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026)
+
+**Contexto:** o plano da rota pronta tem três fases e todas dependem de latitude e longitude do cliente, que exigem um serviço de geocodificação (custo, cota e envio do endereço a terceiro, ponto de LGPD ainda não decidido). Abrir o Google Maps com as paradas não precisa disso: a URL aceita endereços em texto.
+
+**Decisão:**
+1. A agenda (`AgendaItemResponse`) passa a trazer `EnderecoCompleto` (rua, número, bairro, cidade e CEP); null quando o cliente não tem rua.
+2. No app, a tela Início mostra "Iniciar rota · N paradas": abre o Google Maps com as visitas **pendentes de hoje**, na ordem dos horários, saindo da localização atual do celular. Limite de 10 paradas (destino + 9 da URL); o app avisa quem ficou de fora (sem endereço ou além do limite).
+3. Cada visita com endereço ganha um botão que abre a navegação só até aquele cliente.
+4. O endereço vai ao Google pelo próprio celular do agente, por ação dele, como já aconteceria copiando o endereço. Nada é enviado pelo servidor.
+
+**Pendente (fases seguintes):** escolher o serviço de geocodificação (sugestão: OpenRouteService), registrar a decisão de LGPD, `Cliente.Latitude/Longitude`, `Servico.DuracaoMinutos`, mapa com pinos no web e "Otimizar dia".
+
+**Impacto:** sem migration. Campo novo e opcional na agenda; app antigo ignora.
+
+
+---
+
+## DEC-38 — Geocodificação com OpenRouteService e mapa da agenda com Leaflet
+
+**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase. Provedor aprovado por Diego em 17/10/2026.
+
+**Contexto:** o mapa da agenda e a otimização da rota (fase 2) precisam de latitude e longitude dos clientes, e o sistema só guarda o endereço em texto.
+
+**Decisão:**
+1. **Geocodificação:** OpenRouteService (plano gratuito, mesma plataforma que fará a otimização da fase 2), atrás da interface `IGeocodificador` para trocar de provedor sem mexer no resto. Chave em `Geocoding__OpenRouteServiceApiKey`; sem ela, a geocodificação fica desligada.
+2. **Em segundo plano:** um `BackgroundService` geocodifica clientes com rua e `GeocodificadoEm` nulo, em lotes de 25 com 1,5 s entre chamadas (dentro da cota de ~100 por minuto). Cadastro e sync não esperam pelo provedor. Endereço não encontrado fica marcado e não é repetido; falha de rede ou cota deixa pendente e o worker espera 10 minutos. Mudar o endereço apaga as coordenadas para geocodificar de novo. Os clientes que já existem são convertidos na primeira execução.
+3. **LGPD:** só o endereço (rua, número, bairro, cidade, CEP e "Brasil") vai ao provedor, nunca nome, CPF ou telefone; a chave vai no cabeçalho, fora da URL. Cliente excluído tem as coordenadas apagadas junto com o endereço.
+4. **Mapa no web:** aba "Mapa" na Agenda, um dia por vez, pinos numerados pela ordem dos horários e coloridos por responsável, com popup do atendimento e lista de quem está sem localização. Leaflet com blocos do OpenStreetMap, carregado só ao abrir a aba. O CSP do painel libera `https://tile.openstreetmap.org` em `img-src`.
+
+**Impacto:** migration `AddClienteCoordenadas` (3 colunas em `Clientes` + índice). Nova variável no Render. Dependência nova no web: `leaflet` (+ `@types/leaflet`). A política de uso dos blocos do OpenStreetMap vale para volume baixo; se o uso crescer, trocar por um provedor de blocos (ex.: MapTiler) é só mudar a URL e o CSP.
+
+---
+
+## DEC-39 — Atendimento no app no mesmo nível do web
+
+**Status:** 🟢 Implementado em `develop` (PR #48, 20/10/2026). Pedido por Diego em 20/10/2026, depois do levantamento web × app (`modulos/atendimento-web-vs-app.md`).
+
+**Contexto:** no app o agente só usava o preço do catálogo, não conseguia concluir uma visita agendada (só criar outro atendimento), não corrigia nada depois de salvar e via um "Estimado" diferente do que o servidor cobrava na empreitada com quantidade 2.
+
+**Decisão:**
+1. **Valor ajustado (DEC-23 no app):** a Descarga aceita `PrecoUnitario` opcional no item de produto de catálogo e no item de serviço; nulo cobra o catálogo. No app, o valor de cada item é editável e aparece marcado como "ajustado".
+2. **Concluir atendimento existente:** nova lista `Conclusoes` na Descarga, com o uuid do atendimento do servidor, o novo status e itens acrescentados (os já gravados não mudam). O Agente só conclui atendimentos dos quais é responsável; o Dono conclui qualquer um. Cada item leva um `Uuid` do device, e o reenvio é reconhecido por ele, sem duplicar. Atendimento já finalizado rejeita itens novos. A agenda passa a trazer os itens já lançados (`Itens`) para o agente ver o que foi combinado.
+3. **Corrigir antes de enviar:** atendimento e conclusão ainda não enviados podem ser reabertos, alterados ou excluídos no aparelho.
+4. **Empreitada:** mantém a DEC-04. App e web lançam uma linha por unidade (quantidade 2 = duas linhas), e o estimado do app bate com o que o servidor cobra.
+
+**Impacto:** sem migration. Contrato da Descarga e da agenda só ganha campos opcionais, então um app antigo continua funcionando.
+
+---
+
+## DEC-40 — Backend migrado para .NET 10
+
+**Status:** 🟢 Implementado em `develop` (PR #53, 21/10/2026) e validado em produção por Davi (deploy Live no Render, login e sync testados). Pedido por Davi em 20/10/2026.
+
+**Decisão:** API e testes passam de `net8.0` para `net10.0` (LTS), antes do fim do suporte do .NET 8 em 10/11/2026.
+- Pacotes ASP.NET Core e EF Core em `10.0.13`, provider `Npgsql.EntityFrameworkCore.PostgreSQL` em `10.0.3`; Api e Tests seguem na mesma versão de EF Core (DEC-13).
+- `Swashbuckle.AspNetCore` de 6.6.2 para 10.3.1: o `Microsoft.AspNetCore.OpenApi` 10 usa `Microsoft.OpenApi` 2.x, incompatível com o Swashbuckle 6. Major feito à mão, com validação (regra do `dependabot.yml`).
+- Imagens Docker `sdk:10.0` e `aspnet:10.0`; CI com `dotnet-version: 10.0.x`.
+- `ForwardedHeadersOptions.KnownNetworks` (obsoleto no .NET 10) trocado por `KnownIPNetworks`, sem mudar o comportamento.
+
+**Impacto:** sem migration (`has-pending-model-changes` não acusa mudanças com o EF Core 10). Contratos da API iguais. A imagem Docker nova foi validada no deploy do Render.
