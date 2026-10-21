@@ -137,7 +137,7 @@
 |-----|-----------|------------|-------------|
 | KAN-14 | PostgreSQL de desenvolvimento + migrations | Alta | A definir |
 | KAN-54 | Agents de QA automatizados | Baixa | Diego |
-| — | Instalar dotnet ef global na máquina | Média | Davi Gomes |
+| — | ~~Instalar dotnet ef global na máquina~~ ✅ 21/10/2026 — `dotnet-ef` 10.0.13 | Média | — |
 | — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
 | — | Backup automático do banco (Supabase Free não faz) — DEC-34 | Alta | A definir |
 | — | ~~Migrar para .NET 10 (o .NET 8 perde suporte em 10/11/2026)~~ ✅ DEC-40 | Alta | — |
