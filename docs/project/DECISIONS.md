@@ -590,7 +590,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Operação da VM** (SO, Docker, HTTPS, firewall, atualizações) fica com a equipe de infraestrutura (Depowo).
 - **Segredos** (connection string, chave JWT) apenas em variáveis de ambiente na VM, nunca no Git.
 
-**Impacto em documentos anteriores:** substitui a menção a Azure em `docs/PROJETO_CONTEXTO.md` (contexto histórico) e define a hospedagem que `DESIGN.md` seção 8 deixava em aberto. O `SETUP_LOG.md` permanece como registro histórico do Supabase de desenvolvimento original.
+**Impacto em documentos anteriores:** substitui a menção a Azure em `docs/PROJETO_CONTEXTO.md` (contexto histórico) e define a hospedagem que `DESIGN.md` seção 8 deixava em aberto. O `SETUP_LOG.md`, registro histórico do Supabase de desenvolvimento original, foi removido em 21/10/2026 por conter dados pessoais de ex-integrantes; continua acessível no histórico do Git.
 
 **Revisão:** os tiers gratuitos não são recomendados pelos provedores para produção. Ao surgir receita, reavaliar Supabase Pro (sem pausa, com backup) e a hospedagem da API.
 
