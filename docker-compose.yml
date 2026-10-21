@@ -1,0 +1,16 @@
+# Postgres de desenvolvimento local (KAN-14). Produção usa o Supabase.
+# Uso: docker compose up -d  →  localhost:5433, usuário/senha/banco "agesto".
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: agesto
+      POSTGRES_PASSWORD: agesto
+      POSTGRES_DB: agesto
+    ports:
+      - "5433:5432"
+    volumes:
+      - agesto-db:/var/lib/postgresql/data
+
+volumes:
+  agesto-db:
