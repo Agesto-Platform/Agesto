@@ -802,7 +802,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-41 — `main` é a produção; `develop` é integração e teste local
 
-**Status:** 🟢 Implementado em 21/10/2026, pedido por Diego: PR #60 promoveu a `develop` para a `main` (merge commit) e Render e Cloudflare passaram a publicar a `main`.
+**Status:** 🟢 Implementado em 21/10/2026, pedido por Diego e autorizado por Davi: PR #60 promoveu a `develop` para a `main` (merge commit) e Render e Cloudflare passaram a publicar a `main`; previews da Cloudflare desligados.
 
 **Decisão:** o Render (API) e a Cloudflare Pages (web) publicam a `main`. A `develop` recebe as funcionalidades novas e é testada na máquina, com API local e Postgres local (`docker-compose.yml`, parte da KAN-14), sem ambiente de homologação na nuvem.
 - Preview deployments da Cloudflare desligados, para nada fora da `main` falar com a API de produção.
