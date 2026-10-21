@@ -60,7 +60,7 @@ Controller  →  Service (interface)  →  Repository (interface)  →  AppDbCon
 
 ## Status
 
-> MVP em produção: API, banco e web reais, com os mocks desligados no web e no app. A `main` é a produção: Render e Cloudflare Pages publicam a `main` depois que o CI passa; a `develop` é integração e teste local (DEC-41).
+> MVP em produção: API, banco e web reais, com os mocks desligados no web e no app. A `main` é a produção: Render e Cloudflare Pages publicam a `main` depois que o CI passa; a `develop` é integração e teste local (DEC-41). Última promoção para a `main` em 21/10/2026 (PR #74), com os marcos de outubro e as atualizações de dependências.
 
 | Área | Estado |
 |------|--------|
