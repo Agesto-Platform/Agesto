@@ -27,10 +27,10 @@
 | KAN-19 | Backend Core (C# / ASP.NET) | 🟢 Essencialmente completo |
 | KAN-30 | Módulo IA/Insights (Python) | ⚫ Obsoleto — descartado (DEC-21 resolvida: IA roda em C# no backend) |
 | KAN-37 | Documentação & QA | 🟡 Em andamento |
-| KAN-44 | Frontend Web (React) — Módulo Dono | 🟢 Completo (web-01 a web-14, sidebar 100% funcional + testes base, ver DEC-25) — resta só trocar mock por API real quando a infra subir |
-| KAN-69 | Domínio Prestador de Serviço (Orçamento, Agenda, Item genérico, valor editável) | 🟢 Backend essencialmente completo — falta lat/lng/roteirização, descarga de orçamento no sync e aplicar migrations no banco |
+| KAN-44 | Frontend Web (React) — Módulo Dono | 🟢 Completo (web-01 a web-14, sidebar 100% funcional + testes base, ver DEC-25) — em produção contra a API real (DEC-32) |
+| KAN-69 | Domínio Prestador de Serviço (Orçamento, Agenda, Item genérico, valor editável) | 🟢 Backend essencialmente completo — migrations aplicadas e rota fase 1 entregue (DEC-37/38); falta descarga de orçamento no sync e "Otimizar dia" (fase 2) |
 | KAN-77 | Camada de Métricas & Dashboards | 🟡 Em andamento |
-| — | Mobile (React Native) — App do Agente | 🟢 Completo (mob-01 a mob-07, offline-first, ver DEC-26) — resta só trocar mock por API real quando a infra subir |
+| — | Mobile (React Native) — App do Agente | 🟢 Completo (mob-01 a mob-07, offline-first, ver DEC-26) — em produção contra a API real (DEC-32), atendimento no nível do web (DEC-39) |
 
 ---
 
@@ -73,13 +73,13 @@
 |-----|-----------|------------|-------------|------------|
 | — | Paginação no GetAllAsync | Baixa | A definir | — |
 
-> Backend Core está essencialmente completo: no último marco validado, build verde e 90 testes xUnit aprovados. `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A integração real com PostgreSQL ainda depende da nova infraestrutura.
+> Backend Core está essencialmente completo: em 21/10/2026, build verde e 261 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
 
 ---
 
 ## Domínio Prestador de Serviço (KAN-69)
 
-> Épico que reúne os refinamentos do pivô de produto (DEC-15 a DEC-19, DEC-22, DEC-23): Orçamento, Agenda/Rota e item de atendimento genérico. As branches do batch já fazem parte da linha local atual de `develop`/`main`; a publicação desse histórico no GitHub ainda está pendente.
+> Épico que reúne os refinamentos do pivô de produto (DEC-15 a DEC-19, DEC-22, DEC-23): Orçamento, Agenda/Rota e item de atendimento genérico. O batch está publicado nas linhas `develop` e `main` de `Agesto-Platform/Agesto`.
 
 ### ✅ Concluídas
 
@@ -231,10 +231,10 @@
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
 | KAN-39 | Documentação de API (Swagger/OpenAPI) | Média | Richard |
-| KAN-40 | Documentação de deploy | Baixa | Richard |
+| KAN-40 | ~~Documentação de deploy~~ ✅ `deploy/README.md` (ver KAN-18) | Baixa | — |
 | KAN-41 | Testes de integração ponta-a-ponta | Baixa | Richard |
 | KAN-42 | Manual do usuário | Baixa | Richard |
-| KAN-43 | Atualizar README | Média | Richard |
+| KAN-43 | ~~Atualizar README~~ ✅ 21/10/2026 (PR #56) | Média | — |
 | — | Diagrama de Arquitetura (componentes) | Alta | Richard |
 | — | Diagrama de Sequência (Atendimento Híbrido) | Alta | Richard |
 
@@ -242,7 +242,7 @@
 
 ## Frontend Web (React) — Módulo Dono
 
-**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (tokens do protótipo) · React Router · TanStack Query · MSW (mock enquanto não há banco/API no ar) · Recharts. Vive em `web/` no monorepo (`Agesto-Platform/Agesto`). Rodar: `cd web && npm install && npm run dev` (mock ligado via `.env`: `VITE_USE_MOCKS=true`). Login demo (mock): `dono@agesto.app` / `agesto123`. Decisões de stack e arquitetura registradas em DEC-25 (`DECISIONS.md`) e na seção 10 do `DESIGN.md`.
+**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (tokens do protótipo) · React Router · TanStack Query · MSW (mock só para desenvolvimento local) · Recharts. Vive em `web/` no monorepo (`Agesto-Platform/Agesto`). Rodar: `cd web && npm install && npm run dev` (mock ligado via `.env`: `VITE_USE_MOCKS=true`). Login demo (mock): `dono@agesto.app` / `agesto123`. Decisões de stack e arquitetura registradas em DEC-25 (`DECISIONS.md`) e na seção 10 do `DESIGN.md`.
 
 ### ✅ Concluídas — fatia inicial navegável (integrada na `main`)
 
@@ -263,7 +263,7 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 | web-11 | — | **Atendimentos** — itens/estoque/margem + dashboard honesto | `6c0e700` |
 | web-12 | KAN-49 | **Parametrização** — modo de operação (TipoOperacao) | `d922b61` |
 | web-13 | — | **Relatórios** — abas Rentabilidade/Serviços/Produtos/Estoque | `4576e25` |
-| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente para 21 testes | `cee7fb9` + evoluções posteriores |
+| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente; 33 testes em 21/10/2026 | `cee7fb9` + evoluções posteriores |
 
 > \*Épico Operação: numeração KAN a atribuir no Jira quando reconectar.
 
@@ -275,7 +275,7 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 |-----|-----------|------------|
 | — | Ampliar cobertura de testes (só a base foi coberta) | Baixa |
 | — | Lazy-load do Recharts (bundle ~640kB) | Baixa |
-| — | Trocar mocks pela API real quando o backend/DB subir (`VITE_USE_MOCKS=false`) | Alta |
+| — | ~~Trocar mocks pela API real (`VITE_USE_MOCKS=false`)~~ ✅ em produção contra a API real (DEC-32) | Alta |
 
 ### ✅ Deltas de backend resolvidos / pendentes
 
@@ -307,7 +307,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
 | — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
 
-**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 29 testes Jest; typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 77 testes Jest (21/10/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 
@@ -321,9 +321,9 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | Item | Descrição | Prioridade |
 |------|-----------|------------|
 | Histórico de atendimentos próprios | Não implementado nesta fase (fora do escopo mob-01 a mob-07) | Baixa |
-| Roteirização/geolocalização | Depende de lat/lng no `Cliente` (DEC-17), ainda pendente no backend | Média |
+| Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2) | Média |
 | Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa |
-| Trocar mock pela API real | `config.useMocks = false` quando o backend/DB subir | Alta |
+| ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta |
 | Sincronização automática em background | Hoje só manual (aba "Mais") | Baixa |
 
 ---
