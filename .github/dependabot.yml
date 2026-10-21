@@ -24,6 +24,13 @@ updates:
         patterns:
           - "Microsoft.AspNetCore.*"
           - "Microsoft.EntityFrameworkCore*"
+      # Demais minor/patch num PR so por semana (um ciclo de CI em vez de varios).
+      nuget-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     # Bloqueia atualizacoes major automaticas. Decisao do time em 2026-05-11
     # apos o PR #5 (Swashbuckle 6 -> 10) ter sido mergeado sem validacao.
     # Major upgrades viram tarefa manual no Jira com revisao + smoke test.
@@ -45,6 +52,13 @@ updates:
     labels:
       - "dependencies"
       - "web"
+    groups:
+      web-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
@@ -63,6 +77,13 @@ updates:
     labels:
       - "dependencies"
       - "mobile"
+    groups:
+      mobile-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
