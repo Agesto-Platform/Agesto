@@ -9,7 +9,7 @@ mobile action-first do agente de campo.
 - **Tailwind CSS v4** (config CSS-first via `@theme`) — tokens em `src/styles/tokens.css`
 - **React Router** (roteamento)
 - **TanStack Query** (dados de servidor)
-- **MSW** (mock enquanto o backend/DB não está no ar)
+- **MSW** (mock para desenvolvimento local sem backend)
 - **Recharts** (gráficos)
 - Lint: **oxlint**
 

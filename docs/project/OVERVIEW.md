@@ -53,14 +53,14 @@ O Agesto oferece:
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Frontend Web (Módulo Dono) | Vite + React 19 + TypeScript, Tailwind v4, TanStack Query, MSW (mock), Recharts |
+| Frontend Web (Módulo Dono) | Vite + React 19 + TypeScript, Tailwind v4, TanStack Query, MSW (mock só em dev), Recharts, Leaflet |
 | Backend Core | C# — ASP.NET Core .NET 10 + Entity Framework Core |
-| Banco de Dados | PostgreSQL; provedor da nova infraestrutura ainda será definido |
+| Banco de Dados | PostgreSQL no Supabase, região N. Virginia (DEC-32) |
 | Mobile (App do Agente) | React Native + TypeScript (Expo/prebuild), Expo Router, `expo-sqlite` offline-first |
 | Módulo IA | Embutido no backend C#, via SDK oficial Anthropic Claude (DEC-21) — não há mais serviço Python separado |
 | Autenticação | JWT (HMAC-SHA256, 120min, claims: sub, email, jti, empresaId, perfil) |
-| Nuvem | A definir na fase de infraestrutura |
-| Testes | Backend: xUnit + Moq + EF Core InMemory/SQLite (90 testes). Web: Vitest + Testing Library (21 testes). Mobile: Jest/jest-expo (29 testes) |
+| Nuvem | API no Render, web na Cloudflare Pages, banco no Supabase (DEC-32) |
+| Testes | Backend: xUnit + Moq + EF Core InMemory/SQLite (261 testes). Web: Vitest + Testing Library (33 testes). Mobile: Jest/jest-expo (77 testes) — CI da `develop`, 21/10/2026 |
 | Versionamento | Git + Gitflow |
 
 ## Time
@@ -75,13 +75,13 @@ Os três integram o time visível `@Agesto-Platform/core`. Os papéis indicam o 
 
 ## Status atual
 
-- **Fase:** MVP em evolução — transição para desenvolvimento em equipe e preparação da infraestrutura
-- **Branch principal:** `main` (repositório `Agesto-Platform/Agesto`)
+- **Fase:** MVP em produção (API, banco e web reais, DEC-32), em desenvolvimento em equipe
+- **Branch principal:** `main` (repositório `Agesto-Platform/Agesto`). A `develop` é publicada no Render depois do CI e concentra os marcos de outubro/2026, ainda não promovidos para a `main`
 - **Repositório:** [`Agesto-Platform/Agesto`](https://github.com/Agesto-Platform/Agesto) — repo próprio, **público** (portfólio + comercial, licença restritiva; ver DEC-24). O acadêmico original `github.com/Auto-academic-erp/micro-erp-auto` fica como legado abandonado.
-- **Banco:** infraestrutura anterior descartada; novo PostgreSQL ainda será provisionado. As migrations existentes serão aplicadas somente depois da definição do ambiente
-- **Testes:** backend 90, web 21 e mobile 29 testes passando no último marco validado
-- **Frontend Web (Módulo Dono):** essencialmente completo — 14 tasks (web-01 a web-14) integradas na `main`, **sidebar 100% funcional**, cobrindo dashboard, autenticação, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização), consumindo o contrato real da API via mock stateful (MSW) enquanto o banco novo não sobe. Testes base (Vitest) cobrindo masks, período, store, Money e ClienteForm. Ver DEC-25 em `DECISIONS.md` e seção 10 do `DESIGN.md`.
-- **Mobile (App do Agente):** MVP offline-first e action-first em `mobile/`: login JWT, Carga, agenda, registro/agendamento de atendimento, cadastro rápido de cliente, materiais sugeridos, Descarga e status de sincronização. Último marco com 29 testes Jest, typecheck e lint verdes. A integração com a API real aguarda a infraestrutura e ainda existem deltas de sincronização documentados.
+- **Banco:** Supabase em N. Virginia, com a `InitialCreate` única (DEC-31) e as migrations seguintes aplicadas; backup automático ainda pendente (DEC-34)
+- **Testes:** backend 261, web 33 e mobile 77 testes passando no CI da `develop` (21/10/2026)
+- **Frontend Web (Módulo Dono):** essencialmente completo — 14 tasks (web-01 a web-14) integradas na `main`, **sidebar 100% funcional**, cobrindo dashboard, autenticação, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização), consumindo a API real em produção (MSW só em desenvolvimento local). Depois ganhou gestão de usuários (DEC-35), revisão de serviços criados no app (DEC-36) e mapa da agenda (DEC-38). Testes base (Vitest) cobrindo masks, período, store, Money e ClienteForm. Ver DEC-25 em `DECISIONS.md` e seção 10 do `DESIGN.md`.
+- **Mobile (App do Agente):** MVP offline-first e action-first em `mobile/`: login JWT, Carga, agenda, registro/agendamento de atendimento, cadastro rápido de cliente, materiais sugeridos, Descarga e status de sincronização. Roda contra a API real; depois ganhou sync confiável (DEC-33), cadastro de serviço no app (DEC-36), rota do dia (DEC-37) e atendimento no nível do web (DEC-39). 77 testes Jest, typecheck e lint verdes. Resta o delta da agenda na Carga.
 - **Parametrização (DEC-27):** dois parâmetros por Empresa na `Configuracao`, ponta a ponta (backend + Carga + web + mobile) — `ModoAgendaAgente` (`Flexivel`/`Fixa`: se o agente pode agendar em campo) e `ControlaEstoque` (liga/desliga baixa e validação de estoque, para o prestador pass-through). Editáveis pelo Dono em Parametrização (web); propagados ao mobile pela Carga. 8 tasks (param-01 a param-08) integradas na `main`, revisadas (backend + frontend, aprovados). Testes: backend 83, mobile 25, web 17 — verdes. Agenda passou a incluir a `Configuracao`; contrato offline ganhou `DataAgendada`; `Fixa` com enforcement de servidor na Descarga.
 - **Kit de materiais sugeridos (DEC-28):** materiais sugeridos por Serviço (`ServicoItemSugerido`), ponta a ponta. Dono monta o kit na tela de Serviço; sugestão em 1 clique no Orçamento e Atendimento (web) e chip em 1 toque no registrar (mobile, offline via Carga); atalho "salvar materiais como sugeridos" a partir de um atendimento. 6 tasks (kit-01 a kit-06) na `main`. Testes: backend 90, mobile 29, web 17 — verdes.
 

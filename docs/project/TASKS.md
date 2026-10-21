@@ -112,7 +112,7 @@
 | Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
-| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | Revisão de Davi |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — |
 
 ---
 
@@ -242,7 +242,7 @@
 
 ## Frontend Web (React) — Módulo Dono
 
-**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (tokens do protótipo) · React Router · TanStack Query · MSW (mock só para desenvolvimento local) · Recharts. Vive em `web/` no monorepo (`Agesto-Platform/Agesto`). Rodar: `cd web && npm install && npm run dev` (mock ligado via `.env`: `VITE_USE_MOCKS=true`). Login demo (mock): `dono@agesto.app` / `agesto123`. Decisões de stack e arquitetura registradas em DEC-25 (`DECISIONS.md`) e na seção 10 do `DESIGN.md`.
+**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (tokens do protótipo) · React Router · TanStack Query · MSW (mock só para desenvolvimento local) · Recharts · Leaflet (mapa da agenda). Vive em `web/` no monorepo (`Agesto-Platform/Agesto`). Rodar: `cd web && npm install && npm run dev` (mock ligado via `.env`: `VITE_USE_MOCKS=true`). Login demo (mock): `dono@agesto.app` / `agesto123`. Decisões de stack e arquitetura registradas em DEC-25 (`DECISIONS.md`) e na seção 10 do `DESIGN.md`.
 
 ### ✅ Concluídas — fatia inicial navegável (integrada na `main`)
 
@@ -282,13 +282,13 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 - **Últimos atendimentos** (dashboard): resolvido no front — `GET /api/atendimento` (real `AtendimentoResponse`) + join do nome do cliente no cliente. Não precisa mais do formato fictício.
 - **Nome do cliente** em Orçamento/Atendimento: a API devolve só `clienteId`; o front junta com a lista de clientes. Se virar gargalo, expor `clienteNome` no backend.
 
-> O frontend improvisado da apresentação foi **descartado**. Este é o front novo, com design original aprovado (protótipo `web-dono.html`), consumindo os endpoints reais via contrato espelhado no MSW. **Módulo Dono (web) essencialmente completo:** dashboard, auth, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização).
+> O frontend improvisado da apresentação foi **descartado**. Este é o front novo, com design original aprovado (protótipo `web-dono.html`), consumindo a API real em produção (o MSW fica para desenvolvimento local). **Módulo Dono (web) essencialmente completo:** dashboard, auth, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização).
 
 ---
 
 ## Mobile (React Native) — App do Agente
 
-**Status:** 🟢 Completo (mob-01 a mob-07) — integrado direto na `main` do monorepo `Agesto-Platform/Agesto`, em `mobile/`. Offline-first, action-first. Decisões de stack e arquitetura registradas em DEC-26 (`DECISIONS.md`) e na seção 11 do `DESIGN.md`.
+**Status:** 🟢 Completo (mob-01 a mob-07, com evoluções das DEC-33, DEC-36, DEC-37 e DEC-39 em `develop`) — contra a API real, no monorepo `Agesto-Platform/Agesto`, em `mobile/`. Offline-first, action-first. Decisões de stack e arquitetura registradas em DEC-26 (`DECISIONS.md`) e na seção 11 do `DESIGN.md`.
 
 **Stack:** React Native + TypeScript via Expo (prebuild) · Expo Router · tokens do protótipo (azul `#243FA6` + verde `#12B886`, tema claro) · tema + StyleSheet (não NativeWind) · `expo-sqlite` (device) / adapter em memória (Web/testes) atrás da interface `LocalDb` · cliente de API com camada de mock em código (`config.useMocks`) · JWT via `expo-secure-store`/`localStorage`. Login demo (mock): `agente@agesto.app` / `agesto123`.
 
@@ -314,7 +314,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | Item | Descrição | Prioridade |
 |------|-----------|------------|
 | Agenda na Carga do sync | Ver seção "Domínio Prestador de Serviço" acima — a Carga deveria idealmente incluir a agenda, eliminando o contorno `syncAgenda` | Média |
-| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `feature/sync-fixes` (DEC-33) | — |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43) | — |
 
 ### 🔴 Pendências do próprio Mobile
 
@@ -333,6 +333,8 @@ Tracking local (Jira offline); numeração `mob-0x`.
 > O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados. Restam a auditoria documental e a formalização das responsabilidades e da propriedade intelectual.
 
 ### Sprint imediata
+> Antes dos itens abaixo: promover a `develop` para a `main`, que ainda não tem os marcos de outubro/2026.
+
 1. Concluir a auditoria de `REQUIREMENTS.md`
 2. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
 3. Depois da auditoria, remover a documentação legada em tarefa separada
