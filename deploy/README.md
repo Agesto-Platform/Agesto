@@ -63,7 +63,7 @@ SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER B
    - `Jwt__Secret` é gerado pelo próprio Render. A API não sobe com segredo menor que 32 bytes.
    - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
    - `Geocoding__OpenRouteServiceApiKey` (opcional): chave gratuita criada em openrouteservice.org (*Dashboard → Tokens*, plano Standard). Liga a geocodificação dos endereços dos clientes para o mapa da agenda (DEC-38); a API envia ao serviço só o endereço, nunca nome ou CPF. Sem ela, o mapa mostra que os clientes ainda não têm localização.
-4. O serviço publica a branch `develop` (provisório, até a promoção para `main`), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`).
+4. O serviço publica a branch `main` (DEC-41), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`). A `develop` não vai para a nuvem: é testada localmente (ver "Ambiente local" abaixo).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
 
 ### Cadastrar uma empresa
@@ -95,7 +95,8 @@ Conecte o repositório e configure:
 
 | Campo | Valor |
 |---|---|
-| Production branch | `develop` (provisório, até a promoção para `main`) |
+| Production branch | `main` (DEC-41) |
+| Preview deployments | desligados (*Settings → Builds → Branch control → Preview branch: None*) |
 | Root directory | `web` |
 | Build command | `npm run build` |
 | Output directory | `dist` |
@@ -137,6 +138,27 @@ A API não deve conectar como `postgres`. Depois de aplicar as migrations:
 3. Confira `/health` e um login. Se falhar, volte a connection string anterior no Render e veja o log.
 
 Sempre que uma migration criar tabela nova, rode de novo o último bloco de `deploy/api-role.sql` (policies do RLS).
+
+## 8. Ambiente local (testar a `develop`)
+
+A `develop` é testada na máquina, contra um Postgres local, nunca contra o banco de produção.
+
+1. Suba o Postgres de desenvolvimento (precisa de Docker): `docker compose up -d` na raiz. Ele escuta em `localhost:5433` (usuário, senha e banco `agesto`).
+2. Em `MicroERP.Api`, copie `appsettings.Development.json.example` para `appsettings.Development.json` (a connection string do exemplo já aponta para esse Postgres) e gere o `Jwt.Secret`.
+3. `dotnet ef database update --project MicroERP.Api` cria o schema local. Aqui pode, porque é o banco local; em produção continua valendo o passo 2 (script revisado + autorização).
+4. `dotnet run --project MicroERP.Api --launch-profile http` sobe a API em `http://localhost:5216`. Para o app no celular, use `--urls http://0.0.0.0:5216` e o IP da máquina na rede.
+5. Web: `web/.env.local` com `VITE_API_BASE_URL=http://localhost:5216` e `VITE_USE_MOCKS=false`, depois `npm run dev`.
+6. Mobile: `mobile/.env` com `EXPO_PUBLIC_API_BASE_URL=http://<IP da máquina>:5216` e `EXPO_PUBLIC_USE_MOCKS=false`, depois `npx expo start --go`.
+
+Para criar a primeira empresa local, defina `Auth__RegistrationKey` no `appsettings.Development.json` e use o `curl` de "Cadastrar uma empresa" trocando a URL.
+
+## 9. Lançar uma versão (develop → main)
+
+1. Confirme que a `develop` está verde no CI e foi testada localmente.
+2. Se houver migration nova, gere o `migrate.sql` (passo 2) e aplique no Supabase **antes** do merge, com autorização do Davi. Migrations precisam ser compatíveis com a versão anterior da API, porque a API antiga segue no ar até o deploy terminar.
+3. Abra o PR `develop → main` (https://github.com/Agesto-Platform/Agesto/compare/main...develop) e faça o merge com **Create a merge commit**. Nunca squash ou rebase: a `main` e a `develop` precisam continuar com o mesmo histórico.
+4. O Render e a Cloudflare publicam a `main` sozinhos depois do CI. Confira `/health`, um login na web e uma sincronização no app.
+5. Rollback: no Render, *Events → Rollback* para o deploy anterior; na Cloudflare, *Deployments → Rollback*. Migration não tem rollback automático.
 
 ## Pendências
 
