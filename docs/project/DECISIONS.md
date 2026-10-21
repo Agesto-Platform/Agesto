@@ -621,7 +621,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo cron-job.org
 
 **Decisão:** substitui a parte de API e banco da DEC-30:
-- **API (.NET 8):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `develop` (provisório, até a promoção para `main`) só depois que o CI passa (`autoDeployTrigger: checksPass`).
+- **API (.NET 8; .NET 10 desde a DEC-40):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `main` (desde a DEC-41) só depois que o CI passa (`autoDeployTrigger: checksPass`).
 - **Banco:** projeto Supabase novo em **East US (N. Virginia)**, ao lado da API, com a mesma `InitialCreate` da DEC-31. O projeto de São Paulo deixa de ser usado.
 - **Web:** sem mudança, segue na Cloudflare Pages.
 
@@ -797,3 +797,18 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - `ForwardedHeadersOptions.KnownNetworks` (obsoleto no .NET 10) trocado por `KnownIPNetworks`, sem mudar o comportamento.
 
 **Impacto:** sem migration (`has-pending-model-changes` não acusa mudanças com o EF Core 10). Contratos da API iguais. A imagem Docker nova foi validada no deploy do Render.
+
+---
+
+## DEC-41 — `main` é a produção; `develop` é integração e teste local
+
+**Status:** 🟢 Implementado em 21/10/2026, pedido por Diego e autorizado por Davi: PR #60 promoveu a `develop` para a `main` (merge commit) e Render e Cloudflare passaram a publicar a `main`; previews da Cloudflare desligados.
+
+**Decisão:** o Render (API) e a Cloudflare Pages (web) publicam a `main`. A `develop` recebe as funcionalidades novas e é testada na máquina, com API local e Postgres local (`docker-compose.yml`, parte da KAN-14), sem ambiente de homologação na nuvem.
+- Preview deployments da Cloudflare desligados, para nada fora da `main` falar com a API de produção.
+- Promoção sempre por PR `develop → main` com merge commit, nunca squash, para as duas branches manterem o mesmo histórico.
+- Migration nova é aplicada no Supabase antes do merge na `main` e precisa ser compatível com a versão anterior da API.
+
+**Por quê:** o plano Free do Render dá para um serviço ligado 24 h, não dois, e o Supabase Free tem dois projetos; um ambiente de homologação na nuvem custaria dinheiro ou acordaria a API pela metade. Teste local cobre o tamanho atual da equipe.
+
+**Impacto:** sem migration e sem mudança de código. Passo a passo em `deploy/README.md` (seções 8 e 9).

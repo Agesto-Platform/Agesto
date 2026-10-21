@@ -60,7 +60,7 @@ Controller  →  Service (interface)  →  Repository (interface)  →  AppDbCon
 
 ## Status
 
-> MVP em produção: API, banco e web reais, com os mocks desligados no web e no app. A `develop` é publicada automaticamente no Render depois que o CI passa; a `main` ainda não recebeu os marcos de outubro/2026.
+> MVP em produção: API, banco e web reais, com os mocks desligados no web e no app. A `main` é a produção: Render e Cloudflare Pages publicam a `main` depois que o CI passa; a `develop` é integração e teste local (DEC-41).
 
 | Área | Estado |
 |------|--------|
@@ -76,7 +76,7 @@ Controller  →  Service (interface)  →  Repository (interface)  →  AppDbCon
 | Frontend Web | 🟢 Em produção contra a API real — **33 testes** |
 | Mobile | 🟢 Offline-first contra a API real, atendimento no nível do web (DEC-39) — **77 testes** |
 
-**Próximos passos:** promover a `develop` para a `main`; backup automático do banco; verificação de email antes de reabrir o cadastro; "Otimizar dia" (fase 2 da rota); IA nativa. Lista completa em [`docs/project/TASKS.md`](docs/project/TASKS.md).
+**Próximos passos:** backup automático do banco; verificação de email antes de reabrir o cadastro; "Otimizar dia" (fase 2 da rota); IA nativa. Lista completa em [`docs/project/TASKS.md`](docs/project/TASKS.md).
 
 ## Documentação e contribuição
 

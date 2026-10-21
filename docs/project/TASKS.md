@@ -135,7 +135,7 @@
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
-| KAN-14 | PostgreSQL de desenvolvimento + migrations | Alta | A definir |
+| KAN-14 | PostgreSQL de desenvolvimento + migrations — parcial: Postgres local via `docker-compose.yml` (DEC-41); falta rodar os testes automatizados contra ele | Alta | A definir |
 | KAN-54 | Agents de QA automatizados | Baixa | Diego |
 | — | ~~Instalar dotnet ef global na máquina~~ ✅ 21/10/2026 — `dotnet-ef` 10.0.13 | Média | — |
 | — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
