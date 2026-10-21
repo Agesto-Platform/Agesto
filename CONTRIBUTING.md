@@ -16,7 +16,9 @@ O Agesto ainda é um MVP. O objetivo do processo é manter segurança e contexto
 - `chore/<descricao>` para manutenção sem regra de negócio.
 - `docs/<descricao>` para documentação isolada.
 
-Fluxo: branch curta → pull request para `develop` → validação integrada → pull request de marco para `main`.
+Fluxo: branch curta → pull request para `develop` → teste local → pull request de marco para `main`.
+
+A `main` é a produção: o Render e a Cloudflare publicam tudo o que entra nela. A `develop` é integração e teste local, sem deploy na nuvem. Promoção para `main` usa merge commit, nunca squash (passo a passo em `deploy/README.md`, seção 9).
 
 Não faça push direto em `develop` ou `main`, não use force push nessas branches e não misture tarefas sem relação no mesmo pull request.
 

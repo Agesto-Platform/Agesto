@@ -7,8 +7,8 @@ services:
     plan: free
     # Mesma região do Supabase (East US / N. Virginia).
     region: virginia
-    # Provisório: develop até a promoção para main (DEC-32).
-    branch: develop
+    # Produção sai da main; a develop é só integração/teste (DEC-41).
+    branch: main
     dockerContext: ./MicroERP.Api
     dockerfilePath: ./MicroERP.Api/Dockerfile
     healthCheckPath: /health
