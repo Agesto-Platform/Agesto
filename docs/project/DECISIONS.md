@@ -788,7 +788,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-40 — Backend migrado para .NET 10
 
-**Status:** 🟡 Implementado na branch `feature/dotnet-10`, aguardando revisão e merge. Pedido por Davi em 20/10/2026.
+**Status:** 🟢 Implementado em `develop` (PR #53, 21/10/2026) e validado em produção por Davi (deploy Live no Render, login e sync testados). Pedido por Davi em 20/10/2026.
 
 **Decisão:** API e testes passam de `net8.0` para `net10.0` (LTS), antes do fim do suporte do .NET 8 em 10/11/2026.
 - Pacotes ASP.NET Core e EF Core em `10.0.13`, provider `Npgsql.EntityFrameworkCore.PostgreSQL` em `10.0.3`; Api e Tests seguem na mesma versão de EF Core (DEC-13).
@@ -796,4 +796,4 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - Imagens Docker `sdk:10.0` e `aspnet:10.0`; CI com `dotnet-version: 10.0.x`.
 - `ForwardedHeadersOptions.KnownNetworks` (obsoleto no .NET 10) trocado por `KnownIPNetworks`, sem mudar o comportamento.
 
-**Impacto:** sem migration (`has-pending-model-changes` não acusa mudanças com o EF Core 10). Contratos da API iguais. A imagem Docker nova só é validada no deploy do Render.
+**Impacto:** sem migration (`has-pending-model-changes` não acusa mudanças com o EF Core 10). Contratos da API iguais. A imagem Docker nova foi validada no deploy do Render.
