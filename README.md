@@ -4,12 +4,12 @@
 
 > Nome de *agere* (agir/operar) + *gestio* (gestão). Antes chamado "Micro-ERP Auto".
 
-![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)
-![EF Core](https://img.shields.io/badge/EF%20Core-8.0-512BD4)
+![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
+![EF Core](https://img.shields.io/badge/EF%20Core-10.0-512BD4)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Npgsql-336791)
-![Backend tests](https://img.shields.io/badge/backend%20tests-90%20passing-2EA043)
-![Web tests](https://img.shields.io/badge/web%20tests-21%20passing-2EA043)
-![Mobile tests](https://img.shields.io/badge/mobile%20tests-29%20passing-2EA043)
+![Backend tests](https://img.shields.io/badge/backend%20tests-261%20passing-2EA043)
+![Web tests](https://img.shields.io/badge/web%20tests-33%20passing-2EA043)
+![Mobile tests](https://img.shields.io/badge/mobile%20tests-77%20passing-2EA043)
 ![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial-orange)
 
 ---
@@ -31,7 +31,7 @@ Venda de produtos existe como recurso secundário ("plus"), habilitado conforme 
 ## Destaques técnicos
 
 - **Multi-tenant** — isolamento por `EmpresaId` derivado do JWT (nunca do body); toda query filtra por empresa.
-- **Offline-first** — o app de campo opera sem rede; sincronização por *Carga/Descarga* com resolução last-write-wins.
+- **Offline-first** — o app de campo opera sem rede; sincronização por *Carga/Descarga* com resolução last-write-wins, envio por atendimento e pendências preservadas quando algo falha (DEC-33).
 - **Camada de métricas determinística** — números (receita, margem, estoque) são agregados no banco; a **IA nativa** apenas interpreta esses números, nunca os calcula.
 - **Margem por atendimento** — custo preenchível pelo prestador; `Margem = ValorTotal − CustoTotal`.
 - **Conversão transacional** de orçamento em atendimento (baixa de estoque só na conversão).
@@ -54,19 +54,29 @@ Controller  →  Service (interface)  →  Repository (interface)  →  AppDbCon
 | IA | Integração nativa planejada no backend C#; ainda não implementada |
 | Web (dono) | React 19 + TypeScript + Vite + Tailwind + TanStack Query |
 | Mobile (agente de campo) | React Native + Expo + SQLite, offline-first |
-| Auth | JWT multi-tenant (claims `empresaId`, `sub`, `perfil`) |
-| Testes | xUnit + Moq + EF Core InMemory/Sqlite |
+| Auth | JWT multi-tenant (claims `empresaId`, `sub`, `perfil`), revalidado no banco a cada requisição |
+| Testes | xUnit + Moq + EF Core InMemory/Sqlite · Vitest (web) · Jest (mobile) |
+| Hospedagem | API no Render · PostgreSQL no Supabase (N. Virginia) · Web na Cloudflare Pages (DEC-32) |
 
 ## Status
 
+> MVP em produção: API, banco e web reais, com os mocks desligados no web e no app. A `develop` é publicada automaticamente no Render depois que o CI passa; a `main` ainda não recebeu os marcos de outubro/2026.
+
 | Área | Estado |
 |------|--------|
-| Backend (domínio do prestador) | 🟡 MVP avançado — **90 testes passando**; migrations aguardam banco novo |
+| Backend (domínio do prestador) | 🟢 Em produção no .NET 10 (DEC-40) — **261 testes passando** |
+| Infraestrutura | 🟢 Render + Supabase + Cloudflare Pages, deploy guiado pelo CI (DEC-32); processo em [`deploy/README.md`](deploy/README.md) |
+| Segurança | 🟢 Auditoria aplicada e validada em produção: rate limit, cadastro fechado, revogação de token, RLS e LGPD de clientes (DEC-34) |
 | Camada de métricas + rentabilidade | 🟢 Implementada |
 | Orçamento / Agendamento / Margem | 🟢 Implementados |
+| Usuários agentes e responsável do atendimento | 🟢 Gestão pelo Dono no web, senha provisória (DEC-35) |
+| Serviço cadastrado pelo app | 🟢 Agente cria offline, Dono revisa no web (DEC-36) |
+| Rota e mapa | 🟢 Fase 1: rota do dia no Google Maps e mapa da agenda no web (DEC-37 e DEC-38) |
 | IA nativa (insights) | ⚪ Planejada |
-| Frontend Web | 🟡 MVP funcional com mocks — **21 testes** |
-| Mobile | 🟡 MVP offline-first funcional — **29 testes** |
+| Frontend Web | 🟢 Em produção contra a API real — **33 testes** |
+| Mobile | 🟢 Offline-first contra a API real, atendimento no nível do web (DEC-39) — **77 testes** |
+
+**Próximos passos:** promover a `develop` para a `main`; backup automático do banco; verificação de email antes de reabrir o cadastro; "Otimizar dia" (fase 2 da rota); IA nativa. Lista completa em [`docs/project/TASKS.md`](docs/project/TASKS.md).
 
 ## Documentação e contribuição
 
@@ -88,6 +98,7 @@ cd Agesto/MicroERP.Api
 cp appsettings.Development.json.example appsettings.Development.json
 # editar: connection string do Postgres + uma chave JWT (mín. 32 bytes)
 
+dotnet tool install -g dotnet-ef   # uma vez; versão 10.x
 dotnet ef database update   # cria o schema
 dotnet run                  # Swagger em http://localhost:5xxx/swagger
 ```
