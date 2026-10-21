@@ -106,7 +106,7 @@
 | Item | Descrição | Prioridade | Depende de |
 |------|-----------|------------|------------|
 | Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Campo de duração (não modelado) |
-| Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje o sync de orçamento é só Carga (leitura) | Média | Decisão de produto |
+| Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Decisão de produto |
 | ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
 | Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
@@ -158,7 +158,7 @@
 | JWT endurecido | HS256 fixo; issuer, audience e segredo ≥ 32 bytes obrigatórios |
 | Headers de segurança | API (HSTS, nosniff, frame-ancestors) e Web (CSP via `_headers`) |
 | LGPD de clientes | CPF mascarado para o Agente; anonimização na exclusão |
-| Banco | RLS em todas as tabelas; role `agesto_api` só com DML; TLS `VerifyFull` |
+| Banco | RLS em todas as tabelas (bloqueia `anon`/`authenticated`; a policy do `agesto_api` é `USING (true)`, então o isolamento entre empresas continua na API por `EmpresaId`); role `agesto_api` só com DML; TLS `VerifyFull` |
 | Mobile | Mock só em dev; dados locais apagados no logout e na troca de usuário; sem backup Android |
 | Web | Painel só para o Dono; cache limpo no logout |
 
@@ -168,7 +168,7 @@
 |------|-----------|------------|
 | Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio | Média |
 | Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP) | Baixa |
-| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7 | Baixa |
+| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7. Hoje `DELETE /api/usuario` apaga a própria conta com DELETE físico e sem anonimização (`UsuarioRepository`), divergindo do invariante de soft delete do `AGENTS.md` — decisão de Davi | Baixa |
 
 ---
 
@@ -230,7 +230,7 @@
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
-| KAN-39 | Documentação de API (Swagger/OpenAPI) | Média | Richard |
+| KAN-39 | Documentação de API (Swagger/OpenAPI) — parcial: Swashbuckle configurado, UI só em Development; sem documentação publicada | Média | Richard |
 | KAN-40 | ~~Documentação de deploy~~ ✅ `deploy/README.md` (ver KAN-18) | Baixa | — |
 | KAN-41 | Testes de integração ponta-a-ponta | Baixa | Richard |
 | KAN-42 | Manual do usuário | Baixa | Richard |
