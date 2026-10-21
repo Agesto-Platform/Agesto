@@ -5,7 +5,7 @@ Este arquivo é a fonte de regras compartilhadas para qualquer agente que trabal
 ## Produto e arquitetura
 
 - O Agesto é um SaaS multiempresa para prestadores de serviço solo e equipes.
-- Backend: ASP.NET Core .NET 8 + Entity Framework Core, na arquitetura Controller → Service → Repository → AppDbContext.
+- Backend: ASP.NET Core .NET 10 + Entity Framework Core, na arquitetura Controller → Service → Repository → AppDbContext.
 - Web: React 19 + TypeScript + Vite + Tailwind + TanStack Query.
 - Mobile: React Native + Expo + TypeScript + Expo Router + SQLite, com operação offline-first.
 - O produto ainda é um MVP. Prefira mudanças pequenas, reversíveis e entregues de ponta a ponta; evite abstrações prematuras.
