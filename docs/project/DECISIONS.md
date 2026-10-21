@@ -621,7 +621,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo cron-job.org
 
 **Decisão:** substitui a parte de API e banco da DEC-30:
-- **API (.NET 8):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `main` (desde a DEC-41) só depois que o CI passa (`autoDeployTrigger: checksPass`).
+- **API (.NET 8; .NET 10 desde a DEC-40):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `main` (desde a DEC-41) só depois que o CI passa (`autoDeployTrigger: checksPass`).
 - **Banco:** projeto Supabase novo em **East US (N. Virginia)**, ao lado da API, com a mesma `InitialCreate` da DEC-31. O projeto de São Paulo deixa de ser usado.
 - **Web:** sem mudança, segue na Cloudflare Pages.
 
