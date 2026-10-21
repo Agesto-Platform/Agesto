@@ -49,7 +49,7 @@ Controller  →  Service (interface)  →  Repository (interface)  →  AppDbCon
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Backend | C# ASP.NET Core .NET 8 + Entity Framework Core 8 |
+| Backend | C# ASP.NET Core .NET 10 + Entity Framework Core 10 |
 | Banco | PostgreSQL (Npgsql) |
 | IA | Integração nativa planejada no backend C#; ainda não implementada |
 | Web (dono) | React 19 + TypeScript + Vite + Tailwind + TanStack Query |
@@ -78,7 +78,7 @@ O fluxo da equipe é `feature/* → develop → main`. Alterações entram por p
 
 ## Rodando o backend
 
-> Pré-requisitos: .NET 8 SDK e um PostgreSQL acessível.
+> Pré-requisitos: .NET 10 SDK e um PostgreSQL acessível.
 
 ```bash
 git clone https://github.com/Agesto-Platform/Agesto.git

@@ -35,7 +35,7 @@ O Agesto oferece:
                           ↕ API REST (JWT)
 ┌─────────────────────────────────────────────────────────┐
 │  Backend Principal                                       │
-│  ASP.NET Core .NET 8 (C#) + Entity Framework Core      │
+│  ASP.NET Core .NET 10 (C#) + Entity Framework Core     │
 │  PostgreSQL — provedor da nova infraestrutura a definir  │
 │  IA nativa no backend C# — planejada (DEC-21)            │
 └─────────────────────────────────────────────────────────┘
@@ -54,7 +54,7 @@ O Agesto oferece:
 | Camada | Tecnologia |
 |--------|-----------|
 | Frontend Web (Módulo Dono) | Vite + React 19 + TypeScript, Tailwind v4, TanStack Query, MSW (mock), Recharts |
-| Backend Core | C# — ASP.NET Core .NET 8 + Entity Framework Core |
+| Backend Core | C# — ASP.NET Core .NET 10 + Entity Framework Core |
 | Banco de Dados | PostgreSQL; provedor da nova infraestrutura ainda será definido |
 | Mobile (App do Agente) | React Native + TypeScript (Expo/prebuild), Expo Router, `expo-sqlite` offline-first |
 | Módulo IA | Embutido no backend C#, via SDK oficial Anthropic Claude (DEC-21) — não há mais serviço Python separado |

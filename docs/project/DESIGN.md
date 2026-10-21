@@ -13,7 +13,7 @@ O sistema segue uma arquitetura em camadas clássica no backend, com separação
          │     HTTPS + JWT        │ HTTPS + JWT
          ▼                       ▼
 ┌─────────────────────────────────────────┐
-│         Backend ASP.NET Core .NET 8     │
+│         Backend ASP.NET Core .NET 10    │
 │                                         │
 │  Controllers → Services → Repositories  │
 │              ↓                          │
@@ -313,7 +313,7 @@ O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois
 ## 8. Banco de Dados
 
 - **Provedor:** PostgreSQL no Supabase (plano Free, região East US / N. Virginia), ver DEC-32
-- **ORM:** Entity Framework Core 8.0.32 (provider Npgsql 8.0.11)
+- **ORM:** Entity Framework Core 10.0.13 (provider Npgsql 10.0.3), ver DEC-40
 - **Migrations:** controladas via `dotnet ef migrations`
 - **Estado:** migrations geradas no código; aplicação será validada em um banco novo
 - **Secrets:** connection string em `appsettings.Development.json` (gitignored)

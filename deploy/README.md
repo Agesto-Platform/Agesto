@@ -142,4 +142,4 @@ Sempre que uma migration criar tabela nova, rode de novo o último bloco de `dep
 
 - Backup periódico com `pg_dump` (o Supabase Free não tem backup automático).
 - Verificação de email antes de reabrir o cadastro (DEC-34).
-- Migração para .NET 10 (o .NET 8 perde suporte em 10/11/2026).
+- ~~Migração para .NET 10 (o .NET 8 perde suporte em 10/11/2026).~~ Feita na DEC-40.

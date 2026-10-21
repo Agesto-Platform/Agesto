@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # NuGet (backend C# / .NET 8). Api e Tests juntos para que o grupo
+  # NuGet (backend C# / .NET 10). Api e Tests juntos para que o grupo
   # abaixo suba EF Core e ASP.NET Core na mesma versao nos dois projetos (DEC-13).
   # Revisores vem do CODEOWNERS (@Agesto-Platform/core).
   - package-ecosystem: "nuget"

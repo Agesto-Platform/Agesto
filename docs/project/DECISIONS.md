@@ -694,7 +694,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Pendências:**
 - **Verificação de email** antes de reabrir o cadastro. Depende de provedor de envio com API HTTP (o Render bloqueia SMTP; sugestão: Resend) e de domínio próprio verificado.
 - **Backup automático** do banco (o plano Free do Supabase não faz).
-- **Migração para .NET 10** (o .NET 8 perde suporte em 10/11/2026).
+- ~~**Migração para .NET 10** (o .NET 8 perde suporte em 10/11/2026).~~ Feita na DEC-40.
 
 
 ---
@@ -783,3 +783,17 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 4. **Empreitada:** mantém a DEC-04. App e web lançam uma linha por unidade (quantidade 2 = duas linhas), e o estimado do app bate com o que o servidor cobra.
 
 **Impacto:** sem migration. Contrato da Descarga e da agenda só ganha campos opcionais, então um app antigo continua funcionando.
+
+---
+
+## DEC-40 — Backend migrado para .NET 10
+
+**Status:** 🟡 Implementado na branch `feature/dotnet-10`, aguardando revisão e merge. Pedido por Davi em 20/10/2026.
+
+**Decisão:** API e testes passam de `net8.0` para `net10.0` (LTS), antes do fim do suporte do .NET 8 em 10/11/2026.
+- Pacotes ASP.NET Core e EF Core em `10.0.13`, provider `Npgsql.EntityFrameworkCore.PostgreSQL` em `10.0.3`; Api e Tests seguem na mesma versão de EF Core (DEC-13).
+- `Swashbuckle.AspNetCore` de 6.6.2 para 10.3.1: o `Microsoft.AspNetCore.OpenApi` 10 usa `Microsoft.OpenApi` 2.x, incompatível com o Swashbuckle 6. Major feito à mão, com validação (regra do `dependabot.yml`).
+- Imagens Docker `sdk:10.0` e `aspnet:10.0`; CI com `dotnet-version: 10.0.x`.
+- `ForwardedHeadersOptions.KnownNetworks` (obsoleto no .NET 10) trocado por `KnownIPNetworks`, sem mudar o comportamento.
+
+**Impacto:** sem migration (`has-pending-model-changes` não acusa mudanças com o EF Core 10). Contratos da API iguais. A imagem Docker nova só é validada no deploy do Render.
