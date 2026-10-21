@@ -24,7 +24,7 @@ Este arquivo é a fonte de regras compartilhadas para qualquer agente que trabal
 ## Fluxo de trabalho
 
 - Fluxo Git: `feature/*` → `develop` → `main`.
-- `main` recebe apenas marcos revisados e com todas as suítes relevantes verdes.
+- `main` é a produção (Render e Cloudflare publicam dela) e recebe apenas marcos revisados e com todas as suítes relevantes verdes. `develop` é integração e teste local.
 - Antes de commit de código: revisar o diff e executar as verificações proporcionais ao módulo alterado.
 - Backend estrutural: `dotnet build MicroERP.sln` e `dotnet test MicroERP.sln`.
 - Web: lint, testes e build definidos em `web/package.json`.
