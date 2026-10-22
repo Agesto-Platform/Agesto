@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { Icon } from '../components/Icon'
 import { ApiError } from '../lib/api'
 import './login.css'
+import { Logo } from '../components/Logo'
 
 /** Campo de senha no padrão do login (`.lfield` + `.ibox` com cadeado). */
 function SenhaField({
@@ -82,7 +83,7 @@ export function TrocarSenha() {
   return (
     <div className="login-page" style={{ overflowY: 'auto' }}>
       <header className="login-top">
-        <span className="logo">A</span>Agesto
+        <Logo />Agesto
       </header>
       <main className="login" id="page">
         <section className="login-card" aria-labelledby="ttl">

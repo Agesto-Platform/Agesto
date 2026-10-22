@@ -6,6 +6,7 @@ import { useAuth } from '../auth/useAuth'
 import { useConfiguracao } from '../features/parametrizacao/queries'
 import { Icon, PanelIcon } from '../components/Icon'
 import { PALETTES, setPalette, useTheme } from '../theme/theme'
+import { Logo } from '../components/Logo'
 
 const SB_KEY = 'agesto-sb'
 const GRUPOS_KEY = 'agesto-sb-grupos'
@@ -159,7 +160,7 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
     >
       <div className="sb-top">
         <NavLink className="sb-brand" to="/" viewTransition onClick={onNavigate}>
-          <span className="logo">A</span>
+          <Logo />
           <span className="sb-label">Agesto</span>
         </NavLink>
         <button

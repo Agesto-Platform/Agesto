@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-  <!-- logo do Agesto: "A" no marinho da marca, ponto vermelho no canto (igual à sidebar) -->
-  <rect x="1" y="4" width="26" height="26" rx="7" fill="#283E72"/>
-  <path d="M8.6 24.5 14 10l5.4 14.5M10.6 19.4h6.8" fill="none" stroke="#F3F1ED" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="26" cy="6" r="4.2" fill="#D62D32" stroke="#F3F1ED" stroke-width="1.6"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 120 120">
+  <!-- símbolo do Agesto (conceito Bloco) sobre o marinho da marca: lê bem em aba clara e escura -->
+  <rect width="120" height="120" rx="28" fill="#18233F"/>
+  <g transform="translate(-1 0)">
+    <path d="M62 16H104V104H62A44 44 0 0 1 62 16Z" fill="#F3F1ED" transform="translate(60 60) scale(0.78) translate(-60 -60)"/>
+    <circle cx="58" cy="60" r="17" fill="#D62D32" transform="translate(60 60) scale(0.78) translate(-60 -60)"/>
+  </g>
 </svg>
