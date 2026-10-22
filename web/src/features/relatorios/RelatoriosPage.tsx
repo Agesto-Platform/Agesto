@@ -1,152 +1,307 @@
-import { useState, type ReactNode } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import type { ShellContext } from '../../layout/AppShell'
-import { Card, CardHead, DataTable, Money, type Column } from '../../components/ui'
+import { PeriodSwitch, type Period } from '../../layout/PeriodSwitch'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHead,
+  Empty,
+  PageHead,
+  RankBar,
+  RankList,
+  brl,
+  pct,
+} from '../../components/ui'
 import { useDashboard } from '../../lib/queries'
+import { periodRange } from '../../lib/period'
 import { ApiError } from '../../lib/api'
-import type {
-  ServicoReceitaItem,
-  ProdutoRankingItem,
-  ProdutoGiroItem,
-  ProdutoParadoItem,
-  RupturaIminenteItem,
-} from '../../types/api'
+import { MES_LONGO } from '../../lib/format'
+import type { DashboardResponse } from '../../types/api'
+import './relatorios.css'
 
-type Aba = 'rentabilidade' | 'servicos' | 'produtos' | 'estoque'
+const COBRANCA: Record<string, string> = { PorHora: 'Por hora', Hora: 'Por hora', Empreitada: 'Empreitada' }
+const NO_PERIODO: Record<Period, string> = { '7d': 'nos últimos 7 dias', mes: 'no mês', ano: 'no ano' }
+const DIA_MS = 864e5
 
-const ABAS: { value: Aba; label: string }[] = [
-  { value: 'rentabilidade', label: 'Rentabilidade' },
-  { value: 'servicos', label: 'Serviços' },
-  { value: 'produtos', label: 'Produtos' },
-  { value: 'estoque', label: 'Estoque' },
-]
-
-function dataCurta(iso: string | null): string {
-  return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) : '—'
+/** "1 a 20 de outubro de 2026" / "28 de setembro a 4 de outubro de 2026". */
+function periodoExtenso(deIso: string, ateIso: string): string {
+  const de = new Date(deIso)
+  const ate = new Date(ateIso)
+  const fim = `${ate.getDate()} de ${MES_LONGO[ate.getMonth()]} de ${ate.getFullYear()}`
+  if (de.getFullYear() !== ate.getFullYear()) return `${de.getDate()} de ${MES_LONGO[de.getMonth()]} de ${de.getFullYear()} a ${fim}`
+  if (de.getMonth() !== ate.getMonth()) return `${de.getDate()} de ${MES_LONGO[de.getMonth()]} a ${fim}`
+  return `${de.getDate()} a ${fim}`
 }
 
-function Stat({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="rounded-card border border-line bg-surface p-4">
-      <div className="text-[10.5px] font-bold uppercase tracking-wide text-ink-4">{label}</div>
-      <div className="mt-1 text-[20px]">{children}</div>
-    </div>
-  )
+/** Card "Futuro": com o que o período atual seria comparado. */
+function comparacao(period: Period, ate: Date): { titulo: string; vazio: string } {
+  if (period === '7d') return { titulo: 'Comparar com a semana anterior', vazio: 'Ainda sem histórico da semana anterior' }
+  if (period === 'ano') return { titulo: `Comparar com ${ate.getFullYear() - 1}`, vazio: 'Ainda sem histórico do ano anterior' }
+  return { titulo: `Comparar com ${MES_LONGO[(ate.getMonth() + 11) % 12]}`, vazio: 'Ainda sem histórico do mês anterior' }
+}
+
+/** Planilha (CSV com ";", abre direto no Excel em pt-BR) com os números da tela. */
+function exportarCsv(data: DashboardResponse) {
+  const { rentabilidade: r, servicos, vendas, estoque } = data
+  const num = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2, useGrouping: false })
+  const linhas: (string | number)[][] = [
+    ['Relatório', periodoExtenso(data.de, data.ate)],
+    [],
+    ['Faturamento', num(r.faturamento)],
+    ['Custo', num(r.custoTotal)],
+    ['Margem', num(r.margem)],
+    ['Margem %', num(r.margemPercentual)],
+    ['Atendimentos', r.atendimentos],
+    ['Ticket médio', num(r.ticketMedio)],
+    [],
+    ['Serviço', 'Atendimentos', 'Receita'],
+    ...servicos.receitaPorServico.map((s) => [s.descricao, s.quantidade, num(s.receita)]),
+    [],
+    ['Produto', 'Quantidade', 'Receita'],
+    ...vendas.topProdutos.map((p) => [p.nome, p.quantidade, num(p.receita)]),
+    [],
+    ['Produto', 'Em estoque', 'Vendidas'],
+    ...estoque.giro.map((g) => [g.nome, g.quantidadeEstoque, g.unidadesVendidas]),
+  ]
+  const csv = linhas
+    .map((l) => l.map((c) => (/[";\n]/.test(String(c)) ? `"${String(c).replace(/"/g, '""')}"` : String(c))).join(';'))
+    .join('\r\n')
+  const url = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `agesto-relatorio-${data.de.slice(0, 10)}-a-${data.ate.slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 export function RelatoriosPage() {
-  const { period } = useOutletContext<ShellContext>()
+  const { period, setPeriod } = useOutletContext<ShellContext>()
   const { data, isLoading, isError, error } = useDashboard(period)
-  const [aba, setAba] = useState<Aba>('rentabilidade')
 
-  const servicoCols: Column<ServicoReceitaItem>[] = [
-    { header: 'Serviço', cell: (s) => <span className="font-medium text-ink">{s.descricao}</span> },
-    { header: 'Cobrança', cell: (s) => <span className="text-ink-2">{s.tipoCobranca === 'PorHora' ? 'Por hora' : 'Empreitada'}</span> },
-    { header: 'Qtd', align: 'right', cell: (s) => <span className="tabular-nums text-ink-2">{s.quantidade}</span> },
-    { header: 'Receita', align: 'right', cell: (s) => <Money value={s.receita} cents /> },
+  const faixa = data ?? periodRange(period)
+  const head = (
+    <PageHead
+      title="Relatórios"
+      sub={`${periodoExtenso(faixa.de, faixa.ate)} · números calculados pelo sistema, sem estimativa.`}
+      actions={
+        <>
+          <PeriodSwitch value={period} onChange={setPeriod} />
+          <Button icon="download" disabled={!data} onClick={() => data && exportarCsv(data)}>
+            Exportar
+          </Button>
+        </>
+      }
+    />
+  )
+
+  if (isLoading || isError || !data) {
+    return (
+      <>
+        {head}
+        <Card>
+          <CardBody>
+            <p className="hint" style={{ margin: 0, padding: '24px 0', textAlign: 'center' }}>
+              {isLoading
+                ? 'Carregando relatório…'
+                : `Não foi possível carregar o relatório${error instanceof ApiError ? `: ${error.message}` : '.'}`}
+            </p>
+          </CardBody>
+        </Card>
+      </>
+    )
+  }
+
+  const { rentabilidade: r, vendas, servicos, estoque } = data
+  const noPeriodo = NO_PERIODO[period]
+  const ate = new Date(data.ate)
+
+  // Quanto sobrou: barras proporcionais ao faturamento
+  const fluxo = [
+    { nome: 'Faturamento', valor: r.faturamento, cls: '', pct: '' },
+    { nome: 'Custo', valor: r.custoTotal, cls: ' cost', pct: '' },
+    { nome: 'Margem', valor: r.margem, cls: ' hi', pct: pct(r.margemPercentual) },
   ]
-  const produtoCols: Column<ProdutoRankingItem>[] = [
-    { header: 'Produto', cell: (p) => <span className="font-medium text-ink">{p.nome}</span> },
-    { header: 'Vendidos', align: 'right', cell: (p) => <span className="tabular-nums text-ink-2">{p.quantidade}</span> },
-    { header: 'Receita', align: 'right', cell: (p) => <Money value={p.receita} cents /> },
+  const largura = (v: number) => (r.faturamento > 0 ? Math.max(0, Math.min(100, (v / r.faturamento) * 100)) : 0)
+
+  // De onde vem o faturamento: itens de serviço x itens de produto (mesmo filtro: concluídos no período)
+  const recServicos = servicos.receitaTotal
+  const recProdutos = vendas.receitaTotal
+  const totalSplit = recServicos + recProdutos
+  const partServicos = totalSplit > 0 ? (recServicos / totalSplit) * 100 : 0
+  const partProdutos = totalSplit > 0 ? 100 - partServicos : 0
+
+  const maxServico = Math.max(...servicos.receitaPorServico.map((s) => s.receita), 0)
+  const maxProduto = Math.max(...vendas.topProdutos.map((p) => p.receita), 0)
+
+  // Giro: produtos que saíram + parados (sem saída no período), com o alerta de cada um
+  const ruptura = new Map(estoque.rupturaIminente.map((x) => [x.produtoId, x]))
+  const parado = new Map(estoque.produtosParados.map((x) => [x.produtoId, x]))
+  const noGiro = new Set(estoque.giro.map((g) => g.produtoId))
+  const giro = [
+    ...estoque.giro.map((g) => ({ id: g.produtoId, nome: g.nome, estoque: g.quantidadeEstoque, vendidas: g.unidadesVendidas })),
+    ...estoque.produtosParados
+      .filter((p) => !noGiro.has(p.produtoId))
+      .map((p) => ({ id: p.produtoId, nome: p.nome, estoque: p.quantidadeEstoque, vendidas: 0 })),
   ]
-  const giroCols: Column<ProdutoGiroItem>[] = [
-    { header: 'Produto', cell: (g) => <span className="font-medium text-ink">{g.nome}</span> },
-    { header: 'Estoque', align: 'right', cell: (g) => <span className="tabular-nums text-ink-2">{g.quantidadeEstoque}</span> },
-    { header: 'Vendidos', align: 'right', cell: (g) => <span className="tabular-nums text-ink-2">{g.unidadesVendidas}</span> },
-  ]
-  const paradoCols: Column<ProdutoParadoItem>[] = [
-    { header: 'Produto', cell: (p) => <span className="font-medium text-ink">{p.nome}</span> },
-    { header: 'Estoque', align: 'right', cell: (p) => <span className="tabular-nums text-ink-2">{p.quantidadeEstoque}</span> },
-    { header: 'Última venda', align: 'right', cell: (p) => <span className="text-ink-3">{dataCurta(p.ultimaVenda)}</span> },
-  ]
-  const rupturaCols: Column<RupturaIminenteItem>[] = [
-    { header: 'Produto', cell: (r) => <span className="font-medium text-ink">{r.nome}</span> },
-    { header: 'Estoque', align: 'right', cell: (r) => <span className="tabular-nums text-ink-2">{r.quantidadeEstoque}</span> },
-    { header: 'Consumo/dia', align: 'right', cell: (r) => <span className="tabular-nums text-ink-2">{r.consumoDiarioMedio}</span> },
-    { header: 'Dias p/ ruptura', align: 'right', cell: (r) => <span className="tabular-nums font-semibold text-bad">{Math.round(r.diasAteRuptura)}</span> },
-  ]
+  const alerta = (id: number) => {
+    const rup = ruptura.get(id)
+    if (rup)
+      return (
+        <Badge tone="neg" icon="alert">
+          Acaba em ~{Math.round(rup.diasAteRuptura)} dias
+        </Badge>
+      )
+    const par = parado.get(id)
+    if (par)
+      return (
+        <Badge tone="warn" icon="archive">
+          {par.ultimaVenda
+            ? `Parado ${Math.max(0, Math.floor((ate.getTime() - new Date(par.ultimaVenda).getTime()) / DIA_MS))} dias`
+            : 'Parado'}
+        </Badge>
+      )
+    return null
+  }
+
+  const comp = comparacao(period, ate)
 
   return (
     <>
-      <Card className="shadow-card">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-[15px] font-semibold text-ink">Relatórios</h2>
-            <p className="text-[12.5px] text-ink-3">Detalhamento das métricas do período.</p>
-          </div>
-          <div className="flex flex-wrap justify-end rounded-[10px] border border-line bg-surface-2 p-[3px]">
-            {ABAS.map((a) => (
-              <button
-                key={a.value}
-                type="button"
-                onClick={() => setAba(a.value)}
-                className={`rounded-[7px] px-3 py-1.5 text-[12.5px] font-semibold transition ${
-                  aba === a.value ? 'bg-surface text-ink shadow-sm' : 'text-ink-3 hover:text-ink-2'
-                }`}
-              >
-                {a.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </Card>
+      {head}
 
-      {isLoading && (
-        <Card className="shadow-card">
-          <p className="py-6 text-center text-[13px] text-ink-3">Carregando relatório…</p>
+      <div className="grid g-2">
+        <Card>
+          <CardHead title="Quanto sobrou" subtitle="Faturamento menos o custo dos materiais" />
+          <CardBody>
+            <div className="flow">
+              {fluxo.map((f) => (
+                <div className="flow-row" key={f.nome}>
+                  <span className="lbl">
+                    <b>{f.nome}</b>
+                  </span>
+                  <div className={`track animate${f.cls}`}>
+                    <i style={{ width: `${largura(f.valor)}%` }} />
+                  </div>
+                  <span className="v">
+                    {brl(f.valor)}
+                    <span>{f.pct || ' '}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardBody>
         </Card>
-      )}
-      {isError && (
-        <Card className="shadow-card">
-          <p className="py-6 text-center text-[13px] text-bad">
-            Não foi possível carregar
-            {error instanceof ApiError ? `: ${error.message}` : '.'}
-          </p>
+        <Card>
+          <CardHead title="De onde vem o faturamento" subtitle={`Serviços e produtos ${noPeriodo}`} />
+          <CardBody style={{ paddingTop: 22 }}>
+            <div className="split" role="img" aria-label={`Serviços ${brl(recServicos)}; Produtos ${brl(recProdutos)}`}>
+              <i style={{ width: `${partServicos}%` }} />
+              <i style={{ width: `${partProdutos}%` }} />
+            </div>
+            <div className="split-legend">
+              <span>
+                <i />
+                Serviços <b>{brl(recServicos)}</b>
+              </span>
+              <span>
+                <i className="hi" />
+                Produtos <b>{brl(recProdutos)}</b>
+              </span>
+            </div>
+            <p className="hint" style={{ margin: '16px 0 0' }}>
+              Ticket médio de <b style={{ color: 'var(--ink)' }}>{brl(r.ticketMedio)}</b> em {r.atendimentos}{' '}
+              {r.atendimentos === 1 ? 'atendimento' : 'atendimentos'}.
+            </p>
+          </CardBody>
         </Card>
-      )}
+      </div>
 
-      {data && aba === 'rentabilidade' && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Stat label="Faturamento"><Money value={data.rentabilidade.faturamento} className="text-ink" /></Stat>
-          <Stat label="Custo total"><Money value={data.rentabilidade.custoTotal} className="text-ink-2" /></Stat>
-          <Stat label="Margem"><Money value={data.rentabilidade.margem} className="font-semibold text-brand-ink" /></Stat>
-          <Stat label="Margem %"><span className="money text-ink">{data.rentabilidade.margemPercentual.toFixed(1)}%</span></Stat>
-          <Stat label="Ticket médio"><Money value={data.rentabilidade.ticketMedio} className="text-ink" /></Stat>
-          <Stat label="Atendimentos"><span className="money text-ink">{data.rentabilidade.atendimentos}</span></Stat>
-        </div>
-      )}
-
-      {data && aba === 'servicos' && (
-        <Card className="shadow-card">
-          <CardHead title="Receita por serviço" subtitle={`Total ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.servicos.receitaTotal)}`} />
-          <DataTable columns={servicoCols} rows={data.servicos.receitaPorServico} getKey={(s) => s.servicoId} emptyLabel="Sem serviços no período." />
+      <div className="grid g-2 mt">
+        <Card>
+          <CardHead title="Receita por serviço" subtitle={`Atendimentos e receita ${noPeriodo}`} />
+          <CardBody>
+            <RankList>
+              {servicos.receitaPorServico.map((s) => (
+                <RankBar
+                  key={s.servicoId}
+                  name={s.descricao}
+                  meta={`${s.quantidade} ${s.quantidade === 1 ? 'atendimento' : 'atendimentos'} · ${COBRANCA[s.tipoCobranca] ?? s.tipoCobranca}`}
+                  percent={maxServico > 0 ? (s.receita / maxServico) * 100 : 0}
+                  amount={brl(s.receita)}
+                />
+              ))}
+              {servicos.receitaPorServico.length === 0 && (
+                <p className="hint" style={{ margin: 0 }}>
+                  Nenhum serviço faturado no período.
+                </p>
+              )}
+            </RankList>
+          </CardBody>
         </Card>
-      )}
-
-      {data && aba === 'produtos' && (
-        <Card className="shadow-card">
-          <CardHead title="Produtos mais vendidos" subtitle={`Receita ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data.vendas.receitaTotal)}`} />
-          <DataTable columns={produtoCols} rows={data.vendas.topProdutos} getKey={(p) => p.produtoId} emptyLabel="Sem vendas no período." />
+        <Card>
+          <CardHead title="Produtos mais vendidos" subtitle={`Quantidade e receita ${noPeriodo}`} />
+          <CardBody>
+            <RankList>
+              {vendas.topProdutos.map((p) => (
+                <RankBar
+                  key={p.produtoId}
+                  name={p.nome}
+                  meta={`${p.quantidade} ${p.quantidade === 1 ? 'unidade' : 'unidades'}`}
+                  percent={maxProduto > 0 ? (p.receita / maxProduto) * 100 : 0}
+                  amount={brl(p.receita)}
+                />
+              ))}
+              {vendas.topProdutos.length === 0 && (
+                <p className="hint" style={{ margin: 0 }}>
+                  Nenhum produto vendido no período.
+                </p>
+              )}
+            </RankList>
+          </CardBody>
         </Card>
-      )}
+      </div>
 
-      {data && aba === 'estoque' && (
-        <>
-          <Card className="shadow-card">
-            <CardHead title="Giro de estoque" />
-            <DataTable columns={giroCols} rows={data.estoque.giro} getKey={(g) => g.produtoId} emptyLabel="Sem dados de giro." />
-          </Card>
-          <Card className="shadow-card">
-            <CardHead title="Produtos parados" />
-            <DataTable columns={paradoCols} rows={data.estoque.produtosParados} getKey={(p) => p.produtoId} emptyLabel="Nenhum produto parado." />
-          </Card>
-          <Card className="shadow-card">
-            <CardHead title="Ruptura iminente" />
-            <DataTable columns={rupturaCols} rows={data.estoque.rupturaIminente} getKey={(r) => r.produtoId} emptyLabel="Nada em risco de ruptura." />
-          </Card>
-        </>
-      )}
+      <div className="grid g-main-side mt">
+        <Card>
+          <CardHead title="Giro de estoque" subtitle="Quanto saiu em relação ao que tem" />
+          {giro.length > 0 ? (
+            <div className="table-wrap" style={{ marginTop: 12 }}>
+              <table className="t">
+                <thead>
+                  <tr>
+                    <th>Produto</th>
+                    <th className="n">Em estoque</th>
+                    <th className="n">Vendidas {noPeriodo}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {giro.map((g) => (
+                    <tr key={g.id}>
+                      <td className="strong">{g.nome}</td>
+                      <td className="n">{g.estoque}</td>
+                      <td className={g.vendidas === 0 ? 'n muted' : 'n'}>{g.vendidas}</td>
+                      <td>{alerta(g.id)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty icon="box" title="Sem movimento de estoque">
+              Os produtos que saírem no período aparecem aqui.
+            </Empty>
+          )}
+        </Card>
+        <Card>
+          <CardHead title={comp.titulo} action={<Badge tone="future">Futuro</Badge>} />
+          <Empty icon="trend" title={comp.vazio} style={{ padding: '26px 16px 30px' }}>
+            A comparação entra quando a API passar a guardar o período anterior. Por técnico também depende de backend novo.
+          </Empty>
+        </Card>
+      </div>
     </>
   )
 }

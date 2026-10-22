@@ -1,37 +1,23 @@
-import type { ReactNode } from 'react'
+import { Icon, type IconName } from '../Icon'
 
-type AlertTone = 'crit' | 'warn'
-
-const TONES: Record<AlertTone, { box: string; icon: string }> = {
-  crit: { box: 'bg-bad-soft', icon: 'bg-bad' },
-  warn: { box: 'bg-warn-soft', icon: 'bg-warn' },
-}
-
-/** Alerta compacto (estoque em atenção): ícone + título + subtítulo. */
+/** Alerta compacto (`.alert`): ícone + título + linha de apoio. */
 export function Alert({
   tone,
   icon,
   title,
   subtitle,
 }: {
-  tone: AlertTone
-  icon: ReactNode
+  tone: 'neg' | 'warn'
+  icon: IconName
   title: string
   subtitle?: string
 }) {
-  const t = TONES[tone]
   return (
-    <div className={`flex items-start gap-[11px] rounded-sm p-3 ${t.box}`}>
-      <span
-        className={`grid h-7 w-7 flex-none place-items-center rounded-lg text-white ${t.icon}`}
-      >
-        {icon}
-      </span>
+    <div className={`alert${tone === 'neg' ? ' neg' : ''}`}>
+      <Icon name={icon} />
       <div>
-        <div className="text-[13px] font-semibold text-ink">{title}</div>
-        {subtitle && (
-          <div className="mt-px text-[11.5px] text-ink-3">{subtitle}</div>
-        )}
+        <b>{title}</b>
+        {subtitle && <span>{subtitle}</span>}
       </div>
     </div>
   )

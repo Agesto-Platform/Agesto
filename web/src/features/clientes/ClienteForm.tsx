@@ -69,10 +69,10 @@ export function ClienteForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
+    <form onSubmit={handleSubmit} noValidate>
+      <div className="form">
         {serverError && (
-          <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">
+          <p className="form-error" role="alert" style={{ margin: 0 }}>
             {serverError}
           </p>
         )}
@@ -86,7 +86,7 @@ export function ClienteForm({
           maxLength={120}
         />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="form-row">
           <TextField
             label="CPF"
             value={form.cpf}
@@ -101,10 +101,11 @@ export function ClienteForm({
             onChange={(v) => set('telefone', maskPhone(v))}
             error={errors.telefone}
             placeholder="(00) 00000-0000"
+            type="tel"
           />
         </div>
 
-        <div className="pt-1 text-[11px] font-bold uppercase tracking-wide text-ink-4">
+        <div className="section-label" style={{ paddingTop: 4 }}>
           Endereço
         </div>
 
@@ -114,7 +115,7 @@ export function ClienteForm({
           onChange={(v) => set('logradouro', v)}
           maxLength={150}
         />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="form-row">
           <TextField
             label="Número"
             value={form.numero ?? ''}
@@ -128,7 +129,7 @@ export function ClienteForm({
             maxLength={100}
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="form-row">
           <TextField
             label="Cidade"
             value={form.cidade ?? ''}
@@ -144,11 +145,11 @@ export function ClienteForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
-        <Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>
+      <div className="form-actions">
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button variant="primary" type="submit" disabled={submitting}>
           {submitting ? 'Salvando…' : 'Salvar'}
         </Button>
       </div>

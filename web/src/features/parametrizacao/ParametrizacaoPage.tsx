@@ -1,119 +1,27 @@
-import { useState, type FC } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useConfiguracao, useUpdateConfiguracao } from './queries'
-import { Card, Button, useToast } from '../../components/ui'
-import { IconWrench, IconBox, IconGrid, type IconProps } from '../../components/icons'
+import { Badge, Button, Card, CardBody, PageHead, Switch, useToast } from '../../components/ui'
+import { useAuth } from '../../auth/useAuth'
 import { ApiError } from '../../lib/api'
 import type { ConfiguracaoPatch, ModoAgendaAgente, TipoOperacao } from '../../types/api'
+import './parametrizacao.css'
 
-const OPCOES: { value: TipoOperacao; titulo: string; desc: string; icon: FC<IconProps> }[] = [
-  {
-    value: 'Servico',
-    titulo: 'Serviço',
-    desc: 'Prestação de serviços — o foco do produto. Orçamento, agenda e atendimentos.',
-    icon: IconWrench,
-  },
-  {
-    value: 'Venda',
-    titulo: 'Venda',
-    desc: 'Venda de produtos com controle de estoque.',
-    icon: IconBox,
-  },
-  {
-    value: 'Hibrido',
-    titulo: 'Híbrido',
-    desc: 'Serviços e vendas juntos, no mesmo negócio.',
-    icon: IconGrid,
-  },
+const OPERACOES: { value: TipoOperacao; titulo: string; desc: string }[] = [
+  { value: 'Servico', titulo: 'Serviço', desc: 'Orçamento, agenda e atendimento' },
+  { value: 'Venda', titulo: 'Venda', desc: 'Só produtos e vendas' },
+  { value: 'Hibrido', titulo: 'Híbrido', desc: 'Serviço e venda juntos' },
 ]
 
-const MODOS_AGENDA: { value: ModoAgendaAgente; titulo: string; desc: string }[] = [
-  {
-    value: 'Flexivel',
-    titulo: 'Flexível (solo)',
-    desc: 'O agente registra e agenda atendimentos em campo, na hora.',
-  },
-  {
-    value: 'Fixa',
-    titulo: 'Fixa (equipe)',
-    desc: 'O agente segue a agenda montada por você. Ainda pode registrar avulsos.',
-  },
+const AGENDAS: { value: ModoAgendaAgente; titulo: string; desc: string }[] = [
+  { value: 'Flexivel', titulo: 'Flexível', desc: 'Você trabalha sozinho ou com 1-2 ajudantes e agenda em campo.' },
+  { value: 'Fixa', titulo: 'Fixa', desc: 'Você monta a agenda e a equipe segue pelo app.' },
 ]
-
-const ESTOQUE: { value: boolean; titulo: string; desc: string }[] = [
-  {
-    value: true,
-    titulo: 'Controla estoque',
-    desc: 'Produtos baixam estoque e validam saldo. Para quem mantém inventário.',
-  },
-  {
-    value: false,
-    titulo: 'Sem controle',
-    desc: 'Produtos viram lista de materiais com preço/custo, sem baixa. Para quem compra por serviço.',
-  },
-]
-
-const CADASTRO_SERVICO: { value: boolean; titulo: string; desc: string }[] = [
-  {
-    value: true,
-    titulo: 'Agente cadastra serviço',
-    desc: 'Serviço fora do catálogo pode ser criado no app. Ele aparece em Serviços como "a revisar".',
-  },
-  {
-    value: false,
-    titulo: 'Só o catálogo',
-    desc: 'O agente usa apenas os serviços cadastrados por você.',
-  },
-]
-
-/** Cartão de opção genérico (uma escolha dentro de um grupo). */
-function OpcaoCard({
-  on,
-  titulo,
-  desc,
-  onClick,
-  icon: Icon,
-}: {
-  on: boolean
-  titulo: string
-  desc: string
-  onClick: () => void
-  icon?: FC<IconProps>
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-col items-start gap-2 rounded-card border p-4 text-left transition ${
-        on ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-ink-4'
-      }`}
-    >
-      {Icon && (
-        <span
-          className={`grid h-9 w-9 place-items-center rounded-[10px] ${
-            on ? 'bg-brand text-white' : 'bg-surface-2 text-ink-3'
-          }`}
-        >
-          <Icon className="h-[18px] w-[18px]" />
-        </span>
-      )}
-      <span className={`text-[14px] font-semibold ${on ? 'text-brand-ink' : 'text-ink'}`}>{titulo}</span>
-      <span className="text-[12px] text-ink-3">{desc}</span>
-    </button>
-  )
-}
-
-function SectionLabel({ children }: { children: string }) {
-  return (
-    <div className="mb-2 mt-6 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-4">
-      {children}
-    </div>
-  )
-}
 
 export function ParametrizacaoPage() {
   const config = useConfiguracao()
   const update = useUpdateConfiguracao()
   const toast = useToast()
+  const { user } = useAuth()
   const [draft, setDraft] = useState<ConfiguracaoPatch>({})
 
   const atual = config.data
@@ -130,8 +38,9 @@ export function ParametrizacaoPage() {
       agenteCadastraServico !== atual.agenteCadastraServico)
   const podeSalvar = dirty && !update.isPending
 
-  function salvar() {
-    if (tipoOperacao == null || modoAgenda == null || controlaEstoque == null) return
+  function salvar(e: FormEvent) {
+    e.preventDefault()
+    if (!podeSalvar || tipoOperacao == null || modoAgenda == null || controlaEstoque == null) return
     update.mutate(
       { tipoOperacao, modoAgendaAgente: modoAgenda, controlaEstoque, agenteCadastraServico },
       {
@@ -139,91 +48,161 @@ export function ParametrizacaoPage() {
           setDraft({})
           toast.success('Parametrização atualizada.')
         },
-        onError: (e) =>
-          toast.error(e instanceof ApiError ? e.message : 'Não foi possível salvar.'),
+        onError: (err) => toast.error(err instanceof ApiError ? err.message : 'Não foi possível salvar.'),
       },
     )
   }
 
+  function descartar(e: FormEvent) {
+    e.preventDefault()
+    setDraft({})
+  }
+
+  const head = (
+    <PageHead
+      title="Parametrização"
+      sub="Como a sua empresa trabalha. Muda o que aparece no painel e no app do técnico."
+    />
+  )
+
+  if (!atual) {
+    return (
+      <>
+        {head}
+        <Card>
+          <CardBody>
+            <p className="hint" style={{ margin: 0, padding: '24px 0', textAlign: 'center' }}>
+              {config.isError ? 'Não foi possível carregar a configuração.' : 'Carregando…'}
+            </p>
+          </CardBody>
+        </Card>
+      </>
+    )
+  }
+
   return (
-    <Card className="shadow-card">
-      <div className="mb-1 text-[15px] font-semibold text-ink">Parametrização</div>
-      <p className="mb-2 text-[12.5px] text-ink-3">
-        Configure como o seu negócio opera. Isso define quais recursos ficam ativos.
-      </p>
+    <>
+      {head}
 
-      {config.isLoading && (
-        <p className="py-6 text-center text-[13px] text-ink-3">Carregando…</p>
-      )}
-      {config.isError && (
-        <p className="py-6 text-center text-[13px] text-bad">
-          Não foi possível carregar a configuração.
-        </p>
-      )}
-
-      {atual && (
-        <>
-          <SectionLabel>Modo de operação</SectionLabel>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {OPCOES.map((o) => (
-              <OpcaoCard
-                key={o.value}
-                on={tipoOperacao === o.value}
-                titulo={o.titulo}
-                desc={o.desc}
-                icon={o.icon}
-                onClick={() => setDraft((d) => ({ ...d, tipoOperacao: o.value }))}
-              />
+      <form className="settings" onSubmit={salvar} onReset={descartar}>
+        <section className="card set">
+          <div>
+            <h2>Tipo de operação</h2>
+            <p className="desc">No modo Venda, Serviços e Agenda saem do menu.</p>
+          </div>
+          <div className="opts row" role="radiogroup" aria-label="Tipo de operação">
+            {OPERACOES.map((o) => (
+              <label className="opt" key={o.value}>
+                <input
+                  type="radio"
+                  name="op"
+                  checked={tipoOperacao === o.value}
+                  onChange={() => setDraft((d) => ({ ...d, tipoOperacao: o.value }))}
+                />
+                <b>{o.titulo}</b>
+                <span>{o.desc}</span>
+              </label>
             ))}
           </div>
+        </section>
 
-          <SectionLabel>Agenda do agente (app mobile)</SectionLabel>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {MODOS_AGENDA.map((m) => (
-              <OpcaoCard
-                key={m.value}
-                on={modoAgenda === m.value}
-                titulo={m.titulo}
-                desc={m.desc}
-                onClick={() => setDraft((d) => ({ ...d, modoAgendaAgente: m.value }))}
-              />
+        <section className="card set">
+          <div>
+            <h2>Agenda dos técnicos</h2>
+            <p className="desc">Vale para o app do técnico em campo.</p>
+          </div>
+          <div className="opts row2" role="radiogroup" aria-label="Modo da agenda">
+            {AGENDAS.map((a) => (
+              <label className="opt" key={a.value}>
+                <input
+                  type="radio"
+                  name="ag"
+                  checked={modoAgenda === a.value}
+                  onChange={() => setDraft((d) => ({ ...d, modoAgendaAgente: a.value }))}
+                />
+                <b>{a.titulo}</b>
+                <span>{a.desc}</span>
+              </label>
             ))}
           </div>
+        </section>
 
-          <SectionLabel>Controle de estoque</SectionLabel>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {ESTOQUE.map((e) => (
-              <OpcaoCard
-                key={String(e.value)}
-                on={controlaEstoque === e.value}
-                titulo={e.titulo}
-                desc={e.desc}
-                onClick={() => setDraft((d) => ({ ...d, controlaEstoque: e.value }))}
-              />
-            ))}
+        <section className="card set">
+          <div>
+            <h2>Estoque</h2>
+            <p className="desc">Opcional.</p>
           </div>
+          <div className="toggle-row">
+            <Switch
+              checked={controlaEstoque ?? false}
+              onChange={(v) => setDraft((d) => ({ ...d, controlaEstoque: v }))}
+              label="Controlar estoque"
+            />
+            <div>
+              <b>Controlar estoque</b>
+              <span>Baixa a quantidade quando um orçamento aprovado vira atendimento e avisa antes de acabar.</span>
+            </div>
+          </div>
+        </section>
 
-          <SectionLabel>Cadastro de serviço pelo agente (app mobile)</SectionLabel>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {CADASTRO_SERVICO.map((c) => (
-              <OpcaoCard
-                key={String(c.value)}
-                on={agenteCadastraServico === c.value}
-                titulo={c.titulo}
-                desc={c.desc}
-                onClick={() => setDraft((d) => ({ ...d, agenteCadastraServico: c.value }))}
-              />
-            ))}
+        {/* não está no template: a API já guarda esta opção e o app do técnico respeita */}
+        <section className="card set">
+          <div>
+            <h2>Serviço novo em campo</h2>
+            <p className="desc">Vale para o app do técnico em campo.</p>
           </div>
+          <div className="toggle-row">
+            <Switch
+              checked={agenteCadastraServico ?? false}
+              onChange={(v) => setDraft((d) => ({ ...d, agenteCadastraServico: v }))}
+              label="Técnico cadastra serviço"
+            />
+            <div>
+              <b>Técnico cadastra serviço</b>
+              <span>Serviço fora do catálogo pode ser criado no app. Ele aparece em Serviços como "a revisar".</span>
+            </div>
+          </div>
+        </section>
 
-          <div className="mt-6 flex items-center gap-3 border-t border-line pt-4">
-            <Button onClick={salvar} disabled={!podeSalvar}>
-              {update.isPending ? 'Salvando…' : 'Salvar alterações'}
-            </Button>
-            {!dirty && <span className="text-[12px] text-ink-4">Nenhuma alteração pendente.</span>}
+        {/* a API ainda não guarda nome, cidade e telefone da empresa: campos só de leitura */}
+        <section className="card set">
+          <div>
+            <h2>
+              Empresa <Badge tone="future">Futuro</Badge>
+            </h2>
+            <p className="desc">Aparece nos orçamentos.</p>
           </div>
-        </>
-      )}
-    </Card>
+          <div className="fields">
+            <div className="field">
+              <label htmlFor="f-nome">Nome</label>
+              <input className="input" id="f-nome" placeholder="—" disabled />
+            </div>
+            <div className="field">
+              <label htmlFor="f-cidade">Cidade</label>
+              <input className="input" id="f-cidade" placeholder="—" disabled />
+            </div>
+            <div className="field">
+              <label htmlFor="f-email">E-mail de acesso</label>
+              <input className="input" id="f-email" type="email" value={user?.email ?? ''} placeholder="—" readOnly disabled />
+            </div>
+            <div className="field">
+              <label htmlFor="f-tel">Telefone</label>
+              <input className="input" id="f-tel" placeholder="(34) 90000-0000" disabled />
+              <span className="hint">Usado no envio de orçamento por WhatsApp (futuro).</span>
+            </div>
+          </div>
+        </section>
+
+        <div className="savebar">
+          <span className="hint">Alterações salvas valem na hora para toda a equipe.</span>
+          <Button variant="ghost" type="reset" disabled={!dirty || update.isPending}>
+            Descartar
+          </Button>
+          <Button variant="primary" type="submit" icon="check" disabled={!podeSalvar}>
+            {update.isPending ? 'Salvando…' : 'Salvar'}
+          </Button>
+        </div>
+      </form>
+    </>
   )
 }

@@ -1,29 +1,34 @@
-import { Button, Money } from '../../components/ui'
-import { itemLabel } from './labels'
+import { Fragment, useState } from 'react'
+import { Badge, Button, CardHead, SelectField, brl } from '../../components/ui'
+import { Icon, type IconName } from '../../components/Icon'
+import { MES_LONGO, iniciais } from '../../lib/format'
+import { itemLabel, numero } from './labels'
 import { StatusOrcamentoPill } from './status'
-import type { Orcamento, Produto, Servico, StatusOrcamento } from '../../types/api'
+import type { ItemOrcamento, Orcamento, Produto, Servico, StatusOrcamento } from '../../types/api'
 
-const selectCls =
-  'rounded-[10px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand'
+const COBRANCA: Record<string, string> = { PorHora: 'Por hora', Empreitada: 'Empreitada' }
+const ORDEM: StatusOrcamento[] = ['Rascunho', 'Enviado', 'Aprovado', 'Recusado']
 
-const STATUSES: StatusOrcamento[] = ['Rascunho', 'Enviado', 'Aprovado', 'Recusado']
-
-function dataLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+function criadoEm(iso: string): string {
+  const d = new Date(iso)
+  return `Criado em ${d.getDate()} de ${MES_LONGO[d.getMonth()]} de ${d.getFullYear()}`
 }
 
+function tipoItem(it: ItemOrcamento): { icon: IconName; label: string } {
+  if (it.servicoId != null) return { icon: 'hammer', label: 'Serviço' }
+  if (it.produtoId != null) return { icon: 'box', label: 'Material' }
+  return { icon: 'pencil', label: 'Avulso' }
+}
+
+/** Detalhe do orçamento selecionado (cartão da direita da tela). */
 export function OrcamentoDetail({
-  orcamento,
+  orcamento: o,
   clienteNome,
   produtos,
   servicos,
   onChangeStatus,
   onConvert,
-  onDelete,
+  onEdit,
   busy,
 }: {
   orcamento: Orcamento
@@ -32,108 +37,218 @@ export function OrcamentoDetail({
   servicos: Servico[]
   onChangeStatus: (status: StatusOrcamento) => void
   onConvert: () => void
-  onDelete: () => void
-  busy: { status: boolean; convert: boolean; delete: boolean }
+  onEdit: () => void
+  busy: { status: boolean; convert: boolean }
 }) {
+  const convertido = o.atendimentoConvertidoId != null
+
+  // Etapas: Rascunho → Enviado → Aprovado (ou Recusado) → Atendimento.
+  const idx = convertido ? 4 : Math.min(ORDEM.indexOf(o.status), 2)
+  const etapas = ['Rascunho', 'Enviado', o.status === 'Recusado' ? 'Recusado' : 'Aprovado', 'Atendimento']
+
+  // Custo é por linha e opcional: só calcula a margem quando algum item tem custo.
+  const temCusto = o.itens.some((i) => i.custo != null)
+  const custo = o.itens.reduce((s, i) => s + (i.custo ?? 0), 0)
+
+  return (
+    <>
+      <CardHead
+        title={
+          <>
+            Orçamento {numero(o.id)} <StatusOrcamentoPill status={o.status} />
+          </>
+        }
+        subtitle={criadoEm(o.dataRegistro)}
+        action={
+          <Button size="sm" icon="pencil" onClick={onEdit}>
+            Editar
+          </Button>
+        }
+      />
+      <div style={{ padding: '14px 16px 0' }}>
+        <div className="steps">
+          {etapas.map((s, i) => (
+            <Fragment key={i}>
+              {i > 0 && <span className="line" />}
+              <span className={`s${i < idx ? ' done' : i === idx ? ' now' : ''}`}>
+                <i>{i < idx ? '✓' : i + 1}</i>
+                {s}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+      </div>
+      <dl className="q-meta">
+        <div>
+          <dt>Cliente</dt>
+          <dd>
+            <span className="cell">
+              <span className="avatar sm">{iniciais(clienteNome)}</span>
+              {clienteNome}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Itens</dt>
+          <dd>{o.itens.length}</dd>
+        </div>
+        <div>
+          <dt>Validade</dt>
+          <dd className="muted" style={{ fontWeight: 500 }} title="O orçamento ainda não tem data de validade no sistema">
+            a definir
+          </dd>
+        </div>
+      </dl>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th className="n">Qtd.</th>
+              <th className="n">Preço un.</th>
+              <th className="n">Custo</th>
+              <th className="n">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {o.itens.map((it) => {
+              const t = tipoItem(it)
+              const cobranca =
+                it.servicoId != null ? servicos.find((s) => s.id === it.servicoId)?.tipoCobranca : undefined
+              return (
+                <tr key={it.id}>
+                  <td>
+                    <div className="cell">
+                      <span className="cell-ic">
+                        <Icon name={t.icon} />
+                      </span>
+                      <span>
+                        <span className="strong">{itemLabel(it, produtos, servicos)}</span>
+                        <span className="sub">
+                          {t.label}
+                          {cobranca ? ' · ' + (COBRANCA[cobranca] ?? cobranca) : ''}
+                        </span>
+                      </span>
+                    </div>
+                  </td>
+                  <td className="n">{it.quantidade}</td>
+                  <td className="n">{brl(it.precoUnitario, true)}</td>
+                  <td className="n muted">{brl(it.custo, true)}</td>
+                  <td className="n strong">{brl(it.subtotal, true)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="totals">
+        <div>
+          <span>Total</span>
+          <b>{brl(o.valorTotal, true)}</b>
+        </div>
+        <div>
+          <span>Custo</span>
+          <b className={temCusto ? undefined : 'muted'}>{temCusto ? brl(custo, true) : '—'}</b>
+        </div>
+        <div className="grand">
+          <span>Margem prevista</span>
+          <b className={temCusto ? undefined : 'muted'}>{temCusto ? brl(o.valorTotal - custo, true) : 'preencha o custo'}</b>
+        </div>
+      </div>
+      <div className="q-foot">
+        {o.status === 'Rascunho' && (
+          <Button variant="primary" icon="send" onClick={() => onChangeStatus('Enviado')} disabled={busy.status}>
+            Marcar como enviado
+          </Button>
+        )}
+        {o.status === 'Enviado' && (
+          <>
+            <Button variant="primary" icon="check" onClick={() => onChangeStatus('Aprovado')} disabled={busy.status}>
+              Marcar como aprovado
+            </Button>
+            <Button icon="x" onClick={() => onChangeStatus('Recusado')} disabled={busy.status}>
+              Recusado
+            </Button>
+          </>
+        )}
+        {o.status === 'Aprovado' && !convertido && (
+          <Button variant="primary" icon="swap" onClick={onConvert} disabled={busy.convert}>
+            {busy.convert ? 'Convertendo…' : 'Converter em atendimento'}
+          </Button>
+        )}
+        {convertido && (
+          <Badge tone="ok" icon="check">
+            Convertido no atendimento #{o.atendimentoConvertidoId}
+          </Badge>
+        )}
+        <Button variant="ghost" icon="whats" disabled title="Ainda não existe no sistema">
+          Enviar por WhatsApp
+        </Button>
+        <Badge tone="future">Futuro</Badge>
+      </div>
+    </>
+  )
+}
+
+/** Gaveta "Editar": o backend só muda o status (itens novos = novo orçamento). */
+export function OrcamentoEditForm({
+  orcamento,
+  onSave,
+  onDelete,
+  onCancel,
+  busy,
+}: {
+  orcamento: Orcamento
+  onSave: (status: StatusOrcamento) => void
+  onDelete: () => void
+  onCancel: () => void
+  busy: { status: boolean; delete: boolean }
+}) {
+  const [status, setStatus] = useState<StatusOrcamento>(orcamento.status)
   const convertido = orcamento.atendimentoConvertidoId != null
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-[15px] font-semibold text-ink">{clienteNome}</div>
-            <div className="text-[12.5px] text-ink-3">
-              Orçamento #{orcamento.id} · {dataLabel(orcamento.dataRegistro)}
-            </div>
-          </div>
-          <StatusOrcamentoPill status={orcamento.status} />
-        </div>
-
-        {/* Itens */}
-        <div className="overflow-hidden rounded-sm border border-line-2">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="bg-surface-2 text-[10.5px] uppercase tracking-[0.06em] text-ink-4">
-                <th className="px-3 py-2 text-left font-bold">Item</th>
-                <th className="px-3 py-2 text-right font-bold">Qtd</th>
-                <th className="px-3 py-2 text-right font-bold">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orcamento.itens.map((it) => (
-                <tr key={it.id} className="border-t border-line-2">
-                  <td className="px-3 py-2 text-ink">
-                    {itemLabel(it, produtos, servicos)}
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums text-ink-2">
-                    {it.quantidade}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <Money value={it.subtotal} cents />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] font-semibold text-ink">Total</span>
-          <Money value={orcamento.valorTotal} cents className="text-[18px] text-brand-ink" />
-        </div>
-
-        {/* Status */}
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">Status</span>
-          <select
-            value={orcamento.status}
-            disabled={busy.status || convertido}
-            onChange={(e) => onChangeStatus(e.target.value as StatusOrcamento)}
-            className={`${selectCls} disabled:opacity-60`}
-          >
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        {/* Conversão */}
+    <>
+      <div className="form">
         {convertido ? (
-          <div className="rounded-sm bg-good-soft px-3 py-2.5 text-[12.5px] font-medium text-good">
-            Convertido em atendimento #{orcamento.atendimentoConvertidoId}.
-          </div>
+          <p className="hint" style={{ margin: 0 }}>
+            Este orçamento já virou o atendimento #{orcamento.atendimentoConvertidoId}; o status não muda mais.
+          </p>
         ) : (
-          <div>
-            <Button
-              type="button"
-              onClick={onConvert}
-              disabled={orcamento.status !== 'Aprovado' || busy.convert}
-              className="w-full"
-            >
-              {busy.convert ? 'Convertendo…' : 'Converter em atendimento'}
-            </Button>
-            {orcamento.status !== 'Aprovado' && (
-              <p className="mt-1.5 text-center text-[11.5px] text-ink-4">
-                Apenas orçamentos aprovados podem ser convertidos.
-              </p>
-            )}
-          </div>
+          <SelectField
+            label="Status"
+            value={status}
+            onChange={setStatus}
+            hint="Para mudar os itens, crie um novo orçamento."
+            options={ORDEM.map((s) => ({ value: s, label: s }))}
+          />
+        )}
+        {!convertido && orcamento.status !== 'Aprovado' && (
+          <p className="hint" style={{ margin: 0 }}>
+            Só orçamentos aprovados podem ser convertidos em atendimento.
+          </p>
         )}
       </div>
-
-      <div className="flex justify-between border-t border-line px-5 py-4">
-        <button
-          type="button"
+      <div className="form-actions">
+        <Button
+          variant="ghost"
           onClick={onDelete}
           disabled={busy.delete}
-          className="inline-flex items-center gap-2 rounded-[10px] px-3 py-2 text-[13px] font-semibold text-bad transition hover:bg-bad-soft disabled:opacity-60"
+          style={{ marginRight: 'auto', color: 'var(--neg-ink)' }}
         >
           {busy.delete ? 'Excluindo…' : 'Excluir orçamento'}
-        </button>
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => onSave(status)}
+          disabled={convertido || busy.status || status === orcamento.status}
+        >
+          {busy.status ? 'Salvando…' : 'Salvar'}
+        </Button>
       </div>
-    </div>
+    </>
   )
 }

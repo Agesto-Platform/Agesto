@@ -1,24 +1,14 @@
-const BRL = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-  maximumFractionDigits: 0,
-})
+import { brl } from './brl'
 
-const BRL_CENTS = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-})
-
-/** Formata dinheiro em BRL, na fonte serifada da identidade do painel. */
+/** Dinheiro em BRL com números de largura fixa (as colunas alinham). */
 export function Money({
   value,
   cents = false,
   className = '',
 }: {
-  value: number
+  value: number | null | undefined
   cents?: boolean
   className?: string
 }) {
-  const fmt = cents ? BRL_CENTS : BRL
-  return <span className={`money ${className}`}>{fmt.format(value)}</span>
+  return <span className={`money${className ? ' ' + className : ''}`}>{brl(value, cents)}</span>
 }

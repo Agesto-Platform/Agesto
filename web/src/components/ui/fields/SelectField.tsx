@@ -1,9 +1,12 @@
+import { useId } from 'react'
+
 export function SelectField<T extends string>({
   label,
   value,
   onChange,
   options,
   error,
+  hint,
   required = false,
 }: {
   label: string
@@ -11,20 +14,23 @@ export function SelectField<T extends string>({
   onChange: (value: T) => void
   options: { value: T; label: string }[]
   error?: string
+  hint?: string
   required?: boolean
 }) {
+  const id = useId()
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-semibold text-ink-2">
+    <div className="field">
+      <label htmlFor={id}>
         {label}
-        {required && <span className="text-bad"> *</span>}
-      </span>
+        {required && <span className="req"> *</span>}
+      </label>
       <select
+        id={id}
+        className="select"
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
-        className={`rounded-[10px] border bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand ${
-          error ? 'border-bad' : 'border-line'
-        }`}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error || hint ? id + '-msg' : undefined}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -32,7 +38,11 @@ export function SelectField<T extends string>({
           </option>
         ))}
       </select>
-      {error && <span className="text-[12px] text-bad">{error}</span>}
-    </label>
+      {(error || hint) && (
+        <span id={id + '-msg'} className={error ? 'field-err' : 'hint'}>
+          {error ?? hint}
+        </span>
+      )}
+    </div>
   )
 }

@@ -6,15 +6,18 @@ import type {
   OrcamentoInput,
   StatusOrcamento,
 } from '../../types/api'
-import { Button, NumberField, Money } from '../../components/ui'
-import { IconPlus, IconTrash } from '../../components/icons'
+import { Button, IconButton, NumberField, SelectField, TextField, brl } from '../../components/ui'
+import { Icon, type IconName } from '../../components/Icon'
 import { useServicoSugeridos } from '../servicos/sugeridosQueries'
 import { useConfiguracao } from '../parametrizacao/queries'
 
-const selectCls =
-  'rounded-[10px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand'
-
 type Tipo = 'produto' | 'servico' | 'avulso'
+
+const TIPO: Record<Tipo, { icon: IconName; label: string }> = {
+  servico: { icon: 'hammer', label: 'Serviço' },
+  produto: { icon: 'box', label: 'Material' },
+  avulso: { icon: 'pencil', label: 'Avulso' },
+}
 
 interface DraftItem {
   key: string
@@ -47,7 +50,7 @@ export function OrcamentoForm({
   serverError?: string | null
   onCancel: () => void
 }) {
-  const [clienteId, setClienteId] = useState<number | undefined>(undefined)
+  const [clienteId, setClienteId] = useState('')
   const [status, setStatus] = useState<StatusOrcamento>('Rascunho')
   const [itens, setItens] = useState<DraftItem[]>([])
   const [errors, setErrors] = useState<{ cliente?: string; itens?: string }>({})
@@ -159,13 +162,13 @@ export function OrcamentoForm({
   function handleSubmit(ev: FormEvent) {
     ev.preventDefault()
     const e: { cliente?: string; itens?: string } = {}
-    if (clienteId === undefined) e.cliente = 'Selecione um cliente.'
+    if (!clienteId) e.cliente = 'Selecione um cliente.'
     if (itens.length === 0) e.itens = 'Adicione ao menos um item.'
     setErrors(e)
     if (Object.keys(e).length > 0) return
 
     onSubmit({
-      clienteId: clienteId!,
+      clienteId: Number(clienteId),
       status,
       itens: itens.map((i) => ({
         produtoId: i.produtoId,
@@ -178,167 +181,179 @@ export function OrcamentoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
+    <form onSubmit={handleSubmit} noValidate>
+      <div className="form">
         {serverError && (
-          <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">
+          <p className="form-error" role="alert" style={{ margin: 0 }}>
             {serverError}
           </p>
         )}
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">
-            Cliente<span className="text-bad"> *</span>
-          </span>
-          <select
-            value={clienteId ?? ''}
-            onChange={(e) =>
-              setClienteId(e.target.value === '' ? undefined : Number(e.target.value))
-            }
-            className={`${selectCls} ${errors.cliente ? 'border-bad' : ''}`}
-          >
-            <option value="">Selecione…</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-          {errors.cliente && <span className="text-[12px] text-bad">{errors.cliente}</span>}
-        </label>
+        <SelectField
+          label="Cliente"
+          required
+          value={clienteId}
+          onChange={setClienteId}
+          error={errors.cliente}
+          options={[
+            { value: '', label: 'Selecione…' },
+            ...clientes.map((c) => ({ value: String(c.id), label: c.nome })),
+          ]}
+        />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">Status inicial</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as StatusOrcamento)}
-            className={selectCls}
-          >
-            <option value="Rascunho">Rascunho</option>
-            <option value="Enviado">Enviado</option>
-          </select>
-        </label>
+        <SelectField
+          label="Status inicial"
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: 'Rascunho', label: 'Rascunho' },
+            { value: 'Enviado', label: 'Enviado' },
+          ]}
+        />
 
         {/* Itens adicionados */}
-        <div className="flex flex-col gap-2">
-          <span className="text-[12.5px] font-semibold text-ink-2">Itens</span>
-          {itens.length === 0 && (
-            <p className="text-[12.5px] text-ink-3">Nenhum item ainda.</p>
-          )}
-          {itens.map((i) => (
-            <div
-              key={i.key}
-              className="flex items-center gap-2 rounded-sm border border-line-2 px-3 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-medium text-ink">{i.label}</div>
-                <div className="text-[11.5px] text-ink-3">
-                  {i.quantidade} × <Money value={i.precoUnitario} cents />
-                </div>
-              </div>
-              <Money value={i.quantidade * i.precoUnitario} cents className="text-[13px] font-semibold" />
-              <button
-                type="button"
-                onClick={() => removeItem(i.key)}
-                aria-label="Remover item"
-                className="grid h-7 w-7 flex-none place-items-center rounded-[8px] text-ink-4 transition hover:bg-surface-2 hover:text-bad"
-              >
-                <IconTrash className="h-[15px] w-[15px]" />
-              </button>
-            </div>
-          ))}
-          {errors.itens && <span className="text-[12px] text-bad">{errors.itens}</span>}
-        </div>
+        <span className="section-label">Itens</span>
+        {itens.length === 0 ? (
+          <p className="hint" style={{ margin: 0 }}>
+            Nenhum item ainda.
+          </p>
+        ) : (
+          <div className="table-wrap">
+            <table className="t">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th className="n">Qtd.</th>
+                  <th className="n">Subtotal</th>
+                  <th>
+                    <span className="sr-only">Ações</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {itens.map((i) => {
+                  const t = TIPO[i.servicoId != null ? 'servico' : i.produtoId != null ? 'produto' : 'avulso']
+                  return (
+                    <tr key={i.key}>
+                      <td className="wrap">
+                        <div className="cell">
+                          <span className="cell-ic">
+                            <Icon name={t.icon} />
+                          </span>
+                          <span>
+                            <span className="strong">{i.label}</span>
+                            <span className="sub">
+                              {t.label} · {brl(i.precoUnitario, true)} un.
+                            </span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="n">{i.quantidade}</td>
+                      <td className="n strong">{brl(i.quantidade * i.precoUnitario, true)}</td>
+                      <td className="n">
+                        <IconButton
+                          aria-label={`Remover ${i.label}`}
+                          style={{ width: 28, height: 28 }}
+                          onClick={() => removeItem(i.key)}
+                        >
+                          <Icon name="x" />
+                        </IconButton>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {errors.itens && (
+          <span className="field-err" role="alert">
+            {errors.itens}
+          </span>
+        )}
 
         {/* Adicionar item */}
-        <div className="flex flex-col gap-3 rounded-sm border border-dashed border-line bg-surface-2 p-3">
-          <select value={tipo} onChange={(e) => changeTipo(e.target.value as Tipo)} className={selectCls}>
-            <option value="produto">Produto (catálogo)</option>
-            {permiteServico && <option value="servico">Serviço (catálogo)</option>}
-            <option value="avulso">Item avulso</option>
-          </select>
-
-          {tipo === 'produto' && (
-            <select value={refId} onChange={(e) => pickProduto(e.target.value)} className={selectCls}>
-              <option value="">Escolha o produto…</option>
-              {produtos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                </option>
-              ))}
-            </select>
-          )}
-          {tipo === 'servico' && (
-            <select value={refId} onChange={(e) => pickServico(e.target.value)} className={selectCls}>
-              <option value="">Escolha o serviço…</option>
-              {servicos.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.descricao}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {tipo === 'servico' && servicoSelId > 0 && (sugeridos.data?.length ?? 0) > 0 && (
-            <div className="flex flex-col gap-2 rounded-sm border border-brand/30 bg-brand-soft px-3 py-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-brand-ink">
-                  Materiais sugeridos ({sugeridos.data!.length})
-                </span>
-                <Button type="button" variant="ghost" onClick={addSugeridos} className="!py-1 !text-[12px]">
-                  <IconPlus className="h-3.5 w-3.5" /> Adicionar
-                </Button>
-              </div>
-              <span className="text-[11.5px] text-ink-3">
-                {sugeridos.data!.map((s) => `${s.produtoNome} ×${s.quantidadePadrao}`).join(' · ')}
-              </span>
+        <span className="section-label">Adicionar item</span>
+        <SelectField
+          label="Tipo"
+          value={tipo}
+          onChange={changeTipo}
+          options={[
+            { value: 'produto', label: 'Produto (catálogo)' },
+            ...(permiteServico ? [{ value: 'servico' as const, label: 'Serviço (catálogo)' }] : []),
+            { value: 'avulso', label: 'Item avulso' },
+          ]}
+        />
+        {tipo === 'produto' && (
+          <SelectField
+            label="Produto"
+            value={refId}
+            onChange={pickProduto}
+            options={[
+              { value: '', label: 'Escolha o produto…' },
+              ...produtos.map((p) => ({ value: String(p.id), label: p.nome })),
+            ]}
+          />
+        )}
+        {tipo === 'servico' && (
+          <SelectField
+            label="Serviço"
+            value={refId}
+            onChange={pickServico}
+            options={[
+              { value: '', label: 'Escolha o serviço…' },
+              ...servicos.map((s) => ({ value: String(s.id), label: s.descricao })),
+            ]}
+          />
+        )}
+        {tipo === 'servico' && servicoSelId > 0 && (sugeridos.data?.length ?? 0) > 0 && (
+          <div className="field">
+            <span className="label">Materiais sugeridos ({sugeridos.data!.length})</span>
+            <span className="hint">
+              {sugeridos.data!.map((s) => `${s.produtoNome} ×${s.quantidadePadrao}`).join(' · ')}
+            </span>
+            <div>
+              <Button size="sm" icon="plus" onClick={addSugeridos}>
+                Adicionar sugeridos
+              </Button>
             </div>
-          )}
-          {tipo === 'avulso' && (
-            <input
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Descrição do item"
-              maxLength={200}
-              className={selectCls}
-            />
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <NumberField
-              label="Qtd."
-              step={1}
-              value={quantidade}
-              onChange={setQuantidade}
-            />
-            <NumberField
-              label="Preço unit."
-              prefix="R$"
-              step={0.01}
-              value={preco}
-              onChange={setPreco}
-            />
           </div>
-
-          {draftError && <span className="text-[12px] text-bad">{draftError}</span>}
-
-          <Button type="button" variant="ghost" onClick={addItem} className="self-start">
-            <IconPlus className="h-4 w-4" /> Adicionar item
+        )}
+        {tipo === 'avulso' && (
+          <TextField
+            label="Descrição"
+            value={descricao}
+            onChange={setDescricao}
+            placeholder="Descrição do item"
+            maxLength={200}
+          />
+        )}
+        <div className="form-row">
+          <NumberField label="Qtd." step={1} value={quantidade} onChange={setQuantidade} />
+          <NumberField label="Preço unit." prefix="R$" step={0.01} value={preco} onChange={setPreco} />
+        </div>
+        {draftError && (
+          <span className="field-err" role="alert">
+            {draftError}
+          </span>
+        )}
+        <div>
+          <Button icon="plus" onClick={addItem}>
+            Adicionar item
           </Button>
         </div>
 
-        {/* Total */}
-        <div className="flex items-center justify-between border-t border-line pt-3">
-          <span className="text-[13px] font-semibold text-ink">Total</span>
-          <Money value={total} cents className="text-[18px] text-brand-ink" />
-        </div>
+        <dl className="kv" style={{ paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <dt>Total</dt>
+          <dd style={{ fontWeight: 600, fontSize: 15 }}>{brl(total, true)}</dd>
+        </dl>
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
-        <Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>
+      <div className="form-actions">
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button variant="primary" type="submit" disabled={submitting}>
           {submitting ? 'Salvando…' : 'Criar orçamento'}
         </Button>
       </div>

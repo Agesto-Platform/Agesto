@@ -1,24 +1,19 @@
-import { Pill } from '../../components/ui'
+import { Badge, type BadgeTone } from '../../components/ui'
+import type { IconName } from '../../components/Icon'
 import type { StatusOrcamento } from '../../types/api'
 
-const STATUS_ORCAMENTO: Record<
-  StatusOrcamento,
-  { tone?: 'ok' | 'pend' | 'brand' | 'bad'; label: string }
-> = {
-  Rascunho: { label: 'Rascunho' },
-  Enviado: { tone: 'brand', label: 'Enviado' },
-  Aprovado: { tone: 'ok', label: 'Aprovado' },
-  Recusado: { tone: 'bad', label: 'Recusado' },
+const MAP: Record<StatusOrcamento, { tone: BadgeTone; icon: IconName; label: string }> = {
+  Rascunho: { tone: 'neutral', icon: 'pencil', label: 'Rascunho' },
+  Enviado: { tone: 'info', icon: 'send', label: 'Enviado' },
+  Aprovado: { tone: 'ok', icon: 'check', label: 'Aprovado' },
+  Recusado: { tone: 'neg', icon: 'x', label: 'Recusado' },
 }
 
 export function StatusOrcamentoPill({ status }: { status: StatusOrcamento }) {
-  const s = STATUS_ORCAMENTO[status]
-  if (!s.tone) {
-    return (
-      <span className="inline-block rounded-full bg-surface-2 px-[9px] py-[3px] text-[11px] font-bold text-ink-3">
-        {s.label}
-      </span>
-    )
-  }
-  return <Pill tone={s.tone}>{s.label}</Pill>
+  const s = MAP[status]
+  return (
+    <Badge tone={s.tone} icon={s.icon}>
+      {s.label}
+    </Badge>
+  )
 }

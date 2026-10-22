@@ -20,6 +20,7 @@ export function ProdutoForm({
   submitting,
   serverError,
   onCancel,
+  onDelete,
   controlaEstoque = true,
 }: {
   initial: Produto | null
@@ -27,6 +28,8 @@ export function ProdutoForm({
   submitting: boolean
   serverError?: string | null
   onCancel: () => void
+  /** Só na edição: abre a confirmação de exclusão. */
+  onDelete?: () => void
   controlaEstoque?: boolean
 }) {
   const [form, setForm] = useState<FormState>(() => toState(initial))
@@ -60,11 +63,23 @@ export function ProdutoForm({
     })
   }
 
+  const preco = (
+    <NumberField
+      label="Preço"
+      prefix="R$"
+      step={0.01}
+      value={form.preco}
+      onChange={(v) => setForm((f) => ({ ...f, preco: v }))}
+      error={errors.preco}
+      required
+    />
+  )
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
+    <form onSubmit={handleSubmit}>
+      <div className="form">
         {serverError && (
-          <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">
+          <p className="form-error" role="alert">
             {serverError}
           </p>
         )}
@@ -77,34 +92,34 @@ export function ProdutoForm({
           required
           maxLength={120}
         />
-        <div className={controlaEstoque ? 'grid grid-cols-2 gap-3' : ''}>
-          <NumberField
-            label="Preço"
-            prefix="R$"
-            step={0.01}
-            value={form.preco}
-            onChange={(v) => setForm((f) => ({ ...f, preco: v }))}
-            error={errors.preco}
-            required
-          />
-          {controlaEstoque && (
+        {controlaEstoque ? (
+          <div className="form-row">
+            {preco}
             <NumberField
               label="Estoque"
               step={1}
               value={form.quantidadeEstoque}
               onChange={(v) => setForm((f) => ({ ...f, quantidadeEstoque: v }))}
               error={errors.quantidadeEstoque}
+              hint="Baixa sozinho quando um orçamento aprovado vira atendimento."
               required
             />
-          )}
-        </div>
+          </div>
+        ) : (
+          preco
+        )}
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
-        <Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>
+      <div className="form-actions">
+        {onDelete && (
+          <Button variant="ghost" onClick={onDelete} disabled={submitting} style={{ marginRight: 'auto' }}>
+            Excluir
+          </Button>
+        )}
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" variant="primary" disabled={submitting}>
           {submitting ? 'Salvando…' : 'Salvar'}
         </Button>
       </div>

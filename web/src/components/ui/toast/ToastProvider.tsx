@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { ToastContext, type ToastTone } from './toastContext'
+import { Icon } from '../../Icon'
 
 interface Toast {
   id: number
@@ -21,14 +22,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="fixed bottom-5 right-5 z-[70] flex flex-col gap-2">
+      <div className="toasts" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`rounded-sm px-4 py-2.5 text-[13px] font-medium text-white shadow-card ${
-              t.tone === 'success' ? 'bg-brand-ink' : 'bg-bad'
-            }`}
-          >
+          <div key={t.id} className={`toast ${t.tone}`}>
+            <Icon name={t.tone === 'success' ? 'okc' : 'xc'} />
             {t.message}
           </div>
         ))}
