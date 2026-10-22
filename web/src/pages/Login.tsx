@@ -26,7 +26,6 @@ export function Login() {
   const [verSenha, setVerSenha] = useState(false)
   const [manter, setManter] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
-  const [socialNote, setSocialNote] = useState('')
   const [loading, setLoading] = useState(false)
 
   const liquidoRef = useRef<HTMLDivElement>(null)
@@ -111,11 +110,6 @@ export function Login() {
     }
   }
 
-  const social = (nome: string) => {
-    setSocialNote(`Entrar com ${nome} ainda não existe no Agesto. Use e-mail e senha.`)
-    mascote.current?.face('dot', 900)
-  }
-
   return (
     <div className="login-page">
       <div className="liquido" ref={liquidoRef} aria-hidden="true" />
@@ -131,30 +125,6 @@ export function Login() {
             <span>Agesto</span>
             <span className="muted">O dinheiro que sobra, num lugar só.</span>
           </h1>
-
-          <div className="fade-out">
-            <div className="social">
-              <button className="btn" type="button" onClick={() => social('Google')}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09a6.6 6.6 0 0 1 0-4.18V7.07H2.18a11 11 0 0 0 0 9.86l3.66-2.84z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A11 11 0 0 0 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
-                </svg>
-                Google
-              </button>
-              <button className="btn" type="button" onClick={() => social('Apple')}>
-                <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-                  <path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.03-1.5-2.62-1.7-3.18-1.72-1.35-.14-2.64.8-3.33.8-.69 0-1.74-.78-2.86-.76-1.47.02-2.83.86-3.59 2.17-1.53 2.66-.39 6.59 1.1 8.75.73 1.05 1.6 2.23 2.73 2.19 1.1-.04 1.51-.71 2.84-.71 1.32 0 1.7.71 2.86.69 1.18-.02 1.93-1.07 2.65-2.13.84-1.22 1.18-2.4 1.2-2.46-.03-.01-2.29-.88-2.3-3.51zM14.2 6.13c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.64-1.05 1.67-.92 2.66.97.08 1.96-.49 2.56-1.21z" />
-                </svg>
-                Apple
-              </button>
-            </div>
-            <p className="social-note" aria-live="polite">
-              {socialNote}
-            </p>
-            <div className="or">ou</div>
-          </div>
 
           <form className="lform fade-out" onSubmit={handleSubmit} noValidate>
             <div className="lfield">
