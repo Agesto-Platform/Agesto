@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import type { Cliente, AtendimentoInput, StatusAtendimento, Usuario } from '../../types/api'
-import { Button } from '../../components/ui'
+import { Button, SelectField, TextField } from '../../components/ui'
 
-const selectCls =
-  'rounded-[10px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand'
+const STATUS_OPCOES: { value: StatusAtendimento; label: string }[] = [
+  { value: 'Pendente', label: 'Pendente' },
+  { value: 'Concluido', label: 'Concluído' },
+  { value: 'Cancelado', label: 'Cancelado' },
+]
 
 export function AtendimentoForm({
   clientes,
@@ -20,7 +23,7 @@ export function AtendimentoForm({
   serverError?: string | null
   onCancel: () => void
 }) {
-  const [clienteId, setClienteId] = useState<number | undefined>(undefined)
+  const [clienteId, setClienteId] = useState('')
   const [status, setStatus] = useState<StatusAtendimento>('Pendente')
   const [agenda, setAgenda] = useState('')
   const [responsavel, setResponsavel] = useState('')
@@ -28,13 +31,13 @@ export function AtendimentoForm({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (clienteId === undefined) {
+    if (!clienteId) {
       setError('Selecione um cliente.')
       return
     }
     setError(null)
     onSubmit({
-      clienteId,
+      clienteId: Number(clienteId),
       status,
       dataAgendada: agenda ? new Date(agenda).toISOString() : null,
       responsavelId: responsavel ? Number(responsavel) : null,
@@ -42,86 +45,54 @@ export function AtendimentoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
+    <form onSubmit={handleSubmit} noValidate>
+      <div className="form">
         {serverError && (
-          <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">
+          <p className="form-error" role="alert" style={{ margin: 0 }}>
             {serverError}
           </p>
         )}
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">
-            Cliente<span className="text-bad"> *</span>
-          </span>
-          <select
-            value={clienteId ?? ''}
-            onChange={(e) =>
-              setClienteId(e.target.value === '' ? undefined : Number(e.target.value))
-            }
-            className={`${selectCls} ${error ? 'border-bad' : ''}`}
-          >
-            <option value="">Selecione…</option>
-            {clientes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-          {error && <span className="text-[12px] text-bad">{error}</span>}
-        </label>
+        <SelectField
+          label="Cliente"
+          required
+          value={clienteId}
+          onChange={setClienteId}
+          error={error ?? undefined}
+          options={[
+            { value: '', label: 'Selecione…' },
+            ...clientes.map((c) => ({ value: String(c.id), label: c.nome })),
+          ]}
+        />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">Status</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as StatusAtendimento)}
-            className={selectCls}
-          >
-            <option value="Pendente">Pendente</option>
-            <option value="Concluido">Concluído</option>
-            <option value="Cancelado">Cancelado</option>
-          </select>
-        </label>
+        <SelectField label="Status" value={status} onChange={setStatus} options={STATUS_OPCOES} />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">Responsável</span>
-          <select value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={selectCls}>
-            <option value="">Eu mesmo</option>
-            {responsaveis.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-                {u.perfil === 'Dono' ? ' (dono)' : ''}
-              </option>
-            ))}
-          </select>
-          <span className="text-[12px] text-ink-4">
-            O atendimento aparece na agenda do app de quem for o responsável.
-          </span>
-        </label>
+        <SelectField
+          label="Responsável"
+          value={responsavel}
+          onChange={setResponsavel}
+          hint="O atendimento aparece na agenda do app de quem for o responsável."
+          options={[
+            { value: '', label: 'Eu mesmo' },
+            ...responsaveis.map((u) => ({
+              value: String(u.id),
+              label: u.nome + (u.perfil === 'Dono' ? ' (dono)' : ''),
+            })),
+          ]}
+        />
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">
-            Agendar para (opcional)
-          </span>
-          <input
-            type="datetime-local"
-            value={agenda}
-            onChange={(e) => setAgenda(e.target.value)}
-            className={selectCls}
-          />
-        </label>
+        <TextField label="Agendar para (opcional)" type="datetime-local" value={agenda} onChange={setAgenda} />
 
-        <p className="text-[12px] text-ink-4">
-          Os itens (produtos/serviços) são adicionados no detalhe, após criar.
+        <p className="hint" style={{ margin: 0 }}>
+          Os itens (produtos e serviços) entram no detalhe, depois de criar.
         </p>
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
-        <Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>
+      <div className="form-actions">
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button variant="primary" type="submit" disabled={submitting}>
           {submitting ? 'Criando…' : 'Criar atendimento'}
         </Button>
       </div>

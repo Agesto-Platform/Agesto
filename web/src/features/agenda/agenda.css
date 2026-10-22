@@ -1,0 +1,69 @@
+/* Agenda: CSS da página do template (agenda.html) + mapa e filtros do app. */
+@layer components {
+  .agenda { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; }
+  .cal-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .cal-head h2 { margin: 0 6px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .cal-head .icon-btn { width: 28px; height: 28px; }
+  .wk { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .wk span { padding: 8px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line); }
+  .month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .day { min-height: 104px; padding: 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; background: none; border-top: 0; border-left: 0; display: flex; flex-direction: column; gap: 4px; transition: background-color 120ms var(--ease-out); }
+  .day:nth-child(7n) { border-right: 0; }
+  .day:nth-last-child(-n+7) { border-bottom: 0; }
+  .day:hover { background: var(--surface-2); }
+  .day.off { color: var(--ink-3); background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+  .day[aria-pressed="true"] { background: var(--selected); }
+  .day .n { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .day.today .n { background: var(--accent); color: var(--accent-ink); }
+  .ev { display: flex; align-items: center; gap: 5px; padding: 3px 6px; border-radius: 6px; font-size: 11.5px; line-height: 1.25; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .ev::before { content: ""; width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--warn-ink); }
+  .ev.Concluido::before { background: var(--ok-ink); }
+  .ev.Cancelado { text-decoration: line-through; color: var(--ink-3); }
+  .ev.Cancelado::before { background: var(--neg-ink); }
+  .ev b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .day-list { display: grid; gap: 10px; }
+  .appt { padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); }
+  .appt .top { display: flex; align-items: center; gap: 8px; }
+  .appt .t { font-weight: 650; font-variant-numeric: tabular-nums; }
+  .appt .top .badge { margin-left: auto; }
+  .appt h3 { margin: 8px 0 2px; font-size: 14px; font-weight: 600; }
+  .appt p { margin: 0; color: var(--ink-2); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+  .appt p + p { margin-top: 4px; }
+  .appt .val { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 12.5px; color: var(--ink-2); }
+  .appt .val b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .legend { display: flex; gap: 12px; margin-left: auto; font-size: 12px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--warn-ink); }
+  .legend i.ok { background: var(--ok-ink); } .legend i.neg { background: var(--neg-ink); }
+  @container page (max-width: 900px) { .agenda { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 720px) { .day { min-height: 64px; padding: 4px; } .ev span.nm { display: none; } .ev { padding: 2px 4px; } .legend { display: none; } }
+
+  /* --- além do template: filtros (equipe/status) e a visão Mapa --- */
+  .cal-head { flex-wrap: wrap; }
+  .cal-head .icon-btn[disabled] { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .cal-filters { border-bottom: 1px solid var(--line); padding: 10px 14px; }
+  .cal-filters .select { width: auto; height: 34px; }
+  .agenda-map { height: 460px; width: 100%; }
+  .map-foot { margin: 0; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .map-pin {
+    display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    font: 700 13px/1 var(--font-sans); border: 2px solid var(--surface);
+    box-shadow: 0 1px 4px rgb(var(--shadow-color) / 0.35);
+  }
+}
+
+/*
+ * Ajustes do Leaflet fora da camada: o leaflet.css não usa @layer, então
+ * só um seletor sem camada consegue trocar o fundo branco pelo da paleta.
+ */
+.agenda-map .leaflet-popup-content-wrapper,
+.agenda-map .leaflet-popup-tip { background: var(--surface); color: var(--ink); box-shadow: 0 8px 24px -6px rgb(var(--shadow-color) / 0.4); }
+.agenda-map .leaflet-popup-content { margin: 10px 12px; display: grid; gap: 2px; font: 12.5px/1.4 var(--font-sans); }
+.agenda-map .leaflet-popup-content .muted { color: var(--ink-3); }
+.agenda-map.leaflet-container { background: var(--surface-2); font-family: var(--font-sans); }
+.agenda-map.leaflet-container a.leaflet-popup-close-button { color: var(--ink-3); }
+.agenda-map .leaflet-bar a { background: var(--surface); color: var(--ink); border-bottom-color: var(--line); }
+.agenda-map.leaflet-container .leaflet-bar { border-color: var(--line); }
+.agenda-map.leaflet-container .leaflet-control-attribution { background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink-3); }
+.agenda-map .leaflet-control-attribution a { color: var(--ink-2); }
+[data-mode="dark"] .agenda-map .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9); }

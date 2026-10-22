@@ -7,19 +7,19 @@ import {
   useConverterOrcamento,
 } from './queries'
 import { OrcamentoForm } from './OrcamentoForm'
-import { OrcamentoDetail } from './OrcamentoDetail'
+import { OrcamentoDetail, OrcamentoEditForm } from './OrcamentoDetail'
 import { StatusOrcamentoPill } from './status'
+import { numero } from './labels'
 import { clientesResource } from '../clientes/resource'
 import { produtosResource } from '../produtos/resource'
 import { servicosResource } from '../servicos/resource'
-import { Button, Card, DataTable, Drawer, Money, useToast, type Column } from '../../components/ui'
-import { IconPlus } from '../../components/icons'
+import { Button, Card, ConfirmDialog, Drawer, Empty, PageHead, brl, useToast } from '../../components/ui'
 import { ApiError } from '../../lib/api'
-import type { Orcamento, OrcamentoInput, StatusOrcamento } from '../../types/api'
+import { dataCurta } from '../../lib/format'
+import type { OrcamentoInput, StatusOrcamento } from '../../types/api'
+import './orcamentos.css'
 
-function dataCurta(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-}
+const ORDEM: StatusOrcamento[] = ['Rascunho', 'Enviado', 'Aprovado', 'Recusado']
 
 export function OrcamentosPage() {
   const list = useOrcamentos()
@@ -34,19 +34,29 @@ export function OrcamentosPage() {
   const servicos = servicosResource.useList()
 
   const [createOpen, setCreateOpen] = useState(false)
-  const [detailId, setDetailId] = useState<number | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [selId, setSelId] = useState<number | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
   const clienteNome = (id: number) =>
     clientes.data?.find((c) => c.id === id)?.nome ?? `Cliente #${id}`
 
-  const detail = list.data?.find((o) => o.id === detailId) ?? null
+  const orcamentos = [...(list.data ?? [])].sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro) || a.id - b.id)
+  // Sem seleção (ou a selecionada sumiu): mostra o mais recente.
+  const sel = orcamentos.find((o) => o.id === selId) ?? orcamentos[0] ?? null
+
+  function openCreate() {
+    setServerError(null)
+    setCreateOpen(true)
+  }
 
   function handleCreate(input: OrcamentoInput) {
     setServerError(null)
     create.mutate(input, {
-      onSuccess: () => {
+      onSuccess: (created) => {
         setCreateOpen(false)
+        setSelId(created.id)
         toast.success('Orçamento criado.')
       },
       onError: (e) =>
@@ -54,20 +64,23 @@ export function OrcamentosPage() {
     })
   }
 
-  function handleChangeStatus(status: StatusOrcamento) {
-    if (detailId == null) return
+  function handleChangeStatus(status: StatusOrcamento, onDone?: () => void) {
+    if (!sel) return
     updateStatus.mutate(
-      { id: detailId, status },
+      { id: sel.id, status },
       {
-        onSuccess: () => toast.success('Status atualizado.'),
+        onSuccess: () => {
+          toast.success('Status atualizado.')
+          onDone?.()
+        },
         onError: () => toast.error('Não foi possível atualizar o status.'),
       },
     )
   }
 
   function handleConvert() {
-    if (detailId == null) return
-    converter.mutate(detailId, {
+    if (!sel) return
+    converter.mutate(sel.id, {
       onSuccess: () => toast.success('Orçamento convertido em atendimento.'),
       onError: (e) =>
         toast.error(e instanceof ApiError ? e.message : 'Não foi possível converter.'),
@@ -75,57 +88,109 @@ export function OrcamentosPage() {
   }
 
   function handleDelete() {
-    if (detailId == null) return
-    remove.mutate(detailId, {
+    if (!sel) return
+    remove.mutate(sel.id, {
       onSuccess: () => {
         toast.success('Orçamento removido.')
-        setDetailId(null)
+        setConfirmDelete(false)
+        setEditOpen(false)
+        setSelId(null)
       },
-      onError: () => toast.error('Não foi possível remover.'),
+      onError: () => {
+        toast.error('Não foi possível remover.')
+        setConfirmDelete(false)
+      },
     })
   }
 
-  const columns: Column<Orcamento>[] = [
-    { header: 'Cliente', cell: (o) => <span className="font-medium text-ink">{clienteNome(o.clienteId)}</span> },
-    { header: 'Itens', cell: (o) => <span className="text-ink-2">{o.itens.length}</span> },
-    { header: 'Status', cell: (o) => <StatusOrcamentoPill status={o.status} /> },
-    { header: 'Valor', align: 'right', cell: (o) => <Money value={o.valorTotal} cents /> },
-    { header: 'Data', align: 'right', cell: (o) => <span className="text-ink-3">{dataCurta(o.dataRegistro)}</span> },
-    {
-      header: '',
-      align: 'right',
-      cell: (o) => (
-        <button
-          type="button"
-          onClick={() => setDetailId(o.id)}
-          className="rounded-[8px] px-2.5 py-1 text-[12px] font-semibold text-brand-ink transition hover:bg-brand-soft"
-        >
-          Ver
-        </button>
-      ),
-    },
-  ]
-
   return (
     <>
-      <Card className="shadow-card">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-[15px] font-semibold text-ink">Orçamentos</h2>
-            <p className="text-[12.5px] text-ink-3">{list.data?.length ?? 0} no total</p>
-          </div>
-          <Button onClick={() => { setServerError(null); setCreateOpen(true) }}>
-            <IconPlus className="h-4 w-4" /> Novo
+      <PageHead
+        title="Orçamentos"
+        sub="Do rascunho ao aprovado. Só o aprovado vira atendimento e baixa o estoque."
+        actions={
+          <Button variant="primary" icon="plus" onClick={openCreate}>
+            Novo orçamento
           </Button>
+        }
+      />
+
+      <Card label="Orçamentos por status">
+        <div className="pipeline">
+          {ORDEM.map((st) => {
+            const l = orcamentos.filter((o) => o.status === st)
+            return (
+              <div className="pipe" key={st}>
+                <div className="top">
+                  <StatusOrcamentoPill status={st} />
+                </div>
+                <b>{l.length}</b>
+                <span className="v">{brl(l.reduce((s, o) => s + o.valorTotal, 0))}</span>
+              </div>
+            )
+          })}
         </div>
-        <DataTable
-          columns={columns}
-          rows={list.data}
-          loading={list.isLoading}
-          getKey={(o) => o.id}
-          emptyLabel="Nenhum orçamento cadastrado."
-        />
       </Card>
+
+      <div className="split-view">
+        <Card>
+          <div className="q-list" role="list">
+            {list.isLoading && (
+              <p className="hint" style={{ margin: 0, padding: 12 }}>
+                Carregando…
+              </p>
+            )}
+            {orcamentos.map((o) => (
+              <button
+                key={o.id}
+                className="q-item"
+                role="listitem"
+                type="button"
+                aria-current={o.id === sel?.id}
+                onClick={() => setSelId(o.id)}
+              >
+                <span>
+                  <span className="who">{clienteNome(o.clienteId)}</span>
+                  <br />
+                  <span className="num">
+                    {numero(o.id)} · {dataCurta(o.dataRegistro)}
+                  </span>
+                </span>
+                <span className="val">{brl(o.valorTotal)}</span>
+                <span />
+                <span style={{ justifySelf: 'end' }}>
+                  <StatusOrcamentoPill status={o.status} />
+                </span>
+              </button>
+            ))}
+          </div>
+          {!list.isLoading && orcamentos.length === 0 && (
+            <Empty icon="file" title="Nenhum orçamento ainda">
+              Clique em Novo orçamento para montar o primeiro.
+            </Empty>
+          )}
+        </Card>
+        <section className="card" aria-live="polite">
+          {sel ? (
+            <OrcamentoDetail
+              orcamento={sel}
+              clienteNome={clienteNome(sel.clienteId)}
+              produtos={produtos.data ?? []}
+              servicos={servicos.data ?? []}
+              onChangeStatus={(s) => handleChangeStatus(s)}
+              onConvert={handleConvert}
+              onEdit={() => setEditOpen(true)}
+              busy={{ status: updateStatus.isPending, convert: converter.isPending }}
+            />
+          ) : (
+            !list.isLoading && (
+              <Empty icon="file" title="Nenhum orçamento selecionado">
+                Os detalhes aparecem aqui quando houver um orçamento.
+              </Empty>
+            )
+          )}
+        </section>
+      </div>
 
       {/* Criar */}
       <Drawer open={createOpen} onClose={() => setCreateOpen(false)} title="Novo orçamento">
@@ -142,29 +207,33 @@ export function OrcamentosPage() {
         )}
       </Drawer>
 
-      {/* Detalhe */}
+      {/* Editar (status) e excluir */}
       <Drawer
-        open={detail !== null}
-        onClose={() => setDetailId(null)}
-        title={detail ? `Orçamento #${detail.id}` : 'Orçamento'}
+        open={editOpen && sel !== null}
+        onClose={() => setEditOpen(false)}
+        title={sel ? `Editar orçamento ${numero(sel.id)}` : 'Editar orçamento'}
+        sub={sel ? clienteNome(sel.clienteId) : undefined}
       >
-        {detail && (
-          <OrcamentoDetail
-            orcamento={detail}
-            clienteNome={clienteNome(detail.clienteId)}
-            produtos={produtos.data ?? []}
-            servicos={servicos.data ?? []}
-            onChangeStatus={handleChangeStatus}
-            onConvert={handleConvert}
-            onDelete={handleDelete}
-            busy={{
-              status: updateStatus.isPending,
-              convert: converter.isPending,
-              delete: remove.isPending,
-            }}
+        {editOpen && sel && (
+          <OrcamentoEditForm
+            key={sel.id}
+            orcamento={sel}
+            onSave={(s) => handleChangeStatus(s, () => setEditOpen(false))}
+            onDelete={() => setConfirmDelete(true)}
+            onCancel={() => setEditOpen(false)}
+            busy={{ status: updateStatus.isPending, delete: remove.isPending }}
           />
         )}
       </Drawer>
+
+      <ConfirmDialog
+        open={confirmDelete && sel !== null}
+        title="Excluir orçamento"
+        message={`Remover o orçamento ${sel ? numero(sel.id) : ''} de ${sel ? clienteNome(sel.clienteId) : ''}? Esta ação não pode ser desfeita.`}
+        loading={remove.isPending}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </>
   )
 }

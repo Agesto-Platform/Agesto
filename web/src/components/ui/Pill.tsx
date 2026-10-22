@@ -1,44 +1,46 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { Icon, type IconName } from '../Icon'
 
-type PillTone = 'ok' | 'pend' | 'brand' | 'bad'
+export type BadgeTone = 'ok' | 'warn' | 'neg' | 'info' | 'brand' | 'future' | 'neutral'
 
-const TONES: Record<PillTone, string> = {
-  ok: 'bg-good-soft text-good',
-  pend: 'bg-warn-soft text-warn',
-  brand: 'bg-brand-soft text-brand-ink',
-  bad: 'bg-bad-soft text-bad',
-}
-
-export function Pill({
-  tone = 'brand',
+/** Selo (`.badge`): status, contagem ou marcação. */
+export function Badge({
+  tone = 'neutral',
+  icon,
+  dot = false,
+  className = '',
+  style,
   children,
 }: {
-  tone?: PillTone
+  tone?: BadgeTone
+  icon?: IconName
+  dot?: boolean
+  className?: string
+  style?: CSSProperties
   children: ReactNode
 }) {
+  const cls = ['badge', tone !== 'neutral' && tone, dot && 'dot', className].filter(Boolean).join(' ')
   return (
-    <span
-      className={`inline-block whitespace-nowrap rounded-full px-[9px] py-[3px] text-[11px] font-bold ${TONES[tone]}`}
-    >
+    <span className={cls} style={style}>
+      {icon && <Icon name={icon} />}
       {children}
     </span>
   )
 }
 
-/** Indicador de variação (delta) para os KPIs. */
-export function Delta({
-  dir,
-  children,
-}: {
-  dir: 'up' | 'down'
-  children: ReactNode
-}) {
-  const cls = dir === 'up' ? 'bg-good-soft text-good' : 'bg-bad-soft text-bad'
+type PillTone = 'ok' | 'pend' | 'brand' | 'bad'
+const PILL: Record<PillTone, BadgeTone> = { ok: 'ok', pend: 'warn', brand: 'brand', bad: 'neg' }
+
+/** Compatibilidade: tons antigos (ok/pend/brand/bad) no selo novo. */
+export function Pill({ tone = 'brand', children }: { tone?: PillTone; children: ReactNode }) {
+  return <Badge tone={PILL[tone]}>{children}</Badge>
+}
+
+/** Variação de um número (sobe/desce). */
+export function Delta({ dir, children }: { dir: 'up' | 'down'; children: ReactNode }) {
   return (
-    <span
-      className={`inline-flex items-center gap-[3px] rounded-full px-[7px] py-0.5 text-[11.5px] font-bold ${cls}`}
-    >
-      {dir === 'up' ? '▲' : '▼'} {children}
-    </span>
+    <Badge tone={dir === 'up' ? 'ok' : 'neg'} icon={dir === 'up' ? 'trend' : 'down'}>
+      {children}
+    </Badge>
   )
 }
