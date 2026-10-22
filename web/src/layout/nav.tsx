@@ -1,24 +1,10 @@
-import type { FC } from 'react'
 import type { TipoOperacao } from '../types/api'
-import {
-  IconGrid,
-  IconFile,
-  IconList,
-  IconCalendar,
-  IconUsers,
-  IconUserKey,
-  IconBox,
-  IconWrench,
-  IconChart,
-  IconSettings,
-  type IconProps,
-} from '../components/icons'
+import type { IconName } from '../components/Icon'
 
 export type NavItem = {
   to: string
   label: string
-  icon: FC<IconProps>
-  count?: number
+  icon: IconName
 }
 
 export type NavGroup = {
@@ -26,31 +12,34 @@ export type NavGroup = {
   items: NavItem[]
 }
 
-/** Estrutura de navegação do painel do Dono (portada do protótipo). */
+/** Estrutura de navegação do painel do Dono (a mesma dos templates). */
 export const NAV: NavGroup[] = [
   {
     label: 'Operação',
     items: [
-      { to: '/', label: 'Visão geral', icon: IconGrid },
-      { to: '/atendimentos', label: 'Atendimentos', icon: IconFile },
-      { to: '/orcamentos', label: 'Orçamentos', icon: IconList },
-      { to: '/agenda', label: 'Agenda', icon: IconCalendar },
+      { to: '/', label: 'Visão geral', icon: 'pie' },
+      { to: '/atendimentos', label: 'Atendimentos', icon: 'wrench' },
+      { to: '/orcamentos', label: 'Orçamentos', icon: 'file' },
+      { to: '/agenda', label: 'Agenda', icon: 'calendar' },
     ],
   },
   {
     label: 'Cadastros',
     items: [
-      { to: '/clientes', label: 'Clientes', icon: IconUsers },
-      { to: '/produtos', label: 'Produtos', icon: IconBox },
-      { to: '/servicos', label: 'Serviços', icon: IconWrench },
-      { to: '/usuarios', label: 'Usuários', icon: IconUserKey },
+      { to: '/clientes', label: 'Clientes', icon: 'users' },
+      { to: '/produtos', label: 'Produtos', icon: 'box' },
+      { to: '/servicos', label: 'Serviços', icon: 'hammer' },
     ],
   },
   {
     label: 'Análise',
+    items: [{ to: '/relatorios', label: 'Relatórios', icon: 'chart' }],
+  },
+  {
+    label: 'Sistema',
     items: [
-      { to: '/relatorios', label: 'Relatórios', icon: IconChart },
-      { to: '/parametrizacao', label: 'Parametrização', icon: IconSettings },
+      { to: '/usuarios', label: 'Usuários', icon: 'user' },
+      { to: '/parametrizacao', label: 'Parametrização', icon: 'sliders' },
     ],
   },
 ]
@@ -74,7 +63,7 @@ export function navVisivel(tipo: TipoOperacao | undefined): NavGroup[] {
   )
 }
 
-/** Lookup plano rota -> rótulo, para o título da topbar. */
-export const NAV_TITLES: Record<string, string> = Object.fromEntries(
-  NAV.flatMap((g) => g.items).map((i) => [i.to, i.label]),
+/** Rota -> grupo e rótulo, para a trilha do topo. */
+export const NAV_LOOKUP: Record<string, { grupo: string; label: string }> = Object.fromEntries(
+  NAV.flatMap((g) => g.items.map((i) => [i.to, { grupo: g.label, label: i.label }])),
 )

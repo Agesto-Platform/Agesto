@@ -8,23 +8,35 @@ import {
   useRemoveItemServico,
 } from './queries'
 import { StatusAtendimentoPill } from './status'
-import { Button, Money, NumberField, useToast } from '../../components/ui'
-import { IconPlus, IconTrash } from '../../components/icons'
+import {
+  Button,
+  IconButton,
+  NumberField,
+  SelectField,
+  TextField,
+  brl,
+  useToast,
+} from '../../components/ui'
+import { Icon, type IconName } from '../../components/Icon'
 import { ApiError } from '../../lib/api'
+import { dataCurta, hora } from '../../lib/format'
 import { useConfiguracao } from '../parametrizacao/queries'
 import { useServicoSugeridos, useUpdateServicoSugeridos } from '../servicos/sugeridosQueries'
-import type {
-  Atendimento,
-  Produto,
-  Servico,
-  StatusAtendimento,
-  Usuario,
-} from '../../types/api'
-
-const selectCls =
-  'rounded-[10px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand'
+import type { Atendimento, Produto, Servico, StatusAtendimento, Usuario } from '../../types/api'
 
 type Tipo = 'produto' | 'servico' | 'avulso'
+
+const STATUS_OPCOES: { value: StatusAtendimento; label: string }[] = [
+  { value: 'Pendente', label: 'Pendente' },
+  { value: 'Concluido', label: 'Concluído' },
+  { value: 'Cancelado', label: 'Cancelado' },
+]
+
+const TIPO: Record<Tipo, { icon: IconName; label: string }> = {
+  servico: { icon: 'hammer', label: 'Serviço' },
+  produto: { icon: 'box', label: 'Material' },
+  avulso: { icon: 'pencil', label: 'Avulso' },
+}
 
 function toLocalInput(iso: string | null): string {
   if (!iso) return ''
@@ -35,7 +47,6 @@ function toLocalInput(iso: string | null): string {
 
 export function AtendimentoDetail({
   atendimento,
-  clienteNome,
   responsaveis,
   produtos,
   servicos,
@@ -44,7 +55,6 @@ export function AtendimentoDetail({
   busy,
 }: {
   atendimento: Atendimento
-  clienteNome: string
   responsaveis: Usuario[]
   produtos: Produto[]
   servicos: Servico[]
@@ -66,9 +76,10 @@ export function AtendimentoDetail({
 
   const [status, setStatus] = useState<StatusAtendimento>(at.status)
   const [agenda, setAgenda] = useState(toLocalInput(at.dataAgendada))
-  const [responsavel, setResponsavel] = useState(at.usuarioId)
+  const [responsavel, setResponsavel] = useState(String(at.usuarioId))
   // O responsável atual pode estar desativado: continua na lista para não sumir do select.
   const opcoesResponsavel = responsaveis.filter((u) => u.ativo || u.id === at.usuarioId)
+  const responsavelAtual = responsaveis.find((u) => u.id === at.usuarioId)?.nome ?? '—'
 
   const [tipo, setTipo] = useState<Tipo>('produto')
   const [refId, setRefId] = useState('')
@@ -189,296 +200,237 @@ export function AtendimentoDetail({
     })
   }
 
+  const removido = { onSuccess: () => toast.success('Item removido.'), onError: () => toast.error('Falha ao remover.') }
   const itensLoading = prods.isLoading || servs.isLoading
-  const vazio =
-    !itensLoading && (prods.data?.length ?? 0) === 0 && (servs.data?.length ?? 0) === 0
+  const itens: ItemLinha[] = [
+    ...(servs.data ?? []).map((it) => ({
+      key: `s${it.id}`,
+      tipo: 'servico' as const,
+      label: servicos.find((s) => s.id === it.servicoId)?.descricao ?? 'Serviço',
+      qtd: it.quantidade,
+      preco: it.precoUnitario,
+      subtotal: it.subtotal,
+      custo: null,
+      onRemove: () => rmServ.mutate(it.id, removido),
+    })),
+    ...(prods.data ?? []).map((it) => ({
+      key: `p${it.id}`,
+      tipo: (it.produtoId != null ? 'produto' : 'avulso') as Tipo,
+      label:
+        it.produtoId != null
+          ? produtos.find((p) => p.id === it.produtoId)?.nome ?? 'Produto'
+          : it.descricao ?? 'Item avulso',
+      qtd: it.quantidade,
+      preco: it.precoUnitario,
+      subtotal: it.subtotal,
+      custo: it.custo,
+      onRemove: () => rmProd.mutate(it.id, removido),
+    })),
+  ]
 
   return (
-    <div className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-[15px] font-semibold text-ink">{clienteNome}</div>
-            <div className="text-[12.5px] text-ink-3">
-              Atendimento #{at.id} ·{' '}
-              {new Date(at.dataRegistro).toLocaleDateString('pt-BR', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })}
+    <>
+      <div className="form">
+        <dl className="kv">
+          <dt>Status</dt>
+          <dd>
+            <StatusAtendimentoPill status={at.status} />
+          </dd>
+          <dt>Agendado para</dt>
+          <dd>{at.dataAgendada ? `${dataCurta(at.dataAgendada)} · ${hora(at.dataAgendada)}` : 'sem agendamento'}</dd>
+          <dt>Responsável</dt>
+          <dd>{responsavelAtual}</dd>
+          <dt>Total</dt>
+          <dd style={{ fontWeight: 600 }}>{brl(at.valorTotal, true)}</dd>
+          <dt>Custo</dt>
+          <dd>{at.custoTotal > 0 ? brl(at.custoTotal, true) : <span title="Custo ainda não preenchido">—</span>}</dd>
+          <dt>Margem</dt>
+          <dd style={{ fontWeight: 600 }}>
+            {at.custoTotal > 0 ? brl(at.margem, true) : <span className="hint">preencha o custo</span>}
+          </dd>
+        </dl>
+
+        <span className="section-label">Itens</span>
+        {itensLoading && <p className="hint" style={{ margin: 0 }}>Carregando itens…</p>}
+        {!itensLoading && itens.length === 0 && <p className="hint" style={{ margin: 0 }}>Nenhum item ainda.</p>}
+        {itens.length > 0 && (
+          <div className="table-wrap">
+            <table className="t">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th className="n">Qtd.</th>
+                  <th className="n">Subtotal</th>
+                  <th>
+                    <span className="sr-only">Ações</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {itens.map((it) => (
+                  <tr key={it.key}>
+                    <td className="wrap">
+                      <div className="cell">
+                        <span className="cell-ic">
+                          <Icon name={TIPO[it.tipo].icon} />
+                        </span>
+                        <span>
+                          <span className="strong">{it.label}</span>
+                          <span className="sub">
+                            {TIPO[it.tipo].label} · {brl(it.preco, true)} un.
+                            {it.custo != null && it.custo > 0 && ` · custo ${brl(it.custo, true)}`}
+                          </span>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="n">{it.qtd}</td>
+                    <td className="n strong">{brl(it.subtotal, true)}</td>
+                    <td className="n">
+                      <IconButton aria-label={`Remover ${it.label}`} style={{ width: 28, height: 28 }} onClick={it.onRemove}>
+                        <Icon name="x" />
+                      </IconButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <span className="section-label">Adicionar item</span>
+        <SelectField
+          label="Tipo"
+          value={tipo}
+          onChange={changeTipo}
+          options={[
+            { value: 'produto', label: 'Produto' + (controlaEstoque ? ' (baixa estoque)' : '') },
+            ...(permiteServico ? [{ value: 'servico' as const, label: 'Serviço' }] : []),
+            { value: 'avulso', label: 'Item avulso' },
+          ]}
+        />
+        {tipo === 'produto' && (
+          <SelectField
+            label="Produto"
+            value={refId}
+            onChange={pickProduto}
+            options={[
+              { value: '', label: 'Escolha o produto…' },
+              ...produtos.map((p) => ({
+                value: String(p.id),
+                label: p.nome + (controlaEstoque ? ` (${p.quantidadeEstoque} em estoque)` : ''),
+              })),
+            ]}
+          />
+        )}
+        {tipo === 'servico' && (
+          <SelectField
+            label="Serviço"
+            value={refId}
+            onChange={pickServico}
+            options={[
+              { value: '', label: 'Escolha o serviço…' },
+              ...servicos.map((s) => ({ value: String(s.id), label: s.descricao })),
+            ]}
+          />
+        )}
+        {tipo === 'servico' && servicoSelId > 0 && (sugeridos.data?.length ?? 0) > 0 && (
+          <div className="field">
+            <span className="label">Materiais sugeridos ({sugeridos.data!.length})</span>
+            <span className="hint">
+              {sugeridos.data!.map((s) => `${s.produtoNome} ×${s.quantidadePadrao}`).join(' · ')}
+            </span>
+            <div>
+              <Button size="sm" icon="plus" onClick={addSugeridos} disabled={addProd.isPending}>
+                Adicionar sugeridos
+              </Button>
             </div>
           </div>
-          <StatusAtendimentoPill status={at.status} />
+        )}
+        {tipo === 'avulso' && (
+          <TextField label="Descrição" value={descricao} onChange={setDescricao} placeholder="Descrição do item" maxLength={200} />
+        )}
+        <div className="form-row">
+          <NumberField label="Qtd." step={1} value={qtd} onChange={setQtd} />
+          <NumberField label="Preço unit." prefix="R$" step={0.01} value={preco} onChange={setPreco} />
         </div>
-
-        {/* Resumo financeiro */}
-        <div className="grid grid-cols-3 gap-2 rounded-sm border border-line-2 p-3">
-          <div>
-            <div className="text-[10.5px] uppercase tracking-wide text-ink-4">Valor</div>
-            <Money value={at.valorTotal} cents className="text-[15px] text-ink" />
-          </div>
-          <div>
-            <div className="text-[10.5px] uppercase tracking-wide text-ink-4">Custo</div>
-            <Money value={at.custoTotal} cents className="text-[15px] text-ink-2" />
-          </div>
-          <div>
-            <div className="text-[10.5px] uppercase tracking-wide text-ink-4">Margem</div>
-            <Money value={at.margem} cents className="text-[15px] font-semibold text-brand-ink" />
-          </div>
-        </div>
-
-        {/* Itens */}
-        <div className="flex flex-col gap-2">
-          <span className="text-[12.5px] font-semibold text-ink-2">Itens</span>
-          {itensLoading && <p className="text-[12.5px] text-ink-3">Carregando itens…</p>}
-          {vazio && <p className="text-[12.5px] text-ink-3">Nenhum item ainda.</p>}
-
-          {servs.data?.map((it) => (
-            <ItemRow
-              key={`s${it.id}`}
-              label={servicos.find((s) => s.id === it.servicoId)?.descricao ?? 'Serviço'}
-              tag="serviço"
-              qtd={it.quantidade}
-              preco={it.precoUnitario}
-              subtotal={it.subtotal}
-              onRemove={() =>
-                rmServ.mutate(it.id, {
-                  onSuccess: () => toast.success('Item removido.'),
-                  onError: () => toast.error('Falha ao remover.'),
-                })
-              }
-            />
-          ))}
-          {prods.data?.map((it) => (
-            <ItemRow
-              key={`p${it.id}`}
-              label={
-                it.produtoId != null
-                  ? produtos.find((p) => p.id === it.produtoId)?.nome ?? 'Produto'
-                  : it.descricao ?? 'Item avulso'
-              }
-              tag={it.produtoId != null ? 'produto' : 'avulso'}
-              qtd={it.quantidade}
-              preco={it.precoUnitario}
-              subtotal={it.subtotal}
-              custo={it.custo}
-              onRemove={() =>
-                rmProd.mutate(it.id, {
-                  onSuccess: () => toast.success('Item removido.'),
-                  onError: () => toast.error('Falha ao remover.'),
-                })
-              }
-            />
-          ))}
-        </div>
-
-        {/* Adicionar item */}
-        <div className="flex flex-col gap-3 rounded-sm border border-dashed border-line bg-surface-2 p-3">
-          <select value={tipo} onChange={(e) => changeTipo(e.target.value as Tipo)} className={selectCls}>
-            <option value="produto">Produto{controlaEstoque ? ' (baixa estoque)' : ''}</option>
-            {permiteServico && <option value="servico">Serviço</option>}
-            <option value="avulso">Item avulso</option>
-          </select>
-
-          {tipo === 'produto' && (
-            <select value={refId} onChange={(e) => pickProduto(e.target.value)} className={selectCls}>
-              <option value="">Escolha o produto…</option>
-              {produtos.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nome}
-                  {controlaEstoque ? ` (${p.quantidadeEstoque} em estoque)` : ''}
-                </option>
-              ))}
-            </select>
-          )}
-          {tipo === 'servico' && (
-            <select value={refId} onChange={(e) => pickServico(e.target.value)} className={selectCls}>
-              <option value="">Escolha o serviço…</option>
-              {servicos.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.descricao}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {tipo === 'servico' && servicoSelId > 0 && (sugeridos.data?.length ?? 0) > 0 && (
-            <div className="flex flex-col gap-2 rounded-sm border border-brand/30 bg-brand-soft px-3 py-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-brand-ink">
-                  Materiais sugeridos ({sugeridos.data!.length})
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={addSugeridos}
-                  disabled={addProd.isPending}
-                  className="!py-1 !text-[12px]"
-                >
-                  <IconPlus className="h-3.5 w-3.5" /> Adicionar
-                </Button>
-              </div>
-              <span className="text-[11.5px] text-ink-3">
-                {sugeridos.data!.map((s) => `${s.produtoNome} ×${s.quantidadePadrao}`).join(' · ')}
-              </span>
-            </div>
-          )}
-          {tipo === 'avulso' && (
-            <input
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Descrição do item"
-              maxLength={200}
-              className={selectCls}
-            />
-          )}
-
-          <div className="grid grid-cols-2 gap-3">
-            <NumberField label="Qtd." step={1} value={qtd} onChange={setQtd} />
-            <NumberField label="Preço unit." prefix="R$" step={0.01} value={preco} onChange={setPreco} />
-          </div>
-          {tipo !== 'servico' && (
-            <NumberField label="Custo da linha (opcional)" prefix="R$" step={0.01} value={custo} onChange={setCusto} />
-          )}
-
-          {draftError && <span className="text-[12px] text-bad">{draftError}</span>}
-
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={addItem}
-            disabled={addProd.isPending || addServ.isPending}
-            className="self-start"
-          >
-            <IconPlus className="h-4 w-4" /> Adicionar item
+        {tipo !== 'servico' && (
+          <NumberField label="Custo da linha (opcional)" prefix="R$" step={0.01} value={custo} onChange={setCusto} />
+        )}
+        {draftError && (
+          <span className="field-err" role="alert">
+            {draftError}
+          </span>
+        )}
+        <div>
+          <Button icon="plus" onClick={addItem} disabled={addProd.isPending || addServ.isPending}>
+            Adicionar item
           </Button>
         </div>
 
         {/* Salvar materiais como sugeridos de um serviço (kit-04) */}
         {materiaisDoAtendimento.length > 0 && servicosDoAtendimento.length > 0 && (
-          <div className="flex flex-col gap-2 rounded-sm border border-line bg-surface-2 px-3 py-3">
-            <span className="text-[12px] font-semibold text-ink-2">Salvar materiais como sugeridos</span>
-            <p className="text-[11.5px] text-ink-4">
+          <>
+            <span className="section-label">Salvar materiais como sugeridos</span>
+            <p className="hint" style={{ margin: 0 }}>
               Guarda os {materiaisDoAtendimento.length} material(is) deste atendimento como kit de um serviço
               (substitui o kit atual dele).
             </p>
-            <div className="flex items-center gap-2">
-              <select
-                value={alvo}
-                onChange={(e) => setAlvoServicoId(Number(e.target.value))}
-                className={`${selectCls} flex-1`}
-              >
-                {servicosDoAtendimento.map((sid) => (
-                  <option key={sid} value={sid}>
-                    {servicos.find((s) => s.id === sid)?.descricao ?? `Serviço #${sid}`}
-                  </option>
-                ))}
-              </select>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={salvarComoSugeridos}
-                disabled={salvarSugeridos.isPending}
-              >
+            <SelectField
+              label="Serviço"
+              value={String(alvo)}
+              onChange={(v) => setAlvoServicoId(Number(v))}
+              options={servicosDoAtendimento.map((sid) => ({
+                value: String(sid),
+                label: servicos.find((s) => s.id === sid)?.descricao ?? `Serviço #${sid}`,
+              }))}
+            />
+            <div>
+              <Button onClick={salvarComoSugeridos} disabled={salvarSugeridos.isPending}>
                 {salvarSugeridos.isPending ? 'Salvando…' : 'Salvar kit'}
               </Button>
             </div>
-          </div>
+          </>
         )}
 
-        {/* Status / reagendamento */}
-        <div className="flex flex-col gap-3 border-t border-line pt-4">
-          <span className="text-[12.5px] font-semibold text-ink-2">Responsável, status e agenda</span>
-          <select
-            value={responsavel}
-            onChange={(e) => setResponsavel(Number(e.target.value))}
-            aria-label="Responsável"
-            className={selectCls}
-          >
-            {opcoesResponsavel.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
-                {u.perfil === 'Dono' ? ' (dono)' : ''}
-                {u.ativo ? '' : ' (desativado)'}
-              </option>
-            ))}
-          </select>
-          <div className="grid grid-cols-2 gap-3">
-            <select value={status} onChange={(e) => setStatus(e.target.value as StatusAtendimento)} className={selectCls}>
-              <option value="Pendente">Pendente</option>
-              <option value="Concluido">Concluído</option>
-              <option value="Cancelado">Cancelado</option>
-            </select>
-            <input type="datetime-local" value={agenda} onChange={(e) => setAgenda(e.target.value)} className={selectCls} />
-          </div>
-          <Button
-            type="button"
-            onClick={() => onUpdate(status, agenda ? new Date(agenda).toISOString() : null, responsavel)}
-            disabled={busy.update}
-            className="self-start"
-          >
-            {busy.update ? 'Salvando…' : 'Salvar alterações'}
-          </Button>
+        <span className="section-label">Responsável, status e agenda</span>
+        <SelectField
+          label="Responsável"
+          value={responsavel}
+          onChange={setResponsavel}
+          options={opcoesResponsavel.map((u) => ({
+            value: String(u.id),
+            label: u.nome + (u.perfil === 'Dono' ? ' (dono)' : '') + (u.ativo ? '' : ' (desativado)'),
+          }))}
+        />
+        <div className="form-row">
+          <SelectField label="Status" value={status} onChange={setStatus} options={STATUS_OPCOES} />
+          <TextField label="Agendado para" type="datetime-local" value={agenda} onChange={setAgenda} />
         </div>
       </div>
 
-      <div className="flex justify-between border-t border-line px-5 py-4">
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={busy.delete}
-          className="inline-flex items-center gap-2 rounded-[10px] px-3 py-2 text-[13px] font-semibold text-bad transition hover:bg-bad-soft disabled:opacity-60"
-        >
+      <div className="form-actions">
+        <Button variant="ghost" onClick={onDelete} disabled={busy.delete} style={{ marginRight: 'auto', color: 'var(--neg-ink)' }}>
           {busy.delete ? 'Excluindo…' : 'Excluir atendimento'}
-        </button>
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => onUpdate(status, agenda ? new Date(agenda).toISOString() : null, Number(responsavel))}
+          disabled={busy.update}
+        >
+          {busy.update ? 'Salvando…' : 'Salvar alterações'}
+        </Button>
       </div>
-    </div>
+    </>
   )
 }
 
-function ItemRow({
-  label,
-  tag,
-  qtd,
-  preco,
-  subtotal,
-  custo,
-  onRemove,
-}: {
+interface ItemLinha {
+  key: string
+  tipo: Tipo
   label: string
-  tag: string
   qtd: number
   preco: number
   subtotal: number
-  custo?: number | null
+  custo: number | null
   onRemove: () => void
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-sm border border-line-2 px-3 py-2">
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-medium text-ink">
-          {label}{' '}
-          <span className="text-[10.5px] uppercase tracking-wide text-ink-4">{tag}</span>
-        </div>
-        <div className="text-[11.5px] text-ink-3">
-          {qtd} × <Money value={preco} cents />
-          {custo != null && custo > 0 && (
-            <>
-              {' · custo '}
-              <Money value={custo} cents />
-            </>
-          )}
-        </div>
-      </div>
-      <Money value={subtotal} cents className="text-[13px] font-semibold" />
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label="Remover item"
-        className="grid h-7 w-7 flex-none place-items-center rounded-[8px] text-ink-4 transition hover:bg-surface-2 hover:text-bad"
-      >
-        <IconTrash className="h-[15px] w-[15px]" />
-      </button>
-    </div>
-  )
 }

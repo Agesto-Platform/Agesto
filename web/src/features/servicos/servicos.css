@@ -1,0 +1,8 @@
+/* Estilos próprios da tela de Serviços (bloco <style> de servicos.html). */
+@layer components {
+  .svc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 14px; }
+  .svc-stats div { padding: 12px 16px; border-left: 1px solid var(--line); }
+  .svc-stats div:first-child { border-left: 0; }
+  .svc-stats dt { font-size: 12px; color: var(--ink-3); }
+  .svc-stats dd { margin: 4px 0 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+}

@@ -1,40 +1,56 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 
+/** Cartão do painel (`.card`). O conteúdo vai em <CardHead> e <CardBody>. */
 export function Card({
   className = '',
   children,
+  label,
 }: {
   className?: string
   children: ReactNode
+  /** Rótulo acessível quando o cartão não tem título visível. */
+  label?: string
 }) {
   return (
-    <div
-      className={`rounded-card border border-line bg-surface p-[18px] ${className}`}
-    >
+    <section className={`card${className ? ' ' + className : ''}`} aria-label={label}>
       {children}
-    </div>
+    </section>
   )
 }
 
-/** Cabeçalho de card: título, subtítulo opcional e ação (link) opcional. */
+/** Cabeçalho do cartão: título, subtítulo opcional e ações à direita. */
 export function CardHead({
   title,
   subtitle,
   action,
 }: {
-  title: string
-  subtitle?: string
+  title: ReactNode
+  subtitle?: ReactNode
   action?: ReactNode
 }) {
   return (
-    <div className="mb-[14px] flex items-start justify-between">
+    <div className="card-head">
       <div>
-        <div className="text-[14.5px] font-semibold text-ink">{title}</div>
-        {subtitle && (
-          <div className="mt-0.5 text-[12px] text-ink-3">{subtitle}</div>
-        )}
+        <h2 className="card-title">{title}</h2>
+        {subtitle && <p className="card-sub">{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="end">{action}</div>}
+    </div>
+  )
+}
+
+export function CardBody({
+  className = '',
+  style,
+  children,
+}: {
+  className?: string
+  style?: CSSProperties
+  children: ReactNode
+}) {
+  return (
+    <div className={`card-body${className ? ' ' + className : ''}`} style={style}>
+      {children}
     </div>
   )
 }

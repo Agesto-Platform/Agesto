@@ -1,71 +1,80 @@
 import type { ReactNode } from 'react'
+import { Empty } from './Empty'
+import type { IconName } from '../Icon'
 
 export interface Column<T> {
-  header: string
+  header: ReactNode
   cell: (row: T) => ReactNode
-  align?: 'left' | 'right' | 'center'
+  /** 'right' = coluna numérica (alinha à direita). */
+  align?: 'left' | 'right'
+  /** Classes da célula: 'wrap' (quebra linha), 'strong', 'muted'... */
   className?: string
 }
 
-/** Tabela genérica dirigida por config de colunas, com loading e vazio. */
+/** Tabela do painel (`table.t`) dirigida por colunas, com carregando e vazio. */
 export function DataTable<T>({
   columns,
   rows,
   getKey,
   loading = false,
-  emptyLabel = 'Nada por aqui ainda.',
+  empty = { title: 'Nada por aqui ainda.' },
+  onRowClick,
+  isSelected,
 }: {
   columns: Column<T>[]
   rows: T[] | undefined
   getKey: (row: T) => string | number
   loading?: boolean
-  emptyLabel?: string
+  empty?: { title: string; text?: ReactNode; icon?: IconName }
+  /** Linha inteira clicável (abre o detalhe). */
+  onRowClick?: (row: T) => void
+  isSelected?: (row: T) => boolean
 }) {
-  const alignClass = (a?: 'left' | 'right' | 'center') =>
-    a === 'right' ? 'text-right' : a === 'center' ? 'text-center' : 'text-left'
+  const cls = (c: Column<T>) => [c.align === 'right' && 'n', c.className].filter(Boolean).join(' ') || undefined
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-[13px]">
-        <thead>
-          <tr className="border-b border-line-2 text-[10.5px] uppercase tracking-[0.06em] text-ink-4">
-            {columns.map((c, i) => (
-              <th key={i} className={`pb-2.5 font-bold ${alignClass(c.align)}`}>
-                {c.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {loading && (
+    <>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
             <tr>
-              <td colSpan={columns.length} className="py-6 text-center text-ink-3">
-                Carregando…
-              </td>
+              {columns.map((c, i) => (
+                <th key={i} className={c.align === 'right' ? 'n' : undefined}>
+                  {c.header}
+                </th>
+              ))}
             </tr>
-          )}
-          {!loading && rows && rows.length === 0 && (
-            <tr>
-              <td colSpan={columns.length} className="py-8 text-center text-ink-3">
-                {emptyLabel}
-              </td>
-            </tr>
-          )}
-          {!loading &&
-            rows?.map((row) => (
-              <tr key={getKey(row)} className="border-b border-line-2 last:border-0">
-                {columns.map((c, i) => (
-                  <td
-                    key={i}
-                    className={`py-[11px] ${alignClass(c.align)} ${c.className ?? ''}`}
-                  >
-                    {c.cell(row)}
-                  </td>
-                ))}
+          </thead>
+          <tbody>
+            {loading && (
+              <tr>
+                <td colSpan={columns.length} className="muted" style={{ textAlign: 'center', padding: '28px 16px' }}>
+                  Carregando…
+                </td>
               </tr>
-            ))}
-        </tbody>
-      </table>
-    </div>
+            )}
+            {!loading &&
+              rows?.map((row) => (
+                <tr
+                  key={getKey(row)}
+                  className={[onRowClick && 'row-click', isSelected?.(row) && 'is-selected'].filter(Boolean).join(' ') || undefined}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
+                  {columns.map((c, i) => (
+                    <td key={i} className={cls(c)}>
+                      {c.cell(row)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+      {!loading && rows && rows.length === 0 && (
+        <Empty icon={empty.icon} title={empty.title}>
+          {empty.text}
+        </Empty>
+      )}
+    </>
   )
 }

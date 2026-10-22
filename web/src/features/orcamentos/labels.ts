@@ -14,3 +14,8 @@ export function itemLabel(
     )
   return item.descricao ?? 'Item avulso'
 }
+
+/** Número do orçamento como no template: "#0001". */
+export function numero(id: number): string {
+  return '#' + String(id).padStart(4, '0')
+}

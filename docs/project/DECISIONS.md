@@ -151,7 +151,7 @@ public enum StatusAtendimento { Pendente, Concluido, Cancelado }
 
 ## DEC-10 — AuthService acessa DbContext diretamente (sem Repository)
 
-**Status:** Débito técnico — baixa prioridade
+**Status:** Débito técnico — baixa prioridade. `IUsuarioRepository` já existe (usado pelo `AtendimentoService`, DEC-35), mas o `AuthService` ainda acessa o `AppDbContext` direto (conferido em 21/10/2026)
 
 **Decisão temporária:** `AuthService` é o único Service que acessa `AppDbContext` diretamente, sem passar por um Repository.
 
@@ -179,7 +179,7 @@ public enum StatusAtendimento { Pendente, Concluido, Cancelado }
 
 ## DEC-12 — GitHub Education para branch protection
 
-**Status:** Pendente — ação do Tech Lead
+**Status:** ⚫ Obsoleto — superado pela DEC-29: o repositório é público na organização `Agesto-Platform` e o ruleset `Protected branches` está ativo em `develop` e `main` (conferido em 21/10/2026)
 
 **Situação:** Branch protection rules requerem plano pago para repositórios privados. Atualmente commits diretos em `develop` são possíveis sem PR.
 
@@ -249,7 +249,7 @@ public enum StatusAtendimento { Pendente, Concluido, Cancelado }
 
 ## DEC-17 — Agenda e Rota como prioridade; Cliente ganha Endereço
 
-**Status:** 🟡 Parcialmente resolvido — endereço e agenda implementados (commits `da828bc`, `7007361`); lat/lng e roteirização continuam pendentes
+**Status:** 🟡 Parcialmente resolvido — endereço e agenda implementados (commits `da828bc`, `7007361`); lat/lng e rota do dia entregues depois pelas DEC-37 e DEC-38; falta "Otimizar dia" (fase 2)
 
 **Decisão:** Agendamento de atendimentos e roteirização de campo passam a ser prioridades do MVP do prestador. A entidade `Cliente` precisa ganhar o campo `Endereco` (hoje só tem Nome, Telefone, CPF), com geolocalização (lat/lng) prevista para uma etapa futura.
 
@@ -443,13 +443,13 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 
 **Resolução aplicada:** 12 tasks incrementais (web-01 a web-12), todas com build+lint verdes, entregando scaffold, app shell, cliente de API + mock, autenticação JWT, dashboard "Visão geral", fundação de CRUD + Clientes, Produtos, Serviços, Agenda, Orçamentos, Atendimentos e Parametrização.
 
-**Atualização posterior:** Relatórios deixou de ser placeholder na web-13 e a suíte foi ampliada na web-14 e evoluções seguintes. O Módulo Dono possui MVP funcional contra MSW; a troca para API real aguarda a infraestrutura.
+**Atualização posterior:** Relatórios deixou de ser placeholder na web-13 e a suíte foi ampliada na web-14 e evoluções seguintes. O Módulo Dono possui MVP funcional e roda em produção contra a API real desde a DEC-32; o MSW fica para desenvolvimento local.
 
 ---
 
 ## DEC-26 — Stack e arquitetura do Mobile (App do Agente)
 
-**Status:** ✅ Resolvido — implementado (mob-01 a mob-07, integrado na `main` em 11/08/2026)
+**Status:** ✅ Resolvido — implementado (mob-01 a mob-07, integrado na `main` em 11/08/2026). Os dois deltas de backend abaixo: o mapeamento uuid→id foi resolvido pela DEC-33; a agenda na Carga segue pendente
 
 **Decisão:** O app mobile do agente de campo (`mobile/` no monorepo `Agesto-Platform/Agesto`) usa **React Native + TypeScript via Expo (prebuild)**, com **Expo Router** para navegação, tokens de design portados do protótipo aprovado (azul `#243FA6` + verde `#12B886`, tema claro), e uma tab bar (Início/Agenda/Atendimentos/Clientes/Mais). Estilização via **theme + StyleSheet** — não NativeWind. Persistência offline via **`expo-sqlite`** no device, atrás de uma interface própria (`LocalDb`), com adapter em memória para Web/testes. Cliente de API com envelope padrão + tratamento de 401, e uma **camada de mock em código** (`config.useMocks`), análoga ao `VITE_USE_MOCKS` do web (DEC-25). Login JWT com token guardado via `expo-secure-store` (device) ou `localStorage` (web), split por plataforma.
 

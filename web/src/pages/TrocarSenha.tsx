@@ -1,13 +1,56 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-import { Button } from '../components/ui'
+import { Icon } from '../components/Icon'
 import { ApiError } from '../lib/api'
+import './login.css'
 
-const inputCls =
-  'rounded-[10px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand'
+/** Campo de senha no padrão do login (`.lfield` + `.ibox` com cadeado). */
+function SenhaField({
+  id,
+  label,
+  value,
+  onChange,
+  autoComplete,
+  autoFocus = false,
+  hint,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (v: string) => void
+  autoComplete: string
+  autoFocus?: boolean
+  hint?: string
+}) {
+  return (
+    <div className="lfield">
+      <label htmlFor={id}>{label}</label>
+      <div className="ibox">
+        <span>
+          <Icon name="lock" />
+        </span>
+        <input
+          className="input"
+          id={id}
+          type="password"
+          autoComplete={autoComplete}
+          autoFocus={autoFocus}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          aria-describedby={hint ? id + '-hint' : undefined}
+        />
+      </div>
+      {hint && (
+        <span className="hint" id={id + '-hint'}>
+          {hint}
+        </span>
+      )}
+    </div>
+  )
+}
 
-/** Troca de senha: obrigatória no primeiro acesso com senha provisória. */
+/** Troca de senha: obrigatória no primeiro acesso com senha provisória. Mesmo cartão do login. */
 export function TrocarSenha() {
   const { trocarSenha, deveTrocarSenha, logout } = useAuth()
   const navigate = useNavigate()
@@ -20,6 +63,7 @@ export function TrocarSenha() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (loading) return
     if (nova.length < 8) return setErro('A nova senha deve ter no mínimo 8 caracteres.')
     if (nova !== confirma) return setErro('A confirmação não confere com a nova senha.')
     if (nova === atual) return setErro('A nova senha deve ser diferente da atual.')
@@ -36,54 +80,70 @@ export function TrocarSenha() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-bg p-6">
-      <form
-        onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-card border border-line bg-surface p-6 shadow-card"
-      >
-        <div>
-          <h1 className="text-[17px] font-semibold text-ink">
-            {deveTrocarSenha ? 'Crie sua senha' : 'Alterar senha'}
+    <div className="login-page" style={{ overflowY: 'auto' }}>
+      <header className="login-top">
+        <span className="logo">A</span>Agesto
+      </header>
+      <main className="login" id="page">
+        <section className="login-card" aria-labelledby="ttl">
+          <h1 className="login-title" id="ttl">
+            <span>{deveTrocarSenha ? 'Crie sua senha' : 'Alterar senha'}</span>
+            <span className="muted">
+              {deveTrocarSenha
+                ? 'A senha provisória vale só para o primeiro acesso.'
+                : 'Informe a senha atual e escolha a nova.'}
+            </span>
           </h1>
-          <p className="mt-0.5 text-[12.5px] text-ink-3">
-            {deveTrocarSenha
-              ? 'Você entrou com uma senha provisória. Defina uma senha só sua para continuar.'
-              : 'Informe a senha atual e escolha a nova.'}
+
+          <form className="lform" onSubmit={handleSubmit} noValidate>
+            <SenhaField
+              id="senha-atual"
+              label={deveTrocarSenha ? 'Senha provisória' : 'Senha atual'}
+              value={atual}
+              onChange={setAtual}
+              autoComplete="current-password"
+              autoFocus
+            />
+            <SenhaField
+              id="senha-nova"
+              label="Nova senha"
+              value={nova}
+              onChange={setNova}
+              autoComplete="new-password"
+              hint="No mínimo 8 caracteres."
+            />
+            <SenhaField
+              id="senha-confirma"
+              label="Confirme a nova senha"
+              value={confirma}
+              onChange={setConfirma}
+              autoComplete="new-password"
+            />
+            {erro && (
+              <p className="login-error" role="alert">
+                {erro}
+              </p>
+            )}
+            <button className="btn primary go" type="submit" aria-busy={loading}>
+              {loading ? 'Salvando…' : 'Salvar nova senha'}
+            </button>
+          </form>
+
+          <p className="legal">
+            {deveTrocarSenha ? (
+              <button className="btn ghost sm" type="button" onClick={logout}>
+                <Icon name="logout" />
+                Sair
+              </button>
+            ) : (
+              <button className="btn ghost sm" type="button" onClick={() => navigate(-1)}>
+                <Icon name="left" />
+                Voltar
+              </button>
+            )}
           </p>
-        </div>
-
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">
-            {deveTrocarSenha ? 'Senha provisória' : 'Senha atual'}
-          </span>
-          <input type="password" autoComplete="current-password" value={atual} onChange={(e) => setAtual(e.target.value)} className={inputCls} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">Nova senha</span>
-          <input type="password" autoComplete="new-password" value={nova} onChange={(e) => setNova(e.target.value)} className={inputCls} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[12.5px] font-semibold text-ink-2">Confirme a nova senha</span>
-          <input type="password" autoComplete="new-password" value={confirma} onChange={(e) => setConfirma(e.target.value)} className={inputCls} />
-        </label>
-
-        {erro && (
-          <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">{erro}</p>
-        )}
-
-        <Button type="submit" disabled={loading} className="mt-1 w-full">
-          {loading ? 'Salvando…' : 'Salvar nova senha'}
-        </Button>
-        {deveTrocarSenha ? (
-          <button type="button" onClick={logout} className="text-[12.5px] font-semibold text-ink-3 hover:text-ink-2">
-            Sair
-          </button>
-        ) : (
-          <button type="button" onClick={() => navigate(-1)} className="text-[12.5px] font-semibold text-ink-3 hover:text-ink-2">
-            Voltar
-          </button>
-        )}
-      </form>
+        </section>
+      </main>
     </div>
   )
 }
