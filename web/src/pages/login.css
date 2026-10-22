@@ -20,13 +20,6 @@
   .login-title { margin: 0 0 26px; font-size: 27px; line-height: 1.18; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
   .login-title span { display: block; }
   .login-title .muted { color: var(--ink-3); font-weight: 500; }
-  .social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .social .btn { height: 42px; font-weight: 500; color: var(--ink-2); background: transparent; }
-  .social .btn:hover { background: var(--hover); color: var(--ink); }
-  .social svg { width: 17px; height: 17px; }
-  .social-note { min-height: 18px; margin: 8px 0 0; font-size: 12px; color: var(--ink-3); text-align: center; }
-  .or { display: flex; align-items: center; gap: 12px; margin: 6px 0 18px; color: var(--ink-3); font-size: 12.5px; }
-  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line-strong); }
   .lform { display: grid; gap: 16px; }
   .lfield { display: grid; gap: 7px; }
   .lfield label { font-size: 13px; font-weight: 550; color: var(--ink); }
