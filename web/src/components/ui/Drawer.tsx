@@ -1,10 +1,13 @@
 import { useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from '../Icon'
 import { useFocusTrap } from './useFocusTrap'
 
 /**
  * Painel lateral da direita (formulários e detalhes), no mesmo desenho do
  * painel do Agente. Fecha no Esc, no X e no clique fora; prende o foco.
+ * Abre no <body>: a área do conteúdo usa `container-type`, que prenderia o
+ * `position: fixed` dentro dela, por baixo do painel do Agente.
  */
 export function Drawer({
   open,
@@ -22,7 +25,7 @@ export function Drawer({
   const ref = useRef<HTMLDivElement>(null)
   useFocusTrap(ref, open, onClose)
 
-  return (
+  return createPortal(
     <div className={`drawer${open ? ' open' : ''}`} inert={!open}>
       <div className="drawer-scrim" onClick={onClose} />
       <div className="drawer-panel" role="dialog" aria-modal="true" aria-label={title} ref={ref}>
@@ -37,6 +40,7 @@ export function Drawer({
         </div>
         <div className="drawer-body">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '../../components/ui'
 import { useFocusTrap } from '../../components/ui/useFocusTrap'
 import type { UsuarioSenhaProvisoria } from '../../types/api'
@@ -29,7 +30,7 @@ export function SenhaProvisoriaDialog({
     }
   }
 
-  return (
+  return createPortal(
     <div className="dialog">
       <div className="drawer-scrim" />
       <div
@@ -64,6 +65,7 @@ export function SenhaProvisoriaDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
