@@ -37,6 +37,8 @@
   .legend i.ok { background: var(--ok-ink); } .legend i.neg { background: var(--neg-ink); }
   @container page (max-width: 900px) { .agenda { grid-template-columns: minmax(0, 1fr); } }
   @media (max-width: 720px) { .day { min-height: 64px; padding: 4px; } .ev span.nm { display: none; } .ev { padding: 2px 4px; } .legend { display: none; } }
+  /* celular: o horário não cabe no dia; fica só o ponto de cada visita, lado a lado */
+  @media (max-width: 480px) { .day { flex-direction: row; flex-wrap: wrap; align-content: flex-start; gap: 3px; } .day .n { margin-right: calc(100% - 24px); } .ev { padding: 0; border: 0; background: none; } .ev b { display: none; } }
 
   /* --- além do template: filtros (equipe/status) e a visão Mapa --- */
   .cal-head { flex-wrap: wrap; }
