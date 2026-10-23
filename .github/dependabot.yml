@@ -91,6 +91,15 @@ updates:
       - dependency-name: "react"
       - dependency-name: "react-dom"
       - dependency-name: "react-native"
+      # Modulos nativos e preset de teste tambem fixados pelo SDK. Subir sozinhos
+      # quebrou o PR #77 (jest-expo exigia react-native mais novo; worklets 0.13
+      # fora da faixa do expo-modules-core).
+      - dependency-name: "react-native-gesture-handler"
+      - dependency-name: "react-native-reanimated"
+      - dependency-name: "react-native-safe-area-context"
+      - dependency-name: "react-native-screens"
+      - dependency-name: "react-native-worklets"
+      - dependency-name: "jest-expo"
 
   # GitHub Actions usadas pelo CI
   - package-ecosystem: "github-actions"
