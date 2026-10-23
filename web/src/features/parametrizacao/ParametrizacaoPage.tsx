@@ -193,7 +193,7 @@ export function ParametrizacaoPage() {
           </div>
         </section>
 
-        <div className="savebar">
+        <div className={`savebar${dirty ? ' pendente' : ''}`}>
           <span className="hint">Alterações salvas valem na hora para toda a equipe.</span>
           <Button variant="ghost" type="reset" disabled={!dirty || update.isPending}>
             Descartar
