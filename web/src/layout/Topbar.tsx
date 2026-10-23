@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { NAV_LOOKUP } from './nav'
-import { Icon, PanelIcon } from '../components/Icon'
+import { Icon } from '../components/Icon'
 import { Seg } from '../components/ui'
 import { setMode, useTheme, type Mode } from '../theme/theme'
 
@@ -74,7 +74,7 @@ export function Topbar({
         aria-label="Mostrar ou esconder o Agente"
         data-agent-toggle
       >
-        <PanelIcon />
+        <Icon name="message" />
       </button>
     </header>
   )
