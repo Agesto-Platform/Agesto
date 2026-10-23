@@ -1,8 +1,9 @@
 import { useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from './Button'
 import { useFocusTrap } from './useFocusTrap'
 
-/** Diálogo de confirmação centralizado (usado no excluir). */
+/** Diálogo de confirmação centralizado (usado no excluir). Abre no <body>, como o Drawer. */
 export function ConfirmDialog({
   open,
   title,
@@ -25,7 +26,7 @@ export function ConfirmDialog({
   const ref = useRef<HTMLDivElement>(null)
   useFocusTrap(ref, open, onCancel)
   if (!open) return null
-  return (
+  return createPortal(
     <div className="dialog">
       <div className="drawer-scrim" onClick={onCancel} />
       <div className="dialog-box" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" ref={ref}>
@@ -40,6 +41,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
