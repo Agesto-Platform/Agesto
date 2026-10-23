@@ -1,42 +1,49 @@
 import type { ReactNode } from 'react'
-import { Delta } from './Pill'
+import { Icon, type IconName } from '../Icon'
 
-type KpiProps = {
+/**
+ * Número principal (`.card.kpi`): rótulo com ícone, valor grande e uma linha de apoio.
+ * `tone="brand"` usa o ícone na cor da marca; o padrão usa a cor de destaque.
+ */
+export function Kpi({
+  label,
+  icon,
+  tone = 'accent',
+  value,
+  foot,
+}: {
   label: ReactNode
+  icon: IconName
+  tone?: 'accent' | 'brand'
   value: ReactNode
-  icon?: ReactNode
-  delta?: { dir: 'up' | 'down'; text: string }
-  /** Destaca o KPI principal (margem) com fundo verde. */
-  hero?: boolean
-}
-
-export function Kpi({ label, value, icon, delta, hero = false }: KpiProps) {
+  foot?: ReactNode
+}) {
   return (
-    <div
-      className={
-        hero
-          ? 'flex flex-col gap-[9px] rounded-card border border-transparent bg-gradient-to-br from-good to-brand-ink p-[17px] text-white shadow-card'
-          : 'flex flex-col gap-[9px] rounded-card border border-line bg-surface p-[17px]'
-      }
-    >
-      <div className="flex items-center justify-between">
-        <span
-          className={`grid h-8 w-8 place-items-center rounded-[9px] ${
-            hero ? 'bg-white/20 text-white' : 'bg-brand-soft text-brand-ink'
-          }`}
-        >
-          {icon}
+    <section className="card kpi" aria-label={typeof label === 'string' ? label : undefined}>
+      <div className="kpi-label">
+        <span className={`ic${tone === 'brand' ? ' b' : ''}`}>
+          <Icon name={icon} />
         </span>
-        {delta && <Delta dir={delta.dir}>{delta.text}</Delta>}
-      </div>
-      <div
-        className={`money text-[29px] leading-none ${hero ? 'text-white' : 'text-ink'}`}
-      >
-        {value}
-      </div>
-      <div className={`text-[12.5px] ${hero ? 'text-white/90' : 'text-ink-3'}`}>
         {label}
       </div>
-    </div>
+      <div className="kpi-value">{value}</div>
+      {foot && <div className="kpi-foot">{foot}</div>}
+    </section>
+  )
+}
+
+/** Linha de números menores (`.stats`), separados por filetes. */
+export function Stats({ items }: { items: { label: string; value: ReactNode; unit?: ReactNode }[] }) {
+  return (
+    <dl className="stats" style={{ margin: 0 }}>
+      {items.map((s) => (
+        <div className="stat" key={s.label}>
+          <dt>{s.label}</dt>
+          <dd>
+            {s.value} {s.unit && <span>{s.unit}</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
   )
 }

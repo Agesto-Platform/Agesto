@@ -1,42 +1,70 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { Link, type LinkProps } from 'react-router-dom'
+import { Icon, type IconName } from '../Icon'
 
-type Variant = 'primary' | 'ghost'
+type Variant = 'default' | 'primary' | 'accent' | 'ghost'
+type Size = 'md' | 'sm'
 
-const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand text-white hover:brightness-95',
-  ghost: 'border border-line bg-surface text-ink-2 hover:bg-surface-2',
+function btnClass(variant: Variant, size: Size, className: string): string {
+  return ['btn', variant !== 'default' && variant, size === 'sm' && 'sm', className]
+    .filter(Boolean)
+    .join(' ')
 }
 
+/** Botão do painel (`.btn`). `icon` entra antes do texto. */
 export function Button({
-  variant = 'primary',
+  variant = 'default',
+  size = 'md',
+  icon,
   className = '',
   children,
+  type = 'button',
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant
+  size?: Size
+  icon?: IconName
   children: ReactNode
 }) {
   return (
-    <button
-      className={`inline-flex items-center justify-center gap-2 rounded-[10px] px-4 py-2 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${VARIANTS[variant]} ${className}`}
-      {...props}
-    >
+    <button type={type} className={btnClass(variant, size, className)} {...props}>
+      {icon && <Icon name={icon} />}
       {children}
     </button>
   )
 }
 
-/** Botão quadrado só-ícone, usado na topbar. */
-export function IconButton({
+/** Mesmo visual do botão, para navegar entre telas. */
+export function ButtonLink({
+  variant = 'default',
+  size = 'md',
+  icon,
   className = '',
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode }) {
+}: LinkProps & {
+  variant?: Variant
+  size?: Size
+  icon?: IconName
+  children: ReactNode
+}) {
   return (
-    <button
-      className={`grid h-[38px] w-[38px] place-items-center rounded-[10px] border border-line bg-surface text-ink-2 transition hover:bg-surface-2 ${className}`}
-      {...props}
-    >
+    <Link className={btnClass(variant, size, className)} {...props}>
+      {icon && <Icon name={icon} />}
+      {children}
+    </Link>
+  )
+}
+
+/** Botão quadrado só com ícone (`.icon-btn`). Sempre com aria-label. */
+export function IconButton({
+  className = '',
+  children,
+  type = 'button',
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement> & { children: ReactNode; 'aria-label': string }) {
+  return (
+    <button type={type} className={`icon-btn${className ? ' ' + className : ''}`} {...props}>
       {children}
     </button>
   )

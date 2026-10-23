@@ -23,7 +23,7 @@ O sistema segue uma arquitetura em camadas clássica no backend, com separação
                   ▼
         ┌──────────────────────┐
         │ PostgreSQL           │
-        │ provedor a definir   │
+        │ Supabase (DEC-32)    │
         └──────────────────────┘
 ```
 
@@ -291,7 +291,8 @@ GET  /api/sync/carga?ultimaSincronizacao={datetime}
      → Não inclui a agenda — ver delta abaixo
 
 POST /api/sync/descarga
-     → Recebe: atendimentos offline, novos clientes (com Uuid do device);
+     → Recebe: atendimentos offline, novos clientes e serviços (com Uuid do
+       device) e conclusões de atendimentos agendados (DEC-36, DEC-39);
        atendimento referencia cliente por ClienteId ou ClienteUuid
      → Retorna: ClientesSincronizados/AtendimentosSincronizados (uuids
        aceitos), ClientesMapeados (uuid → id) e Erros. Cada atendimento é
@@ -315,7 +316,7 @@ O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois
 - **Provedor:** PostgreSQL no Supabase (plano Free, região East US / N. Virginia), ver DEC-32
 - **ORM:** Entity Framework Core 10.0.13 (provider Npgsql 10.0.3), ver DEC-40
 - **Migrations:** controladas via `dotnet ef migrations`
-- **Estado:** migrations geradas no código; aplicação será validada em um banco novo
+- **Estado:** `InitialCreate` única aplicada em 08/10/2026 (DEC-31); migrations seguintes das DEC-35, DEC-36 e DEC-38 aplicadas no Supabase
 - **Secrets:** connection string em `appsettings.Development.json` (gitignored)
 
 ### DeleteBehavior
@@ -372,7 +373,8 @@ Front web do perfil Dono, em `web/` no monorepo `Agesto-Platform/Agesto`. Consom
 - **Tailwind CSS v4** — config CSS-first via `@theme` em `src/styles/tokens.css`, tokens portados do protótipo aprovado
 - **React Router** (`react-router-dom` fixado em `7.18.2` por segurança — advisory de modo RSC aceito, não usado no projeto)
 - **TanStack Query** — todo dado de servidor (fetch, cache, invalidação)
-- **MSW (Mock Service Worker)** — mock stateful da API enquanto o banco/API real não estão no ar; liga/desliga via `VITE_USE_MOCKS`
+- **MSW (Mock Service Worker)** — mock stateful da API para desenvolvimento local sem backend; liga/desliga via `VITE_USE_MOCKS` (`false` em produção)
+- **Leaflet** — mapa da agenda, carregado sob demanda (DEC-38)
 - **Recharts** — gráficos do dashboard
 - **oxlint** — lint
 
@@ -396,7 +398,7 @@ web/src/
 - **Costura mock↔API real:** `VITE_USE_MOCKS=true|false` liga/desliga o MSW; desligar aponta para a API real via `VITE_API_BASE_URL`, sem mudar código de feature.
 - **Delta do Atendimento resolvido no front:** `GET /api/atendimento` devolve o `AtendimentoResponse` real (só `clienteId`, sem nome); o nome do cliente é resolvido no front juntando com a lista de clientes já carregada. Encerrou o formato fictício "AtendimentoResumo" que existia na apresentação.
 
-Ver DEC-25 em `DECISIONS.md` para o histórico completo da decisão, e TASKS.md (seção "Frontend Web") para a tabela de tasks/commits e pendências (Relatórios, testes de componente, lazy-load do Recharts, troca mock→API real).
+Ver DEC-25 em `DECISIONS.md` para o histórico completo da decisão, e TASKS.md (seção "Frontend Web") para a tabela de tasks/commits e pendências (testes de componente, lazy-load do Recharts).
 
 ---
 
@@ -411,7 +413,7 @@ App mobile do agente de campo, em `mobile/` no monorepo `Agesto-Platform/Agesto`
 - **expo-sqlite** — persistência offline no device, atrás da interface `LocalDb`, com adapter em memória para Web/testes
 - **expo-secure-store** (device) / `localStorage` (web) — armazenamento do token JWT, com split por plataforma
 - **Camada de mock em código** (`config.useMocks`) — análoga ao `VITE_USE_MOCKS` do web (DEC-25)
-- **Jest (jest-expo)** — 29 testes no último marco, cobrindo dados, sincronização e regras do app
+- **Jest (jest-expo)** — 77 testes no CI da `develop` (21/10/2026), cobrindo dados, sincronização e regras do app
 
 ### Arquitetura de pastas e camadas
 ```
@@ -438,8 +440,8 @@ mobile/src/
 
 ### Limitações conhecidas (ver DEC-26 e TASKS.md)
 - Consulta de histórico de atendimentos próprios não foi implementada nesta fase (fora do escopo de mob-01 a mob-07).
-- Roteirização/geolocalização (lat/lng, ordenação por proximidade) depende da DEC-17, ainda pendente.
+- Rota do dia pelo endereço já existe (DEC-37); a otimização por proximidade ("Otimizar dia") ainda não.
 - Teste de componente React Native (`@testing-library/react-native`) foi adiado por incompatibilidade de versão (lib v14 + jest-expo + React 19).
 
 ### Verificação
-O ciclo foi validado no **Expo Web**, sem device Android/iOS físico nesta fase. O `LocalDb` atrás de interface permite usar adapter em memória no Web/testes. No último marco: typecheck, lint e 29 testes Jest verdes. A validação em dispositivo físico permanece pendente.
+O ciclo foi validado no **Expo Web**, sem device Android/iOS físico nesta fase. O `LocalDb` atrás de interface permite usar adapter em memória no Web/testes. No CI da `develop` (21/10/2026): typecheck, lint e 77 testes Jest verdes. A validação em dispositivo físico permanece pendente.

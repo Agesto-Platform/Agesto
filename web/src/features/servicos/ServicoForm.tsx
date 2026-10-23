@@ -24,12 +24,15 @@ export function ServicoForm({
   submitting,
   serverError,
   onCancel,
+  onDelete,
 }: {
   initial: Servico | null
   onSubmit: (input: ServicoInput) => void
   submitting: boolean
   serverError?: string | null
   onCancel: () => void
+  /** Só na edição: abre a confirmação de exclusão. */
+  onDelete?: () => void
 }) {
   const [form, setForm] = useState<FormState>(() => toState(initial))
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -58,10 +61,10 @@ export function ServicoForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
+    <form onSubmit={handleSubmit}>
+      <div className="form">
         {serverError && (
-          <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">
+          <p className="form-error" role="alert">
             {serverError}
           </p>
         )}
@@ -74,34 +77,41 @@ export function ServicoForm({
           required
           maxLength={200}
         />
-        <SelectField<TipoCobranca>
-          label="Cobrança"
-          value={form.tipoCobranca}
-          onChange={(v) => setForm((f) => ({ ...f, tipoCobranca: v }))}
-          options={[
-            { value: 'PorHora', label: 'Por hora' },
-            { value: 'Empreitada', label: 'Empreitada' },
-          ]}
-          required
-        />
-        <NumberField
-          label={porHora ? 'Valor por hora' : 'Valor da empreitada'}
-          prefix="R$"
-          step={0.01}
-          value={form.valor}
-          onChange={(v) => setForm((f) => ({ ...f, valor: v }))}
-          error={errors.valor}
-          required
-        />
+        <div className="form-row">
+          <SelectField<TipoCobranca>
+            label="Cobrança"
+            value={form.tipoCobranca}
+            onChange={(v) => setForm((f) => ({ ...f, tipoCobranca: v }))}
+            options={[
+              { value: 'PorHora', label: 'Por hora' },
+              { value: 'Empreitada', label: 'Empreitada' },
+            ]}
+            required
+          />
+          <NumberField
+            label={porHora ? 'Valor por hora' : 'Valor da empreitada'}
+            prefix="R$"
+            step={0.01}
+            value={form.valor}
+            onChange={(v) => setForm((f) => ({ ...f, valor: v }))}
+            error={errors.valor}
+            required
+          />
+        </div>
       </div>
 
       {initial && <ServicoSugeridosEditor servicoId={initial.id} />}
 
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
-        <Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>
+      <div className="form-actions">
+        {onDelete && (
+          <Button variant="ghost" onClick={onDelete} disabled={submitting} style={{ marginRight: 'auto' }}>
+            Excluir
+          </Button>
+        )}
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" variant="primary" disabled={submitting}>
           {submitting ? 'Salvando…' : 'Salvar'}
         </Button>
       </div>

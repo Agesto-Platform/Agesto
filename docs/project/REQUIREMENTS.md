@@ -24,6 +24,7 @@ Antes de qualquer implementação, entender a distinção entre esses termos é 
 - O email é normalizado (trim + lowercase) antes de qualquer operação
 - Email deve ser único no sistema
 - Senha mínima de 8 caracteres, armazenada com hash (ASP.NET Identity PasswordHasher)
+- **[Implementado]** Cadastro fechado: `POST /api/auth/register` exige `X-Registration-Key`; sem a chave responde 404. Reabrir depende de verificação de email, ainda não implementada (DEC-34)
 
 ### 1.2 Perfis de Acesso
 - **Dono:** acessa o módulo Web, vê dados de todos os agentes da empresa, gerencia configurações
@@ -77,7 +78,7 @@ A `Configuracao` tem mais dois parâmetros por Empresa, editáveis pelo Dono em 
 - Clientes são compartilhados entre todos os agentes da mesma empresa
 - Cadastro pode ser feito no Web ou no Mobile
 - Conflito de cadastro simultâneo (offline + online): última escrita por `UpdatedAt` prevalece
-- **[Implementado]** Campos de endereço estruturado — `Logradouro`, `Numero`, `Bairro`, `Cidade`, `Cep` (commit `da828bc`) —, necessários para viabilizar Agenda (§13). **[Planejado / não implementado]** Geolocalização (lat/lng), prevista para etapa futura, ainda não priorizada. Ver DEC-17.
+- **[Implementado]** Campos de endereço estruturado — `Logradouro`, `Numero`, `Bairro`, `Cidade`, `Cep` (commit `da828bc`) —, necessários para viabilizar Agenda (§13). **[Implementado]** Geolocalização: `Latitude`, `Longitude` e `GeocodificadoEm` preenchidos em segundo plano pelo OpenRouteService, só a partir do endereço (DEC-38). Ver DEC-17.
 
 ---
 
@@ -154,17 +155,17 @@ Dois fluxos distintos:
 **Carga (Servidor → Mobile):**
 - Dispara quando o agente abre o app ou solicita sincronização
 - Envia: clientes atualizados, produtos, serviços, configuração da empresa
-- Critério: registros com `UpdatedAt` posterior à última sincronização
+- Critério: o backend aceita `ultimaSincronizacao`, mas o app sempre pede a Carga completa, para propagar exclusões (DEC-33)
 - **[Implementado]** `SyncCargaResponse.Orcamentos` — a Carga também envia os orçamentos da empresa, permitindo que o agente veja propostas offline (commit `5e82411`)
 - **[Implementado, com contorno]** A Carga **não inclui a agenda**. O app mobile contorna isso com um passo extra `syncAgenda`, que busca e cacheia `GET /api/atendimento/agenda` separadamente. **[Delta de backend]** o ideal é a agenda entrar na Carga — ver TASKS.md.
 
 **Descarga (Mobile → Servidor):**
 - Dispara quando o agente sincroniza
-- Envia: atendimentos realizados offline, novos clientes cadastrados
+- Envia: atendimentos realizados offline, novos clientes e serviços cadastrados e conclusões de atendimentos agendados (DEC-33, DEC-36, DEC-39)
 - Conflito de `Cliente`: última escrita por `UpdatedAt` prevalece
 - **[Implementado]** Descarga de clientes pendentes e atendimentos pendentes — o app empurra os dois e marca como sincronizado ao receber confirmação do servidor
 - **[Planejado / não implementado]** Descarga de `Orcamento` (criar orçamento offline no mobile) — decisão de fluxo ainda em aberto (se o agente deve poder criar proposta offline). Hoje o sync de orçamento é só Carga (leitura).
-- **[Limitação conhecida]** Um atendimento registrado offline não pode referenciar um cliente também cadastrado offline (`PendingCliente`), pois o atendimento local não tem como saber o id de servidor do cliente antes da sincronização. **[Delta de backend]** mapear uuid→id do cliente na Descarga resolveria isso — ver TASKS.md.
+- **[Implementado]** Atendimento offline referencia cliente criado offline por `ClienteUuid`; a Descarga devolve `ClientesMapeados` e cada atendimento é tudo-ou-nada, com os rejeitados pendentes no aparelho (DEC-33)
 
 ### 7.3 Funcionalidades do Mobile
 - **[Implementado]** Login e autenticação (JWT, token guardado via `expo-secure-store` no device / `localStorage` no web)
@@ -174,10 +175,11 @@ Dois fluxos distintos:
 - **[Implementado]** Registro de Atendimentos (cliente + itens de catálogo por quantidade + status), salvo offline como pendente
 - Consulta de histórico de atendimentos próprios — não implementado nesta fase (fora do escopo de mob-01 a mob-07)
 - **[Implementado]** Sincronização manual (aba "Mais": pendentes, última sync, botão Sincronizar) — sincronização automática em background não implementada
-- **[Implementado]** Home action-first com CTA de registrar atendimento e agenda do dia (Próximo / Ainda hoje), consumindo o endpoint de Agenda (`GET /api/atendimento/agenda`, enriquecido com `AgendaItemResponse`) via o contorno `syncAgenda` descrito em 7.2. **[Planejado / não implementado]** Roteirização de campo (ordenação por proximidade/rota do dia) depende de lat/lng, ainda não implementado.
+- **[Implementado]** Home action-first com CTA de registrar atendimento e agenda do dia (Próximo / Ainda hoje), consumindo o endpoint de Agenda (`GET /api/atendimento/agenda`, enriquecido com `AgendaItemResponse`) via o contorno `syncAgenda` descrito em 7.2. **[Implementado]** "Iniciar rota" abre o Google Maps com as visitas pendentes do dia, pela ordem dos horários (DEC-37). **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia", fase 2).
 - **[Implementado]** Telas dedicadas de **Agenda** (agenda completa agrupada por dia) e **Atendimentos** (lista com status e badge de pendência de envio).
 - **[Implementado]** **Agendamento em campo** quando `ModoAgendaAgente = Flexivel` (ver §2.2): no registrar, alternância "Registrar agora / Agendar" com seletor de dia + hora (agenda como `Pendente` com `DataAgendada`); a aba Agenda mostra o CTA "+ Agendar". No modo `Fixa` o app oculta o agendar (só registro imediato/walk-in), e o servidor reforça isso.
 - **[Implementado]** O hint de estoque nas telas do agente some quando `ControlaEstoque = false`.
+- **[Implementado]** Valor do item editável no app, concluir no app um atendimento agendado e corrigir ou excluir o que ainda não foi enviado (DEC-39).
 
 ---
 
@@ -191,7 +193,8 @@ Dois fluxos distintos:
 - **[Implementado]** Relatórios — abas Rentabilidade/Serviços/Produtos/Estoque
 - Visualização de atendimentos de todos os agentes — implementado
 - **[Implementado]** Gestão de usuários da empresa: o Dono cadastra agentes com senha provisória, edita, desativa/reativa e redefine senha; atribui atendimentos a um agente (DEC-35)
-- Consome hoje um mock stateful (MSW) enquanto o banco/API real não sobe; ver DEC-25
+- **[Implementado]** Mapa da agenda (aba "Mapa", Leaflet + OpenStreetMap) com os clientes geocodificados (DEC-38)
+- Consome a API real em produção (DEC-32); o mock stateful (MSW) fica para desenvolvimento local, ver DEC-25
 
 ---
 
@@ -226,7 +229,8 @@ Dois fluxos distintos:
 
 - **[Implementado]** `Atendimento.DataAgendada` + `GET /api/atendimento/agenda`, com filtro por perfil: Agente vê só a própria agenda; Dono vê todas/filtra (DEC-17)
 - **[Implementado]** Endpoint enriquecido com `AgendaItemResponse` (nome/telefone/endereço do cliente + resumo do serviço), evitando N+1 no consumo mobile (commit `5e82411`)
-- **[Planejado / não implementado]** Geolocalização (lat/lng no `Cliente`) e roteirização (ordenação por proximidade/rota do dia) — fase posterior da DEC-17
+- **[Implementado]** Geolocalização do `Cliente` (DEC-38), rota do dia no Google Maps pelo app (DEC-37) e mapa da agenda no web (DEC-38)
+- **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia") e `Servico.DuracaoMinutos` — fase 2
 
 ---
 

@@ -1,0 +1,87 @@
+/*
+ * Peças do app que os templates não desenharam (gaveta, diálogo, aviso,
+ * erro de campo, menu no celular), no mesmo vocabulário do agesto.css.
+ */
+@layer components {
+  /* gaveta lateral: mesmo desenho do painel do Agente */
+  .drawer { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+  .drawer.open { pointer-events: auto; }
+  .drawer-scrim { position: absolute; inset: 0; background: rgb(var(--shadow-color) / 0.28); opacity: 0; transition: opacity 200ms var(--ease-out); }
+  [data-mode="dark"] .drawer-scrim { background: rgb(0 0 0 / 0.5); }
+  .drawer.open .drawer-scrim, .dialog .drawer-scrim { opacity: 1; }
+  .drawer-panel {
+    position: absolute; top: 8px; right: 8px; bottom: 8px; width: min(440px, calc(100% - 16px));
+    display: flex; flex-direction: column; background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--radius-stage);
+    box-shadow: -16px 0 40px -20px rgb(var(--shadow-color) / 0.4);
+    transform: translateX(calc(100% + 16px)); transition: transform 280ms var(--ease-out);
+  }
+  .drawer.open .drawer-panel { transform: none; }
+  .drawer-head { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 12px 8px 18px; border-bottom: 1px solid var(--line); flex: none; }
+  .drawer-head > div { min-width: 0; flex: 1; }
+  .drawer-head b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .drawer-head .sub { display: block; font-size: 12px; color: var(--ink-3); }
+  .drawer-body { flex: 1; overflow-y: auto; min-height: 0; }
+  /* conteúdo padrão dentro da gaveta */
+  .form { display: grid; gap: 14px; padding: 18px; }
+  .form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .form-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); background: var(--surface); position: sticky; bottom: 0; }
+  .form-error { padding: 10px 12px; border-radius: 10px; background: var(--neg-bg); color: var(--neg-ink); font-size: 12.5px; font-weight: 500; }
+  .section-label { font-size: 10.5px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; font-size: 13px; }
+  .kv dt { color: var(--ink-3); }
+  .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* diálogo de confirmação */
+  .dialog { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; }
+  .dialog-box {
+    position: relative; width: min(400px, 100%); padding: 20px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: var(--radius-stage);
+    box-shadow: 0 30px 60px -28px rgb(var(--shadow-color) / 0.45);
+  }
+  .dialog-box h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .dialog-box p { margin: 6px 0 0; color: var(--ink-2); font-size: 13px; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+  /* aviso rápido: mesmo desenho da dica do gráfico */
+  .toasts { position: fixed; right: 20px; bottom: 20px; z-index: 80; display: grid; gap: 8px; justify-items: end; }
+  .toast {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 10px;
+    background: var(--ink); color: var(--surface); font-size: 13px; font-weight: 500;
+    box-shadow: 0 8px 24px -6px rgb(var(--shadow-color) / 0.4);
+  }
+  .toast.error .i { color: var(--accent); }
+  @media (prefers-reduced-motion: no-preference) {
+    .toast { animation: toast-in 260ms var(--ease-out) both; }
+  }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(6px); } }
+
+  /* campos: obrigatório, erro e prefixo (R$) */
+  .field .req { color: var(--neg-ink); }
+  .field-err { font-size: 12px; color: var(--neg-ink); }
+  .input[aria-invalid="true"], .select[aria-invalid="true"] { border-color: var(--neg-ink); }
+  .input-affix { position: relative; }
+  .input-affix > span { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 13px; pointer-events: none; }
+  .input-affix .input { padding-left: 34px; }
+  .select { appearance: auto; }
+
+  /* celular: o menu vira gaveta com fundo escurecido */
+  .nav-scrim { display: none; }
+  @media (max-width: 1023px) {
+    .nav-scrim { display: block; position: fixed; inset: 0; z-index: 35; background: rgb(var(--shadow-color) / 0.28); opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease-out); }
+    .shell[data-nav="open"] .nav-scrim { opacity: 1; pointer-events: auto; }
+    .form-row { grid-template-columns: minmax(0, 1fr); }
+  }
+}
+
+/* amostras de cor da paleta no menu da conta */
+@layer components {
+  .sb-menu .sws { display: inline-flex; width: 30px; height: 30px; flex: none; align-items: center; justify-content: center; }
+  .sws i { width: 10px; height: 10px; border-radius: 50%; margin-left: -3px; box-shadow: 0 0 0 1.5px var(--surface); }
+  .sws i:first-child { margin-left: 0; }
+}
+
+/* texto de apoio fora das tabelas (dentro delas o .t .muted já existe) */
+@layer components {
+  .muted { color: var(--ink-3); }
+}

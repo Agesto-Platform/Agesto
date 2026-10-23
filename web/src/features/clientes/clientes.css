@@ -1,0 +1,17 @@
+/* Clientes: CSS da página do template (clientes.html). */
+@layer components {
+  .profile { padding: 18px 16px 6px; display: grid; justify-items: start; gap: 10px; }
+  .profile .avatar { width: 44px; height: 44px; font-size: 15px; }
+  .profile h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
+  .facts { margin: 0; padding: 4px 16px 14px; display: grid; gap: 10px; }
+  .facts div { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start; }
+  .facts dt { color: var(--ink-3); padding-top: 1px; }
+  .facts dd { margin: 0; }
+  .facts dd span { display: block; font-size: 12px; color: var(--ink-3); }
+  .hist { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
+  .hist h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+  .hist-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+  .hist-row:first-of-type { border-top: 0; }
+  .hist-row .d { width: 48px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .hist-row .v { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+}

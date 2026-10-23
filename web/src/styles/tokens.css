@@ -1,50 +1,201 @@
 /*
  * Design tokens do Agesto — Módulo Web (Dono).
- * Portados do protótipo aprovado (web-dono.html). Tema claro fixo.
- * No Tailwind v4, cada custom property em @theme vira utilitário:
- *   --color-brand      -> bg-brand / text-brand / border-brand
- *   --radius-card      -> rounded-card
- *   --font-serif       -> font-serif (usado nos números de dinheiro)
+ * Portados dos templates aprovados (agesto/design/templates, 22/10/2026).
+ * Duas paletas: Marinho + Vermelho (padrão) e Oceano, cada uma com claro e escuro.
+ * O <html> carrega data-palette e data-mode (ver index.html e src/theme/theme.ts);
+ * cada paleta define os MESMOS papéis e o layout só lê os papéis.
+ *
+ * Tailwind v4: o bloco @theme inline expõe os papéis como utilitários
+ * (bg-surface, text-ink-2, border-line...). "inline" faz o utilitário ler a
+ * variável do papel, então ele acompanha a troca de paleta e de modo.
  */
-@theme {
-  /* superfícies e fundo */
-  --color-bg: #f1f3f6;
-  --color-surface: #ffffff;
-  --color-surface-2: #f4f6f9;
 
-  /* tinta (texto) */
-  --color-ink: #1e2733;
-  --color-ink-2: #3e4a5a;
-  --color-ink-3: #6b7684;
-  --color-ink-4: #99a2ae;
+:root {
+  --font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* linhas / divisórias */
-  --color-line: #e6e9ee;
-  --color-line-2: #eef1f5;
+  --radius-shell: 20px;
+  --radius-stage: 14px;
+  --radius-card: 12px;
+  --radius-ctl: 8px;
+  --radius-pill: 999px;
 
-  /* marca (verde) */
-  --color-brand: #12b886;
-  --color-brand-soft: #d6f1e7;
-  --color-brand-ink: #0e9268;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+}
 
-  /* estados */
-  --color-good: #12b886;
-  --color-good-soft: #d6f1e7;
-  --color-warn: #c07e1e;
-  --color-warn-soft: #f7eedc;
-  --color-bad: #d5433c;
-  --color-bad-soft: #fbe7e6;
+/* 4 · Marinho + Vermelho (pôster "lemons") — ancora: marinho 223°.
+   Psicologia: marinho = seriedade e confianca com dinheiro (a base);
+   vermelho = energia e urgencia (so alerta, item ativo e "hoje");
+   o papel off-white do video segura o contraste sem frieza. */
+:root,
+[data-palette="marinho"] {
+  --canvas: #E6E3DC; --shell: #F3F1ED; --surface: #FDFCFA; --surface-2: #F6F4EF;
+  --hover: #EEEBE4; --selected: #E3E7F1; --line: #E8E5DE; --line-strong: #D6D2C8;
+  --ink: #18233F; --ink-2: #4C5672; --ink-3: #687089;
+  --brand: #283E72; --brand-ink: #F3F1ED; --brand-hover: #1F3260; --brand-soft: #E1E6F2;
+  --accent: #D62D32; --accent-ink: #FFFFFF; --accent-soft: #F9DEDC;
+  --signal: #0E2A7F; --signal-soft: #DDE2F2;
+  --ok-bg: #E1E6F2;   --ok-ink: #1F3260;
+  --warn-bg: #F6E8CC; --warn-ink: #77501A;
+  --neg-bg: #F9DEDC;  --neg-ink: #A3171C;
+  --info-bg: #EEEBE4; --info-ink: #4A4636;
+  --chart: #283E72; --chart-hi: #D62D32; --chart-empty: #ECE9E2;
+  --focus: #D62D32; --selection: #DDE2F2; --shadow-color: 24 34 70;
+}
+[data-palette="marinho"][data-mode="dark"] {
+  --canvas: #0A0F1E; --shell: #0E1426; --surface: #131B31; --surface-2: #18213A;
+  --hover: #1E2844; --selected: #25314F; --line: #212B45; --line-strong: #313D5C;
+  --ink: #F3F1ED; --ink-2: #B6BCCD; --ink-3: #858DA6;
+  --brand: #8EA4DC; --brand-ink: #0A0F1E; --brand-hover: #A6B8E5; --brand-soft: #1F2C52;
+  --accent: #F0625F; --accent-ink: #1A0707; --accent-soft: #43181A;
+  --signal: #8EA4DC; --signal-soft: #1C2A4E;
+  --ok-bg: #1C2A4E;   --ok-ink: #B9C8F2;
+  --warn-bg: #3A2E16; --warn-ink: #F0C878;
+  --neg-bg: #43181A;  --neg-ink: #F7A9A6;
+  --info-bg: #232A40; --info-ink: #DAD7CF;
+  --chart: #7F96D6; --chart-hi: #F0625F; --chart-empty: #1C2540;
+  --focus: #F0625F; --selection: #2A3A66; --shadow-color: 0 0 0;
+}
 
-  /* raios */
-  --radius-card: 15px;
-  --radius-sm: 11px;
+/* ---------- 2 · Oceano (petroleo, creme, laranja, areia, agua) ---------- */
+[data-palette="oceano"] {
+  --canvas: #E3D6BD;
+  --shell: #F5EFE6;
+  --surface: #FFFCF7;
+  --surface-2: #F7F1E7;
+  --hover: #EEE6D8;
+  --selected: #E5EFEB;
+  --line: #EAE1D1;
+  --line-strong: #D9CBB2;
 
-  /* sombra dos cards (namespace --shadow-* vira utilitário shadow-card) */
-  --shadow-card: 0 1px 2px rgba(18, 32, 24, 0.05),
-    0 12px 30px -18px rgba(18, 32, 24, 0.2);
+  --ink: #10292B;
+  --ink-2: #48615F;
+  --ink-3: #7D8B87;
 
-  /* tipografia */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  --font-serif: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  --brand: #0F4448;           /* petroleo */
+  --brand-ink: #F5EFE6;
+  --brand-hover: #0A3437;
+  --brand-soft: #DCEEEA;
+
+  --accent: #FF5C1F;          /* laranja */
+  --accent-ink: #17191B;
+  --accent-soft: #FFE3D6;
+
+  --signal: #BFE0DA;          /* agua */
+  --signal-soft: #E3F1EE;
+
+  --ok-bg: #DCEEEA;   --ok-ink: #0F4448;
+  --warn-bg: #F3E5C9; --warn-ink: #77501A;
+  --neg-bg: #FFE3D6;  --neg-ink: #A83B10;
+  --info-bg: #EADFCB; --info-ink: #4F4230;
+
+  --chart: #0F4448;
+  --chart-hi: #FF5C1F;
+  --chart-empty: #ECE3D2;
+
+  --focus: #FF5C1F;
+  --selection: #BFE0DA;
+  --shadow-color: 40 48 44;
+}
+
+/* Oceano escuro — ancora: petroleo 184°.
+   Psicologia: petroleo = profundidade e seguranca (o fundo inteiro);
+   agua = calma e clareza (vira o botao principal: a acao mais comum nao
+   precisa gritar); laranja = energia e decisao (so CTA e destaque);
+   areia/creme = conforto (texto). */
+[data-palette="oceano"][data-mode="dark"] {
+  --canvas: #061A1C;
+  --shell: #0A2124;
+  --surface: #0E2A2D;
+  --surface-2: #123134;
+  --hover: #17393C;
+  --selected: #1D4448;
+  --line: #1B3A3D;
+  --line-strong: #2A5054;
+
+  --ink: #F5EFE6;
+  --ink-2: #B6C8C3;
+  --ink-3: #86A09B;
+
+  --brand: #BFE0DA;
+  --brand-ink: #062022;
+  --brand-hover: #D4EBE6;
+  --brand-soft: #16413F;
+
+  --accent: #FF7A45;
+  --accent-ink: #17191B;
+  --accent-soft: #40200F;
+
+  --signal: #BFE0DA;
+  --signal-soft: #143B3A;
+
+  --ok-bg: #0F3B37;   --ok-ink: #A3E2D6;
+  --warn-bg: #3A2E16; --warn-ink: #F0C878;
+  --neg-bg: #40200F;  --neg-ink: #FFB08F;
+  --info-bg: #2F2A21; --info-ink: #EADFCB;
+
+  --chart: #6FB8AC;
+  --chart-hi: #FF7A45;
+  --chart-empty: #163739;
+
+  --focus: #FF7A45;
+  --selection: #1F4F4D;
+  --shadow-color: 0 0 0;
+}
+
+[data-mode="dark"] { color-scheme: dark; }
+
+/* Mascote do Agente: gradiente análogo por paleta (reflexo, corpo, sombra, base/halo). */
+:root, [data-palette="marinho"] { --mascot-hi: #AFC2F0; --mascot-a: #3A58A6; --mascot-a2: #1E2F62; --mascot-b: #93BBF4; }
+[data-palette="oceano"]        { --mascot-hi: #A8EADF; --mascot-a: #167479; --mascot-a2: #0B4044; --mascot-b: #8FE3D5; }
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-bg: var(--canvas);
+  --color-shell: var(--shell);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-3);
+
+  --color-line: var(--line);
+  --color-line-2: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  /* texto de marca sobre fundo claro (ex.: rótulo ativo); o texto SOBRE a marca é --brand-ink */
+  --color-brand-ink: var(--brand-hover);
+  --color-on-brand: var(--brand-ink);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--accent-ink);
+
+  --color-good: var(--ok-ink);
+  --color-good-soft: var(--ok-bg);
+  --color-warn: var(--warn-ink);
+  --color-warn-soft: var(--warn-bg);
+  --color-bad: var(--neg-ink);
+  --color-bad-soft: var(--neg-bg);
+  --color-info: var(--info-ink);
+  --color-info-soft: var(--info-bg);
+
+  --color-chart: var(--chart);
+  --color-chart-hi: var(--chart-hi);
+  --color-chart-empty: var(--chart-empty);
+
+  --radius-card: 12px;
+  --radius-sm: 8px;
+  --radius-ctl: 8px;
+
+  --shadow-card: 0 1px 2px rgb(var(--shadow-color) / 0.06), 0 12px 32px -12px rgb(var(--shadow-color) / 0.18);
+
+  --font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }

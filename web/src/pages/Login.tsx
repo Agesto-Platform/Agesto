@@ -1,11 +1,18 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { flushSync } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
-import { Button } from '../components/ui'
 import { ApiError } from '../lib/api'
+import { getDeveTrocarSenha } from '../lib/token'
+import { Icon } from '../components/Icon'
+import { Mascote, type MascoteApi } from '../components/Mascote'
+import { guardarTransicao } from '../layout/entrada'
+import './login.css'
+import { Logo } from '../components/Logo'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USING_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
+const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 type LocationState = { from?: string }
 
@@ -15,105 +22,197 @@ export function Login() {
   const location = useLocation()
   const from = (location.state as LocationState | null)?.from ?? '/'
 
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-  const [fieldError, setFieldError] = useState<string | null>(null)
-  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [email, setEmail] = useState(USING_MOCKS ? 'dono@agesto.app' : '')
+  const [senha, setSenha] = useState(USING_MOCKS ? 'agesto123' : '')
+  const [verSenha, setVerSenha] = useState(false)
+  const [manter, setManter] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const liquidoRef = useRef<HTMLDivElement>(null)
+  const mascote = useRef<MascoteApi | null>(null)
+  const senhaRef = useRef<HTMLInputElement>(null)
+
+  // fundo líquido com as cores da paleta ativa (mesmos parâmetros do componente original);
+  // o three.js só baixa aqui, fora do pacote principal do painel
+  useEffect(() => {
+    const el = liquidoRef.current
+    if (!el) return
+    let parar: (() => void) | null = null
+    let vivo = true
+    void import('../components/liquido').then(({ startLiquido }) => {
+      if (vivo) parar = startLiquido(el, { pixelSize: 18, resolution: 0.4, mouseForce: 8, cursorSize: 110, autoDemo: true })
+    })
+    return () => {
+      vivo = false
+      parar?.()
+    }
+  }, [])
+
+  // o mascote se apresenta
+  useEffect(() => {
+    const t = window.setTimeout(
+      () =>
+        mascote.current?.say(
+          <>
+            Oi! Eu sou o <b>Agente</b> do Agesto.
+          </>,
+          3400,
+        ),
+      450,
+    )
+    return () => window.clearTimeout(t)
+  }, [])
+
+  const olharCampo = (el: HTMLElement) => {
+    const r = el.getBoundingClientRect()
+    mascote.current?.lookAt(r.left + 70, r.top + r.height / 2)
+  }
+
+  // entrar: o mascote sorri e pula; o cartão vira o palco do painel (transição entre telas)
+  function seguir() {
+    const abrir = from === '/' && !getDeveTrocarSenha()
+    const ir = () => navigate(from, { replace: true, state: abrir ? { entrada: true } : null })
+    if (!abrir || reduced()) return ir()
+    const root = document.documentElement
+    root.classList.add('entrada')
+    mascote.current?.face('happy').hop()
+    window.setTimeout(() => {
+      if (!document.startViewTransition) return ir()
+      root.dataset.vt = 'entrada'
+      const vt = document.startViewTransition(() => flushSync(ir))
+      guardarTransicao(vt)
+      vt.finished.finally(() => delete root.dataset.vt)
+    }, 160)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setSubmitError(null)
-
+    if (loading) return
+    setErro(null)
     if (!EMAIL_RE.test(email)) {
-      setFieldError('Informe um email válido.')
+      setErro('Informe um e-mail válido.')
+      mascote.current?.face('surprised', 650)
       return
     }
     if (senha.length < 8) {
-      setFieldError('A senha deve ter no mínimo 8 caracteres.')
+      setErro('A senha deve ter no mínimo 8 caracteres.')
+      mascote.current?.face('surprised', 650)
       return
     }
-    setFieldError(null)
-
     setLoading(true)
     try {
       await login(email, senha)
-      navigate(from, { replace: true })
+      seguir()
     } catch (err) {
-      setSubmitError(
-        err instanceof ApiError ? err.message : 'Não foi possível entrar. Tente novamente.',
-      )
-    } finally {
       setLoading(false)
+      setErro(err instanceof ApiError ? err.message : 'Não foi possível entrar. Tente novamente.')
+      mascote.current?.face('surprised', 650)
     }
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-bg p-6">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-[11px] bg-gradient-to-br from-brand to-brand-ink text-lg font-extrabold text-white">
-            A
+    <div className="login-page">
+      <div className="liquido" ref={liquidoRef} aria-hidden="true" />
+      <header className="login-top">
+        <Logo />Agesto
+      </header>
+      <main className="login" id="page">
+        <section className="login-card" aria-labelledby="ttl">
+          <div className="login-mascot">
+            <Mascote bubble ref={mascote} />
           </div>
-          <div>
-            <b className="block text-lg tracking-tight text-ink">Agesto</b>
-            <span className="block text-[12px] text-ink-4">Painel do Dono</span>
-          </div>
-        </div>
+          <h1 className="login-title fade-out" id="ttl">
+            <span>Agesto</span>
+            <span className="muted">O dinheiro que sobra, num lugar só.</span>
+          </h1>
 
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-4 rounded-card border border-line bg-surface p-6 shadow-card"
-        >
-          <div>
-            <h1 className="text-[17px] font-semibold text-ink">Entrar</h1>
-            <p className="mt-0.5 text-[12.5px] text-ink-3">
-              Acesse o painel de gestão do seu negócio.
-            </p>
-          </div>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-semibold text-ink-2">Email</span>
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="rounded-[10px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-              placeholder="voce@empresa.com"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-semibold text-ink-2">Senha</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="rounded-[10px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink outline-none focus:border-brand"
-              placeholder="••••••••"
-            />
-          </label>
-
-          {fieldError && <p className="text-[12.5px] text-bad">{fieldError}</p>}
-          {submitError && (
-            <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">
-              {submitError}
-            </p>
-          )}
-
-          <Button type="submit" disabled={loading} className="mt-1 w-full">
-            {loading ? 'Entrando…' : 'Entrar'}
-          </Button>
-
-          {USING_MOCKS && (
-            <p className="text-center text-[11.5px] text-ink-4">
-              Demo (mock): <b>dono@agesto.app</b> / <b>agesto123</b>
-            </p>
-          )}
-        </form>
-      </div>
+          <form className="lform fade-out" onSubmit={handleSubmit} noValidate>
+            <div className="lfield">
+              <label htmlFor="email">E-mail</label>
+              <div className="ibox">
+                <span>
+                  <Icon name="mail" />
+                </span>
+                <input
+                  className="input"
+                  id="email"
+                  type="email"
+                  autoComplete="username"
+                  placeholder="voce@empresa.com.br"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    olharCampo(e.target)
+                  }}
+                  onFocus={(e) => {
+                    olharCampo(e.target)
+                    mascote.current?.face('dot', 450)
+                  }}
+                  onBlur={() => mascote.current?.free()}
+                />
+              </div>
+            </div>
+            <div className="lfield">
+              <label htmlFor="senha">Senha</label>
+              <div className="ibox pw">
+                <span>
+                  <Icon name="lock" />
+                </span>
+                <input
+                  className="input"
+                  id="senha"
+                  ref={senhaRef}
+                  type={verSenha ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="Sua senha"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  onFocus={() => mascote.current?.free().face('shy')}
+                  onBlur={() => mascote.current?.face('idle')}
+                />
+                <button
+                  className="eye"
+                  type="button"
+                  aria-label={verSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                  aria-pressed={verSenha}
+                  onClick={() => {
+                    const mostrar = !verSenha
+                    setVerSenha(mostrar)
+                    if (mostrar) mascote.current?.face('surprised', 650)
+                    else if (document.activeElement === senhaRef.current) mascote.current?.face('shy')
+                  }}
+                >
+                  <Icon name={verSenha ? 'eyeOff' : 'eye'} />
+                </button>
+              </div>
+            </div>
+            <div className="lrow">
+              <label className="check">
+                <input type="checkbox" checked={manter} onChange={(e) => setManter(e.target.checked)} />
+                Manter conectado
+              </label>
+              <a href="#" onClick={(e) => e.preventDefault()}>
+                Esqueci a senha
+              </a>
+            </div>
+            {erro && (
+              <p className="login-error" role="alert">
+                {erro}
+              </p>
+            )}
+            <button
+              className="btn primary go"
+              type="submit"
+              aria-busy={loading}
+              onMouseEnter={() => mascote.current?.face('happy', 700)}
+            >
+              {loading ? 'Entrando…' : 'Entrar'}
+            </button>
+          </form>
+          {USING_MOCKS && <p className="legal fade-out">Ambiente de demonstração com dados de exemplo.</p>}
+        </section>
+      </main>
     </div>
   )
 }

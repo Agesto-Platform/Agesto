@@ -42,10 +42,10 @@ export function UsuarioForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col">
-      <div className="flex flex-col gap-4 px-5 py-4">
+    <form onSubmit={handleSubmit}>
+      <div className="form">
         {serverError && (
-          <p className="rounded-sm bg-bad-soft px-3 py-2 text-[12.5px] font-medium text-bad">
+          <p className="form-error" role="alert">
             {serverError}
           </p>
         )}
@@ -53,9 +53,11 @@ export function UsuarioForm({
         <TextField label="Nome" value={nome} onChange={setNome} error={errors.nome} required maxLength={120} />
 
         {initial ? (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-semibold text-ink-2">Email</span>
-            <span className="text-[14px] text-ink-3">{initial.email}</span>
+          <div className="field">
+            <span className="section-label">Email</span>
+            <span className="hint" style={{ fontSize: 13 }}>
+              {initial.email} · é o login, não muda por aqui
+            </span>
           </div>
         ) : (
           <TextField
@@ -66,24 +68,24 @@ export function UsuarioForm({
             required
             maxLength={150}
             placeholder="pessoa@empresa.com"
+            autoComplete="off"
           />
         )}
 
         <SelectField label="Perfil" value={perfil} onChange={setPerfil} options={PERFIS} required />
 
         {!initial && (
-          <p className="text-[12px] text-ink-4">
-            Ao salvar, o sistema gera uma senha provisória. A pessoa entra com ela e troca no primeiro
-            acesso.
+          <p className="hint" style={{ margin: 0 }}>
+            Ao salvar, o sistema gera uma senha provisória. A pessoa entra com ela e troca no primeiro acesso.
           </p>
         )}
       </div>
 
-      <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
-        <Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>
+      <div className="form-actions">
+        <Button variant="ghost" onClick={onCancel} disabled={submitting}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" variant="primary" disabled={submitting}>
           {submitting ? 'Salvando…' : initial ? 'Salvar' : 'Criar usuário'}
         </Button>
       </div>

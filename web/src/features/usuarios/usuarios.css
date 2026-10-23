@@ -1,0 +1,17 @@
+/*
+ * Tela de Usuários: não tem template próprio; o painel da direita usa o
+ * mesmo desenho do detalhe de clientes.html (perfil, fatos e histórico),
+ * escopado em .usr-detail para não depender da tela de Clientes.
+ */
+@layer components {
+  .usr-detail .profile { padding: 18px 16px 6px; display: grid; justify-items: start; gap: 10px; }
+  .usr-detail .profile .avatar { width: 44px; height: 44px; font-size: 15px; }
+  .usr-detail .profile h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; display: flex; align-items: center; gap: 8px; }
+  .usr-detail .facts { margin: 0; padding: 4px 16px 14px; display: grid; gap: 10px; }
+  .usr-detail .facts div { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start; }
+  .usr-detail .facts dt { color: var(--ink-3); padding-top: 1px; }
+  .usr-detail .facts dd { margin: 0; overflow-wrap: anywhere; }
+  .usr-detail .facts dd span { display: block; font-size: 12px; color: var(--ink-3); }
+  .usr-detail .hist { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
+  .usr-detail .hist h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+}

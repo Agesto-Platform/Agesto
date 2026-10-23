@@ -1,14 +1,31 @@
 import type { AgendaItem } from '../../types/api'
 
-/** Cores dos responsáveis no mapa (pino e legenda), na ordem em que aparecem. */
-export const CORES_RESPONSAVEL = ['#12B886', '#243FA6', '#E8590C', '#AE3EC9', '#1098AD', '#F59F00']
-
-export function chaveDoDia(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+/**
+ * Cores dos responsáveis no mapa (pino e legenda), na ordem em que aparecem.
+ * Vêm dos tokens da paleta (CSS vars), então seguem Marinho/Oceano e o modo escuro.
+ * `texto` é a cor do número sobre o `fundo`.
+ */
+export interface CorResponsavel {
+  fundo: string
+  texto: string
 }
 
-/** Dias que têm visita, em ordem, para o seletor do mapa. */
+export const CORES_RESPONSAVEL: CorResponsavel[] = [
+  { fundo: 'var(--brand)', texto: 'var(--brand-ink)' },
+  { fundo: 'var(--accent)', texto: 'var(--accent-ink)' },
+  { fundo: 'var(--warn-ink)', texto: 'var(--warn-bg)' },
+  { fundo: 'var(--info-ink)', texto: 'var(--info-bg)' },
+  { fundo: 'var(--ink-2)', texto: 'var(--surface)' },
+  { fundo: 'var(--neg-ink)', texto: 'var(--neg-bg)' },
+]
+
+/** "2026-10-20" no fuso local, para comparar dias. */
+export function chaveDoDia(d: string | Date): string {
+  const x = typeof d === 'string' ? new Date(d) : d
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
+}
+
+/** Dias que têm visita, em ordem. */
 export function diasComVisitas(items: AgendaItem[]): string[] {
   return [...new Set(items.filter((i) => i.dataAgendada).map((i) => chaveDoDia(i.dataAgendada!)))].sort()
 }
@@ -16,7 +33,7 @@ export function diasComVisitas(items: AgendaItem[]): string[] {
 /** Dia que o mapa abre: hoje, se tiver visita; senão o próximo; senão o último. */
 export function diaInicial(dias: string[], hoje: Date = new Date()): string | null {
   if (dias.length === 0) return null
-  const h = chaveDoDia(hoje.toISOString())
+  const h = chaveDoDia(hoje)
   return dias.find((d) => d >= h) ?? dias[dias.length - 1]
 }
 
@@ -46,7 +63,7 @@ export function pontosDoDia(items: AgendaItem[], dia: string): { pontos: PontoMa
 }
 
 /** Cor estável por responsável dentro do conjunto exibido. */
-export function coresPorResponsavel(items: AgendaItem[]): Map<number, string> {
+export function coresPorResponsavel(items: AgendaItem[]): Map<number, CorResponsavel> {
   const ids = [...new Set(items.map((i) => i.usuarioId))].sort((a, b) => a - b)
-  return new Map(ids.map((id, i) => [id, CORES_RESPONSAVEL[i % CORES_RESPONSAVEL.length]]))
+  return new Map(ids.map((id, i) => [id, CORES_RESPONSAVEL[i % CORES_RESPONSAVEL.length]!]))
 }
