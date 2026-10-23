@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon'
 import { Mascote, type MascoteApi } from '../components/Mascote'
 import { guardarTransicao } from '../layout/entrada'
 import './login.css'
+import { Logo } from '../components/Logo'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const USING_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
@@ -114,7 +115,7 @@ export function Login() {
     <div className="login-page">
       <div className="liquido" ref={liquidoRef} aria-hidden="true" />
       <header className="login-top">
-        <span className="logo">A</span>Agesto
+        <Logo />Agesto
       </header>
       <main className="login" id="page">
         <section className="login-card" aria-labelledby="ttl">
