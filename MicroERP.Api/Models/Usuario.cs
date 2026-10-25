@@ -23,5 +23,8 @@ public class Usuario
     // Diferente de Termos:Versao da configuração = precisa aceitar de novo.
     public string? TermosVersaoAceita { get; set; }
     public DateTime? TermosAceitosEm { get; set; }
+    // Senhas erradas seguidas no login; ao chegar no limite a conta fica bloqueada até BloqueadoAte.
+    public int TentativasLoginFalhas { get; set; }
+    public DateTime? BloqueadoAte { get; set; }
     public Empresa? Empresa { get; set; }
 }
