@@ -15,23 +15,17 @@ public sealed class UsuarioRepository : IUsuarioRepository
         _dbContext = dbContext;
     }
 
-    public async Task<Usuario?> GetByIdAsync(long id, CancellationToken cancellationToken)
-    {
-        return await _dbContext.Usuarios
-            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
-    }
-
     public async Task<Usuario?> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         return await _dbContext.Usuarios
-            .FirstOrDefaultAsync(u => u.Id == id && u.EmpresaId == empresaId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Id == id && u.EmpresaId == empresaId && u.DeletedAt == null, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Usuario>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
     {
         return await _dbContext.Usuarios
             .AsNoTracking()
-            .Where(u => u.EmpresaId == empresaId)
+            .Where(u => u.EmpresaId == empresaId && u.DeletedAt == null)
             .OrderByDescending(u => u.Ativo)
             .ThenBy(u => u.Nome)
             .ToListAsync(cancellationToken);
@@ -51,17 +45,6 @@ public sealed class UsuarioRepository : IUsuarioRepository
     public async Task AddAsync(Usuario usuario, CancellationToken cancellationToken)
     {
         await _dbContext.Usuarios.AddAsync(usuario, cancellationToken);
-    }
-
-    public async Task<int> CountDonos(long empresaId, CancellationToken cancellationToken)
-    {
-        return await _dbContext.Usuarios
-            .CountAsync(u => u.EmpresaId == empresaId && u.Perfil == PerfilUsuario.Dono, cancellationToken);
-    }
-
-    public async Task DeleteAsync(Usuario usuario, CancellationToken cancellationToken)
-    {
-        _dbContext.Usuarios.Remove(usuario);
     }
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken)

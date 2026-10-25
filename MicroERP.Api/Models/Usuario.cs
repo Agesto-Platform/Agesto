@@ -22,5 +22,7 @@ public class Usuario
     // Senhas erradas seguidas no login; ao chegar no limite a conta fica bloqueada até BloqueadoAte.
     public int TentativasLoginFalhas { get; set; }
     public DateTime? BloqueadoAte { get; set; }
+    // Exclusão da própria conta (LGPD): a linha fica anonimizada, o histórico continua apontando para ela.
+    public DateTime? DeletedAt { get; set; }
     public Empresa? Empresa { get; set; }
 }

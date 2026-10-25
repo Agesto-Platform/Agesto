@@ -25,22 +25,25 @@ public sealed class UsuarioService : IUsuarioService
 
     public async Task<bool> DeleteAsync(long usuarioId, long empresaId, CancellationToken cancellationToken)
     {
-        var usuario = await _usuarioRepository.GetByIdAsync(usuarioId, cancellationToken);
+        var usuario = await _usuarioRepository.GetByIdAsync(empresaId, usuarioId, cancellationToken);
         if (usuario is null)
         {
             return false;
         }
 
-        if (usuario.Perfil == PerfilUsuario.Dono)
+        // mesma regra da desativação (DEC-35): a empresa não fica sem Dono ativo
+        if (usuario.Perfil == PerfilUsuario.Dono && usuario.Ativo
+            && await _usuarioRepository.CountDonosAtivos(empresaId, cancellationToken) <= 1)
         {
-            var totalDonos = await _usuarioRepository.CountDonos(empresaId, cancellationToken);
-            if (totalDonos <= 1)
-            {
-                throw new UltimoDonoDaEmpresaException("Não é possível remover o último Dono da empresa. Delete a empresa ou transfira a responsabilidade primeiro.");
-            }
+            throw new UltimoDonoDaEmpresaException("Não é possível remover o último Dono da empresa. Delete a empresa ou transfira a responsabilidade primeiro.");
         }
 
-        await _usuarioRepository.DeleteAsync(usuario, cancellationToken);
+        // Soft delete com anonimização: atendimentos e orçamentos continuam apontando
+        // para a linha, mas nada nela identifica a pessoa e ela não entra mais.
+        DadosPessoais.Anonimizar(usuario);
+        usuario.Senha = _passwordHasher.HashPassword(usuario, Guid.NewGuid().ToString());
+        usuario.DeletedAt = DateTime.UtcNow;
+        usuario.UpdatedAt = usuario.DeletedAt.Value;
         await _usuarioRepository.SaveChangesAsync(cancellationToken);
 
         return true;

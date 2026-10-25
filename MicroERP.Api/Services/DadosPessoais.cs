@@ -2,11 +2,12 @@ using MicroERP.Api.Models;
 
 namespace MicroERP.Api.Services;
 
-// Tratamento de dados pessoais de clientes (LGPD): mascaramento para quem não
-// precisa do dado completo e anonimização na exclusão.
+// Tratamento de dados pessoais de clientes e usuários (LGPD): mascaramento para
+// quem não precisa do dado completo e anonimização na exclusão.
 public static class DadosPessoais
 {
     public const string NomeAnonimizado = "Cliente removido";
+    public const string NomeUsuarioAnonimizado = "Usuário removido";
 
     // 12345678901 -> ***.456.789-** (mantém os dígitos do meio, como em comprovantes).
     public static string MascararCpf(string cpf)
@@ -33,4 +34,19 @@ public static class DadosPessoais
     }
 
     public static string CpfAnonimizado(long clienteId) => $"ANON{clienteId}";
+
+    // Mesmo princípio para o usuário que exclui a própria conta. O email vira um
+    // marcador único (o índice é único), o que libera o email real para um novo cadastro.
+    public static void Anonimizar(Usuario usuario)
+    {
+        usuario.Nome = NomeUsuarioAnonimizado;
+        usuario.Email = EmailAnonimizado(usuario.Id);
+        usuario.Ativo = false;
+        usuario.DeveTrocarSenha = false;
+        usuario.UltimoAcessoEm = null;
+        usuario.TentativasLoginFalhas = 0;
+        usuario.BloqueadoAte = null;
+    }
+
+    public static string EmailAnonimizado(long usuarioId) => $"removido-{usuarioId}@anonimo.invalid";
 }
