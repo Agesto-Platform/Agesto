@@ -131,6 +131,9 @@ public sealed class UsuarioService : IUsuarioService
         var senha = GerarSenhaProvisoria();
         usuario.Senha = _passwordHasher.HashPassword(usuario, senha);
         usuario.DeveTrocarSenha = true;
+        // senha nova do Dono desbloqueia quem errou demais
+        usuario.TentativasLoginFalhas = 0;
+        usuario.BloqueadoAte = null;
         usuario.UpdatedAt = DateTime.UtcNow;
 
         await _usuarioRepository.SaveChangesAsync(cancellationToken);

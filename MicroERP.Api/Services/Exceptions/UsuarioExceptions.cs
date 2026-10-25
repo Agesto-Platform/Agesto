@@ -7,6 +7,14 @@ public sealed class UsuarioInativoException : Exception
     }
 }
 
+// Login barrado por excesso de senhas erradas no mesmo email (bloqueio temporário).
+public sealed class ContaBloqueadaException : Exception
+{
+    public ContaBloqueadaException(string message) : base(message)
+    {
+    }
+}
+
 // Ação de gestão de usuários barrada por regra (ex.: o Dono se desativar).
 public sealed class RegraUsuarioException : Exception
 {

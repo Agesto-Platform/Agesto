@@ -84,6 +84,14 @@ public sealed class AuthController : ApiControllerBase
                 Message = ex.Message
             });
         }
+        catch (ContaBloqueadaException ex)
+        {
+            return StatusCode(StatusCodes.Status423Locked, new ApiResponse
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
 
         if (response is null)
         {

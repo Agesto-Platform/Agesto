@@ -24,6 +24,10 @@ public sealed class AuthService : IAuthService
     private static readonly string HashFicticio = new PasswordHasher<Usuario>()
         .HashPassword(new Usuario(), Guid.NewGuid().ToString());
 
+    // Bloqueio por conta (complementa o rate limit por IP): 5 senhas erradas seguidas, 15 minutos.
+    public const int TentativasAteBloquear = 5;
+    public static readonly TimeSpan TempoDeBloqueio = TimeSpan.FromMinutes(15);
+
     public AuthService(AppDbContext dbContext, IConfiguration configuration)
     {
         _dbContext = dbContext;
@@ -97,9 +101,27 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
+        var agora = DateTime.UtcNow;
+
+        // Bloqueada: nem a senha certa entra até o prazo acabar.
+        if (usuario.BloqueadoAte > agora)
+        {
+            throw new ContaBloqueadaException(MensagemBloqueio(usuario.BloqueadoAte.Value - agora));
+        }
+
         var verification = _passwordHasher.VerifyHashedPassword(usuario, usuario.Senha, request.Senha);
         if (verification == PasswordVerificationResult.Failed)
         {
+            usuario.TentativasLoginFalhas++;
+            if (usuario.TentativasLoginFalhas >= TentativasAteBloquear)
+            {
+                usuario.TentativasLoginFalhas = 0;
+                usuario.BloqueadoAte = agora + TempoDeBloqueio;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                throw new ContaBloqueadaException(MensagemBloqueio(TempoDeBloqueio));
+            }
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
             return null;
         }
 
@@ -109,7 +131,9 @@ public sealed class AuthService : IAuthService
             throw new UsuarioInativoException("Acesso desativado. Fale com o responsável pela empresa.");
         }
 
-        usuario.UltimoAcessoEm = DateTime.UtcNow;
+        usuario.TentativasLoginFalhas = 0;
+        usuario.BloqueadoAte = null;
+        usuario.UltimoAcessoEm = agora;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return GenerateToken(usuario);
@@ -140,6 +164,12 @@ public sealed class AuthService : IAuthService
 
     private static string NormalizeEmail(string email)
         => email.Trim().ToLowerInvariant();
+
+    private static string MensagemBloqueio(TimeSpan restante)
+    {
+        var minutos = Math.Max(1, (int)Math.Ceiling(restante.TotalMinutes));
+        return $"Conta bloqueada por excesso de tentativas. Tente de novo em {minutos} min.";
+    }
 
     private AuthResponse GenerateToken(Usuario usuario)
     {

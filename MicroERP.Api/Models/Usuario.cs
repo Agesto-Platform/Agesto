@@ -19,5 +19,8 @@ public class Usuario
     // Senha provisória definida pelo Dono: o app pede a troca no primeiro acesso.
     public bool DeveTrocarSenha { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
+    // Senhas erradas seguidas no login; ao chegar no limite a conta fica bloqueada até BloqueadoAte.
+    public int TentativasLoginFalhas { get; set; }
+    public DateTime? BloqueadoAte { get; set; }
     public Empresa? Empresa { get; set; }
 }

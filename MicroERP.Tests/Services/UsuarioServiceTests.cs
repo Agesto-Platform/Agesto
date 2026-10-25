@@ -156,6 +156,23 @@ public sealed class UsuarioServiceTests
         Assert.NotNull(login);
     }
 
+    [Fact]
+    public async Task RedefinirSenhaAsync_DesbloqueiaQuemErrouDemais()
+    {
+        await using var db = await Seed();
+        var carla = await db.Usuarios.SingleAsync(u => u.Id == 101);
+        carla.BloqueadoAte = DateTime.UtcNow.AddMinutes(10);
+        carla.TentativasLoginFalhas = 2;
+        await db.SaveChangesAsync();
+        var service = new UsuarioService(new UsuarioRepository(db));
+
+        var redefinida = await service.RedefinirSenhaAsync(Empresa, 101, CancellationToken.None);
+
+        var login = await new AuthService(db, Configuracao())
+            .LoginAsync(new AuthLoginRequest { Email = "carla@teste.com", Senha = redefinida.SenhaProvisoria }, CancellationToken.None);
+        Assert.NotNull(login);
+    }
+
     private static async Task<AppDbContext> Seed()
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()

@@ -214,6 +214,70 @@ public sealed class AuthServiceTests
             service.TrocarSenhaAsync(usuario.Id, new TrocarSenhaRequest { SenhaAtual = "Errada0000", NovaSenha = "NovaSenha2" }, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task LoginAsync_QuintaSenhaErrada_BloqueiaEAvisa()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "bloq@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var errada = new AuthLoginRequest { Email = "bloq@teste.com", Senha = "Errada123!" };
+
+        for (var i = 1; i < AuthService.TentativasAteBloquear; i++)
+            Assert.Null(await service.LoginAsync(errada, CancellationToken.None));
+
+        var ex = await Assert.ThrowsAsync<ContaBloqueadaException>(() => service.LoginAsync(errada, CancellationToken.None));
+        Assert.Contains("15 min", ex.Message);
+        Assert.NotNull((await dbContext.Usuarios.SingleAsync()).BloqueadoAte);
+    }
+
+    [Fact]
+    public async Task LoginAsync_Bloqueada_RecusaAtéASenhaCerta()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "bloq2@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        usuario.BloqueadoAte = DateTime.UtcNow.AddMinutes(10);
+        await dbContext.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ContaBloqueadaException>(() =>
+            service.LoginAsync(new AuthLoginRequest { Email = "bloq2@teste.com", Senha = "Senha123!" }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task LoginAsync_BloqueioVencido_EntraEZeraContagem()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "bloq3@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        usuario.BloqueadoAte = DateTime.UtcNow.AddMinutes(-1);
+        usuario.TentativasLoginFalhas = 3;
+        await dbContext.SaveChangesAsync();
+
+        Assert.NotNull(await service.LoginAsync(new AuthLoginRequest { Email = "bloq3@teste.com", Senha = "Senha123!" }, CancellationToken.None));
+
+        var depois = await dbContext.Usuarios.SingleAsync();
+        Assert.Equal(0, depois.TentativasLoginFalhas);
+        Assert.Null(depois.BloqueadoAte);
+    }
+
+    [Fact]
+    public async Task LoginAsync_SenhaCertaAntesDoLimite_ZeraContagem()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "bloq4@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var errada = new AuthLoginRequest { Email = "bloq4@teste.com", Senha = "Errada123!" };
+
+        for (var i = 1; i < AuthService.TentativasAteBloquear; i++)
+            await service.LoginAsync(errada, CancellationToken.None);
+        Assert.NotNull(await service.LoginAsync(new AuthLoginRequest { Email = "bloq4@teste.com", Senha = "Senha123!" }, CancellationToken.None));
+
+        // a contagem recomeça: mais uma errada não bloqueia
+        Assert.Null(await service.LoginAsync(errada, CancellationToken.None));
+    }
+
     private static IConfiguration CreateConfiguration()
     {
         return new ConfigurationBuilder()
