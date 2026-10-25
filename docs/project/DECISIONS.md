@@ -812,3 +812,51 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Por quê:** o plano Free do Render dá para um serviço ligado 24 h, não dois, e o Supabase Free tem dois projetos; um ambiente de homologação na nuvem custaria dinheiro ou acordaria a API pela metade. Teste local cobre o tamanho atual da equipe.
 
 **Impacto:** sem migration e sem mudança de código. Passo a passo em `deploy/README.md` (seções 8 e 9).
+
+---
+
+## DEC-42 — Paginação opcional nas listas
+
+**Status:** 🟡 Em revisão no PR #98 (25/10/2026), pedido por Davi.
+
+**Decisão:** `GET` de clientes, atendimentos, orçamentos, produtos e serviços aceitam `?pagina=&tamanho=` (padrão 20, máximo 100) e então devolvem `{ itens, pagina, tamanho, total }`. Sem os parâmetros, a resposta continua sendo a lista inteira.
+
+**Por quê:** o web usa as listas completas em buscas e seletores, e o mobile não usa esses endpoints; paginação opcional não quebra nenhum consumidor.
+
+**Impacto:** sem migration. A ordenação ganhou desempate por `Id`.
+
+---
+
+## DEC-43 — Bloqueio da conta após senhas erradas
+
+**Status:** 🟡 Em revisão no PR #99 (25/10/2026), decidido por Davi.
+
+**Decisão:** 5 senhas erradas seguidas no mesmo email bloqueiam a conta por 15 minutos. Durante o bloqueio nem a senha certa entra; o login responde 423 com "Conta bloqueada por excesso de tentativas. Tente de novo em N min.". Login certo ou senha provisória do Dono zeram a contagem.
+
+**Por quê:** complementa o rate limit por IP (DEC-34). Davi preferiu avisar o bloqueio, aceitando que o aviso revela que o email tem conta (só depois de 5 tentativas nele).
+
+**Impacto:** migration `AddUsuarioBloqueioLogin`, a aplicar no Supabase antes da promoção.
+
+---
+
+## DEC-44 — Exclusão de usuário com soft delete e anonimização (LGPD)
+
+**Status:** 🟡 Em revisão no PR #100 (25/10/2026), decidido por Davi.
+
+**Decisão:** `DELETE /api/usuario` deixa de apagar a linha. Nome vira "Usuário removido", email vira `removido-{id}@anonimo.invalid`, a senha vira um hash aleatório, a conta fica inativa e recebe `DeletedAt`. A regra do último Dono passa a contar só Donos ativos, como na DEC-35.
+
+**Por quê:** segue o soft delete do `AGENTS.md` e o tratamento de clientes (DEC-34); atendimentos e orçamentos continuam apontando para a linha.
+
+**Impacto:** migration `AddUsuarioDeletedAt`, a aplicar no Supabase antes da promoção. Usuário removido some da lista, não entra e libera o email.
+
+---
+
+## DEC-45 — Duração estimada do serviço e receita por hora
+
+**Status:** 🟡 Em revisão no PR #101 (25/10/2026), decidido por Davi. "Otimizar dia" (fase 2 da rota) foi adiado na mesma conversa.
+
+**Decisão:** `Servico.DuracaoMinutos` (opcional). As métricas de serviço devolvem `horas` e `receitaPorHora`: serviço por hora usa as horas lançadas; por empreitada usa execuções × duração estimada. Relatórios mostra a receita por hora.
+
+**Por quê:** destrava a parte de tempo da KAN-79 sem mudar o fluxo do app. A margem por hora fica de fora: o serviço não tem custo próprio, e dividir o custo dos produtos entre serviços exigiria uma regra que não foi decidida.
+
+**Impacto:** migration `AddServicoDuracaoMinutos`, a aplicar no Supabase antes da promoção.

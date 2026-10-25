@@ -250,9 +250,9 @@ public async Task<ActionResult<AuthResponse>> Login(...)
 
 5 tentativas por minuto por IP. Excedeu = 429 Too Many Requests.
 
-### Lockout adicional (futuro)
+### Lockout por conta (DEC-43, em revisão no PR #99)
 
-Após N falhas consecutivas em **um email específico** (não IP), bloquear conta por X minutos. Requer coluna `FailedLoginAttempts` e `LockedUntil` em Usuario.
+Após 5 senhas erradas seguidas no **mesmo email** (não IP), a conta fica bloqueada por 15 minutos e o login responde 423 com o tempo restante. Colunas `TentativasLoginFalhas` e `BloqueadoAte` em Usuario; login certo ou senha provisória do Dono zeram o bloqueio.
 
 ---
 
@@ -262,7 +262,9 @@ Após N falhas consecutivas em **um email específico** (não IP), bloquear cont
 
 **Quando ler isto:** quando implementar `DELETE /api/usuario` (KAN-55).
 
-### Decisão pendente
+### Decisão (DEC-44, em revisão no PR #100)
+
+Davi escolheu **soft delete + anonimização** (25/10/2026). O texto abaixo fica como histórico da análise; a seção "Atenção em cascata" está desatualizada (Configuracao pertence à Empresa e `Atendimento`/`Orcamento.UsuarioId` não têm FK).
 
 Hard delete (apaga linhas) ou soft delete (campo `DeletedAt`)?
 

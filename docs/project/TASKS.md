@@ -71,7 +71,7 @@
 
 | KAN | Descrição | Prioridade | Responsável | Depende de |
 |-----|-----------|------------|-------------|------------|
-| — | Paginação no GetAllAsync | Baixa | A definir | — |
+| — | Paginação no GetAllAsync — 🟡 em revisão no PR #98: paginação opcional (`?pagina=&tamanho=`) nas listas principais (DEC-42) | Baixa | Equipe Agesto | — |
 
 > Backend Core está essencialmente completo: em 21/10/2026, build verde e 261 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
 
@@ -105,11 +105,11 @@
 
 | Item | Descrição | Prioridade | Depende de |
 |------|-----------|------------|------------|
-| Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Campo de duração (não modelado) |
+| Margem/hora por serviço | Parte restante do KAN-79. 🟡 Em revisão no PR #101: `Servico.DuracaoMinutos` e **receita por hora** por serviço (DEC-45). Margem por hora continua pendente: o serviço não tem custo próprio | Baixa | Regra de atribuição de custo ao serviço (decisão de Davi) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Decisão de produto |
 | ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
-| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
+| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render e "Otimizar dia" (fase 2, adiado por Davi em 25/10/2026). `Servico.DuracaoMinutos` em revisão no PR #101 | Média | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — |
@@ -167,8 +167,8 @@
 | Item | Descrição | Prioridade |
 |------|-----------|------------|
 | Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio | Média |
-| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP) | Baixa |
-| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7. Hoje `DELETE /api/usuario` apaga a própria conta com DELETE físico e sem anonimização (`UsuarioRepository`), divergindo do invariante de soft delete do `AGENTS.md` — decisão de Davi | Baixa |
+| Lockout por conta | 🟡 Em revisão no PR #99: 5 senhas erradas seguidas bloqueiam a conta por 15 min, com aviso (DEC-43) | Baixa |
+| Exclusão de Usuario com LGPD | 🟡 Em revisão no PR #100: soft delete com anonimização no lugar do DELETE físico (DEC-44). Até o merge, `DELETE /api/usuario` ainda apaga a linha | Baixa |
 
 ---
 
@@ -212,7 +212,7 @@
 
 | KAN | Descrição | Responsável | Observação |
 |-----|-----------|-------------|------------|
-| KAN-79 | Métricas de Serviços (`GET /api/metrics/servicos`) | Davi Gomes | Receita por tipo de serviço e margem por atendimento (via rentabilidade) já entregues. Margem/hora e tempo médio por serviço seguem pendentes — dependem de um campo de duração ainda não modelado. |
+| KAN-79 | Métricas de Serviços (`GET /api/metrics/servicos`) | Davi Gomes | Receita por tipo de serviço e margem por atendimento (via rentabilidade) já entregues. Receita por hora por serviço em revisão no PR #101 (DEC-45). Margem/hora segue pendente: o serviço não tem custo próprio. |
 
 > Multi-tenant aplicado via `EmpresaId` + `DeletedAt == null` em todas as queries (join via `Atendimento`, já que `ItemProduto`/`ItemServico` não têm `EmpresaId` próprio). Receita conta só atendimentos `Concluido`; movimentação de estoque conta itens de atendimentos não-`Cancelado`. Bloco Vendas soma `ItemProduto.Subtotal`; bloco Serviços soma `ItemServico.Subtotal` — nunca o `ValorTotal` do atendimento, para não duplicar receita entre os blocos (concretiza a separação venda/serviço da DEC-15). Revisão do @revisor corrigiu, antes do commit, um bug em que os joins com `Produtos`/`Servicos` não filtravam `DeletedAt == null` (produtos/serviços soft-deletados entrariam nas somas) — coberto pelo teste `GetVendas_IgnoraProdutoSoftDeletado`.
 
@@ -339,7 +339,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 4. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
 
 ### Sprint seguinte
-5. Débitos residuais: margem/hora do KAN-79 (após campo de duração), "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
+5. Débitos residuais: margem/hora do KAN-79 (falta regra de custo por serviço), "Otimizar dia" (fase 2 da rota, DEC-37/38, adiado), descarga de Orçamento no sync, agenda na Carga do sync mobile, lazy-load do Recharts e sincronização automática em background
 
 ---
 
