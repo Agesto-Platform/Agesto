@@ -20,10 +20,16 @@ public sealed class OrcamentoController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        if (paginacao.Informada)
+        {
+            var pagina = await _orcamentoService.GetPaginaAsync(empresaId, paginacao, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Orçamentos encontrados.", Data = pagina });
+        }
 
         var orcamentos = await _orcamentoService.GetAllAsync(empresaId, cancellationToken);
         return Ok(new ApiResponse { Success = true, Message = "Orçamentos encontrados.", Data = orcamentos });

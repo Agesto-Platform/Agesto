@@ -22,6 +22,19 @@ public sealed class ServicoService : IServicoService
         return servicos.Select(MapResponse).ToList();
     }
 
+    public async Task<PaginaResponse<ServicoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    {
+        var (itens, total) = await _servicoRepository.GetPaginaAsync(
+            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+        return new PaginaResponse<ServicoResponse>
+        {
+            Itens = itens.Select(MapResponse).ToList(),
+            Pagina = paginacao.PaginaOuPadrao,
+            Tamanho = paginacao.TamanhoOuPadrao,
+            Total = total
+        };
+    }
+
     public async Task<ServicoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var servico = await _servicoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);

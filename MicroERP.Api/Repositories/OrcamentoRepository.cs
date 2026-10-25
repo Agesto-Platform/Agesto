@@ -16,12 +16,22 @@ public sealed class OrcamentoRepository : IOrcamentoRepository
 
     public async Task<List<Orcamento>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
     {
-        return await _dbContext.Orcamentos
+        return await Listagem(empresaId).ToListAsync(cancellationToken);
+    }
+
+    public Task<(List<Orcamento> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, CancellationToken cancellationToken)
+    {
+        return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
+    }
+
+    private IQueryable<Orcamento> Listagem(long empresaId)
+    {
+        return _dbContext.Orcamentos
             .AsNoTracking()
             .Where(o => o.EmpresaId == empresaId && o.DeletedAt == null)
             .Include(o => o.Itens.Where(i => i.DeletedAt == null))
             .OrderByDescending(o => o.DataRegistro)
-            .ToListAsync(cancellationToken);
+            .ThenBy(o => o.Id);
     }
 
     public async Task<Orcamento?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)

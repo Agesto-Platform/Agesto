@@ -16,11 +16,21 @@ public sealed class ProdutoRepository : IProdutoRepository
 
     public async Task<List<Produto>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
     {
-        return await _dbContext.Produtos
+        return await Listagem(empresaId).ToListAsync(cancellationToken);
+    }
+
+    public Task<(List<Produto> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, CancellationToken cancellationToken)
+    {
+        return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
+    }
+
+    private IQueryable<Produto> Listagem(long empresaId)
+    {
+        return _dbContext.Produtos
             .AsNoTracking()
             .Where(p => p.EmpresaId == empresaId && p.DeletedAt == null)
             .OrderBy(p => p.Nome)
-            .ToListAsync(cancellationToken);
+            .ThenBy(p => p.Id);
     }
 
     public async Task<Produto?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)

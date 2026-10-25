@@ -16,11 +16,21 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
 
     public async Task<List<Atendimento>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
     {
-        return await _dbContext.Atendimentos
+        return await Listagem(empresaId).ToListAsync(cancellationToken);
+    }
+
+    public Task<(List<Atendimento> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, CancellationToken cancellationToken)
+    {
+        return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
+    }
+
+    private IQueryable<Atendimento> Listagem(long empresaId)
+    {
+        return _dbContext.Atendimentos
             .AsNoTracking()
             .Where(a => a.EmpresaId == empresaId && a.DeletedAt == null)
             .OrderByDescending(a => a.DataRegistro)
-            .ToListAsync(cancellationToken);
+            .ThenBy(a => a.Id);
     }
 
     public async Task<List<Atendimento>> GetAgendaAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, CancellationToken cancellationToken)

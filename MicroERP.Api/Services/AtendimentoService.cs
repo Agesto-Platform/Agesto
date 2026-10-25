@@ -54,6 +54,19 @@ public sealed class AtendimentoService : IAtendimentoService
         return atendimentos.Select(MapResponse).ToList();
     }
 
+    public async Task<PaginaResponse<AtendimentoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    {
+        var (itens, total) = await _atendimentoRepository.GetPaginaAsync(
+            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+        return new PaginaResponse<AtendimentoResponse>
+        {
+            Itens = itens.Select(MapResponse).ToList(),
+            Pagina = paginacao.PaginaOuPadrao,
+            Tamanho = paginacao.TamanhoOuPadrao,
+            Total = total
+        };
+    }
+
     public async Task<IReadOnlyList<AgendaItemResponse>> GetAgendaAsync(long empresaId, DateTime? de, DateTime? ate, long? agenteId, CancellationToken cancellationToken)
     {
         var (inicio, fim) = ResolvePeriodo(de, ate);
