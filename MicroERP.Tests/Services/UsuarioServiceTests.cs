@@ -173,6 +173,84 @@ public sealed class UsuarioServiceTests
         Assert.NotNull(login);
     }
 
+    [Fact]
+    public async Task DeleteAsync_AnonimizaEMarcaDeletedAtSemApagarALinha()
+    {
+        await using var db = await Seed();
+        db.Atendimentos.Add(new Atendimento { Id = 1, Uuid = Guid.NewGuid(), EmpresaId = Empresa, ClienteId = 1, UsuarioId = 101 });
+        await db.SaveChangesAsync();
+        var service = new UsuarioService(new UsuarioRepository(db));
+
+        Assert.True(await service.DeleteAsync(101, Empresa, CancellationToken.None));
+
+        var carla = await db.Usuarios.SingleAsync(u => u.Id == 101);
+        Assert.NotNull(carla.DeletedAt);
+        Assert.False(carla.Ativo);
+        Assert.Equal(DadosPessoais.NomeUsuarioAnonimizado, carla.Nome);
+        Assert.Equal(DadosPessoais.EmailAnonimizado(101), carla.Email);
+        // o histórico continua apontando para a linha
+        Assert.Equal(101, (await db.Atendimentos.SingleAsync()).UsuarioId);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ContaRemovidaNaoEntraESomeDaLista()
+    {
+        await using var db = await Seed();
+        var service = new UsuarioService(new UsuarioRepository(db));
+        var redefinida = await service.RedefinirSenhaAsync(Empresa, 101, CancellationToken.None);
+
+        await service.DeleteAsync(101, Empresa, CancellationToken.None);
+
+        var login = await new AuthService(db, Configuracao())
+            .LoginAsync(new AuthLoginRequest { Email = "carla@teste.com", Senha = redefinida.SenhaProvisoria }, CancellationToken.None);
+        Assert.Null(login);
+        Assert.DoesNotContain(await service.GetAllAsync(Empresa, CancellationToken.None), u => u.Id == 101);
+        await Assert.ThrowsAsync<NotFoundException>(() => service.SetAtivoAsync(Empresa, DonoId, 101, true, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_LiberaOEmailParaNovoCadastro()
+    {
+        await using var db = await Seed();
+        var service = new UsuarioService(new UsuarioRepository(db));
+
+        await service.DeleteAsync(101, Empresa, CancellationToken.None);
+
+        Assert.False(await new UsuarioRepository(db).EmailExistsAsync("carla@teste.com", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_UltimoDonoAtivo_Bloqueia()
+    {
+        await using var db = await Seed();
+        var service = new UsuarioService(new UsuarioRepository(db));
+
+        await Assert.ThrowsAsync<UltimoDonoDaEmpresaException>(() => service.DeleteAsync(DonoId, Empresa, CancellationToken.None));
+        Assert.Null((await db.Usuarios.SingleAsync(u => u.Id == DonoId)).DeletedAt);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_DonoInativoNaoContaComoDonoQueSobra()
+    {
+        await using var db = await Seed();
+        db.Usuarios.Add(new Usuario { Id = 102, Nome = "Dono inativo", Email = "inativo@teste.com", Senha = "x", EmpresaId = Empresa, Perfil = PerfilUsuario.Dono, Ativo = false });
+        await db.SaveChangesAsync();
+        var service = new UsuarioService(new UsuarioRepository(db));
+
+        // antes a regra contava Donos inativos e deixaria a empresa sem Dono ativo
+        await Assert.ThrowsAsync<UltimoDonoDaEmpresaException>(() => service.DeleteAsync(DonoId, Empresa, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DeleteAsync_OutraEmpresa_NaoEncontra()
+    {
+        await using var db = await Seed();
+        var service = new UsuarioService(new UsuarioRepository(db));
+
+        Assert.False(await service.DeleteAsync(200, Empresa, CancellationToken.None));
+        Assert.Null((await db.Usuarios.SingleAsync(u => u.Id == 200)).DeletedAt);
+    }
+
     private static async Task<AppDbContext> Seed()
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
