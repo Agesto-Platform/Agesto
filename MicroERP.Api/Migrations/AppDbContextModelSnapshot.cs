@@ -532,6 +532,9 @@ namespace MicroERP.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int?>("DuracaoMinutos")
+                        .HasColumnType("integer");
+
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
 

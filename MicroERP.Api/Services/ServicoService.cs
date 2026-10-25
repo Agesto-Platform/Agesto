@@ -45,6 +45,7 @@ public sealed class ServicoService : IServicoService
             TipoCobranca = request.TipoCobranca,
             ValorHora = request.ValorHora,
             ValorEmpreitada = request.ValorEmpreitada,
+            DuracaoMinutos = request.DuracaoMinutos,
             EmpresaId = empresaId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -66,6 +67,7 @@ public sealed class ServicoService : IServicoService
         servico.TipoCobranca = request.TipoCobranca;
         servico.ValorEmpreitada = request.ValorEmpreitada;
         servico.ValorHora = request.ValorHora;
+        servico.DuracaoMinutos = request.DuracaoMinutos;
         // Editar pelo web é o Dono revisando: tira o selo de "criado pelo agente".
         servico.Revisado = true;
         servico.UpdatedAt = DateTime.UtcNow;
@@ -108,6 +110,7 @@ public sealed class ServicoService : IServicoService
             TipoCobranca = servico.TipoCobranca,
             ValorHora = servico.ValorHora,
             ValorEmpreitada = servico.ValorEmpreitada,
+            DuracaoMinutos = servico.DuracaoMinutos,
             Revisado = servico.Revisado,
             CriadoPorUsuarioId = servico.CriadoPorUsuarioId,
             CriadoPorNome = servico.CriadoPor?.Nome,

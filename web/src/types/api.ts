@@ -94,6 +94,9 @@ export interface ServicoReceitaItem {
   tipoCobranca: string
   quantidade: number
   receita: number
+  /** Por hora: as horas lançadas; por empreitada: execuções × duração estimada. null sem duração cadastrada. */
+  horas: number | null
+  receitaPorHora: number | null
 }
 
 export interface MetricasServicos {
@@ -191,6 +194,8 @@ export interface Servico {
   tipoCobranca: TipoCobranca
   valorHora: number | null
   valorEmpreitada: number | null
+  /** Tempo estimado de execução, em minutos (base da receita por hora da empreitada). */
+  duracaoMinutos: number | null
   /** false = criado pelo agente no app, aguardando revisão do Dono. */
   revisado: boolean
   criadoPorUsuarioId: number | null
@@ -204,6 +209,7 @@ export interface ServicoInput {
   tipoCobranca: TipoCobranca
   valorHora?: number | null
   valorEmpreitada?: number | null
+  duracaoMinutos?: number | null
 }
 
 /* ---------- Orçamento ---------- */

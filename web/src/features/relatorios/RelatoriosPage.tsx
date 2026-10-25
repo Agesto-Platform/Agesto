@@ -56,8 +56,8 @@ function exportarCsv(data: DashboardResponse) {
     ['Atendimentos', r.atendimentos],
     ['Ticket médio', num(r.ticketMedio)],
     [],
-    ['Serviço', 'Atendimentos', 'Receita'],
-    ...servicos.receitaPorServico.map((s) => [s.descricao, s.quantidade, num(s.receita)]),
+    ['Serviço', 'Atendimentos', 'Receita', 'Receita por hora'],
+    ...servicos.receitaPorServico.map((s) => [s.descricao, s.quantidade, num(s.receita), s.receitaPorHora === null ? '' : num(s.receitaPorHora)]),
     [],
     ['Produto', 'Quantidade', 'Receita'],
     ...vendas.topProdutos.map((p) => [p.nome, p.quantidade, num(p.receita)]),
@@ -227,7 +227,7 @@ export function RelatoriosPage() {
                 <RankBar
                   key={s.servicoId}
                   name={s.descricao}
-                  meta={`${s.quantidade} ${s.quantidade === 1 ? 'atendimento' : 'atendimentos'} · ${COBRANCA[s.tipoCobranca] ?? s.tipoCobranca}`}
+                  meta={`${s.quantidade} ${s.quantidade === 1 ? 'atendimento' : 'atendimentos'} · ${COBRANCA[s.tipoCobranca] ?? s.tipoCobranca}${s.receitaPorHora === null ? '' : ` · ${brl(s.receitaPorHora)}/h`}`}
                   percent={maxServico > 0 ? (s.receita / maxServico) * 100 : 0}
                   amount={brl(s.receita)}
                 />

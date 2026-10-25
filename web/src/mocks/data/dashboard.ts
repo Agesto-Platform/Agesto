@@ -48,6 +48,8 @@ export const dashboardMock: DashboardResponse = {
         tipoCobranca: 'Empreitada',
         quantidade: 18,
         receita: 6400,
+        horas: 36,
+        receitaPorHora: 177.78,
       },
       {
         servicoId: 2,
@@ -55,6 +57,8 @@ export const dashboardMock: DashboardResponse = {
         tipoCobranca: 'Hora',
         quantidade: 21,
         receita: 2980,
+        horas: 21,
+        receitaPorHora: 141.9,
       },
       {
         servicoId: 3,
@@ -62,6 +66,8 @@ export const dashboardMock: DashboardResponse = {
         tipoCobranca: 'Hora',
         quantidade: 14,
         receita: 1980,
+        horas: 14,
+        receitaPorHora: 141.43,
       },
     ],
   },

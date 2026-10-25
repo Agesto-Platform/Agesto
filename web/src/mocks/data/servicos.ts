@@ -8,11 +8,11 @@ const now = new Date().toISOString()
 const doDono = { revisado: true, criadoPorUsuarioId: null, criadoPorNome: null }
 
 const seed: Servico[] = [
-  { id: 1, uuid: crypto.randomUUID(), descricao: 'Instalação de AC', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 350, ...doDono, createdAt: now, updatedAt: now },
-  { id: 2, uuid: crypto.randomUUID(), descricao: 'Manutenção preventiva', tipoCobranca: 'PorHora', valorHora: 140, valorEmpreitada: null, ...doDono, createdAt: now, updatedAt: now },
-  { id: 3, uuid: crypto.randomUUID(), descricao: 'Limpeza / higienização', tipoCobranca: 'PorHora', valorHora: 90, valorEmpreitada: null, ...doDono, createdAt: now, updatedAt: now },
+  { id: 1, uuid: crypto.randomUUID(), descricao: 'Instalação de AC', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 350, duracaoMinutos: 120, ...doDono, createdAt: now, updatedAt: now },
+  { id: 2, uuid: crypto.randomUUID(), descricao: 'Manutenção preventiva', tipoCobranca: 'PorHora', valorHora: 140, valorEmpreitada: null, duracaoMinutos: null, ...doDono, createdAt: now, updatedAt: now },
+  { id: 3, uuid: crypto.randomUUID(), descricao: 'Limpeza / higienização', tipoCobranca: 'PorHora', valorHora: 90, valorEmpreitada: null, duracaoMinutos: null, ...doDono, createdAt: now, updatedAt: now },
   // Criado pelo agente no app, aguardando revisão (DEC-36).
-  { id: 4, uuid: crypto.randomUUID(), descricao: 'Limpeza de dreno', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 120, revisado: false, criadoPorUsuarioId: 2, criadoPorNome: 'Carlos', createdAt: now, updatedAt: now },
+  { id: 4, uuid: crypto.randomUUID(), descricao: 'Limpeza de dreno', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 120, duracaoMinutos: null, revisado: false, criadoPorUsuarioId: 2, criadoPorNome: 'Carlos', createdAt: now, updatedAt: now },
 ]
 
 export const servicoStore: Store<Servico> = makeStore(seed)

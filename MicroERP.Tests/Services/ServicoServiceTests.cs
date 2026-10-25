@@ -76,6 +76,31 @@ public sealed class ServicoServiceTests
     }
 
     [Fact]
+    public async Task CreateEUpdate_GuardamADuracaoEstimada()
+    {
+        var criado = await _service.CreateAsync(1, new ServicoCreateRequest
+        {
+            Descricao = "Instalação",
+            TipoCobranca = TipoCobranca.Empreitada,
+            ValorEmpreitada = 350m,
+            DuracaoMinutos = 120
+        }, CancellationToken.None);
+        Assert.Equal(120, criado.DuracaoMinutos);
+
+        var existente = new Servico { Id = 5, Uuid = Guid.NewGuid(), Descricao = "Instalação", TipoCobranca = TipoCobranca.Empreitada, ValorEmpreitada = 350m, DuracaoMinutos = 120, EmpresaId = 1 };
+        _repositoryMock.Setup(r => r.GetByIdAsync(1, 5, true, It.IsAny<CancellationToken>())).ReturnsAsync(existente);
+
+        var editado = await _service.UpdateAsync(1, 5, new ServicoUpdateRequest
+        {
+            Descricao = "Instalação",
+            TipoCobranca = TipoCobranca.Empreitada,
+            ValorEmpreitada = 350m,
+            DuracaoMinutos = null
+        }, CancellationToken.None);
+        Assert.Null(editado.DuracaoMinutos);
+    }
+
+    [Fact]
     public async Task UpdateAsync_WhenNotFound_ThrowsNotFoundException()
     {
         _repositoryMock

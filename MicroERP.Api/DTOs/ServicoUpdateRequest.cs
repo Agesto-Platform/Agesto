@@ -19,4 +19,7 @@ public sealed class ServicoUpdateRequest
 
     [Range(0.01, 999999.99, ErrorMessage = "Valor empreitada inválido.")]
     public decimal? ValorEmpreitada { get; set; }
+
+    [Range(1, 1440, ErrorMessage = "Duração inválida: informe de 1 a 1440 minutos.")]
+    public int? DuracaoMinutos { get; set; }
 }
