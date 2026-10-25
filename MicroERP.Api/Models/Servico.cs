@@ -10,6 +10,8 @@ public class Servico
     public TipoCobranca TipoCobranca { get; set; } = TipoCobranca.PorHora;
     public decimal? ValorHora { get; set; }
     public decimal? ValorEmpreitada { get; set; }
+    // Tempo estimado de execução: base da receita por hora dos serviços por empreitada.
+    public int? DuracaoMinutos { get; set; }
     public long EmpresaId { get; set; }
     public Empresa? Empresa { get; set; }
 

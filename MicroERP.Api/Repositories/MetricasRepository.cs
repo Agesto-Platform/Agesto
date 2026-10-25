@@ -128,25 +128,32 @@ public sealed class MetricasRepository : IMetricasRepository
                   && a.Status == StatusAtendimento.Concluido
                   && a.DataRegistro >= de
                   && a.DataRegistro <= ate
-            group new { isv.Quantidade, isv.Subtotal } by new { isv.ServicoId, s.Descricao, s.TipoCobranca } into g
+            group new { isv.Quantidade, isv.Subtotal } by new { isv.ServicoId, s.Descricao, s.TipoCobranca, s.DuracaoMinutos } into g
             select new
             {
                 g.Key.ServicoId,
                 g.Key.Descricao,
                 g.Key.TipoCobranca,
+                g.Key.DuracaoMinutos,
                 Quantidade = g.Sum(x => x.Quantidade),
                 Receita = g.Sum(x => x.Subtotal)
             })
             .ToListAsync(cancellationToken);
 
         var receitaPorServico = grouped
-            .Select(x => new ServicoReceitaItem
+            .Select(x =>
             {
-                ServicoId = x.ServicoId,
-                Descricao = x.Descricao,
-                TipoCobranca = x.TipoCobranca.ToString(),
-                Quantidade = x.Quantidade,
-                Receita = x.Receita
+                var horas = HorasTrabalhadas(x.TipoCobranca, x.Quantidade, x.DuracaoMinutos);
+                return new ServicoReceitaItem
+                {
+                    ServicoId = x.ServicoId,
+                    Descricao = x.Descricao,
+                    TipoCobranca = x.TipoCobranca.ToString(),
+                    Quantidade = x.Quantidade,
+                    Receita = x.Receita,
+                    Horas = horas,
+                    ReceitaPorHora = horas > 0 ? Math.Round(x.Receita / horas.Value, 2) : null
+                };
             })
             .OrderByDescending(x => x.Receita)
             .ToList();
@@ -156,6 +163,14 @@ public sealed class MetricasRepository : IMetricasRepository
             ReceitaTotal = receitaPorServico.Sum(x => x.Receita),
             ReceitaPorServico = receitaPorServico
         };
+    }
+
+    // Por hora, a quantidade lançada já são as horas. Por empreitada, cada execução
+    // vale a duração estimada do serviço; sem ela, não há como saber o tempo.
+    private static decimal? HorasTrabalhadas(TipoCobranca tipo, int quantidade, int? duracaoMinutos)
+    {
+        if (tipo == TipoCobranca.PorHora) return quantidade;
+        return duracaoMinutos is > 0 ? Math.Round(quantidade * duracaoMinutos.Value / 60m, 2) : null;
     }
 
     public async Task<MetricasEstoqueResponse> GetEstoqueAsync(long empresaId, DateTime de, DateTime ate, CancellationToken cancellationToken)
