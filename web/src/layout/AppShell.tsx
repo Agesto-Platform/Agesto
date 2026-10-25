@@ -5,6 +5,7 @@ import { Topbar } from './Topbar'
 import { AgentPanel } from './AgentPanel'
 import { Mascote, type MascoteApi } from '../components/Mascote'
 import { pegarTransicao, posicionarOverlay, runEntrada, entradaReduzida } from './entrada'
+import { agenteAbreNa, lerEscolhaAgente, salvarEscolhaAgente } from './agente'
 import { saudacao, useConta } from './useConta'
 import type { Period } from './PeriodSwitch'
 
@@ -18,21 +19,24 @@ export type ShellContext = {
   entradaPronta: () => void
 }
 
-/** Telas largas (calendário, relatórios) abrem com o Agente fechado, como nos templates. */
-const SEM_AGENTE = ['/agenda', '/relatorios']
-
 const MES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
 const largo = () => window.matchMedia('(min-width: 1280px)').matches
 
 export function AppShell() {
   const [period, setPeriod] = useState<Period>('mes')
   const location = useLocation()
-  const agentePadrao = () => largo() && !SEM_AGENTE.includes(location.pathname)
+  const agentePadrao = () => agenteAbreNa(location.pathname, largo(), lerEscolhaAgente())
   const [agentOpen, setAgentOpen] = useState(agentePadrao)
   const [navOpen, setNavOpen] = useState(false)
   const conta = useConta()
 
-  // cada tela abre com o Agente no estado dela (como cada página do template)
+  // abrir ou recolher pelo botão é escolha do usuário: vale para as próximas telas
+  const escolherAgente = (aberto: boolean) => {
+    salvarEscolhaAgente(aberto)
+    setAgentOpen(aberto)
+  }
+
+  // cada tela abre com o Agente no estado dela (como cada página do template), respeitando a escolha
   const [rota, setRota] = useState(location.pathname)
   if (rota !== location.pathname) {
     setRota(location.pathname)
@@ -117,14 +121,14 @@ export function AppShell() {
         <div className="nav-scrim" onClick={fecharNav} />
         <div className="stage">
           <div className="main">
-            <Topbar agentOpen={agentOpen} onToggleAgent={() => setAgentOpen((v) => !v)} onOpenNav={() => setNavOpen(true)} />
+            <Topbar agentOpen={agentOpen} onToggleAgent={() => escolherAgente(!agentOpen)} onOpenNav={() => setNavOpen(true)} />
             <div className="page">
               <div id="page">
                 <Outlet context={{ period, setPeriod, entradaPronta } satisfies ShellContext} />
               </div>
             </div>
           </div>
-          <AgentPanel onClose={() => setAgentOpen(false)} onMascote={(api) => (painelRef.current = api)} />
+          <AgentPanel onClose={() => escolherAgente(false)} onMascote={(api) => (painelRef.current = api)} />
         </div>
       </div>
 
