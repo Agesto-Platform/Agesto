@@ -14,6 +14,8 @@ Sistema integrado **Web + Mobile** de gestão para microempreendedores e prestad
 | Prestador de serviço | Técnico de AC, instalador | Registra atendimentos e serviços prestados |
 | Autônomo com equipe | Técnico com agentes em campo | Gerencia equipe, vê dashboard consolidado |
 
+No lançamento do MVP (15/12/2026, DEC-46) o foco é o prestador de serviço, sozinho ou com equipe pequena. O pequeno comerciante fica para depois.
+
 ## Qual problema resolve
 
 A maioria dos ERPs do mercado é voltada para médias e grandes empresas — complexos e caros. Microempreendedores ficam sem solução adequada e gerenciam o negócio em planilhas ou no papel.
@@ -58,7 +60,7 @@ O Agesto oferece:
 | Banco de Dados | PostgreSQL no Supabase, região N. Virginia (DEC-32) |
 | Mobile (App do Agente) | React Native + TypeScript (Expo/prebuild), Expo Router, `expo-sqlite` offline-first |
 | Módulo IA | Embutido no backend C#, via SDK oficial Anthropic Claude (DEC-21) — não há mais serviço Python separado |
-| Autenticação | JWT (HMAC-SHA256, 120min, claims: sub, email, jti, empresaId, perfil) |
+| Autenticação | JWT (HMAC-SHA256, 120min, claims: sub, email, jti, empresaId, perfil); sessão de 30 dias decidida para o piloto (DEC-50) |
 | Nuvem | API no Render, web na Cloudflare Pages, banco no Supabase (DEC-32) |
 | Testes | Backend: xUnit + Moq + EF Core InMemory/SQLite (261 testes). Web: Vitest + Testing Library (33 testes). Mobile: Jest/jest-expo (77 testes) — CI da `develop`, 21/10/2026 |
 | Versionamento | Git + Gitflow |
@@ -67,17 +69,17 @@ O Agesto oferece:
 
 | Membro | Papel | Responsabilidade principal | GitHub |
 |--------|-------|---------------------------|--------|
-| Davi Gomes Rocha | Founder e Product Owner | Produto, prioridades, arquitetura e coordenação técnica | `falkz-cmd` — Owner |
-| Depowo | Cofounder | Infraestrutura, DevOps e continuidade operacional | `Depowo` — Owner |
-| ghzpro034 | Cofounder | Desenvolvimento generalista em backend, web e mobile | `ghzpro034` — Member/Write |
+| Davi Gomes Rocha | Founder e Product Owner | Produto, prioridades e app mobile; coordenação geral | `falkz-cmd` — Owner |
+| Davi Oliveira | Cofounder | Web do Dono e tarefas gerais (backend, testes, suporte) | `ghzpro034` — Member/Write |
+| Diego | Cofounder | Infraestrutura, DevOps, publicação do APK e redesign | `Depowo` — Owner |
 
-Os três integram o time visível `@Agesto-Platform/core`. Os papéis indicam o foco inicial, sem impedir contribuições cruzadas. As contribuições do time acadêmico original permanecem preservadas no histórico Git, mas não representam a composição atual.
+Divisão revista em 22/10/2026 para o lançamento do MVP (DEC-46); as tarefas de cada um estão em `TASKS.md`, seção "Lançamento do MVP". Os três integram o time visível `@Agesto-Platform/core`. Os papéis indicam o foco inicial, sem impedir contribuições cruzadas. As contribuições do time acadêmico original permanecem preservadas no histórico Git, mas não representam a composição atual.
 
 ## Status atual
 
-- **Fase:** MVP em produção (API, banco e web reais, DEC-32), em desenvolvimento em equipe
+- **Fase:** MVP em produção (API, banco e web reais, DEC-32), em desenvolvimento em equipe. Rumo ao lançamento oficial: ensaio geral em 03/11, piloto com um cliente real de 04/11 a 28/11 e lançamento em 15/12/2026, para o prestador de serviço com equipe pequena, app só Android por APK (DEC-46, DEC-47)
 - **Branch principal:** `main` (repositório `Agesto-Platform/Agesto`). A `main` é a produção (Render e Cloudflare Pages publicam a `main` depois do CI) e recebeu os marcos de outubro/2026 em 21/10/2026; a `develop` é integração e teste local (DEC-41)
-- **Repositório:** [`Agesto-Platform/Agesto`](https://github.com/Agesto-Platform/Agesto) — repo próprio, **público** (portfólio + comercial, licença restritiva; ver DEC-24). O acadêmico original `github.com/Auto-academic-erp/micro-erp-auto` fica como legado abandonado.
+- **Repositório:** [`Agesto-Platform/Agesto`](https://github.com/Agesto-Platform/Agesto) — repo próprio, **público** (portfólio + comercial, licença restritiva; ver DEC-24). O acadêmico original `github.com/Auto-academic-erp/micro-erp-auto` fica como legado abandonado. Manter o repositório público é uma decisão a revisar antes do lançamento (DEC-46).
 - **Banco:** Supabase em N. Virginia, com a `InitialCreate` única (DEC-31) e as migrations seguintes aplicadas; backup automático ainda pendente (DEC-34)
 - **Testes:** backend 261, web 33 e mobile 77 testes passando no CI da `develop` (21/10/2026)
 - **Frontend Web (Módulo Dono):** essencialmente completo — 14 tasks (web-01 a web-14) integradas na `main`, **sidebar 100% funcional**, cobrindo dashboard, autenticação, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização), consumindo a API real em produção (MSW só em desenvolvimento local). Depois ganhou gestão de usuários (DEC-35), revisão de serviços criados no app (DEC-36) e mapa da agenda (DEC-38). Testes base (Vitest) cobrindo masks, período, store, Money e ClienteForm. Ver DEC-25 em `DECISIONS.md` e seção 10 do `DESIGN.md`.
@@ -91,4 +93,4 @@ Os três integram o time visível `@Agesto-Platform/core`. Os papéis indicam o 
 - **Offline-first** — funciona sem internet no campo (implementado no Mobile, ver DEC-26)
 - Suporte a **múltiplos modos**: Venda, Serviço ou Híbrido (foco atual no Prestador de Serviço — DEC-15)
 - **Multi-agente** — dono gerencia equipe de agentes em campo
-- **IA nativa** para insights de negócio (planejada, embutida no backend C#, DEC-21) — ainda não implementada
+- **IA nativa** para insights de negócio (planejada, embutida no backend C#, DEC-21) — ainda não implementada e fora do lançamento do MVP (DEC-46)
