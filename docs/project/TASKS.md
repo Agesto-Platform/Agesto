@@ -27,17 +27,17 @@
 
 | Prazo | Tarefa | Origem | Status |
 |-------|--------|--------|--------|
-| 24/10 | Escolher o cliente piloto e confirmar que os agentes usam Android | D1 | A fazer |
-| 24/10 | CPF com dígito verificador no app e cliente ainda não enviado editável (hoje o app só confere o formato) | B5 | A fazer |
-| 27/10 | APK: `mobile/eas.json`, `android.package` = `br.com.agesto.app`, `expo-updates` e aviso de versão nova (DEC-47; ícone vem do Diego) | B1 | A fazer |
-| 31/10 | Sessão de 30 dias na API e no app, com revogação ao desativar (DEC-50) | B4, D7 | A fazer |
-| 31/10 | Texto dos termos de uso e da política de privacidade, com revisão jurídica | B6, D8 | A fazer |
-| 31/10 | Tela de aceite dos termos no app | B6 | A fazer |
-| 31/10 | Acordo do piloto por escrito: período grátis ou com desconto, uso dos dados | D9 | A fazer |
+| 24/10 | Escolher o cliente piloto e confirmar que os agentes usam Android. Enquanto não há cliente, a validação segue com um usuário de teste (Diego, 28/10) | D1 | A fazer |
+| 24/10 | CPF com dígito verificador no app e cliente ainda não enviado editável | B5 | Feito (PR #107, 28/10) |
+| 27/10 | APK: `mobile/eas.json`, `android.package` = `br.com.agesto.app`, `expo-updates` e aviso de versão nova (DEC-47; ícone vem do Diego) | B1 | Feito (PR #108, 28/10); o primeiro `eas build` é do Diego |
+| 31/10 | Sessão de 30 dias na API e no app, com revogação ao desativar (DEC-50) | B4, D7 | Feito (PR #109, 28/10) |
+| 31/10 | Texto dos termos de uso e da política de privacidade, com revisão jurídica | B6, D8 | Em andamento: rascunho pronto, falta a revisão jurídica |
+| 31/10 | Tela de aceite dos termos no app | B6 | Feito (PR #110, 28/10); falta aplicar a migration `AddUsuarioAceiteTermos` antes de promover para a `main` |
+| 31/10 | Acordo do piloto por escrito: período grátis ou com desconto, uso dos dados | D9 | Em andamento: rascunho pronto, falta fechar com o cliente piloto |
 | 04/11 | Conta do Dono piloto, catálogo, clientes, agentes e treino presencial | Piloto | A fazer |
-| 10/11 | Página de download do APK com passo a passo de instalação | L3 | A fazer |
-| 14/11 | Busca no app, motivo da recusa e cancelar atendimento no app | I1 a I3 | A fazer |
-| 28/11 | Sincronizar ao abrir o app e quando a internet volta | I5 | A fazer |
+| 10/11 | Página de download do APK com passo a passo de instalação (`/baixar` no web) | L3 | Feito (PR #111, 28/10) |
+| 14/11 | Busca no app, motivo da recusa e cancelar atendimento no app | I1 a I3 | Feito (PR #112, 28/10) |
+| 28/11 | Sincronizar ao abrir o app e quando a internet volta | I5 | Feito (PR #113, 28/10) |
 | 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Parado |
 | 01/12 | Revisão do piloto e preço da assinatura (todos participam) | D10 | A fazer |
 | 12/12 | CNPJ e nota da assinatura; formalizar a propriedade das contribuições (DEC-29) e decidir se o repositório segue público (DEC-24) | Legal | A fazer |
@@ -47,7 +47,7 @@
 | Prazo | Tarefa | Origem | Status |
 |-------|--------|--------|--------|
 | 24/10 | CPF com dígito verificador no web | B5 | A fazer |
-| 31/10 | Tela de aceite dos termos no web | B6 | A fazer |
+| 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | A fazer |
 | 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
 | 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | A fazer |
 | 17/11 | Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48) | D11 | A fazer |
@@ -68,7 +68,7 @@
 | 24/10 | Acesso de push e merge para os Davis, ou o app do Claude no GitHub da organização | Operação | A fazer |
 | 27/10 | Ícone, ícone adaptativo e splash do Agesto para o APK | B1 | A fazer |
 | 31/10 | Backup diário com `pg_dump` (GitHub Actions) e um teste de restauração (DEC-49) | B3 | A fazer |
-| 31/10 | Primeiro `eas build` e promoção `develop → main` antes do ensaio | B1, B8 | A fazer |
+| 31/10 | Primeiro `eas build` e promoção `develop → main` antes do ensaio (aplicar antes a migration `AddUsuarioAceiteTermos` no Supabase) | B1, B8 | A fazer |
 | 03/11 | Ensaio geral com os dois Davis | Portão | A fazer |
 | 10/11 | Domínio próprio na web e na API, com CORS e CSP ajustados | L2, D12 | A fazer |
 | 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | A fazer |
@@ -382,12 +382,12 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
-| APK e atualização OTA | `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão (DEC-47). Ver Lançamento do MVP | Alta | Davi Gomes |
+| ~~APK e atualização OTA~~ | ✅ `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão em `develop` (DEC-47, PR #108). Falta o primeiro `eas build` (Diego, ver Lançamento do MVP) | Alta | — |
 | Histórico de atendimentos próprios | Não implementado nesta fase (fora do escopo mob-01 a mob-07) | Baixa | Davi Gomes |
 | Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2, depois do lançamento) | Baixa | Davi Gomes |
 | Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa | Davi Gomes |
 | ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta | — |
-| Sincronização automática | Hoje só manual (aba "Mais") e puxar para atualizar. Sincronizar ao abrir e quando a internet volta entra no piloto até 28/11 (I5) | Média | Davi Gomes |
+| ~~Sincronização automática~~ | ✅ em `develop` (I5, PR #113): sincroniza ao abrir o app, ao voltar para ele e quando a internet volta, nunca com uma tela de cadastro aberta | Média | — |
 | Redesign do app | Mesmo visual do web, depois do lançamento (DEC-46) | Baixa | Diego |
 
 ---
