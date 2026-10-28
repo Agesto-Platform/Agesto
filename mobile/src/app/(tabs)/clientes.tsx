@@ -5,6 +5,8 @@ import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
+import { CampoBusca } from '@/ui/CampoBusca'
+import { combinaBusca } from '@/features/busca/busca'
 import { cpfValido } from '@/features/clientes/validateCliente'
 
 interface Row {
@@ -19,6 +21,8 @@ interface Row {
 export default function Clientes() {
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
+  const [busca, setBusca] = useState('')
+  const visiveis = rows.filter((r) => combinaBusca(busca, r.nome, r.sub))
 
   useFocusEffect(
     useCallback(() => {
@@ -48,9 +52,14 @@ export default function Clientes() {
           <Text style={styles.novoText}>Novo</Text>
         </Pressable>
       </View>
+      {rows.length > 0 && (
+        <View style={styles.busca}>
+          <CampoBusca valor={busca} onChange={setBusca} placeholder="Buscar por nome, telefone ou cidade" />
+        </View>
+      )}
 
-      <ScrollView contentContainerStyle={styles.body}>
-        {rows.map((r) => (
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {visiveis.map((r) => (
           // Ainda não enviado: toque para corrigir (ex.: CPF que o servidor recusou).
           <Pressable
             key={r.key}
@@ -81,6 +90,9 @@ export default function Clientes() {
           </Pressable>
         ))}
         {rows.length === 0 && <Text style={styles.empty}>Nenhum cliente ainda.</Text>}
+        {rows.length > 0 && visiveis.length === 0 && (
+          <Text style={styles.empty}>Nenhum cliente encontrado para “{busca.trim()}”.</Text>
+        )}
       </ScrollView>
     </Screen>
   )
@@ -99,6 +111,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', color: colors.ink },
   novo: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), backgroundColor: colors.brand, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2) },
   novoText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+  busca: { paddingHorizontal: space(4), paddingTop: space(3) },
 
   body: { padding: space(4), gap: space(2.5) },
   row: {

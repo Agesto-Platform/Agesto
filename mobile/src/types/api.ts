@@ -211,6 +211,8 @@ export interface SyncDescargaResponse {
   conclusoesImportadas?: number
   conclusoesSincronizadas?: string[]
   erros: string[]
+  /** Os mesmos motivos de `erros`, pelo uuid do cliente, serviço ou atendimento recusado. */
+  recusas?: { uuid: string; motivo: string }[]
   sincronizadoEm: string
 }
 

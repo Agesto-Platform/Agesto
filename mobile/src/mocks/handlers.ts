@@ -101,6 +101,7 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
       conclusoesSincronizadas: conclusoes.map((a) => a.uuid),
       clientesMapeados: b.clientes.map((c, i) => ({ uuid: c.uuid, id: 1000 + i })),
       erros: [],
+      recusas: [],
       sincronizadoEm: new Date().toISOString(),
     } as T
   }
