@@ -31,3 +31,8 @@ services:
       # sem ela, a geocodificação fica desligada e o mapa mostra só a lista.
       - key: Geocoding__OpenRouteServiceApiKey
         sync: false
+      # Aviso de APK novo no app (DEC-47). Opcionais: sem a versão, o app não avisa.
+      - key: App__VersaoMinimaAndroid
+        sync: false
+      - key: App__UrlDownload
+        sync: false
