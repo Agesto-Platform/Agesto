@@ -39,6 +39,8 @@
   .passos { margin: 22px 0 0; padding-left: 20px; list-style: decimal; display: grid; gap: 10px; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
   .passos-titulo { margin: 22px 0 0; font-size: 15px; font-weight: 600; }
   .passos-nota { margin: 8px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+  /* termos e privacidade: texto longo pede um cartão mais largo */
+  .login-card.documento { width: min(720px, 100%); }
   /* saida do login (quando o navegador nao faz a transicao entre paginas) */
   .login-card .fade-out { transition: opacity 200ms var(--ease-out), transform 260ms var(--ease-out), filter 200ms var(--ease-out); }
   .leaving .login-card .fade-out { opacity: 0; transform: translateY(6px); filter: blur(4px); }
