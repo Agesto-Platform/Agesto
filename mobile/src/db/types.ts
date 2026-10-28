@@ -54,6 +54,7 @@ export interface LocalDb {
   getAgenda(): Promise<AgendaItem[]>
 
   // clientes criados offline
+  /** Grava ou substitui (mesmo uuid) o cliente local; corrige um ainda não enviado. */
   addCliente(c: PendingCliente): Promise<void>
   getPendingClientes(): Promise<PendingCliente[]>
   markClientesSynced(uuids: string[], syncedAt: string): Promise<void>
