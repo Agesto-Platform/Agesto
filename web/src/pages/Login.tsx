@@ -3,7 +3,7 @@ import { flushSync } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { ApiError } from '../lib/api'
-import { getDeveTrocarSenha } from '../lib/token'
+import { getDeveTrocarSenha, getTermosPendentes } from '../lib/token'
 import { Icon } from '../components/Icon'
 import { Mascote, type MascoteApi } from '../components/Mascote'
 import { guardarTransicao } from '../layout/entrada'
@@ -71,7 +71,8 @@ export function Login() {
 
   // entrar: o mascote sorri e pula; o cartão vira o palco do painel (transição entre telas)
   function seguir() {
-    const abrir = from === '/' && !getDeveTrocarSenha()
+    // com pendência (termos ou senha provisória), vai direto para a tela dela, sem a abertura
+    const abrir = from === '/' && !getDeveTrocarSenha() && !getTermosPendentes()
     const ir = () => navigate(from, { replace: true, state: abrir ? { entrada: true } : null })
     if (!abrir || reduced()) return ir()
     const root = document.documentElement

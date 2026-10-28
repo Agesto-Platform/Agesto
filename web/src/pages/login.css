@@ -41,6 +41,12 @@
   .passos-nota { margin: 8px 0 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
   /* termos e privacidade: texto longo pede um cartão mais largo */
   .login-card.documento { width: min(720px, 100%); }
+  /* aceite dos termos: um link por documento, abre em outra aba */
+  .termos-docs { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .termos-docs a, .termos-docs span { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; font-size: 14px; font-weight: 600; color: var(--ink); text-decoration: none; }
+  .termos-docs a:hover { border-color: var(--line-strong); background: var(--surface-2); }
+  .termos-docs span { color: var(--ink-3); }
+  .termos-versao { margin: 8px 0 18px; color: var(--ink-3); font-size: 12px; }
   /* saida do login (quando o navegador nao faz a transicao entre paginas) */
   .login-card .fade-out { transition: opacity 200ms var(--ease-out), transform 260ms var(--ease-out), filter 200ms var(--ease-out); }
   .leaving .login-card .fade-out { opacity: 0; transform: translateY(6px); filter: blur(4px); }
