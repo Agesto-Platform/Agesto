@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import type { Cliente, ClienteInput } from '../../types/api'
 import { Button, TextField } from '../../components/ui'
-import { maskCpf, maskPhone, maskCep } from '../../lib/masks'
-
-const CPF_RE = /^(\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})$/
+import { maskCpf, maskPhone, maskCep, onlyDigits } from '../../lib/masks'
+import { cpfValido } from '../../lib/cpf'
 
 const EMPTY: ClienteInput = {
   nome: '', telefone: '', cpf: '', logradouro: '', numero: '', bairro: '', cidade: '', cep: '',
@@ -56,7 +55,8 @@ export function ClienteForm({
     const nome = form.nome.trim()
     if (nome.length < 2) e.nome = 'Nome deve ter no mínimo 2 caracteres.'
     else if (nome.length > 120) e.nome = 'Nome deve ter no máximo 120 caracteres.'
-    if (!CPF_RE.test(form.cpf.trim())) e.cpf = 'CPF inválido.'
+    if (onlyDigits(form.cpf).length !== 11) e.cpf = 'CPF deve ter 11 dígitos.'
+    else if (!cpfValido(form.cpf)) e.cpf = 'CPF inválido. Confira os números.'
     if ((form.telefone ?? '').length > 20) e.telefone = 'Telefone muito longo.'
     setErrors(e)
     return Object.keys(e).length === 0
