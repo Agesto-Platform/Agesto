@@ -14,6 +14,7 @@ import { RelatoriosPage } from './features/relatorios/RelatoriosPage'
 import { UsuariosPage } from './features/usuarios/UsuariosPage'
 import { TrocarSenha } from './pages/TrocarSenha'
 import { BaixarApp } from './pages/BaixarApp'
+import { Privacidade, Termos } from './pages/legal/Documento'
 
 export default function App() {
   return (
@@ -21,6 +22,9 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       {/* Pública: o agente abre no celular para instalar o APK (DEC-47). */}
       <Route path="/baixar" element={<BaixarApp />} />
+      {/* Públicas: links de Termos__UrlTermos e Termos__UrlPrivacidade na tela de aceite (B6). */}
+      <Route path="/termos" element={<Termos />} />
+      <Route path="/privacidade" element={<Privacidade />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/trocar-senha" element={<TrocarSenha />} />
