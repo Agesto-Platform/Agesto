@@ -23,7 +23,7 @@ A maioria dos ERPs do mercado é voltada para médias e grandes empresas — com
 O Agesto oferece:
 - Interface simples, pensada para uso em campo
 - Funcionamento **offline-first** no Mobile (sem internet)
-- Sincronização manual implementada; automação quando a conexão voltar está planejada
+- Sincronização automática ao abrir o app, ao voltar para ele e quando a internet volta, além do botão Sincronizar
 - Suporte a venda de produtos, prestação de serviços ou ambos (modo híbrido)
 
 ## Estrutura do sistema

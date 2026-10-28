@@ -8,7 +8,7 @@ import { JobCard } from '@/ui/JobCard'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { montarRota } from '@/features/rota/montarRota'
-import { sincronizar } from '@/sync/sync'
+import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
 import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
 import { precisaAtualizar } from '@/features/versao/precisaAtualizar'
 import { api } from '@/lib/api'
@@ -54,6 +54,7 @@ export default function Inicio() {
     setPendentes(pend)
   }, [])
 
+  useAoSincronizar(carregar)
   useFocusEffect(
     useCallback(() => {
       let active = true
@@ -68,7 +69,7 @@ export default function Inicio() {
   async function atualizar() {
     setAtualizando(true)
     try {
-      await sincronizar()
+      await sincronizarUmaVez()
     } catch {
       // Sem internet: segue com o que já está no aparelho.
     } finally {

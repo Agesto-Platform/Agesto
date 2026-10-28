@@ -7,7 +7,8 @@ import { colors, radius, space } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
 import { countPendentes } from '@/auth/localData'
 import { db } from '@/db/instance'
-import { resumoSincronizacao, sincronizar as sincronizarTudo } from '@/sync/sync'
+import { resumoSincronizacao } from '@/sync/sync'
+import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
 
 function fmt(iso: string | null): string {
   if (!iso) return '—'
@@ -36,6 +37,7 @@ export default function Mais() {
     setLastSync(ls)
   }, [])
 
+  useAoSincronizar(reload)
   useFocusEffect(
     useCallback(() => {
       let active = true
@@ -53,7 +55,7 @@ export default function Mais() {
     setFlash(null)
     try {
       // Envia o pendente (se houver) e sempre baixa o que mudou no web.
-      setFlash(resumoSincronizacao(await sincronizarTudo()))
+      setFlash(resumoSincronizacao(await sincronizarUmaVez()))
       await reload()
     } catch {
       setFlash('Falha ao sincronizar. Tente novamente com internet.')
