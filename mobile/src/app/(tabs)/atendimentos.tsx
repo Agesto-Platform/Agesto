@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
+import { useAoSincronizar } from '@/sync/automatica'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { getRecusas, motivoDaRecusa } from '@/sync/sync'
@@ -36,39 +37,42 @@ export default function Atendimentos() {
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
 
+  const carregar = useCallback(async (ativo: () => boolean = () => true) => {
+    const [atends, clientes, pend, recusas] = await Promise.all([
+      db.getAtendimentos(),
+      db.getClientes(),
+      db.getPendingClientes(),
+      getRecusas(db),
+    ])
+    if (!ativo()) return
+    const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
+    const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
+    const list = [...atends]
+      .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
+      .map((a) => ({
+        key: a.uuid,
+        cliente:
+          (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
+          (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
+          `Cliente #${a.clienteId ?? 'novo'}`,
+        data: dataCurta(a.dataRegistro),
+        itens: a.itensProduto.length + a.itensServico.length,
+        status: a.status,
+        pending: a.syncedAt === null,
+        motivo: a.syncedAt === null ? motivoDaRecusa(a, recusas) : null,
+      }))
+    setRows(list)
+  }, [])
+
+  useAoSincronizar(carregar)
   useFocusEffect(
     useCallback(() => {
       let active = true
-      ;(async () => {
-        const [atends, clientes, pend, recusas] = await Promise.all([
-          db.getAtendimentos(),
-          db.getClientes(),
-          db.getPendingClientes(),
-          getRecusas(db),
-        ])
-        if (!active) return
-        const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
-        const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
-        const list = [...atends]
-          .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
-          .map((a) => ({
-            key: a.uuid,
-            cliente:
-              (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
-              (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
-              `Cliente #${a.clienteId ?? 'novo'}`,
-            data: dataCurta(a.dataRegistro),
-            itens: a.itensProduto.length + a.itensServico.length,
-            status: a.status,
-            pending: a.syncedAt === null,
-            motivo: a.syncedAt === null ? motivoDaRecusa(a, recusas) : null,
-          }))
-        setRows(list)
-      })()
+      void carregar(() => active)
       return () => {
         active = false
       }
-    }, []),
+    }, [carregar]),
   )
 
   return (
