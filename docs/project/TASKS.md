@@ -31,8 +31,8 @@
 | 24/10 | CPF com dígito verificador no app e cliente ainda não enviado editável | B5 | Feito (PR #107, 28/10) |
 | 27/10 | APK: `mobile/eas.json`, `android.package` = `br.com.agesto.app`, `expo-updates` e aviso de versão nova (DEC-47; ícone vem do Diego) | B1 | Feito (PR #108, 28/10); o primeiro `eas build` é do Diego |
 | 31/10 | Sessão de 30 dias na API e no app, com revogação ao desativar (DEC-50) | B4, D7 | Feito (PR #109, 28/10) |
-| 31/10 | Texto dos termos de uso e da política de privacidade, com revisão jurídica | B6, D8 | Em andamento: rascunho pronto, falta a revisão jurídica |
-| 31/10 | Tela de aceite dos termos no app | B6 | Feito (PR #110, 28/10); falta aplicar a migration `AddUsuarioAceiteTermos` antes de promover para a `main` |
+| 31/10 | Texto dos termos de uso e da política de privacidade, com revisão jurídica | B6, D8 | Em andamento: rascunho pronto, falta a revisão jurídica. As páginas públicas `/termos` e `/privacidade` já existem no web (PR #115) e recebem o texto em `web/src/pages/legal/textos.ts` |
+| 31/10 | Tela de aceite dos termos no app | B6 | Feito (PR #110, 28/10); migration `AddUsuarioAceiteTermos` aplicada no Supabase em 28/10 |
 | 31/10 | Acordo do piloto por escrito: período grátis ou com desconto, uso dos dados | D9 | Em andamento: rascunho pronto, falta fechar com o cliente piloto |
 | 04/11 | Conta do Dono piloto, catálogo, clientes, agentes e treino presencial | Piloto | A fazer |
 | 10/11 | Página de download do APK com passo a passo de instalação (`/baixar` no web) | L3 | Feito (PR #111, 28/10) |
@@ -68,7 +68,7 @@
 | 24/10 | Acesso de push e merge para os Davis, ou o app do Claude no GitHub da organização | Operação | A fazer |
 | 27/10 | Ícone, ícone adaptativo e splash do Agesto para o APK | B1 | A fazer |
 | 31/10 | Backup diário com `pg_dump` (GitHub Actions) e um teste de restauração (DEC-49) | B3 | A fazer |
-| 31/10 | Primeiro `eas build` e promoção `develop → main` antes do ensaio (aplicar antes a migration `AddUsuarioAceiteTermos` no Supabase) | B1, B8 | A fazer |
+| 31/10 | Primeiro `eas build` e promoção `develop → main` antes do ensaio (a migration `AddUsuarioAceiteTermos` já está no Supabase desde 28/10) | B1, B8 | A fazer |
 | 03/11 | Ensaio geral com os dois Davis | Portão | A fazer |
 | 10/11 | Domínio próprio na web e na API, com CORS e CSP ajustados | L2, D12 | A fazer |
 | 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | A fazer |
