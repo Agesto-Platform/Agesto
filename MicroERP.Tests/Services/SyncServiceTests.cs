@@ -659,6 +659,51 @@ public sealed class SyncServiceTests
         Assert.Equal(StatusAtendimento.Pendente, (await db.Atendimentos.SingleAsync()).Status);
     }
 
+    [Fact]
+    public async Task DescargaAsync_Recusas_TrazemOMotivoPeloUuidDeCadaPendencia()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedProduto(db, id: 10, empresaId: 1, preco: 10m, estoque: 1);
+        await db.SaveChangesAsync();
+        var aceito = Guid.NewGuid();
+        var semEstoque = Guid.NewGuid();
+        var clienteRecusado = Guid.NewGuid();
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, new SyncDescargaRequest
+        {
+            Clientes = [new ClienteCreateRequest { Uuid = clienteRecusado, Nome = "Joana", Cpf = "11111111111" }],
+            Atendimentos = [Atendimento(aceito, clienteId: 1), Atendimento(semEstoque, clienteId: 1, (10, 5))],
+        }, CancellationToken.None);
+
+        Assert.Equal(res.Erros.Count, res.Recusas.Count);
+        Assert.Equal("CPF inválido.", Assert.Single(res.Recusas, r => r.Uuid == clienteRecusado).Motivo);
+        Assert.Contains("Estoque insuficiente", Assert.Single(res.Recusas, r => r.Uuid == semEstoque).Motivo);
+        Assert.DoesNotContain(res.Recusas, r => r.Uuid == aceito);
+    }
+
+    [Fact]
+    public async Task DescargaAsync_CancelamentoNoApp_CancelaOAgendadoSemMexerNosItens()
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        SeedServico(db, id: 20, empresaId: 1, empreitada: 100m);
+        var uuid = SeedAgendado(db, responsavelId: 1, servicoId: 20, valor: 100m);
+        await db.SaveChangesAsync();
+        var cancelamento = Conclusao(uuid, StatusAtendimento.Cancelado);
+
+        var res = await BuildSync(db).DescargaAsync(1, 1, Descarga(cancelamento), CancellationToken.None);
+        var reenvio = await BuildSync(db).DescargaAsync(1, 1, Descarga(cancelamento), CancellationToken.None);
+
+        Assert.Empty(res.Erros);
+        Assert.Equal([uuid], res.ConclusoesSincronizadas);
+        Assert.Empty(reenvio.Erros);
+        Assert.Equal([uuid], reenvio.ConclusoesSincronizadas);
+        var at = await db.Atendimentos.Include(a => a.ItensServico).SingleAsync();
+        Assert.Equal(StatusAtendimento.Cancelado, at.Status);
+        Assert.Single(at.ItensServico);
+    }
+
     private static void SeedServico(AppDbContext db, long id, long empresaId, decimal empreitada) =>
         db.Servicos.Add(new Servico { Id = id, Uuid = Guid.NewGuid(), EmpresaId = empresaId, Descricao = $"Servico {id}", TipoCobranca = TipoCobranca.Empreitada, ValorEmpreitada = empreitada });
 

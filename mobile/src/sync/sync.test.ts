@@ -1,5 +1,5 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import { carga, initialSync, descarga, sincronizar, resumoSincronizacao } from './sync'
+import { carga, initialSync, descarga, sincronizar, resumoSincronizacao, getRecusas, motivoDaRecusa } from './sync'
 import { api } from '@/lib/api'
 import type { SyncDescargaRequest } from '@/types/api'
 import { createMemoryDb } from '@/db/memoryDb'
@@ -156,6 +156,53 @@ describe('sync.carga (mock)', () => {
     post.mockRestore()
   })
 
+  it('guarda o motivo de cada recusa e, no atendimento de cliente recusado, mostra o do cliente', async () => {
+    const mem = createMemoryDb()
+    await mem.addCliente({
+      uuid: 'c-ruim', nome: 'Joana', cpf: '11111111111', telefone: null,
+      logradouro: null, numero: null, bairro: null, cidade: null, cep: null, syncedAt: null,
+    })
+    const base = { status: 'Concluido' as const, dataRegistro: '2026-08-11', dataAgendada: null, itensProduto: [], itensServico: [], syncedAt: null }
+    await mem.addAtendimento({ ...base, uuid: 'a-cli', clienteId: null, clienteUuid: 'c-ruim' })
+    await mem.addAtendimento({ ...base, uuid: 'A-EST', clienteId: 1 })
+    const post = jest.spyOn(api, 'post').mockResolvedValueOnce({
+      clientesImportados: 0,
+      atendimentosImportados: 0,
+      clientesSincronizados: [],
+      atendimentosSincronizados: [],
+      erros: ['x', 'y', 'z', 'w'],
+      recusas: [
+        { uuid: 'c-ruim', motivo: 'CPF inválido.' },
+        { uuid: 'a-cli', motivo: 'Cliente c-ruim não encontrado.' },
+        { uuid: 'a-est', motivo: "Estoque insuficiente para produto 'Gás'." },
+        { uuid: 'a-est', motivo: 'Data de registro inválida.' },
+      ],
+      sincronizadoEm: '2026-08-11T12:00:00Z',
+    })
+
+    await descarga(mem)
+
+    const recusas = await getRecusas(mem)
+    const pend = await mem.getPendingAtendimentos()
+    expect(motivoDaRecusa(pend.find((a) => a.uuid === 'a-cli')!, recusas)).toBe('Cliente não aceito: CPF inválido.')
+    expect(motivoDaRecusa(pend.find((a) => a.uuid === 'A-EST')!, recusas)).toBe(
+      "Estoque insuficiente para produto 'Gás'. Data de registro inválida.",
+    )
+    post.mockRestore()
+  })
+
+  it('motivo do serviço novo recusado e motivo do próprio atendimento', () => {
+    const semItens = { clienteUuid: null, itensServico: [] }
+    expect(
+      motivoDaRecusa(
+        { uuid: 'x', clienteUuid: null, itensServico: [{ servicoId: null, servicoUuid: 'S1', quantidade: 1 }] },
+        { s1: 'informe o valor do serviço.' },
+      ),
+    ).toBe('Serviço novo não aceito: informe o valor do serviço.')
+    expect(motivoDaRecusa({ uuid: 'x', ...semItens }, { x: 'identificador em conflito.' })).toBe('Identificador em conflito.')
+    expect(motivoDaRecusa({ uuid: 'y', ...semItens }, { x: 'outro' })).toBeNull()
+  })
+
   it('descarga envia clienteUuid e religa ao id do servidor, inclusive o rejeitado', async () => {
     const mem = createMemoryDb()
     await mem.addCliente({
@@ -260,11 +307,13 @@ describe('sync.carga (mock)', () => {
     get.mockRestore()
   })
 
-  it('descarga sem pendências retorna zeros', async () => {
+  it('descarga sem pendências retorna zeros e esquece as recusas antigas', async () => {
     const mem = createMemoryDb()
+    await mem.setMeta('recusas', JSON.stringify({ velho: 'CPF inválido.' }))
     const r = await descarga(mem)
     expect(r.atendimentosImportados).toBe(0)
     expect(r.clientesImportados).toBe(0)
+    expect(await getRecusas(mem)).toEqual({})
   })
 })
 
@@ -289,5 +338,8 @@ describe('sync.sincronizar', () => {
     expect(
       resumoSincronizacao({ enviado: { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, conclusoesImportadas: 0, erros: ['A: x'] }, recebido }),
     ).toContain('1 não enviado(s)')
+    expect(
+      resumoSincronizacao({ enviado: { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, conclusoesImportadas: 0, erros: ['A: x', 'B: y'] }, recebido }),
+    ).toBe('Enviados: 0 atendimento(s), 0 cliente(s). 2 não enviado(s), seguem pendentes: A: x O motivo de cada um aparece em Atendimentos.')
   })
 })

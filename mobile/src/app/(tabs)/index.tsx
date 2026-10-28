@@ -1,16 +1,19 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, ScrollView, Linking, RefreshControl } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
+import * as Updates from 'expo-updates'
 import { Screen } from '@/ui/Screen'
 import { JobCard } from '@/ui/JobCard'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { montarRota } from '@/features/rota/montarRota'
-import { sincronizar } from '@/sync/sync'
+import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
 import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
+import { precisaAtualizar } from '@/features/versao/precisaAtualizar'
+import { api } from '@/lib/api'
 import type { LocalAtendimento } from '@/db/types'
-import type { AgendaItem } from '@/types/api'
+import type { AgendaItem, AppVersao } from '@/types/api'
 
 function dataHoje(): string {
   const s = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
@@ -22,6 +25,26 @@ export default function Inicio() {
   const [agenda, setAgenda] = useState<AgendaItem[]>([])
   const [pendentes, setPendentes] = useState<LocalAtendimento[]>([])
   const [atualizando, setAtualizando] = useState(false)
+  const [apkNovo, setApkNovo] = useState<AppVersao | null>(null)
+
+  // Sem loja (DEC-47): pergunta à API se este APK ficou velho. O runtime do
+  // expo-updates é a versão nativa instalada; no Expo Go e em dev não há aviso.
+  useEffect(() => {
+    const instalada = __DEV__ ? null : Updates.runtimeVersion
+    if (!instalada) return
+    let ativo = true
+    api
+      .get<AppVersao>('/api/app/versao')
+      .then((info) => {
+        if (ativo && precisaAtualizar(instalada, info.versaoMinimaAndroid)) setApkNovo(info)
+      })
+      .catch(() => {
+        // Sem internet ou API fora: tenta de novo na próxima abertura.
+      })
+    return () => {
+      ativo = false
+    }
+  }, [])
 
   const carregar = useCallback(async (ativo: () => boolean = () => true) => {
     const [items, pend] = await Promise.all([db.getAgenda(), db.getPendingAtendimentos()])
@@ -31,6 +54,7 @@ export default function Inicio() {
     setPendentes(pend)
   }, [])
 
+  useAoSincronizar(carregar)
   useFocusEffect(
     useCallback(() => {
       let active = true
@@ -45,7 +69,7 @@ export default function Inicio() {
   async function atualizar() {
     setAtualizando(true)
     try {
-      await sincronizar()
+      await sincronizarUmaVez()
     } catch {
       // Sem internet: segue com o que já está no aparelho.
     } finally {
@@ -102,6 +126,24 @@ export default function Inicio() {
             <Text style={styles.rs}>Novo serviço, agora — em poucos toques</Text>
           </View>
         </Pressable>
+
+        {apkNovo && (
+          <Pressable
+            onPress={apkNovo.urlDownload ? () => Linking.openURL(apkNovo.urlDownload!) : undefined}
+            disabled={!apkNovo.urlDownload}
+            accessibilityRole={apkNovo.urlDownload ? 'link' : undefined}
+            style={({ pressed }) => [styles.apk, pressed && { opacity: 0.9 }]}
+          >
+            <Ionicons name="download-outline" size={20} color={colors.brandInk} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.apkTitle}>Versão nova do app</Text>
+              <Text style={styles.apkText}>
+                Sincronize e instale o APK novo para continuar recebendo correções.
+                {apkNovo.urlDownload ? ' Toque aqui para baixar.' : ' Peça o link ao responsável.'}
+              </Text>
+            </View>
+          </Pressable>
+        )}
 
         {pending > 0 && (
           <View style={styles.pending}>
@@ -184,6 +226,10 @@ const styles = StyleSheet.create({
   plus: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   rt: { color: '#fff', fontSize: 19, fontWeight: '700' },
   rs: { color: 'rgba(255,255,255,0.92)', fontSize: 13, marginTop: 3 },
+
+  apk: { flexDirection: 'row', alignItems: 'center', gap: space(3), backgroundColor: colors.brandSoft, borderRadius: radius.sm, padding: space(3.5) },
+  apkTitle: { fontSize: 14, fontWeight: '700', color: colors.brandInk },
+  apkText: { fontSize: 12.5, color: colors.brandInk, marginTop: 2 },
 
   pending: { flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.warnSoft, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2.5) },
   pendingText: { fontSize: 12.5, color: colors.warn, fontWeight: '600' },
