@@ -15,6 +15,9 @@ import { materiaisSugeridos } from '@/features/registrar/sugeridos'
 import { parseValor, toServicoInput, validateServico, type ServicoFormErrors } from '@/features/servicos/validateServico'
 import { toItemAvulso, validateItemAvulso, type ItemAvulso, type ItemAvulsoErrors } from '@/features/registrar/itemAvulso'
 import { uuid } from '@/lib/uuid'
+import { CampoBusca } from '@/ui/CampoBusca'
+import { combinaBusca } from '@/features/busca/busca'
+import { getRecusas, motivoDaRecusa } from '@/sync/sync'
 import type { LocalAtendimento, PendingServico } from '@/db/types'
 import type { AgendaItem, Cliente, Configuracao, Produto, Servico, ServicoSugerido, StatusAtendimento, TipoCobranca } from '@/types/api'
 
@@ -54,19 +57,24 @@ function definirPreco(m: Record<number, number>, id: number, v: number | undefin
   return next
 }
 
-function confirmar(titulo: string, mensagem: string, onSim: () => void) {
+function confirmar(
+  titulo: string,
+  mensagem: string,
+  onSim: () => void,
+  { acao = 'Excluir', voltar = 'Cancelar' }: { acao?: string; voltar?: string } = {},
+) {
   if (Platform.OS === 'web') {
     if (globalThis.confirm?.(`${titulo}\n\n${mensagem}`)) onSim()
     return
   }
   Alert.alert(titulo, mensagem, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Excluir', style: 'destructive', onPress: onSim },
+    { text: voltar, style: 'cancel' },
+    { text: acao, style: 'destructive', onPress: onSim },
   ])
 }
 
 /**
- * Registrar atendimento. Também conclui um atendimento da agenda
+ * Registrar atendimento. Também conclui ou cancela um atendimento da agenda
  * (`?concluir=<uuid do servidor>`) e corrige um ainda não enviado (`?editar=<uuid>`).
  */
 export default function Registrar() {
@@ -100,6 +108,10 @@ export default function Registrar() {
   const [original, setOriginal] = useState<LocalAtendimento | null>(null)
   const [status, setStatus] = useState<StatusAtendimento>('Concluido')
   const [saving, setSaving] = useState(false)
+  // Por que o servidor não aceitou este atendimento no último envio (I2).
+  const [motivo, setMotivo] = useState<string | null>(null)
+  const [buscaCliente, setBuscaCliente] = useState('')
+  const [buscaItem, setBuscaItem] = useState('')
 
   const [config, setConfig] = useState<Configuracao>(DEFAULT_CONFIG)
   const [configLoaded, setConfigLoaded] = useState(false)
@@ -110,11 +122,12 @@ export default function Registrar() {
 
   useEffect(() => {
     ;(async () => {
-      const [ref, pend, agenda, locais] = await Promise.all([
+      const [ref, pend, agenda, locais, recusas] = await Promise.all([
         db.getClientes(),
         db.getPendingClientes(),
         db.getAgenda(),
         db.getAtendimentos(),
+        getRecusas(db),
       ])
       // Uma conclusão ainda não enviada abre como correção, não como uma segunda conclusão.
       const alvo = params.editar ?? params.concluir
@@ -123,6 +136,7 @@ export default function Registrar() {
       if (local) {
         const e = estadoDoAtendimento(local)
         setOriginal(local)
+        setMotivo(motivoDaRecusa(local, recusas))
         setServicoQty(e.servicoQty)
         setProdutoQty(e.produtoQty)
         setServicoNovoQty(e.servicoNovoQty)
@@ -174,6 +188,8 @@ export default function Registrar() {
 
   // Conclusão: o que já estava lançado + o que o agente acrescentar.
   const concluindo = agendaItem !== null || original?.existente === true
+  // Cancelamento feito no app e ainda não enviado (I3).
+  const cancelado = concluindo && status === 'Cancelado'
 
   // Agendar só existe no modo Flexível (solo); no Fixa o agente só registra/conclui (walk-in).
   // Só depois da config carregar, pra não piscar o segmento em empresas Fixa.
@@ -239,6 +255,15 @@ export default function Registrar() {
       ? { key: `r${agendaItem.clienteId}`, id: agendaItem.clienteId, uuid: null, nome: agendaItem.clienteNome, sub: agendaItem.enderecoResumo ?? '', pendente: false }
       : undefined)
 
+  // Busca (I1): o que já foi escolhido continua à vista mesmo fora da busca.
+  const clientesVisiveis = clientes.filter((c) => c.key === clienteKey || combinaBusca(buscaCliente, c.nome, c.sub))
+  const servicosVisiveis = servicos.filter((sv) => (servicoQty[sv.id] || 0) > 0 || combinaBusca(buscaItem, sv.descricao))
+  const servicosNovosVisiveis = servicosNovos.filter(
+    (sv) => (servicoNovoQty[sv.uuid] || 0) > 0 || combinaBusca(buscaItem, sv.descricao),
+  )
+  const produtosVisiveis = produtos.filter((p) => (produtoQty[p.id] || 0) > 0 || combinaBusca(buscaItem, p.nome))
+  const buscandoItem = buscaItem.trim() !== ''
+
   // Concluir não exige item novo: o Dono pode ter lançado tudo no web.
   const podeSalvar =
     cliente !== undefined &&
@@ -258,6 +283,37 @@ export default function Registrar() {
         router.back()
       },
     )
+  }
+
+  // O cliente desistiu: o atendimento vai cancelado, sem os itens lançados aqui (I3).
+  function cancelarAtendimento() {
+    if (cliente === undefined) return
+    confirmar(
+      'Cancelar atendimento?',
+      'Use quando o cliente desistiu. Ele vai como cancelado na próxima sincronização, sem o que você lançou aqui.',
+      async () => {
+        await db.addAtendimento(
+          buildAtendimento({
+            uuid: original?.uuid ?? agendaItem?.uuid,
+            dataRegistro: original?.dataRegistro,
+            existente: true,
+            clienteId: cliente.id,
+            clienteUuid: cliente.uuid,
+            status: 'Cancelado',
+            servicoQty: {},
+            produtoQty: {},
+          }),
+        )
+        router.back()
+      },
+      { acao: 'Cancelar atendimento', voltar: 'Voltar' },
+    )
+  }
+
+  async function desfazerCancelamento() {
+    if (!original) return
+    await db.deleteAtendimento(original.uuid)
+    router.back()
   }
 
   async function salvar() {
@@ -291,23 +347,75 @@ export default function Registrar() {
     }
   }
 
+  const cabecalho = (
+    <View style={styles.header}>
+      <Pressable onPress={() => router.back()} accessibilityLabel="Fechar" style={styles.close}>
+        <Ionicons name="close" size={22} color={colors.ink2} />
+      </Pressable>
+      <Text style={[styles.title, { flex: 1 }]}>
+        {cancelado
+          ? 'Atendimento cancelado'
+          : concluindo
+            ? 'Concluir atendimento'
+            : original
+              ? 'Corrigir atendimento'
+              : 'Registrar atendimento'}
+      </Text>
+      {original && !cancelado && (
+        <Pressable onPress={excluir} accessibilityLabel={concluindo ? 'Descartar conclusão' : 'Excluir atendimento'} style={styles.close}>
+          <Ionicons name="trash-outline" size={20} color={colors.bad} />
+        </Pressable>
+      )}
+    </View>
+  )
+
+  const avisoRecusa = motivo && (
+    <View style={styles.recusa}>
+      <Ionicons name="alert-circle" size={18} color={colors.bad} />
+      <Text style={styles.recusaText}>Não entrou no último envio: {motivo}</Text>
+    </View>
+  )
+
+  if (cancelado) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        {cabecalho}
+        <ScrollView contentContainerStyle={styles.body}>
+          {avisoRecusa}
+          <Text style={styles.label}>Cliente</Text>
+          {cliente && (
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>{cliente.nome}</Text>
+                {cliente.sub ? <Text style={styles.rowSub}>{cliente.sub}</Text> : null}
+              </View>
+            </View>
+          )}
+          <View style={styles.aviso}>
+            <Ionicons name="close-circle" size={18} color={colors.bad} />
+            <Text style={styles.avisoText}>
+              Você cancelou este atendimento no app. Ele vai como cancelado na próxima sincronização.
+            </Text>
+          </View>
+        </ScrollView>
+        <View style={styles.footer}>
+          <Pressable
+            onPress={desfazerCancelamento}
+            style={({ pressed }) => [styles.secundario, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.secundarioText}>Desfazer cancelamento</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()} accessibilityLabel="Fechar" style={styles.close}>
-          <Ionicons name="close" size={22} color={colors.ink2} />
-        </Pressable>
-        <Text style={[styles.title, { flex: 1 }]}>
-          {concluindo ? 'Concluir atendimento' : original ? 'Corrigir atendimento' : 'Registrar atendimento'}
-        </Text>
-        {original && (
-          <Pressable onPress={excluir} accessibilityLabel={concluindo ? 'Descartar conclusão' : 'Excluir atendimento'} style={styles.close}>
-            <Ionicons name="trash-outline" size={20} color={colors.bad} />
-          </Pressable>
-        )}
-      </View>
+      {cabecalho}
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {avisoRecusa}
         {/* Modo: registrar agora vs agendar (só no modo Flexível) */}
         {podeAgendar && (
           <View style={styles.seg}>
@@ -372,7 +480,13 @@ export default function Registrar() {
           </>
         )}
         <View style={{ gap: space(2), display: concluindo ? 'none' : 'flex' }}>
-          {clientes.map((c) => {
+          {clientes.length > 0 && (
+            <CampoBusca valor={buscaCliente} onChange={setBuscaCliente} placeholder="Buscar cliente" />
+          )}
+          {clientesVisiveis.length === 0 && clientes.length > 0 && (
+            <Text style={styles.vazio}>Nenhum cliente encontrado.</Text>
+          )}
+          {clientesVisiveis.map((c) => {
             const on = c.key === clienteKey
             return (
               <Pressable
@@ -396,10 +510,19 @@ export default function Registrar() {
           })}
         </View>
 
+        {servicos.length + produtos.length > 0 && (
+          <View style={{ marginTop: space(2) }}>
+            <CampoBusca valor={buscaItem} onChange={setBuscaItem} placeholder="Buscar serviço ou produto" />
+          </View>
+        )}
+
         {/* Serviços */}
         <Text style={styles.label}>{concluindo ? 'Acrescentar serviços' : 'Serviços'}</Text>
         <View style={{ gap: space(2) }}>
-          {servicos.map((sv) => (
+          {buscandoItem && servicosVisiveis.length + servicosNovosVisiveis.length === 0 && (
+            <Text style={styles.vazio}>Nenhum serviço encontrado.</Text>
+          )}
+          {servicosVisiveis.map((sv) => (
             <View key={sv.id} style={styles.row}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{sv.descricao}</Text>
@@ -414,7 +537,7 @@ export default function Registrar() {
               <Stepper value={servicoQty[sv.id] || 0} onChange={(v) => setServicoQty((m) => ({ ...m, [sv.id]: v }))} />
             </View>
           ))}
-          {servicosNovos.map((sv) => (
+          {servicosNovosVisiveis.map((sv) => (
             <View key={sv.uuid} style={styles.row}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{sv.descricao}</Text>
@@ -493,7 +616,8 @@ export default function Registrar() {
         {/* Produtos */}
         <Text style={styles.label}>{concluindo ? 'Acrescentar produtos' : 'Produtos'}</Text>
         <View style={{ gap: space(2) }}>
-          {produtos.map((p) => (
+          {buscandoItem && produtosVisiveis.length === 0 && <Text style={styles.vazio}>Nenhum produto encontrado.</Text>}
+          {produtosVisiveis.map((p) => (
             <View key={p.id} style={styles.row}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>{p.nome}</Text>
@@ -600,6 +724,17 @@ export default function Registrar() {
             </View>
           </>
         )}
+
+        {concluindo && (
+          <Pressable
+            onPress={cancelarAtendimento}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.cancelar, pressed && { opacity: 0.7 }]}
+          >
+            <Ionicons name="close-circle-outline" size={18} color={colors.bad} />
+            <Text style={styles.cancelarText}>Cliente desistiu? Cancelar atendimento</Text>
+          </Pressable>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -657,6 +792,15 @@ const styles = StyleSheet.create({
   rowOn: { borderColor: colors.brand, backgroundColor: colors.brandSoft },
   rowTitle: { fontSize: 15, fontWeight: '600', color: colors.ink },
   rowSub: { fontSize: 12.5, color: colors.ink3, marginTop: 2 },
+  vazio: { fontSize: 13, color: colors.ink3, paddingVertical: space(1) },
+  recusa: { flexDirection: 'row', alignItems: 'flex-start', gap: space(2), backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.bad, borderRadius: radius.sm, padding: space(3.5) },
+  recusaText: { flex: 1, fontSize: 13.5, lineHeight: 19, color: colors.ink },
+  aviso: { flexDirection: 'row', alignItems: 'flex-start', gap: space(2), backgroundColor: colors.surface2, borderRadius: radius.sm, padding: space(3.5), marginTop: space(2) },
+  avisoText: { flex: 1, fontSize: 13.5, lineHeight: 19, color: colors.ink2 },
+  cancelar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space(2), marginTop: space(4), paddingVertical: space(3), borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line },
+  cancelarText: { fontSize: 14, fontWeight: '600', color: colors.bad },
+  secundario: { flex: 1, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line, paddingVertical: space(3.75), alignItems: 'center' },
+  secundarioText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
 
   novoBtn: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), alignSelf: 'flex-start', paddingVertical: space(2), paddingHorizontal: space(1) },
   novoBtnText: { fontSize: 14, fontWeight: '700', color: colors.brandInk },

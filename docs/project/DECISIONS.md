@@ -812,3 +812,94 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Por quê:** o plano Free do Render dá para um serviço ligado 24 h, não dois, e o Supabase Free tem dois projetos; um ambiente de homologação na nuvem custaria dinheiro ou acordaria a API pela metade. Teste local cobre o tamanho atual da equipe.
 
 **Impacto:** sem migration e sem mudança de código. Passo a passo em `deploy/README.md` (seções 8 e 9).
+
+---
+
+> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub.
+
+---
+
+## DEC-46 — Plano de lançamento do MVP: escopo e cronograma
+
+**Status:** 🟢 Decidido por Diego em 22/10/2026 no plano de lançamento, com aval do Davi Gomes no merge do PR #106 (27/10/2026). O plano completo, com tarefas, prazos e status por pessoa, está no documento "Agesto: plano de lançamento do MVP".
+
+**Decisão:**
+1. **Público do lançamento:** o prestador de serviço com equipe pequena (Dono no web, agentes no app Android). O modo Venda/Híbrido, o comerciante e a IA (DEC-21) ficam fora do lançamento.
+2. **Cronograma:** ensaio geral em 03/11, piloto pago com desconto de 04/11 a 28/11 com um cliente real, revisão do piloto em 01/12 e lançamento oficial em 15/12/2026.
+3. **Portão do piloto (bloqueadores):** APK instalável, API sem dormir, backup diário do banco, sessão de 30 dias (DEC-50), CPF validado pelo dígito no app e no web, termos de uso e política de privacidade aceitos no primeiro acesso, monitor do `/health` e chave do OpenRouteService no Render.
+4. **Cobrança:** sem módulo de cobrança no piloto. Para o lançamento, o Dono marca no web se o atendimento foi pago ou está em aberto, com forma e data do pagamento (cobrança mínima). A assinatura do Agesto é mensal por empresa, com faixas pelo número de agentes, paga por link de pagamento recorrente.
+5. **Outras decisões do plano:** o agente pode mudar o preço no app (DEC-39 mantida); organização `agesto` no expo.dev; pacote Android `br.com.agesto.app`; acordo do piloto por escrito; termos escritos por Davi Gomes com revisão jurídica; domínio próprio (ex.: `agesto.com.br`); suporte por WhatsApp Business e email; redesign no web antes do lançamento e no app depois (DEC-51).
+
+**Responsáveis:** Davi Gomes (mobile e geral), Davi Oliveira (web e geral) e Diego (infra e redesign). A divisão das tarefas está em `TASKS.md`, seção "Lançamento do MVP".
+
+**Impacto:** a seção "Lançamento do MVP" do `TASKS.md` passa a ser a prioridade; o resto do backlog só entra se não atrasar o portão do piloto.
+
+---
+
+## DEC-47 — Android só por APK, fora das lojas
+
+**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Projeto do app pronto em `develop` (PR #108, 28/10/2026: `eas.json`, `br.com.agesto.app`, `expo-updates` e aviso de versão) e página de download em `/baixar` (PR #111). Falta o primeiro `eas build` até 31/10.
+
+**Decisão:** o app do agente não vai para a Google Play nem para a App Store. No Android ele é sempre distribuído como APK, gerado pelo EAS Build e baixado de uma página do Agesto com o passo a passo de instalação. Correções de JavaScript chegam por `eas update` (OTA); mudança nativa exige APK novo.
+- Todo APK é assinado com a mesma chave, para instalar por cima do anterior sem perder os dados offline. Uma cópia da chave fica guardada fora do repositório e do Expo.
+- O app avisa quando existe versão nova que precisa de APK novo.
+- iPhone fica fora por enquanto: o piloto e o lançamento são só Android.
+
+**Por quê:** evita a taxa e a revisão das lojas e dá controle total do ritmo de versões para um produto vendido diretamente a poucas empresas.
+
+**Impacto:** `mobile/eas.json`, `android.package` = `br.com.agesto.app` e `expo-updates` no app; ícone, ícone adaptativo e splash do Agesto.
+
+---
+
+## DEC-48 — Cadastro aberto com verificação de email e período de teste
+
+**Status:** 🟡 Decidido por Diego em 22/10/2026 para o lançamento (15/12), com aval do Davi Gomes (PR #106, 27/10/2026). A fazer. O cadastro segue fechado por chave (DEC-34) até lá.
+
+**Decisão:** no lançamento, qualquer prestador cria a conta pelo web, confirma o email e ganha um período de teste antes de assinar. Isso substitui, a partir do lançamento, o cadastro fechado por `Auth__RegistrationKey` da DEC-34. O rate limit por IP continua.
+
+**Por quê:** a venda direta não escala se cada conta nova depender de alguém da equipe. A DEC-34 já condicionava reabrir o cadastro à verificação de email.
+
+**Impacto:** depende de domínio próprio e de provedor de email por API (ex.: Resend), que também atende o "esqueci a senha". A chave de cadastro fica só para contas criadas pela equipe durante o piloto.
+
+---
+
+## DEC-49 — Hospedagem paga para o piloto e o lançamento
+
+**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). A fazer: Render Starter antes do ensaio, Supabase Pro no lançamento.
+
+**Decisão:**
+1. **API:** Render Starter antes do piloto, para a API não dormir (no Free a primeira chamada leva cerca de 1 minuto e o app do agente sofre com isso no campo).
+2. **Backup:** `pg_dump` diário por GitHub Actions, guardado fora do Supabase, com um teste de restauração antes do piloto.
+3. **Banco:** Supabase Pro a partir do lançamento, para ter backup gerenciado e não pausar por inatividade. No piloto, o Free com o backup do item 2 basta.
+
+**Por quê:** revê o "plano gratuito" das DEC-30 e DEC-32 para clientes pagantes, que não podem esperar a API acordar nem perder dados.
+
+**Impacto:** custo mensal fixo de hospedagem, a entrar no preço da assinatura (DEC-46). Sem mudança de código; o backup ganha um workflow novo em `.github/workflows/`.
+
+---
+
+## DEC-50 — Sessão de 30 dias
+
+**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
+
+**Decisão:** o login vale 30 dias na API e no app (hoje o JWT expira em 120 minutos, `Jwt:ExpiresMinutes`). A revogação da DEC-34 continua: desativar o usuário ou trocar a senha derruba a sessão na próxima requisição.
+
+**Por quê:** o agente trabalha offline e não pode ser deslogado no meio do dia, sem internet, com atendimentos pendentes de envio.
+
+**Impacto:** sem migration. Configuração no Render e ajuste no app para tratar sessão vencida sem perder dados locais.
+
+---
+
+## DEC-51 — Redesign do web
+
+**Status:** 🟢 Em `develop` e `main` (PRs #80 a #95, de 22 a 25/10/2026): Diego fez o redesign e Davi Oliveira o ajuste do painel do Agente (#95).
+
+**Decisão:** o painel do Dono passou a seguir os templates aprovados em `agesto/design/templates`, com os mesmos dados e fluxos de antes:
+- paletas Marinho + Vermelho (padrão) e Oceano, cada uma com tema claro e escuro, escolhidas em "Aparência"; fonte Geist servida pelo próprio app, sem CDN;
+- sidebar recolhível, trilha de navegação, busca (Ctrl K) e menu em gaveta no celular;
+- login novo sem entrar com conta social, símbolo Bloco como marca e favicon;
+- gavetas e diálogos por cima da tela inteira, revisão visual das telas e painel do Agente recolhido entre telas.
+
+**Por quê:** a DEC-46 pede o redesign no web antes do lançamento; o app recebe o mesmo visual depois.
+
+**Impacto:** só front-end, sem mudança na API. O painel do Agente aparece como "Prévia" e não faz parte do lançamento (a IA ficou fora do escopo na DEC-46). Falta fechar o design system até 17/11.

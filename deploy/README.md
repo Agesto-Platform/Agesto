@@ -61,8 +61,10 @@ SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER B
    - `ConnectionStrings__DefaultConnection`: a connection string do passo 1.
    - `Cors__AllowedOrigins__0`: a URL da web na Cloudflare Pages (passo 4). Se ainda não existir, use um valor provisório e troque depois. Aceita várias origens separadas por vírgula; a `/` final é ignorada.
    - `Jwt__Secret` é gerado pelo próprio Render. A API não sobe com segredo menor que 32 bytes.
+   - `Termos__Versao`, `Termos__UrlTermos` e `Termos__UrlPrivacidade` (opcionais): versão vigente dos termos de uso e da política de privacidade (ex.: `2026-11`) e os links dos textos. Com a versão definida, quem ainda não aceitou essa versão vê a tela de aceite no próximo login; trocar a versão pede o aceite de novo a todos. Sem ela, ninguém precisa aceitar.
    - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
    - `Geocoding__OpenRouteServiceApiKey` (opcional): chave gratuita criada em openrouteservice.org (*Dashboard → Tokens*, plano Standard). Liga a geocodificação dos endereços dos clientes para o mapa da agenda (DEC-38); a API envia ao serviço só o endereço, nunca nome ou CPF. Sem ela, o mapa mostra que os clientes ainda não têm localização.
+   - `App__VersaoMinimaAndroid` e `App__UrlDownload` (opcionais): versão mínima do APK e link para baixá-lo. Ver "APK" no passo 5.
 4. O serviço publica a branch `main` (DEC-41), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`). A `develop` não vai para a nuvem: é testada localmente (ver "Ambiente local" abaixo).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
 
@@ -113,6 +115,22 @@ No `mobile/.env`:
 EXPO_PUBLIC_API_BASE_URL=<URL da API no Render>
 EXPO_PUBLIC_USE_MOCKS=false
 ```
+
+### APK (DEC-47)
+
+O app do agente sai só como APK, fora das lojas. Preparação, uma vez, dentro de `mobile/`:
+
+1. `npx eas-cli login` com uma conta que seja membro da organização `agesto` no expo.dev.
+2. `npx eas-cli init`: liga o projeto à organização e grava `extra.eas.projectId` no `app.json`.
+3. `npx eas-cli update:configure`: grava a URL de atualização e o `runtimeVersion` no `app.json`. Confira que o `runtimeVersion` usa a política `appVersion`, porque é esse número que o aviso de APK novo compara.
+4. No projeto do expo.dev, crie a variável `EXPO_PUBLIC_API_BASE_URL` com a URL da API, nos ambientes *preview* e *production*, com visibilidade *Plain text*. O build lê a URL do `eas.json`, mas o `eas update` só lê essas variáveis; sem ela, o app atualizado não abre.
+5. Faça commit das mudanças no `app.json`.
+
+Gerar o APK: `npx eas-cli build --platform android --profile preview` para teste, ou `--profile production`. No primeiro build, deixe o EAS gerar a chave de assinatura e guarde uma cópia dela fora do repositório e do Expo (*Credentials → Download*). Todo APK precisa da mesma chave para instalar por cima do anterior sem perder os dados do aparelho.
+
+Correção só de JavaScript: `npx eas-cli update --channel production --environment production --message "<o que mudou>"`. Mudança nativa (biblioteca nova, SDK novo) exige APK novo com `expo.version` maior.
+
+Aviso de APK novo: depois de publicar um APK com `expo.version` maior, defina no Render `App__VersaoMinimaAndroid` (ex.: `1.1.0`) e `App__UrlDownload` (link do APK). O app compara com a versão instalada e mostra o aviso no Início.
 
 ## 6. Manter API e Supabase acordados
 

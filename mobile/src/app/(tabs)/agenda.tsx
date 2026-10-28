@@ -8,6 +8,7 @@ import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { getConfig } from '@/lib/appConfig'
 import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
+import { useAoSincronizar } from '@/sync/automatica'
 import type { LocalAtendimento } from '@/db/types'
 import type { AgendaItem } from '@/types/api'
 
@@ -67,20 +68,23 @@ export default function Agenda() {
   const [podeAgendar, setPodeAgendar] = useState(false)
   const [pendentes, setPendentes] = useState<LocalAtendimento[]>([])
 
+  const carregar = useCallback(async (ativo: () => boolean = () => true) => {
+    const [items, config, pend] = await Promise.all([db.getAgenda(), getConfig(db), db.getPendingAtendimentos()])
+    if (!ativo()) return
+    setPendentes(pend)
+    setGroups(agrupar(items))
+    setPodeAgendar(config.modoAgendaAgente === 'Flexivel')
+  }, [])
+
+  useAoSincronizar(carregar)
   useFocusEffect(
     useCallback(() => {
       let active = true
-      ;(async () => {
-        const [items, config, pend] = await Promise.all([db.getAgenda(), getConfig(db), db.getPendingAtendimentos()])
-        if (!active) return
-        setPendentes(pend)
-        setGroups(agrupar(items))
-        setPodeAgendar(config.modoAgendaAgente === 'Flexivel')
-      })()
+      void carregar(() => active)
       return () => {
         active = false
       }
-    }, []),
+    }, [carregar]),
   )
 
   const total = groups.reduce((n, g) => n + g.items.length, 0)

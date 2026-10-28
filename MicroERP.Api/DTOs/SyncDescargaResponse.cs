@@ -19,7 +19,16 @@ public sealed class SyncDescargaResponse
     // Mesmo desenho para serviços criados offline (ou reaproveitados pela descrição).
     public IReadOnlyList<ServicoMapeadoResponse> ServicosMapeados { get; set; } = [];
     public IReadOnlyList<string> Erros { get; set; } = [];
+    // Os mesmos motivos de Erros, pelo uuid do que foi recusado (cliente,
+    // servico ou atendimento), para o device mostrar em cada pendencia.
+    public IReadOnlyList<RecusaDescargaResponse> Recusas { get; set; } = [];
     public DateTime SincronizadoEm { get; set; }
+}
+
+public sealed class RecusaDescargaResponse
+{
+    public Guid Uuid { get; set; }
+    public string Motivo { get; set; } = string.Empty;
 }
 
 public sealed class ClienteMapeadoResponse

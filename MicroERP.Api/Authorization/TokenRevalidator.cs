@@ -4,7 +4,7 @@ using MicroERP.Api.Data;
 
 namespace MicroERP.Api.Authorization;
 
-// O JWT vale por horas; sem esta checagem, um usuário excluído, desativado ou
+// O JWT vale por 30 dias (DEC-50); sem esta checagem, um usuário excluído, desativado ou
 // com perfil alterado continuaria com acesso até o token expirar. Custa uma consulta por
 // chave primária a cada requisição autenticada.
 public static class TokenRevalidator

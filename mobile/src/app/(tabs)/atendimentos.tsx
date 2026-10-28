@@ -3,8 +3,10 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
+import { useAoSincronizar } from '@/sync/automatica'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
+import { getRecusas, motivoDaRecusa } from '@/sync/sync'
 import type { StatusAtendimento } from '@/types/api'
 
 interface Row {
@@ -14,6 +16,8 @@ interface Row {
   itens: number
   status: StatusAtendimento
   pending: boolean
+  /** Por que o servidor não aceitou no último envio (I2); null se não recusou. */
+  motivo: string | null
 }
 
 const STATUS: Record<StatusAtendimento, { label: string; fg: string; bg: string }> = {
@@ -33,33 +37,42 @@ export default function Atendimentos() {
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
 
+  const carregar = useCallback(async (ativo: () => boolean = () => true) => {
+    const [atends, clientes, pend, recusas] = await Promise.all([
+      db.getAtendimentos(),
+      db.getClientes(),
+      db.getPendingClientes(),
+      getRecusas(db),
+    ])
+    if (!ativo()) return
+    const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
+    const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
+    const list = [...atends]
+      .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
+      .map((a) => ({
+        key: a.uuid,
+        cliente:
+          (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
+          (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
+          `Cliente #${a.clienteId ?? 'novo'}`,
+        data: dataCurta(a.dataRegistro),
+        itens: a.itensProduto.length + a.itensServico.length,
+        status: a.status,
+        pending: a.syncedAt === null,
+        motivo: a.syncedAt === null ? motivoDaRecusa(a, recusas) : null,
+      }))
+    setRows(list)
+  }, [])
+
+  useAoSincronizar(carregar)
   useFocusEffect(
     useCallback(() => {
       let active = true
-      ;(async () => {
-        const [atends, clientes, pend] = await Promise.all([db.getAtendimentos(), db.getClientes(), db.getPendingClientes()])
-        if (!active) return
-        const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
-        const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
-        const list = [...atends]
-          .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
-          .map((a) => ({
-            key: a.uuid,
-            cliente:
-              (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
-              (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
-              `Cliente #${a.clienteId ?? 'novo'}`,
-            data: dataCurta(a.dataRegistro),
-            itens: a.itensProduto.length + a.itensServico.length,
-            status: a.status,
-            pending: a.syncedAt === null,
-          }))
-        setRows(list)
-      })()
+      void carregar(() => active)
       return () => {
         active = false
       }
-    }, []),
+    }, [carregar]),
   )
 
   return (
@@ -85,7 +98,9 @@ export default function Atendimentos() {
               onPress={r.pending ? () => router.push(`/registrar?editar=${r.key}`) : undefined}
               disabled={!r.pending}
               accessibilityRole={r.pending ? 'button' : undefined}
-              accessibilityLabel={r.pending ? `Corrigir atendimento de ${r.cliente}` : undefined}
+              accessibilityLabel={
+                r.pending ? `Corrigir atendimento de ${r.cliente}${r.motivo ? `. Não aceito: ${r.motivo}` : ''}` : undefined
+              }
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
             >
               <View style={{ flex: 1, gap: space(1) }}>
@@ -93,6 +108,12 @@ export default function Atendimentos() {
                 <Text style={styles.rowSub}>
                   {r.data} · {r.itens} {r.itens === 1 ? 'item' : 'itens'}
                 </Text>
+                {r.motivo && (
+                  <View style={styles.motivo}>
+                    <Ionicons name="alert-circle" size={14} color={colors.bad} style={{ marginTop: 1 }} />
+                    <Text style={styles.motivoText}>{r.motivo}</Text>
+                  </View>
+                )}
               </View>
               <View style={styles.tags}>
                 <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
@@ -144,6 +165,8 @@ const styles = StyleSheet.create({
   },
   rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
   rowSub: { fontSize: 12.5, color: colors.ink3 },
+  motivo: { flexDirection: 'row', alignItems: 'flex-start', gap: space(1.5), marginTop: space(0.5) },
+  motivoText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: colors.bad },
   tags: { alignItems: 'flex-end', gap: space(1.5) },
   statusPill: { borderRadius: radius.pill, paddingHorizontal: space(2.5), paddingVertical: space(1) },
   statusText: { fontSize: 11.5, fontWeight: '700' },
