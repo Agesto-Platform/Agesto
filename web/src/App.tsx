@@ -14,6 +14,7 @@ import { RelatoriosPage } from './features/relatorios/RelatoriosPage'
 import { UsuariosPage } from './features/usuarios/UsuariosPage'
 import { TrocarSenha } from './pages/TrocarSenha'
 import { BaixarApp } from './pages/BaixarApp'
+import { AceitarTermos } from './pages/AceitarTermos'
 import { Privacidade, Termos } from './pages/legal/Documento'
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
       <Route path="/privacidade" element={<Privacidade />} />
 
       <Route element={<ProtectedRoute />}>
+        <Route path="/aceitar-termos" element={<AceitarTermos />} />
         <Route path="/trocar-senha" element={<TrocarSenha />} />
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
