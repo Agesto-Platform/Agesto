@@ -182,7 +182,7 @@ Entidades manipuladas pelo Mobile possuem:
 Claims: sub (usuarioId), email, jti (único por token),
         empresaId, perfil
 Algoritmo: HMAC-SHA256
-Expiração: 120 minutos
+Expiração: 30 dias (43200 minutos, DEC-50); desativar o usuário revoga antes
 ClockSkew: 2 minutos
 ```
 

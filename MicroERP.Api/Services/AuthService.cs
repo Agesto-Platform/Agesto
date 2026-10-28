@@ -174,7 +174,9 @@ public sealed class AuthService : IAuthService
         var jwtSecret = jwtSection["Secret"] ?? throw new InvalidOperationException("JWT secret not configured.");
         var jwtIssuer = jwtSection["Issuer"] ?? string.Empty;
         var jwtAudience = jwtSection["Audience"] ?? string.Empty;
-        var expiresMinutes = jwtSection.GetValue("ExpiresMinutes", 120);
+        // 30 dias (DEC-50): o agente trabalha offline e não pode cair no meio do dia.
+        // Desativar o usuário derruba a sessão antes disso (TokenRevalidator).
+        var expiresMinutes = jwtSection.GetValue("ExpiresMinutes", 43200);
 
         var claims = new List<Claim>
         {

@@ -21,6 +21,7 @@ public sealed class PolicyCoverageTests
         "SyncController.Descarga",
         "AtendimentoController.GetAgenda",
         "UsuarioController.Delete",
+        "AppController.GetVersao",
     ];
 
     public static TheoryData<string> Actions()

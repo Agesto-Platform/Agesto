@@ -213,3 +213,9 @@ export interface SyncDescargaResponse {
   erros: string[]
   sincronizadoEm: string
 }
+
+/** GET /api/app/versao — APK mínimo que o app precisa ter (DEC-47). */
+export interface AppVersao {
+  versaoMinimaAndroid: string | null
+  urlDownload: string | null
+}
