@@ -13,11 +13,14 @@ import { ParametrizacaoPage } from './features/parametrizacao/ParametrizacaoPage
 import { RelatoriosPage } from './features/relatorios/RelatoriosPage'
 import { UsuariosPage } from './features/usuarios/UsuariosPage'
 import { TrocarSenha } from './pages/TrocarSenha'
+import { BaixarApp } from './pages/BaixarApp'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      {/* Pública: o agente abre no celular para instalar o APK (DEC-47). */}
+      <Route path="/baixar" element={<BaixarApp />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/trocar-senha" element={<TrocarSenha />} />

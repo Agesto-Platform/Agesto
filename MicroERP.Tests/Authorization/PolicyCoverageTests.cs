@@ -16,6 +16,7 @@ public sealed class PolicyCoverageTests
         "AuthController.Register",
         "AuthController.Login",
         "AuthController.TrocarSenha",
+        "AuthController.AceitarTermos",
         "SyncController.Carga",
         "SyncController.Descarga",
         "AtendimentoController.GetAgenda",

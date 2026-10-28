@@ -394,3 +394,11 @@ export interface AgendaItem {
   longitude?: number | null
   resumo: string
 }
+
+/* ---------- App do agente ---------- */
+
+/** GET /api/app/versao — versão mínima do APK e link para baixar (DEC-47). */
+export interface AppVersao {
+  versaoMinimaAndroid: string | null
+  urlDownload: string | null
+}

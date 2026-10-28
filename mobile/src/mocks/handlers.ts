@@ -7,6 +7,9 @@ export const DEMO_SENHA = 'agesto123'
 /** Agente recém-cadastrado pelo Dono: entra com senha provisória e precisa trocar. */
 export const DEMO_PRIMEIRO_ACESSO_EMAIL = 'novo@agesto.app'
 export const DEMO_SENHA_PROVISORIA = 'provisoria1'
+/** Agente que ainda não aceitou os termos de uso e a política de privacidade. */
+export const DEMO_TERMOS_EMAIL = 'termos@agesto.app'
+export const DEMO_TERMOS_VERSAO = '2026-11'
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -37,15 +40,28 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
   if (method === 'POST' && path === '/api/auth/login') {
     const b = (body ?? {}) as { email?: string; senha?: string }
     const primeiroAcesso = b.email === DEMO_PRIMEIRO_ACESSO_EMAIL && b.senha === DEMO_SENHA_PROVISORIA
-    if ((b.email === DEMO_EMAIL && b.senha === DEMO_SENHA) || primeiroAcesso) {
+    const semTermos = b.email === DEMO_TERMOS_EMAIL && b.senha === DEMO_SENHA
+    if ((b.email === DEMO_EMAIL && b.senha === DEMO_SENHA) || primeiroAcesso || semTermos) {
       const res: AuthResponse = {
         token: buildMockJwt(),
         expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
         deveTrocarSenha: primeiroAcesso,
+        deveAceitarTermos: semTermos,
+        termos: semTermos
+          ? { versao: DEMO_TERMOS_VERSAO, urlTermos: 'https://agesto.app/termos', urlPrivacidade: 'https://agesto.app/privacidade' }
+          : null,
       }
       return res as T
     }
     throw new ApiError(401, 'Credenciais inválidas.')
+  }
+
+  if (method === 'POST' && path === '/api/auth/aceitar-termos') {
+    const b = (body ?? {}) as { versao?: string }
+    if (b.versao !== DEMO_TERMOS_VERSAO) {
+      throw new ApiError(409, 'Os termos mudaram. Entre de novo para ler a versão atual.')
+    }
+    return null as T
   }
 
   if (method === 'POST' && path === '/api/auth/trocar-senha') {
