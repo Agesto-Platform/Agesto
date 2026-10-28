@@ -15,6 +15,16 @@ export interface AuthResponse {
   expiresAt: string
   /** Senha provisória definida pelo Dono: o app exige a troca antes de seguir. */
   deveTrocarSenha?: boolean
+  /** Termos de uso e política de privacidade ainda não aceitos nesta versão (B6). */
+  deveAceitarTermos?: boolean
+  termos?: Termos | null
+}
+
+/** Versão dos termos a aceitar e onde ler os textos. */
+export interface Termos {
+  versao: string
+  urlTermos: string | null
+  urlPrivacidade: string | null
 }
 
 export type StatusAtendimento = 'Pendente' | 'Concluido' | 'Cancelado'

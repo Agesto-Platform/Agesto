@@ -19,5 +19,9 @@ public class Usuario
     // Senha provisória definida pelo Dono: o app pede a troca no primeiro acesso.
     public bool DeveTrocarSenha { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
+    // Versão dos termos de uso e da política de privacidade aceita e quando (B6).
+    // Diferente de Termos:Versao da configuração = precisa aceitar de novo.
+    public string? TermosVersaoAceita { get; set; }
+    public DateTime? TermosAceitosEm { get; set; }
     public Empresa? Empresa { get; set; }
 }

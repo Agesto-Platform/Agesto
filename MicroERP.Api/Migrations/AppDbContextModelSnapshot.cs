@@ -17,7 +17,7 @@ namespace MicroERP.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -647,6 +647,13 @@ namespace MicroERP.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("TermosAceitosEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TermosVersaoAceita")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<DateTime?>("UltimoAcessoEm")
                         .HasColumnType("timestamp with time zone");

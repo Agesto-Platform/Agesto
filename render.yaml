@@ -25,6 +25,14 @@ services:
         sync: false
       - key: Jwt__Secret
         generateValue: true
+      # Termos de uso e política de privacidade (B6). Opcionais: sem a versão,
+      # ninguém precisa aceitar. Trocar a versão pede o aceite de novo a todos.
+      - key: Termos__Versao
+        sync: false
+      - key: Termos__UrlTermos
+        sync: false
+      - key: Termos__UrlPrivacidade
+        sync: false
       - key: Cors__AllowedOrigins__0
         sync: false
       # Chave do OpenRouteService para o mapa da agenda (DEC-38). Opcional:

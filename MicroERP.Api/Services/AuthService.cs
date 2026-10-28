@@ -138,6 +138,33 @@ public sealed class AuthService : IAuthService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    // Registra o aceite da versão vigente dos termos (B6). Só aceita a versão que
+    // está configurada agora: quem leu uma versão antiga precisa ler a nova.
+    public async Task AceitarTermosAsync(long usuarioId, AceitarTermosRequest request, CancellationToken cancellationToken)
+    {
+        var versaoAtual = VersaoDosTermos();
+        if (versaoAtual is null || !string.Equals(request.Versao.Trim(), versaoAtual, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Os termos mudaram. Entre de novo para ler a versão atual.");
+        }
+
+        var usuario = await _dbContext.Usuarios
+            .FirstOrDefaultAsync(u => u.Id == usuarioId, cancellationToken)
+            ?? throw new NotFoundException("Usuário não encontrado.");
+
+        usuario.TermosVersaoAceita = versaoAtual;
+        usuario.TermosAceitosEm = DateTime.UtcNow;
+        usuario.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Termos:Versao vazia = ainda não há termos publicados; ninguém precisa aceitar.
+    private string? VersaoDosTermos()
+    {
+        var versao = _configuration["Termos:Versao"];
+        return string.IsNullOrWhiteSpace(versao) ? null : versao.Trim();
+    }
+
     private static string NormalizeEmail(string email)
         => email.Trim().ToLowerInvariant();
 
@@ -171,11 +198,23 @@ public sealed class AuthService : IAuthService
 
         var tokenValue = new JwtSecurityTokenHandler().WriteToken(token);
 
+        var versaoTermos = VersaoDosTermos();
+        var deveAceitarTermos = versaoTermos is not null && usuario.TermosVersaoAceita != versaoTermos;
+
         return new AuthResponse
         {
             Token = tokenValue,
             ExpiresAt = expiresAt,
-            DeveTrocarSenha = usuario.DeveTrocarSenha
+            DeveTrocarSenha = usuario.DeveTrocarSenha,
+            DeveAceitarTermos = deveAceitarTermos,
+            Termos = deveAceitarTermos
+                ? new TermosResponse
+                {
+                    Versao = versaoTermos!,
+                    UrlTermos = _configuration["Termos:UrlTermos"],
+                    UrlPrivacidade = _configuration["Termos:UrlPrivacidade"]
+                }
+                : null
         };
     }
 }

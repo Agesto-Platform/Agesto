@@ -130,4 +130,28 @@ public sealed class AuthController : ApiControllerBase
             return NotFound(new ApiResponse { Success = false, Message = ex.Message });
         }
     }
+
+    // Qualquer perfil aceita os termos de uso e a política de privacidade no
+    // primeiro acesso e quando a versão muda (B6).
+    [HttpPost("aceitar-termos")]
+    [Authorize]
+    public async Task<ActionResult<ApiResponse>> AceitarTermos([FromBody] AceitarTermosRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetUsuarioId(out var usuarioId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
+
+        try
+        {
+            await _authService.AceitarTermosAsync(usuarioId, request, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Termos aceitos." });
+        }
+        catch (ArgumentException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new ApiResponse { Success = false, Message = ex.Message });
+        }
+    }
 }

@@ -186,6 +186,98 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_SemTermosConfigurados_NaoPedeAceite()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "semtermos@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+
+        var response = await service.LoginAsync(new AuthLoginRequest { Email = "semtermos@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+
+        Assert.False(response!.DeveAceitarTermos);
+        Assert.Null(response.Termos);
+    }
+
+    [Fact]
+    public async Task AceitarTermosAsync_VersaoVigente_RegistraEParaDePedir()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, ConfiguracaoComTermos("2026-11"));
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Agente", Email = "termos@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var login = new AuthLoginRequest { Email = "termos@teste.com", Senha = "Senha123!" };
+
+        var antes = await service.LoginAsync(login, CancellationToken.None);
+        Assert.True(antes!.DeveAceitarTermos);
+        Assert.Equal("2026-11", antes.Termos!.Versao);
+        Assert.Equal("https://agesto.com.br/termos", antes.Termos.UrlTermos);
+        Assert.Equal("https://agesto.com.br/privacidade", antes.Termos.UrlPrivacidade);
+
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        await service.AceitarTermosAsync(usuario.Id, new AceitarTermosRequest { Versao = "2026-11" }, CancellationToken.None);
+
+        var salvo = await dbContext.Usuarios.SingleAsync();
+        Assert.Equal("2026-11", salvo.TermosVersaoAceita);
+        Assert.NotNull(salvo.TermosAceitosEm);
+        var depois = await service.LoginAsync(login, CancellationToken.None);
+        Assert.False(depois!.DeveAceitarTermos);
+        Assert.Null(depois.Termos);
+    }
+
+    [Fact]
+    public async Task LoginAsync_VersaoNovaDosTermos_PedeAceiteDeNovo()
+    {
+        await using var dbContext = CreateContext();
+        var antiga = new AuthService(dbContext, ConfiguracaoComTermos("2026-11"));
+        await antiga.RegisterAsync(new AuthRegisterRequest { Nome = "Agente", Email = "nova@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+        await antiga.AceitarTermosAsync(usuario.Id, new AceitarTermosRequest { Versao = "2026-11" }, CancellationToken.None);
+
+        var nova = new AuthService(dbContext, ConfiguracaoComTermos("2027-01"));
+        var response = await nova.LoginAsync(new AuthLoginRequest { Email = "nova@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+
+        Assert.True(response!.DeveAceitarTermos);
+        Assert.Equal("2027-01", response.Termos!.Versao);
+    }
+
+    [Theory]
+    [InlineData("2026-10")]
+    [InlineData("")]
+    public async Task AceitarTermosAsync_VersaoDiferenteDaVigente_Lanca(string versao)
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, ConfiguracaoComTermos("2026-11"));
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Agente", Email = "velha@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AceitarTermosAsync(usuario.Id, new AceitarTermosRequest { Versao = versao }, CancellationToken.None));
+        Assert.Null((await dbContext.Usuarios.SingleAsync()).TermosVersaoAceita);
+    }
+
+    [Fact]
+    public async Task AceitarTermosAsync_SemTermosConfigurados_Lanca()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Agente", Email = "nada@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AceitarTermosAsync(usuario.Id, new AceitarTermosRequest { Versao = "2026-11" }, CancellationToken.None));
+    }
+
+    private static IConfiguration ConfiguracaoComTermos(string versao) =>
+        new ConfigurationBuilder()
+            .AddConfiguration(CreateConfiguration())
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Termos:Versao"] = versao,
+                ["Termos:UrlTermos"] = "https://agesto.com.br/termos",
+                ["Termos:UrlPrivacidade"] = "https://agesto.com.br/privacidade"
+            })
+            .Build();
+
+    [Fact]
     public async Task TrocarSenhaAsync_ComSenhaAtualCorreta_TrocaELimpaPendencia()
     {
         await using var dbContext = CreateContext();
