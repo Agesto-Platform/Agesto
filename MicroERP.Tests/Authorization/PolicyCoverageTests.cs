@@ -16,10 +16,12 @@ public sealed class PolicyCoverageTests
         "AuthController.Register",
         "AuthController.Login",
         "AuthController.TrocarSenha",
+        "AuthController.AceitarTermos",
         "SyncController.Carga",
         "SyncController.Descarga",
         "AtendimentoController.GetAgenda",
         "UsuarioController.Delete",
+        "AppController.GetVersao",
     ];
 
     public static TheoryData<string> Actions()

@@ -2,7 +2,7 @@ import { api } from '@/lib/api'
 import { db } from '@/db/instance'
 import { saveConfig } from '@/lib/appConfig'
 import { saveSugeridos } from '@/lib/sugeridos'
-import type { LocalDb } from '@/db/types'
+import type { LocalAtendimento, LocalDb } from '@/db/types'
 import type {
   AgendaItem,
   SyncCargaResponse,
@@ -66,6 +66,42 @@ export async function initialSync(database: LocalDb = db): Promise<SyncResult> {
   return { ...c, agenda }
 }
 
+const RECUSAS = 'recusas'
+
+/** Motivo da recusa no último envio, pelo uuid (minúsculo) do que o servidor recusou. */
+export type Recusas = Record<string, string>
+
+export async function getRecusas(database: LocalDb = db): Promise<Recusas> {
+  const raw = await database.getMeta(RECUSAS)
+  if (!raw) return {}
+  try {
+    return JSON.parse(raw) as Recusas
+  } catch {
+    return {}
+  }
+}
+
+const maiuscula = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/**
+ * Por que o atendimento não entrou no último envio, ou null (I2). Quando quem
+ * não entrou foi o cliente ou o serviço novo dele, mostra esse motivo, que é o
+ * que o agente precisa corrigir.
+ */
+export function motivoDaRecusa(
+  a: Pick<LocalAtendimento, 'uuid' | 'clienteUuid' | 'itensServico'>,
+  recusas: Recusas,
+): string | null {
+  const cliente = a.clienteUuid ? recusas[a.clienteUuid.toLowerCase()] : undefined
+  if (cliente) return `Cliente não aceito: ${cliente}`
+  for (const it of a.itensServico) {
+    const servico = it.servicoUuid ? recusas[it.servicoUuid.toLowerCase()] : undefined
+    if (servico) return `Serviço novo não aceito: ${servico}`
+  }
+  const proprio = recusas[a.uuid.toLowerCase()]
+  return proprio ? maiuscula(proprio) : null
+}
+
 export interface DescargaResult {
   clientesImportados: number
   servicosImportados: number
@@ -85,6 +121,7 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
   const atendPend = await database.getPendingAtendimentos()
 
   if (clientesPend.length === 0 && servicosPend.length === 0 && atendPend.length === 0) {
+    await database.setMeta(RECUSAS, '{}')
     return { clientesImportados: 0, servicosImportados: 0, atendimentosImportados: 0, conclusoesImportadas: 0, erros: [] }
   }
 
@@ -144,6 +181,14 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
   )
   await database.setMeta('lastSync', res.sincronizadoEm)
 
+  // Motivo de cada recusa, para a lista de atendimentos mostrar em cada pendente.
+  const recusas: Recusas = {}
+  for (const r of res.recusas ?? []) {
+    const k = r.uuid.toLowerCase()
+    recusas[k] = recusas[k] ? `${recusas[k]} ${r.motivo}` : r.motivo
+  }
+  await database.setMeta(RECUSAS, JSON.stringify(recusas))
+
   return {
     clientesImportados: res.clientesImportados,
     servicosImportados: res.servicosImportados ?? 0,
@@ -177,7 +222,9 @@ export function resumoSincronizacao({ enviado, recebido }: SincronizacaoResult):
   if (nada && enviado.erros.length === 0) return `Dados atualizados. ${agenda}`
   const servicos = enviado.servicosImportados > 0 ? `, ${enviado.servicosImportados} serviço(s) novo(s)` : ''
   const enviados = `Enviados: ${atendimentos} atendimento(s), ${enviado.clientesImportados} cliente(s)${servicos}.`
-  return enviado.erros.length > 0
-    ? `${enviados} ${enviado.erros.length} não enviado(s), seguem pendentes: ${enviado.erros[0]}`
+  const n = enviado.erros.length
+  const outros = n > 1 ? ` O motivo de cada um aparece em Atendimentos.` : ''
+  return n > 0
+    ? `${enviados} ${n} não enviado(s), seguem pendentes: ${enviado.erros[0]}${outros}`
     : `${enviados} ${agenda}`
 }

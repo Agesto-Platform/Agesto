@@ -50,6 +50,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Email).HasMaxLength(150).IsRequired();
             entity.Property(e => e.Senha).HasMaxLength(255).IsRequired();
             entity.HasIndex(e => e.Email).IsUnique();
+            entity.Property(e => e.TermosVersaoAceita).HasMaxLength(20);
             entity.Property(e => e.Perfil)
                .HasConversion<string>()
                .HasMaxLength(10)

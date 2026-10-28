@@ -44,7 +44,7 @@ export function createMemoryDb(): LocalDb {
     },
 
     async addCliente(c) {
-      pendingClientes.push(clone(c))
+      pendingClientes = [...pendingClientes.filter((x) => x.uuid !== c.uuid), clone(c)]
     },
     async getPendingClientes() {
       return clone(pendingClientes)

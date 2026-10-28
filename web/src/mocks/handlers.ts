@@ -29,6 +29,12 @@ export const handlers = [
     return fail(401, 'Credenciais inválidas.')
   }),
 
+  http.get('*/api/app/versao', () =>
+    HttpResponse.json(
+      ok({ versaoMinimaAndroid: '1.0.0', urlDownload: 'https://expo.dev/artifacts/eas/agesto-demo.apk' }, 'Versão do app.'),
+    ),
+  ),
+
   http.get('*/api/metrics/dashboard', () =>
     HttpResponse.json(ok(dashboardMock, 'Dashboard consolidado.')),
   ),

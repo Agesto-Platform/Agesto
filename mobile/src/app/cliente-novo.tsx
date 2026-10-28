@@ -1,21 +1,44 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { uuid } from '@/lib/uuid'
 import { maskCpf, maskPhone } from '@/lib/masks'
 import { validateCliente, isValid, type ClienteFormErrors } from '@/features/clientes/validateCliente'
+import type { PendingCliente } from '@/db/types'
 
+/** Cadastro rápido de cliente. Também corrige um ainda não enviado (`?editar=<uuid>`). */
 export default function ClienteNovo() {
   const router = useRouter()
+  const params = useLocalSearchParams<{ editar?: string }>()
+  // Cliente ainda não enviado que está sendo corrigido; mantém o uuid e o endereço.
+  const [original, setOriginal] = useState<PendingCliente | null>(null)
   const [nome, setNome] = useState('')
   const [cpf, setCpf] = useState('')
   const [telefone, setTelefone] = useState('')
   const [errors, setErrors] = useState<ClienteFormErrors>({})
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!params.editar) return
+    ;(async () => {
+      const local = (await db.getPendingClientes()).find((c) => c.uuid === params.editar && c.syncedAt === null)
+      // Já foi enviado (ou não existe mais): não há o que corrigir aqui.
+      if (!local) {
+        router.back()
+        return
+      }
+      setOriginal(local)
+      setNome(local.nome)
+      setCpf(maskCpf(local.cpf))
+      setTelefone(local.telefone ?? '')
+      // Abre já apontando o que o servidor vai recusar.
+      setErrors(validateCliente({ nome: local.nome, cpf: local.cpf }))
+    })()
+  }, [params.editar, router])
 
   async function salvar() {
     const e = validateCliente({ nome, cpf })
@@ -24,15 +47,16 @@ export default function ClienteNovo() {
     setSaving(true)
     try {
       await db.addCliente({
-        uuid: uuid(),
-        nome: nome.trim(),
-        cpf: cpf.trim(),
-        telefone: telefone || null,
         logradouro: null,
         numero: null,
         bairro: null,
         cidade: null,
         cep: null,
+        ...original,
+        uuid: original?.uuid ?? uuid(),
+        nome: nome.trim(),
+        cpf: cpf.trim(),
+        telefone: telefone || null,
         syncedAt: null,
       })
       router.back()
@@ -47,7 +71,7 @@ export default function ClienteNovo() {
         <Pressable onPress={() => router.back()} accessibilityLabel="Fechar" style={styles.close}>
           <Ionicons name="close" size={22} color={colors.ink2} />
         </Pressable>
-        <Text style={styles.title}>Novo cliente</Text>
+        <Text style={styles.title}>{original ? 'Corrigir cliente' : 'Novo cliente'}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
