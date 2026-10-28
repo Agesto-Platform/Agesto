@@ -821,7 +821,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-46 — Plano de lançamento do MVP: escopo e cronograma
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026 no plano de lançamento; aguarda o aval do Davi Gomes no PR que registra esta decisão. O plano completo, com tarefas, prazos e status por pessoa, está no documento "Agesto: plano de lançamento do MVP".
+**Status:** 🟢 Decidido por Diego em 22/10/2026 no plano de lançamento, com aval do Davi Gomes no merge do PR #106 (27/10/2026). O plano completo, com tarefas, prazos e status por pessoa, está no documento "Agesto: plano de lançamento do MVP".
 
 **Decisão:**
 1. **Público do lançamento:** o prestador de serviço com equipe pequena (Dono no web, agentes no app Android). O modo Venda/Híbrido, o comerciante e a IA (DEC-21) ficam fora do lançamento.
@@ -838,7 +838,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-47 — Android só por APK, fora das lojas
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026; aguarda o aval do Davi Gomes. A fazer (primeiro `eas build` até 31/10).
+**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Projeto do app pronto em `develop` (PR #108, 28/10/2026: `eas.json`, `br.com.agesto.app`, `expo-updates` e aviso de versão) e página de download em `/baixar` (PR #111). Falta o primeiro `eas build` até 31/10.
 
 **Decisão:** o app do agente não vai para a Google Play nem para a App Store. No Android ele é sempre distribuído como APK, gerado pelo EAS Build e baixado de uma página do Agesto com o passo a passo de instalação. Correções de JavaScript chegam por `eas update` (OTA); mudança nativa exige APK novo.
 - Todo APK é assinado com a mesma chave, para instalar por cima do anterior sem perder os dados offline. Uma cópia da chave fica guardada fora do repositório e do Expo.
@@ -853,7 +853,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-48 — Cadastro aberto com verificação de email e período de teste
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026 para o lançamento (15/12); aguarda o aval do Davi Gomes. O cadastro segue fechado por chave (DEC-34) até lá.
+**Status:** 🟡 Decidido por Diego em 22/10/2026 para o lançamento (15/12), com aval do Davi Gomes (PR #106, 27/10/2026). A fazer. O cadastro segue fechado por chave (DEC-34) até lá.
 
 **Decisão:** no lançamento, qualquer prestador cria a conta pelo web, confirma o email e ganha um período de teste antes de assinar. Isso substitui, a partir do lançamento, o cadastro fechado por `Auth__RegistrationKey` da DEC-34. O rate limit por IP continua.
 
@@ -865,7 +865,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-49 — Hospedagem paga para o piloto e o lançamento
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026; aguarda o aval do Davi Gomes. Render Starter antes do ensaio, Supabase Pro no lançamento.
+**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). A fazer: Render Starter antes do ensaio, Supabase Pro no lançamento.
 
 **Decisão:**
 1. **API:** Render Starter antes do piloto, para a API não dormir (no Free a primeira chamada leva cerca de 1 minuto e o app do agente sofre com isso no campo).
@@ -880,7 +880,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-50 — Sessão de 30 dias
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026; aguarda o aval do Davi Gomes. A fazer antes do piloto.
+**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
 
 **Decisão:** o login vale 30 dias na API e no app (hoje o JWT expira em 120 minutos, `Jwt:ExpiresMinutes`). A revogação da DEC-34 continua: desativar o usuário ou trocar a senha derruba a sessão na próxima requisição.
 
