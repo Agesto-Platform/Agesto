@@ -7,17 +7,17 @@ const now = new Date().toISOString()
 const seed: Cliente[] = [
   {
     id: 1, uuid: crypto.randomUUID(), nome: 'Vó Joana', telefone: '(34) 99999-0000',
-    cpf: '111.222.333-44', logradouro: 'R. das Acácias', numero: '120', bairro: 'Centro',
+    cpf: '111.444.777-35', logradouro: 'R. das Acácias', numero: '120', bairro: 'Centro',
     cidade: 'Uberaba', cep: '38010-000', createdAt: now, updatedAt: now,
   },
   {
     id: 2, uuid: crypto.randomUUID(), nome: 'Marina Alves', telefone: '(34) 98888-1010',
-    cpf: '222.333.444-55', logradouro: 'Av. Leopoldino', numero: '45', bairro: 'Fabrício',
+    cpf: '529.982.247-25', logradouro: 'Av. Leopoldino', numero: '45', bairro: 'Fabrício',
     cidade: 'Uberaba', cep: '38065-000', createdAt: now, updatedAt: now,
   },
   {
     id: 3, uuid: crypto.randomUUID(), nome: 'Renata Vieira', telefone: null,
-    cpf: '333.444.555-66', logradouro: null, numero: null, bairro: null,
+    cpf: '123.456.789-09', logradouro: null, numero: null, bairro: null,
     cidade: 'Uberaba', cep: null, createdAt: now, updatedAt: now,
   },
 ]
