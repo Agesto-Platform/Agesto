@@ -78,6 +78,28 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task LoginAsync_ValidadeDe30Dias_TokenExpiraEm30Dias()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration(expiresMinutes: "43200"));
+        await service.RegisterAsync(new AuthRegisterRequest
+        {
+            Nome = "Agente",
+            Email = "agente@teste.com",
+            Senha = "Senha123!"
+        }, CancellationToken.None);
+
+        var response = await service.LoginAsync(new AuthLoginRequest
+        {
+            Email = "agente@teste.com",
+            Senha = "Senha123!"
+        }, CancellationToken.None);
+
+        var esperado = DateTime.UtcNow.AddDays(30);
+        Assert.InRange(response!.ExpiresAt, esperado.AddMinutes(-1), esperado.AddMinutes(1));
+    }
+
+    [Fact]
     public async Task LoginAsync_WhenPasswordIsWrong_ReturnsNull()
     {
         await using var dbContext = CreateContext();
@@ -214,7 +236,7 @@ public sealed class AuthServiceTests
             service.TrocarSenhaAsync(usuario.Id, new TrocarSenhaRequest { SenhaAtual = "Errada0000", NovaSenha = "NovaSenha2" }, CancellationToken.None));
     }
 
-    private static IConfiguration CreateConfiguration()
+    private static IConfiguration CreateConfiguration(string expiresMinutes = "120")
     {
         return new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -222,7 +244,7 @@ public sealed class AuthServiceTests
                 ["Jwt:Secret"] = "dev-secret-micro-erp-tests-2026-key-12345",
                 ["Jwt:Issuer"] = "MicroERP.Tests",
                 ["Jwt:Audience"] = "MicroERP.Tests",
-                ["Jwt:ExpiresMinutes"] = "120"
+                ["Jwt:ExpiresMinutes"] = expiresMinutes
             })
             .Build();
     }
