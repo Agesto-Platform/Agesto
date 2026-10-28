@@ -4,7 +4,14 @@ import type { ReactNode } from 'react'
 import { AuthProvider } from './AuthProvider'
 import { useAuth } from './useAuth'
 import { db } from '@/db/instance'
-import { DEMO_EMAIL, DEMO_SENHA, DEMO_PRIMEIRO_ACESSO_EMAIL, DEMO_SENHA_PROVISORIA } from '@/mocks/handlers'
+import {
+  DEMO_EMAIL,
+  DEMO_SENHA,
+  DEMO_PRIMEIRO_ACESSO_EMAIL,
+  DEMO_SENHA_PROVISORIA,
+  DEMO_TERMOS_EMAIL,
+  DEMO_TERMOS_VERSAO,
+} from '@/mocks/handlers'
 
 // No jest o preset resolve os adapters .native (SQLite/SecureStore): troca por memória.
 jest.mock('@/db/instance', () => ({
@@ -60,6 +67,43 @@ describe('AuthProvider (mock)', () => {
     })
     expect(result.current.deveTrocarSenha).toBe(false)
     expect(await db.getMeta('deveTrocarSenha')).toBe('0')
+
+    await act(async () => {
+      await result.current.logout()
+    })
+  })
+
+  it('termos não aceitos ficam pendentes até o aceite, inclusive ao reabrir', async () => {
+    const { result } = await renderHook(() => useAuth(), { wrapper })
+
+    await act(async () => {
+      await result.current.login(DEMO_TERMOS_EMAIL, DEMO_SENHA)
+    })
+    expect(result.current.termos?.versao).toBe(DEMO_TERMOS_VERSAO)
+    expect(JSON.parse((await db.getMeta('termosPendentes')) ?? 'null')?.versao).toBe(DEMO_TERMOS_VERSAO)
+
+    // Reabrir o app lê a pendência do banco local.
+    const reaberto = await renderHook(() => useAuth(), { wrapper })
+    expect(reaberto.result.current.termos?.versao).toBe(DEMO_TERMOS_VERSAO)
+
+    await act(async () => {
+      await result.current.aceitarTermos()
+    })
+    expect(result.current.termos).toBeNull()
+    expect(await db.getMeta('termosPendentes')).toBe('')
+
+    await act(async () => {
+      await result.current.logout()
+    })
+  })
+
+  it('login sem termos pendentes não pede aceite', async () => {
+    const { result } = await renderHook(() => useAuth(), { wrapper })
+
+    await act(async () => {
+      await result.current.login(DEMO_EMAIL, DEMO_SENHA)
+    })
+    expect(result.current.termos).toBeNull()
 
     await act(async () => {
       await result.current.logout()

@@ -60,6 +60,19 @@ describe('memoryDb', () => {
     expect((await db.getPendingClientes())[0].syncedAt).toBe('2026-08-11T10:00:00Z')
   })
 
+  it('cliente offline corrigido substitui o anterior pelo uuid', async () => {
+    const db = createMemoryDb()
+    const base = {
+      uuid: 'cx', nome: 'Novo Cliente', cpf: '11111111111', telefone: null,
+      logradouro: null, numero: null, bairro: null, cidade: null, cep: null, syncedAt: null,
+    }
+    await db.addCliente(base)
+    await db.addCliente({ ...base, cpf: '52998224725' })
+    const pend = await db.getPendingClientes()
+    expect(pend).toHaveLength(1)
+    expect(pend[0].cpf).toBe('52998224725')
+  })
+
   it('serviço offline entra pendente e religa os itens de atendimento', async () => {
     const db = createMemoryDb()
     await db.addServico({ uuid: 's1', descricao: 'Dreno', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 120, syncedAt: null })

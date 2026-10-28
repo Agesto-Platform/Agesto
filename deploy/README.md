@@ -61,6 +61,7 @@ SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER B
    - `ConnectionStrings__DefaultConnection`: a connection string do passo 1.
    - `Cors__AllowedOrigins__0`: a URL da web na Cloudflare Pages (passo 4). Se ainda não existir, use um valor provisório e troque depois. Aceita várias origens separadas por vírgula; a `/` final é ignorada.
    - `Jwt__Secret` é gerado pelo próprio Render. A API não sobe com segredo menor que 32 bytes.
+   - `Termos__Versao`, `Termos__UrlTermos` e `Termos__UrlPrivacidade` (opcionais): versão vigente dos termos de uso e da política de privacidade (ex.: `2026-11`) e os links dos textos. Com a versão definida, quem ainda não aceitou essa versão vê a tela de aceite no próximo login; trocar a versão pede o aceite de novo a todos. Sem ela, ninguém precisa aceitar.
    - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
    - `Geocoding__OpenRouteServiceApiKey` (opcional): chave gratuita criada em openrouteservice.org (*Dashboard → Tokens*, plano Standard). Liga a geocodificação dos endereços dos clientes para o mapa da agenda (DEC-38); a API envia ao serviço só o endereço, nunca nome ou CPF. Sem ela, o mapa mostra que os clientes ainda não têm localização.
    - `App__VersaoMinimaAndroid` e `App__UrlDownload` (opcionais): versão mínima do APK e link para baixá-lo. Ver "APK" no passo 5.
