@@ -18,6 +18,16 @@ export interface AuthResponse {
   expiresAt: string // ISO
   /** Senha provisória definida pelo Dono: exige troca antes de usar o painel. */
   deveTrocarSenha?: boolean
+  /** Termos de uso e política de privacidade ainda não aceitos nesta versão (B6). */
+  deveAceitarTermos?: boolean
+  termos?: Termos | null
+}
+
+/** Versão dos termos a aceitar e onde ler os textos (Termos__* no Render). */
+export interface Termos {
+  versao: string
+  urlTermos: string | null
+  urlPrivacidade: string | null
 }
 
 export interface TrocarSenhaInput {

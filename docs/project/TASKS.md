@@ -47,7 +47,7 @@
 | Prazo | Tarefa | Origem | Status |
 |-------|--------|--------|--------|
 | 24/10 | CPF com dígito verificador no web | B5 | Feito (PR #117, 28/10) |
-| 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | A fazer |
+| 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
 | 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
 | 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | A fazer |
 | 17/11 | Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48) | D11 | A fazer |
