@@ -815,7 +815,19 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ---
 
-> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub.
+> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub. A DEC-42 foi retomada em 28/10/2026; DEC-43 a DEC-45 seguem reservadas.
+
+---
+
+## DEC-42 — Paginação opcional nas listas
+
+**Status:** 🟢 Implementado em `develop` (PR #98, reaberto e mesclado em 28/10/2026), pedido por Davi.
+
+**Decisão:** `GET` de clientes, atendimentos, orçamentos, produtos e serviços aceitam `?pagina=&tamanho=` (padrão 20, máximo 100) e então devolvem `{ itens, pagina, tamanho, total }`. Sem os parâmetros, a resposta continua sendo a lista inteira.
+
+**Por quê:** o web usa as listas completas em buscas e seletores, e o mobile não usa esses endpoints (só o sync); paginação opcional não quebra nenhum consumidor e fica pronta para quando uma tela precisar.
+
+**Impacto:** sem migration. A paginação é feita no banco e a ordenação ganhou desempate por `Id`.
 
 ---
 

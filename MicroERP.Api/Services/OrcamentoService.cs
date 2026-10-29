@@ -40,6 +40,19 @@ public sealed class OrcamentoService : IOrcamentoService
         return orcamentos.Select(MapResponse).ToList();
     }
 
+    public async Task<PaginaResponse<OrcamentoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    {
+        var (itens, total) = await _orcamentoRepository.GetPaginaAsync(
+            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+        return new PaginaResponse<OrcamentoResponse>
+        {
+            Itens = itens.Select(MapResponse).ToList(),
+            Pagina = paginacao.PaginaOuPadrao,
+            Tamanho = paginacao.TamanhoOuPadrao,
+            Total = total
+        };
+    }
+
     public async Task<OrcamentoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var orcamento = await _orcamentoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);

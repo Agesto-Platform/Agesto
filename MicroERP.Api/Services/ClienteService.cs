@@ -21,6 +21,19 @@ public sealed class ClienteService : IClienteService
         return clientes.Select(MapResponse).ToList();
     }
 
+    public async Task<PaginaResponse<ClienteResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    {
+        var (itens, total) = await _clienteRepository.GetPaginaAsync(
+            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+        return new PaginaResponse<ClienteResponse>
+        {
+            Itens = itens.Select(MapResponse).ToList(),
+            Pagina = paginacao.PaginaOuPadrao,
+            Tamanho = paginacao.TamanhoOuPadrao,
+            Total = total
+        };
+    }
+
     public async Task<ClienteResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var cliente = await _clienteRepository.GetByIdAsync(empresaId, id, false, cancellationToken);

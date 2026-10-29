@@ -16,12 +16,22 @@ public sealed class ServicoRepository : IServicoRepository
 
     public async Task<List<Servico>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
     {
-        return await _dbContext.Servicos
+        return await Listagem(empresaId).ToListAsync(cancellationToken);
+    }
+
+    public Task<(List<Servico> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, CancellationToken cancellationToken)
+    {
+        return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
+    }
+
+    private IQueryable<Servico> Listagem(long empresaId)
+    {
+        return _dbContext.Servicos
             .AsNoTracking()
             .Include(s => s.CriadoPor)
             .Where(s => s.EmpresaId == empresaId && s.DeletedAt == null)
             .OrderBy(s => s.Descricao)
-            .ToListAsync(cancellationToken);
+            .ThenBy(s => s.Id);
     }
 
     public async Task<Servico?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)

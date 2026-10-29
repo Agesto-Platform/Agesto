@@ -16,11 +16,21 @@ public sealed class ClienteRepository : IClienteRepository
 
     public async Task<List<Cliente>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
     {
-        return await _dbContext.Clientes
+        return await Listagem(empresaId).ToListAsync(cancellationToken);
+    }
+
+    public Task<(List<Cliente> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, CancellationToken cancellationToken)
+    {
+        return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
+    }
+
+    private IQueryable<Cliente> Listagem(long empresaId)
+    {
+        return _dbContext.Clientes
             .AsNoTracking()
             .Where(c => c.EmpresaId == empresaId && c.DeletedAt == null)
             .OrderBy(c => c.Nome)
-            .ToListAsync(cancellationToken);
+            .ThenBy(c => c.Id);
     }
 
     public async Task<Cliente?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)
