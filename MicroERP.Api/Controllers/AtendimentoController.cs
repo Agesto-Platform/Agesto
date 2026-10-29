@@ -23,10 +23,16 @@ public sealed class AtendimentoController : ApiControllerBase
 
     [HttpGet]
     [Authorize(Policy = Policies.Dono)]
-    public async Task<ActionResult<ApiResponse>> GetAll(CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        if (paginacao.Informada)
+        {
+            var pagina = await _atendimentoService.GetPaginaAsync(empresaId, paginacao, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = pagina });
+        }
 
         var atendimentos = await _atendimentoService.GetAllAsync(empresaId, cancellationToken);
         return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = atendimentos });

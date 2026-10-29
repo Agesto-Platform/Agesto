@@ -21,6 +21,19 @@ public sealed class ProdutoService : IProdutoService
         return produtos.Select(MapResponse).ToList();
     }
 
+    public async Task<PaginaResponse<ProdutoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    {
+        var (itens, total) = await _produtoRepository.GetPaginaAsync(
+            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+        return new PaginaResponse<ProdutoResponse>
+        {
+            Itens = itens.Select(MapResponse).ToList(),
+            Pagina = paginacao.PaginaOuPadrao,
+            Tamanho = paginacao.TamanhoOuPadrao,
+            Total = total
+        };
+    }
+
     public async Task<ProdutoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var produto = await _produtoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
