@@ -18,6 +18,16 @@ export interface AuthResponse {
   expiresAt: string // ISO
   /** Senha provisória definida pelo Dono: exige troca antes de usar o painel. */
   deveTrocarSenha?: boolean
+  /** Termos de uso e política de privacidade ainda não aceitos nesta versão (B6). */
+  deveAceitarTermos?: boolean
+  termos?: Termos | null
+}
+
+/** Versão dos termos a aceitar e onde ler os textos (Termos__* no Render). */
+export interface Termos {
+  versao: string
+  urlTermos: string | null
+  urlPrivacidade: string | null
 }
 
 export interface TrocarSenhaInput {
@@ -393,4 +403,12 @@ export interface AgendaItem {
   latitude?: number | null
   longitude?: number | null
   resumo: string
+}
+
+/* ---------- App do agente ---------- */
+
+/** GET /api/app/versao — versão mínima do APK e link para baixar (DEC-47). */
+export interface AppVersao {
+  versaoMinimaAndroid: string | null
+  urlDownload: string | null
 }

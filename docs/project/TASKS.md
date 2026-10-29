@@ -9,13 +9,74 @@
 | Item | Estado |
 |---|---|
 | Centralizar documentação em `docs/project/` | 🟢 Concluído |
-| Definir integrantes, papéis e focos iniciais | 🟢 Concluído — Davi (Produto), Depowo (Infra), ghzpro034 (Generalista) |
+| Definir integrantes, papéis e focos iniciais | 🟢 Concluído — revisto em 22/10/2026: Davi Gomes (mobile e geral), Davi Oliveira/`ghzpro034` (web e geral), Diego/`Depowo` (infra e redesign) |
 | Criar organização GitHub e transferir para `Agesto-Platform/Agesto` | 🟢 Concluído |
 | Configurar time `Core`, acessos mínimos e segundo Owner | 🟢 Concluído — Davi e Depowo são Owners |
 | Proteger `develop` e `main` com PR, revisão e status checks | 🟢 Concluído — ruleset exige PR e os checks Backend, Web e Mobile; sem aprovação obrigatória (decisão de 10/10/2026) |
 | Adicionar CI para backend, web e mobile | 🟢 Concluído — validado na promoção de governança |
-| Auditar `REQUIREMENTS.md` reconstruído | 🟡 Em andamento |
+| Auditar `REQUIREMENTS.md` reconstruído | 🟡 Em andamento — Davi Gomes, depois do lançamento |
 | Publicar a linha local consolidada em `main` | 🟢 Concluído — merge `72b021b` |
+
+---
+
+## Lançamento do MVP (até 15/12/2026) — DEC-46
+
+> Prioridade da equipe. Ensaio geral em 03/11, piloto de 04/11 a 28/11, revisão em 01/12 e lançamento em 15/12. Cada tarefa tem um responsável; quando outra pessoa participa, ela aparece entre parênteses. Ao terminar uma tarefa, troque o status aqui e no documento "Agesto: plano de lançamento do MVP" (aba "Tarefas por pessoa"). Origem: B = bloqueador do piloto, I = melhoria do piloto, L = lançamento, D = decisão do plano.
+
+### Davi Gomes — mobile e geral
+
+| Prazo | Tarefa | Origem | Status |
+|-------|--------|--------|--------|
+| 24/10 | Escolher o cliente piloto e confirmar que os agentes usam Android. Enquanto não há cliente, a validação segue com um usuário de teste (Diego, 28/10) | D1 | A fazer |
+| 24/10 | CPF com dígito verificador no app e cliente ainda não enviado editável | B5 | Feito (PR #107, 28/10) |
+| 27/10 | APK: `mobile/eas.json`, `android.package` = `br.com.agesto.app`, `expo-updates` e aviso de versão nova (DEC-47; ícone vem do Diego) | B1 | Feito (PR #108, 28/10); o primeiro `eas build` é do Diego |
+| 31/10 | Sessão de 30 dias na API e no app, com revogação ao desativar (DEC-50) | B4, D7 | Feito (PR #109, 28/10) |
+| 31/10 | Texto dos termos de uso e da política de privacidade, com revisão jurídica | B6, D8 | Em andamento: rascunho pronto, falta a revisão jurídica. As páginas públicas `/termos` e `/privacidade` já existem no web (PR #115) e recebem o texto em `web/src/pages/legal/textos.ts` |
+| 31/10 | Tela de aceite dos termos no app | B6 | Feito (PR #110, 28/10); migration `AddUsuarioAceiteTermos` aplicada no Supabase em 28/10 |
+| 31/10 | Acordo do piloto por escrito: período grátis ou com desconto, uso dos dados | D9 | Em andamento: rascunho pronto, falta fechar com o cliente piloto |
+| 04/11 | Conta do Dono piloto, catálogo, clientes, agentes e treino presencial | Piloto | A fazer |
+| 10/11 | Página de download do APK com passo a passo de instalação (`/baixar` no web) | L3 | Feito (PR #111, 28/10) |
+| 14/11 | Busca no app, motivo da recusa e cancelar atendimento no app | I1 a I3 | Feito (PR #112, 28/10) |
+| 28/11 | Sincronizar ao abrir o app e quando a internet volta | I5 | Feito (PR #113, 28/10) |
+| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Parado |
+| 01/12 | Revisão do piloto e preço da assinatura (todos participam) | D10 | A fazer |
+| 12/12 | CNPJ e nota da assinatura; formalizar a propriedade das contribuições (DEC-29) e decidir se o repositório segue público (DEC-24) | Legal | A fazer |
+
+### Davi Oliveira — web e geral
+
+| Prazo | Tarefa | Origem | Status |
+|-------|--------|--------|--------|
+| 24/10 | CPF com dígito verificador no web | B5 | Feito (PR #117, 28/10) |
+| 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
+| 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
+| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | A fazer |
+| 17/11 | Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48) | D11 | A fazer |
+| 28/11 | Cadastro aberto no ar com verificação de email e período de teste | L1 | A fazer |
+| 01/12 | Canal de suporte: WhatsApp Business e email | D14 | A fazer |
+| 08/12 | Cobrança mínima no web: atendimento pago ou em aberto, forma e data do pagamento | L5 | A fazer |
+| 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | A fazer |
+| 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | A fazer |
+| 12/12 | Página de apresentação com preço, termos, download e contato | L4 | A fazer |
+
+### Diego — infra e redesign
+
+| Prazo | Tarefa | Origem | Status |
+|-------|--------|--------|--------|
+| 24/10 | Render Starter, para a API não dormir (DEC-49) | B2, D2 | A fazer |
+| 24/10 | Organização `agesto` no expo.dev, com os dois Davis | D3 | A fazer |
+| 24/10 | Monitor do `/health` com alerta e chave `Geocoding__OpenRouteServiceApiKey` no Render | B7, B9 | A fazer |
+| 24/10 | Acesso de push e merge para os Davis, ou o app do Claude no GitHub da organização | Operação | A fazer |
+| 27/10 | Ícone, ícone adaptativo e splash do Agesto para o APK | B1 | A fazer |
+| 31/10 | Backup diário com `pg_dump` (GitHub Actions) e um teste de restauração (DEC-49) | B3 | A fazer |
+| 31/10 | Primeiro `eas build` e promoção `develop → main` antes do ensaio (a migration `AddUsuarioAceiteTermos` já está no Supabase desde 28/10) | B1, B8 | A fazer |
+| 03/11 | Ensaio geral com os dois Davis | Portão | A fazer |
+| 10/11 | Domínio próprio na web e na API, com CORS e CSP ajustados | L2, D12 | A fazer |
+| 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | A fazer |
+| 17/11 | Fechar o design system | D13 | A fazer |
+| 05/12 | Cópia da chave de assinatura do APK guardada fora do repositório e do Expo | B1 | A fazer |
+| 12/12 | Redesign do web (DEC-51): em `main` desde 25/10; falta o acabamento final | L6 | Em andamento |
+| 12/12 | Supabase Pro antes do lançamento (DEC-49) | L2 | A fazer |
+| 12/12 | APK de produção no link de download e última promoção para a `main` | L3 | A fazer |
 
 ---
 
@@ -71,7 +132,7 @@
 
 | KAN | Descrição | Prioridade | Responsável | Depende de |
 |-----|-----------|------------|-------------|------------|
-| — | Paginação no GetAllAsync | Baixa | A definir | — |
+| — | Paginação no GetAllAsync — PR #98 (paginação opcional, DEC-42) fechado sem merge em 25/10/2026 para retomar depois | Baixa | Davi Gomes | — |
 
 > Backend Core está essencialmente completo: em 21/10/2026, build verde e 261 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
 
@@ -103,16 +164,16 @@
 
 ### 🔴 Pendências residuais do prestador
 
-| Item | Descrição | Prioridade | Depende de |
-|------|-----------|------------|------------|
-| Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Campo de duração (não modelado) |
-| Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Decisão de produto |
-| ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
-| ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — |
-| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Chave do OpenRouteService no Render |
-| ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — |
-| **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | — |
-| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — |
+| Item | Descrição | Prioridade | Responsável | Depende de |
+|------|-----------|------------|-------------|------------|
+| Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Campo de duração (PR #101, DEC-45, parado) |
+| Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Davi Gomes | Decisão de produto |
+| ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
+| ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
+| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
+| ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — | — |
+| **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | Davi Gomes | — |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — | — |
 
 ---
 
@@ -135,11 +196,11 @@
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
-| KAN-14 | PostgreSQL de desenvolvimento + migrations — parcial: Postgres local via `docker-compose.yml` (DEC-41); falta rodar os testes automatizados contra ele | Alta | A definir |
+| KAN-14 | PostgreSQL de desenvolvimento + migrations — parcial: Postgres local via `docker-compose.yml` (DEC-41); falta rodar os testes automatizados contra ele | Alta | Diego |
 | KAN-54 | Agents de QA automatizados | Baixa | Diego |
 | — | ~~Instalar dotnet ef global na máquina~~ ✅ 21/10/2026 — `dotnet-ef` 10.0.13 | Média | — |
 | — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
-| — | Backup automático do banco (Supabase Free não faz) — DEC-34 | Alta | A definir |
+| — | Backup automático do banco (Supabase Free não faz) — DEC-34; `pg_dump` diário até 31/10 (DEC-49, ver Lançamento do MVP) | Alta | Diego |
 | — | ~~Migrar para .NET 10 (o .NET 8 perde suporte em 10/11/2026)~~ ✅ DEC-40 | Alta | — |
 
 ---
@@ -164,11 +225,11 @@
 
 ### 🔴 Pendentes
 
-| Item | Descrição | Prioridade |
-|------|-----------|------------|
-| Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio | Média |
-| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP) | Baixa |
-| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7. Hoje `DELETE /api/usuario` apaga a própria conta com DELETE físico e sem anonimização (`UsuarioRepository`), divergindo do invariante de soft delete do `AGENTS.md` — decisão de Davi | Baixa |
+| Item | Descrição | Prioridade | Responsável |
+|------|-----------|------------|-------------|
+| Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio. Entra com o cadastro aberto até 28/11 (DEC-48) | Alta | Davi Oliveira |
+| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP). PR #99 (DEC-43) fechado sem merge em 25/10/2026 para retomar depois | Média | Davi Gomes |
+| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7. Hoje `DELETE /api/usuario` apaga a própria conta com DELETE físico e sem anonimização (`UsuarioRepository`), divergindo do invariante de soft delete do `AGENTS.md`. PR #100 (DEC-44: soft delete com anonimização) fechado sem merge em 25/10/2026 para retomar depois; a política de privacidade do lançamento depende disso | Média | Davi Gomes |
 
 ---
 
@@ -230,13 +291,13 @@
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
-| KAN-39 | Documentação de API (Swagger/OpenAPI) — parcial: Swashbuckle configurado, UI só em Development; sem documentação publicada | Média | Richard |
+| KAN-39 | Documentação de API (Swagger/OpenAPI) — parcial: Swashbuckle configurado, UI só em Development; sem documentação publicada | Baixa | Davi Oliveira (depois do lançamento) |
 | KAN-40 | ~~Documentação de deploy~~ ✅ `deploy/README.md` (ver KAN-18) | Baixa | — |
-| KAN-41 | Testes de integração ponta-a-ponta | Baixa | Richard |
-| KAN-42 | Manual do usuário | Baixa | Richard |
+| KAN-41 | Testes de integração ponta-a-ponta — roteiro do ensaio geral até 03/11 | Alta | Davi Oliveira |
+| KAN-42 | Manual do usuário — versão curta até 08/12 | Média | Davi Oliveira |
 | KAN-43 | ~~Atualizar README~~ ✅ 21/10/2026 (PR #56) | Média | — |
-| — | Diagrama de Arquitetura (componentes) | Alta | Richard |
-| — | Diagrama de Sequência (Atendimento Híbrido) | Alta | Richard |
+| — | Diagrama de Arquitetura (componentes) | Baixa | Davi Gomes (depois do lançamento) |
+| — | Diagrama de Sequência (Atendimento Híbrido) | Baixa | Davi Gomes (depois do lançamento) |
 
 ---
 
@@ -271,11 +332,12 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 
 ### 🔴 Pendentes
 
-| KAN | Descrição | Prioridade |
-|-----|-----------|------------|
-| — | Ampliar cobertura de testes (só a base foi coberta) | Baixa |
-| — | Lazy-load do Recharts (bundle ~640kB) | Baixa |
-| — | ~~Trocar mocks pela API real (`VITE_USE_MOCKS=false`)~~ ✅ em produção contra a API real (DEC-32) | Alta |
+| KAN | Descrição | Prioridade | Responsável |
+|-----|-----------|------------|-------------|
+| — | Ampliar cobertura de testes (só a base foi coberta) | Baixa | Davi Oliveira |
+| — | Lazy-load do Recharts (bundle ~640kB) | Baixa | Davi Oliveira |
+| — | ~~Trocar mocks pela API real (`VITE_USE_MOCKS=false`)~~ ✅ em produção contra a API real (DEC-32) | Alta | — |
+| — | ~~Redesign do painel do Dono~~ ✅ PRs #80 a #95 (DEC-51) | Alta | Diego |
 
 ### ✅ Deltas de backend resolvidos / pendentes
 
@@ -311,35 +373,35 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 
-| Item | Descrição | Prioridade |
-|------|-----------|------------|
-| Agenda na Carga do sync | Ver seção "Domínio Prestador de Serviço" acima — a Carga deveria idealmente incluir a agenda, eliminando o contorno `syncAgenda` | Média |
-| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43) | — |
+| Item | Descrição | Prioridade | Responsável |
+|------|-----------|------------|-------------|
+| Agenda na Carga do sync | Ver seção "Domínio Prestador de Serviço" acima — a Carga deveria idealmente incluir a agenda, eliminando o contorno `syncAgenda` | Média | Davi Gomes |
+| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43) | — | — |
 
 ### 🔴 Pendências do próprio Mobile
 
-| Item | Descrição | Prioridade |
-|------|-----------|------------|
-| Histórico de atendimentos próprios | Não implementado nesta fase (fora do escopo mob-01 a mob-07) | Baixa |
-| Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2) | Média |
-| Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa |
-| ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta |
-| Sincronização automática em background | Hoje só manual (aba "Mais") | Baixa |
+| Item | Descrição | Prioridade | Responsável |
+|------|-----------|------------|-------------|
+| ~~APK e atualização OTA~~ | ✅ `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão em `develop` (DEC-47, PR #108). Falta o primeiro `eas build` (Diego, ver Lançamento do MVP) | Alta | — |
+| Histórico de atendimentos próprios | Não implementado nesta fase (fora do escopo mob-01 a mob-07) | Baixa | Davi Gomes |
+| Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2, depois do lançamento) | Baixa | Davi Gomes |
+| Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa | Davi Gomes |
+| ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta | — |
+| ~~Sincronização automática~~ | ✅ em `develop` (I5, PR #113): sincroniza ao abrir o app, ao voltar para ele e quando a internet volta, nunca com uma tela de cadastro aberta | Média | — |
+| Redesign do app | Mesmo visual do web, depois do lançamento (DEC-46) | Baixa | Diego |
 
 ---
 
 ## Ordem de execução recomendada (próximas sprints)
 
-> O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados. Restam a auditoria documental e a formalização das responsabilidades e da propriedade intelectual.
+> O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados.
 
-### Sprint imediata
-1. Concluir a auditoria de `REQUIREMENTS.md`
-2. Formalizar propriedade das contribuições e responsabilidades definitivas por módulo
-3. Depois da auditoria, remover a documentação legada em tarefa separada
-4. Executar testes integrados com Web, Mobile, API e PostgreSQL reais
+### Até 15/12/2026
+1. Seção **Lançamento do MVP** acima, na ordem dos prazos: primeiro o portão do piloto (até 03/11), depois as melhorias do piloto e o que o lançamento exige.
 
-### Sprint seguinte
-5. Débitos residuais: margem/hora do KAN-79 (após campo de duração), "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile, paginação no `GetAllAsync`, lazy-load do Recharts e sincronização automática em background
+### Depois do lançamento
+2. Auditoria de `REQUIREMENTS.md` e remoção da documentação legada (Davi Gomes)
+3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile e histórico no app (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
 
 ---
 

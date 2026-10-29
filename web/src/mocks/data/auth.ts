@@ -1,6 +1,9 @@
 /** Credenciais de demonstração aceitas pelo mock de login. */
 export const DEMO_EMAIL = 'dono@agesto.app'
 export const DEMO_SENHA = 'agesto123'
+/** Mesmo Dono, mas o login pede o aceite dos termos (B6). */
+export const DEMO_TERMOS_EMAIL = 'termos@agesto.app'
+export const DEMO_TERMOS_VERSAO = '2026-11'
 
 function b64url(obj: unknown): string {
   return btoa(JSON.stringify(obj))

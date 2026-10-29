@@ -5,17 +5,24 @@ import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
+import { CampoBusca } from '@/ui/CampoBusca'
+import { combinaBusca } from '@/features/busca/busca'
+import { cpfValido } from '@/features/clientes/validateCliente'
 
 interface Row {
   key: string
   nome: string
   sub: string
-  pending: boolean
+  /** uuid do cliente ainda não enviado (toque para corrigir); null quando já está no servidor. */
+  pendente: string | null
+  cpfInvalido: boolean
 }
 
 export default function Clientes() {
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
+  const [busca, setBusca] = useState('')
+  const visiveis = rows.filter((r) => combinaBusca(busca, r.nome, r.sub))
 
   useFocusEffect(
     useCallback(() => {
@@ -24,8 +31,10 @@ export default function Clientes() {
         const [ref, pend] = await Promise.all([db.getClientes(), db.getPendingClientes()])
         if (!active) return
         setRows([
-          ...pend.filter((c) => c.syncedAt === null).map((c) => ({ key: `p${c.uuid}`, nome: c.nome, sub: c.telefone ?? c.cpf, pending: true })),
-          ...ref.map((c) => ({ key: `r${c.id}`, nome: c.nome, sub: c.telefone ?? c.cidade ?? c.cpf, pending: false })),
+          ...pend.filter((c) => c.syncedAt === null).map((c) => ({
+            key: `p${c.uuid}`, nome: c.nome, sub: c.telefone ?? c.cpf, pendente: c.uuid, cpfInvalido: !cpfValido(c.cpf),
+          })),
+          ...ref.map((c) => ({ key: `r${c.id}`, nome: c.nome, sub: c.telefone ?? c.cidade ?? c.cpf, pendente: null, cpfInvalido: false })),
         ])
       })()
       return () => {
@@ -43,10 +52,23 @@ export default function Clientes() {
           <Text style={styles.novoText}>Novo</Text>
         </Pressable>
       </View>
+      {rows.length > 0 && (
+        <View style={styles.busca}>
+          <CampoBusca valor={busca} onChange={setBusca} placeholder="Buscar por nome, telefone ou cidade" />
+        </View>
+      )}
 
-      <ScrollView contentContainerStyle={styles.body}>
-        {rows.map((r) => (
-          <View key={r.key} style={styles.row}>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        {visiveis.map((r) => (
+          // Ainda não enviado: toque para corrigir (ex.: CPF que o servidor recusou).
+          <Pressable
+            key={r.key}
+            onPress={r.pendente ? () => router.push(`/cliente-novo?editar=${r.pendente}`) : undefined}
+            disabled={!r.pendente}
+            accessibilityRole={r.pendente ? 'button' : undefined}
+            accessibilityLabel={r.pendente ? `Corrigir cliente ${r.nome}` : undefined}
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+          >
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{r.nome.charAt(0).toUpperCase()}</Text>
             </View>
@@ -54,14 +76,23 @@ export default function Clientes() {
               <Text style={styles.rowName}>{r.nome}</Text>
               <Text style={styles.rowSub}>{r.sub}</Text>
             </View>
-            {r.pending && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>não enviado</Text>
+            {r.cpfInvalido ? (
+              <View style={[styles.badge, styles.badgeBad]}>
+                <Text style={[styles.badgeText, styles.badgeBadText]}>CPF inválido</Text>
               </View>
+            ) : (
+              r.pendente && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>não enviado</Text>
+                </View>
+              )
             )}
-          </View>
+          </Pressable>
         ))}
         {rows.length === 0 && <Text style={styles.empty}>Nenhum cliente ainda.</Text>}
+        {rows.length > 0 && visiveis.length === 0 && (
+          <Text style={styles.empty}>Nenhum cliente encontrado para “{busca.trim()}”.</Text>
+        )}
       </ScrollView>
     </Screen>
   )
@@ -80,6 +111,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '700', color: colors.ink },
   novo: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), backgroundColor: colors.brand, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2) },
   novoText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+  busca: { paddingHorizontal: space(4), paddingTop: space(3) },
 
   body: { padding: space(4), gap: space(2.5) },
   row: {
@@ -98,5 +130,7 @@ const styles = StyleSheet.create({
   rowSub: { fontSize: 12.5, color: colors.ink3, marginTop: 2 },
   badge: { backgroundColor: colors.warnSoft, borderRadius: radius.pill, paddingHorizontal: space(2.25), paddingVertical: space(1) },
   badgeText: { color: colors.warn, fontSize: 11, fontWeight: '700' },
+  badgeBad: { backgroundColor: colors.surface2 },
+  badgeBadText: { color: colors.bad },
   empty: { fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
 })

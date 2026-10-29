@@ -202,6 +202,14 @@ public sealed class SyncService : ISyncService
     public async Task<SyncDescargaResponse> DescargaAsync(long empresaId, long usuarioId, SyncDescargaRequest request, CancellationToken cancellationToken, bool porDono = false)
     {
         var erros = new List<string>();
+        // O mesmo motivo de cada erro, pelo uuid do device, para o app mostrar
+        // em cada pendência por que ela não entrou (I2).
+        var recusas = new List<RecusaDescargaResponse>();
+        void Recusar(Guid? uuid, string rotulo, string motivo)
+        {
+            erros.Add($"{rotulo}: {motivo}");
+            if (uuid is { } u && u != Guid.Empty) recusas.Add(new RecusaDescargaResponse { Uuid = u, Motivo = motivo });
+        }
         var clientesImportados = 0;
         var servicosImportados = 0;
         var atendimentosImportados = 0;
@@ -248,7 +256,7 @@ public sealed class SyncService : ISyncService
                         }
                         else
                         {
-                            erros.Add($"Cliente '{clienteRequest.Nome}': identificador em conflito.");
+                            Recusar(clienteRequest.Uuid, $"Cliente '{clienteRequest.Nome}'", "identificador em conflito.");
                         }
                         continue;
                     }
@@ -277,13 +285,13 @@ public sealed class SyncService : ISyncService
             }
             catch (Exception ex) when (ex is ArgumentException or NotFoundException)
             {
-                erros.Add($"Cliente '{clienteRequest.Nome}': {ex.Message}");
+                Recusar(clienteRequest.Uuid, $"Cliente '{clienteRequest.Nome}'", ex.Message);
             }
             catch (Exception ex)
             {
                 // Detalhe interno (banco, EF) fica no log; o device recebe só o aviso.
                 _logger.LogError(ex, "Falha ao importar cliente {Uuid} na Descarga.", clienteRequest.Uuid);
-                erros.Add($"Cliente '{clienteRequest.Nome}': erro interno ao gravar.");
+                Recusar(clienteRequest.Uuid, $"Cliente '{clienteRequest.Nome}'", "erro interno ao gravar.");
             }
         }
 
@@ -296,7 +304,7 @@ public sealed class SyncService : ISyncService
             {
                 if (servicoRequest.Uuid == Guid.Empty)
                 {
-                    erros.Add($"{rotuloServico}: identificador inválido.");
+                    Recusar(servicoRequest.Uuid, rotuloServico, "identificador inválido.");
                     continue;
                 }
 
@@ -315,21 +323,21 @@ public sealed class SyncService : ISyncService
                     }
                     else
                     {
-                        erros.Add($"{rotuloServico}: identificador em conflito.");
+                        Recusar(servicoRequest.Uuid, rotuloServico, "identificador em conflito.");
                     }
                     continue;
                 }
 
                 if (!podeCadastrarServico)
                 {
-                    erros.Add($"{rotuloServico}: o cadastro de serviço pelo app está desligado. Fale com o responsável pela empresa.");
+                    Recusar(servicoRequest.Uuid, rotuloServico, "o cadastro de serviço pelo app está desligado. Fale com o responsável pela empresa.");
                     continue;
                 }
 
                 var empreitada = servicoRequest.TipoCobranca == TipoCobranca.Empreitada;
                 if (empreitada ? servicoRequest.ValorEmpreitada is null : servicoRequest.ValorHora is null)
                 {
-                    erros.Add($"{rotuloServico}: informe o valor do serviço.");
+                    Recusar(servicoRequest.Uuid, rotuloServico, "informe o valor do serviço.");
                     continue;
                 }
 
@@ -368,7 +376,7 @@ public sealed class SyncService : ISyncService
             {
                 _dbContext.ChangeTracker.Clear();
                 _logger.LogError(ex, "Falha ao importar servico {Uuid} na Descarga.", servicoRequest.Uuid);
-                erros.Add($"{rotuloServico}: erro interno ao gravar.");
+                Recusar(servicoRequest.Uuid, rotuloServico, "erro interno ao gravar.");
             }
         }
 
@@ -397,7 +405,7 @@ public sealed class SyncService : ISyncService
                     }
                     else
                     {
-                        erros.Add($"{rotulo}: identificador em conflito.");
+                        Recusar(atendimentoRequest.Uuid, rotulo, "identificador em conflito.");
                     }
                     continue;
                 }
@@ -444,7 +452,7 @@ public sealed class SyncService : ISyncService
                     // Descarta alteracoes rastreadas (nenhuma esperada aqui) para nao
                     // vazarem no SaveChanges do proximo atendimento da leva.
                     _dbContext.ChangeTracker.Clear();
-                    erros.AddRange(falhas.Select(f => $"{rotulo}: {f}"));
+                    foreach (var falha in falhas) Recusar(atendimentoRequest.Uuid, rotulo, falha);
                     continue;
                 }
 
@@ -478,7 +486,7 @@ public sealed class SyncService : ISyncService
                 await tx.RollbackAsync(cancellationToken);
                 _dbContext.ChangeTracker.Clear();
                 _logger.LogError(ex, "Falha ao importar atendimento {Uuid} na Descarga.", atendimentoRequest.Uuid);
-                erros.Add($"{rotulo}: erro interno ao gravar.");
+                Recusar(atendimentoRequest.Uuid, rotulo, "erro interno ao gravar.");
             }
         }
 
@@ -540,7 +548,7 @@ public sealed class SyncService : ISyncService
                 {
                     await tx.RollbackAsync(cancellationToken);
                     _dbContext.ChangeTracker.Clear();
-                    erros.AddRange(falhas.Select(f => $"{rotulo}: {f}"));
+                    foreach (var falha in falhas) Recusar(conclusao.Uuid, rotulo, falha);
                     continue;
                 }
 
@@ -562,7 +570,7 @@ public sealed class SyncService : ISyncService
                 await tx.RollbackAsync(cancellationToken);
                 _dbContext.ChangeTracker.Clear();
                 _logger.LogError(ex, "Falha ao concluir atendimento {Uuid} na Descarga.", conclusao.Uuid);
-                erros.Add($"{rotulo}: erro interno ao gravar.");
+                Recusar(conclusao.Uuid, rotulo, "erro interno ao gravar.");
             }
         }
 
@@ -583,6 +591,7 @@ public sealed class SyncService : ISyncService
                 .Select(kv => new ClienteMapeadoResponse { Uuid = kv.Key, Id = kv.Value })
                 .ToList(),
             Erros = erros,
+            Recusas = recusas,
             SincronizadoEm = DateTime.UtcNow
         };
     }
