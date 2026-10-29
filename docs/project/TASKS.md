@@ -38,7 +38,7 @@
 | 10/11 | Página de download do APK com passo a passo de instalação (`/baixar` no web) | L3 | Feito (PR #111, 28/10) |
 | 14/11 | Busca no app, motivo da recusa e cancelar atendimento no app | I1 a I3 | Feito (PR #112, 28/10) |
 | 28/11 | Sincronizar ao abrir o app e quando a internet volta | I5 | Feito (PR #113, 28/10) |
-| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Parado |
+| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Em andamento: paginação retomada (PR #98, DEC-42, 28/10); bloqueio da conta, exclusão de usuário e duração do serviço seguem parados |
 | 01/12 | Revisão do piloto e preço da assinatura (todos participam) | D10 | A fazer |
 | 12/12 | CNPJ e nota da assinatura; formalizar a propriedade das contribuições (DEC-29) e decidir se o repositório segue público (DEC-24) | Legal | A fazer |
 
@@ -132,7 +132,7 @@
 
 | KAN | Descrição | Prioridade | Responsável | Depende de |
 |-----|-----------|------------|-------------|------------|
-| — | Paginação no GetAllAsync — PR #98 (paginação opcional, DEC-42) fechado sem merge em 25/10/2026 para retomar depois | Baixa | Davi Gomes | — |
+| — | ~~Paginação no GetAllAsync~~ ✅ PR #98 (paginação opcional, DEC-42), retomado e mesclado em 28/10/2026 | Baixa | Davi Gomes | — |
 
 > Backend Core está essencialmente completo: em 21/10/2026, build verde e 261 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
 
