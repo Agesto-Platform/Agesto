@@ -43,6 +43,10 @@ services:
       # POST /api/insights responde 503 e o resto da API segue normal.
       - key: Insights__AnthropicApiKey
         sync: false
+      # Área de superadmin: chave que libera POST /api/admin/auth/setup para
+      # criar o primeiro admin. Depois de criado, pode ser apagada.
+      - key: Admin__SetupKey
+        sync: false
       # Aviso de APK novo no app (DEC-47). Opcionais: sem a versão, o app não avisa.
       - key: App__VersaoMinimaAndroid
         sync: false

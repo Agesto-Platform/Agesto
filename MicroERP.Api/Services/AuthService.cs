@@ -30,12 +30,18 @@ public sealed class AuthService : IAuthService
         _configuration = configuration;
     }
 
-    public async Task RegisterAsync(AuthRegisterRequest request, CancellationToken cancellationToken)
+    public Task RegisterAsync(AuthRegisterRequest request, CancellationToken cancellationToken) =>
+        CriarEmpresaComDonoAsync(request.NomeEmpresa, null, request.Nome, request.Email, request.Senha, false, cancellationToken);
+
+    // Usado pelo cadastro com X-Registration-Key e pela área de superadmin.
+    public async Task<Usuario> CriarEmpresaComDonoAsync(
+        string nomeEmpresa, string? documento, string nomeDono, string emailDono, string senha, bool deveTrocarSenha,
+        CancellationToken cancellationToken)
     {
 
         // Normaliza o email para evitar duplicatas por diferenças de maiúsculas/minúsculas ou espaços
 
-        var email = NormalizeEmail(request.Email);
+        var email = NormalizeEmail(emailDono);
         var emailExists = await _dbContext.Usuarios
             .AsNoTracking()
             .AnyAsync(u => u.Email == email, cancellationToken);
@@ -50,25 +56,27 @@ public sealed class AuthService : IAuthService
 
         var empresa = new Empresa
         {
-            Nome = request.NomeEmpresa,
+            Nome = nomeEmpresa.Trim(),
+            Documento = string.IsNullOrWhiteSpace(documento) ? null : documento.Trim(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
 
         };
         _dbContext.Empresas.Add(empresa);
-        await _dbContext.SaveChangesAsync(cancellationToken); 
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         var usuario = new Usuario
         {
-            Nome = request.Nome,
+            Nome = nomeDono.Trim(),
             Email = email,
             Senha = string.Empty, // A senha será definida após o hash
             EmpresaId = empresa.Id,
             Perfil = Enums.PerfilUsuario.Dono,
+            DeveTrocarSenha = deveTrocarSenha,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        usuario.Senha = _passwordHasher.HashPassword(usuario, request.Senha);
+        usuario.Senha = _passwordHasher.HashPassword(usuario, senha);
         _dbContext.Usuarios.Add(usuario);
 
         var configuracao = new Configuracao
@@ -82,6 +90,7 @@ public sealed class AuthService : IAuthService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         await tx.CommitAsync(cancellationToken);
+        return usuario;
     }
 
     public async Task<AuthResponse?> LoginAsync(AuthLoginRequest request, CancellationToken cancellationToken)
@@ -107,6 +116,14 @@ public sealed class AuthService : IAuthService
         if (!usuario.Ativo)
         {
             throw new UsuarioInativoException("Acesso desativado. Fale com o responsável pela empresa.");
+        }
+
+        var empresaSuspensa = await _dbContext.Empresas
+            .AsNoTracking()
+            .AnyAsync(e => e.Id == usuario.EmpresaId && !e.Ativa, cancellationToken);
+        if (empresaSuspensa)
+        {
+            throw new UsuarioInativoException("O acesso desta empresa está suspenso. Fale com o suporte do Agesto.");
         }
 
         usuario.UltimoAcessoEm = DateTime.UtcNow;
@@ -165,7 +182,7 @@ public sealed class AuthService : IAuthService
         return string.IsNullOrWhiteSpace(versao) ? null : versao.Trim();
     }
 
-    private static string NormalizeEmail(string email)
+    internal static string NormalizeEmail(string email)
         => email.Trim().ToLowerInvariant();
 
     private AuthResponse GenerateToken(Usuario usuario)
