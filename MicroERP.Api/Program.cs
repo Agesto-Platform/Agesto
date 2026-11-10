@@ -12,6 +12,7 @@ using MicroERP.Api.Repositories;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services;
 using MicroERP.Api.Services.Geocodificacao;
+using MicroERP.Api.Services.Insights;
 using MicroERP.Api.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -78,6 +79,20 @@ builder.Services.AddScoped<IOrcamentoService, OrcamentoService>();
 builder.Services.Configure<GeocodificacaoOptions>(builder.Configuration.GetSection(GeocodificacaoOptions.Secao));
 builder.Services.AddHttpClient<IGeocodificador, OpenRouteServiceGeocodificador>(client => client.Timeout = TimeSpan.FromSeconds(10));
 builder.Services.AddHostedService<GeocodificacaoWorker>();
+
+// IA nativa (DEC-21). A chave vem de Insights:AnthropicApiKey ou, se ausente, da
+// variável padrão ANTHROPIC_API_KEY. Sem chave, o endpoint responde 503.
+builder.Services.Configure<InsightsOptions>(builder.Configuration.GetSection(InsightsOptions.Secao));
+builder.Services.PostConfigure<InsightsOptions>(options =>
+{
+    if (string.IsNullOrWhiteSpace(options.AnthropicApiKey))
+        options.AnthropicApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+});
+// Singleton: o cliente da Anthropic reaproveita conexões HTTP entre requisições.
+builder.Services.AddSingleton<IInsightsGerador, ClaudeInsightsGerador>();
+builder.Services.AddScoped<IInsightsService, InsightsService>();
+var insightsLimitePorHora = builder.Configuration.GetSection(InsightsOptions.Secao).Get<InsightsOptions>()?.LimitePorHora
+    ?? new InsightsOptions().LimitePorHora;
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var jwtSecret = jwtSection["Secret"] ?? throw new InvalidOperationException("JWT secret not configured.");
@@ -150,6 +165,11 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy(RateLimits.Sync, http => RateLimitPartition.GetFixedWindowLimiter(
         http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? http.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
+
+    // Por empresa, não por IP: a IA gasta o dinheiro do operador (DEC-21).
+    options.AddPolicy(RateLimits.Insights, http => RateLimitPartition.GetFixedWindowLimiter(
+        http.User.FindFirst("empresaId")?.Value ?? http.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = insightsLimitePorHora, Window = TimeSpan.FromHours(1) }));
 });
 
 // Origens liberadas vêm da configuração (Cors:AllowedOrigins); em produção,
