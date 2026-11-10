@@ -39,6 +39,10 @@ services:
       # sem ela, a geocodificação fica desligada e o mapa mostra só a lista.
       - key: Geocoding__OpenRouteServiceApiKey
         sync: false
+      # Chave da Anthropic para os insights da IA (DEC-21). Opcional: sem ela,
+      # POST /api/insights responde 503 e o resto da API segue normal.
+      - key: Insights__AnthropicApiKey
+        sync: false
       # Aviso de APK novo no app (DEC-47). Opcionais: sem a versão, o app não avisa.
       - key: App__VersaoMinimaAndroid
         sync: false
