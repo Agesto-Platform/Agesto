@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Services.Insights;
@@ -10,7 +11,11 @@ namespace MicroERP.Api.Services;
 // (CPF, nome de cliente) sai daqui, porque o dashboard só tem agregados.
 public sealed class InsightsService : IInsightsService
 {
-    private static readonly JsonSerializerOptions JsonEnvio = new(JsonSerializerDefaults.Web);
+    // Acentos sem escape (ç): o JSON vai para o modelo, não para HTML.
+    private static readonly JsonSerializerOptions JsonEnvio = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     private readonly IMetricasService _metricasService;
     private readonly IInsightsGerador _gerador;

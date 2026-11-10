@@ -12,4 +12,5 @@ public static class RateLimits
     public const string Register = "register";
     public const string Sync = "sync";
     public const string Insights = "insights";
+    public const string Agente = "agente";
 }
