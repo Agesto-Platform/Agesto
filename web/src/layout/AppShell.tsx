@@ -128,7 +128,7 @@ export function AppShell() {
               </div>
             </div>
           </div>
-          <AgentPanel onClose={() => escolherAgente(false)} onMascote={(api) => (painelRef.current = api)} />
+          <AgentPanel period={period} onClose={() => escolherAgente(false)} onMascote={(api) => (painelRef.current = api)} />
         </div>
       </div>
 
