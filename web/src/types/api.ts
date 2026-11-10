@@ -405,6 +405,27 @@ export interface AgendaItem {
   resumo: string
 }
 
+/* ---------- Agente (IA) ---------- */
+
+/** Uma fala da conversa do painel Agente; o histórico fica só no navegador. */
+export interface AgenteMensagem {
+  papel: 'usuario' | 'agente'
+  texto: string
+}
+
+/** POST /api/agente/perguntar */
+export interface AgentePerguntaRequest {
+  pergunta: string
+  historico: AgenteMensagem[]
+  de: string
+  ate: string
+}
+
+export interface AgenteResposta {
+  resposta: string
+  modelo: string
+}
+
 /* ---------- App do agente ---------- */
 
 /** GET /api/app/versao — versão mínima do APK e link para baixar (DEC-47). */

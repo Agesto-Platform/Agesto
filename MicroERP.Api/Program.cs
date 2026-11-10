@@ -87,12 +87,14 @@ builder.Services.PostConfigure<InsightsOptions>(options =>
 {
     if (string.IsNullOrWhiteSpace(options.AnthropicApiKey))
         options.AnthropicApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
+    // Chave colada com espaço ou quebra de linha no painel do Render vira 401.
+    options.AnthropicApiKey = options.AnthropicApiKey?.Trim();
 });
 // Singleton: o cliente da Anthropic reaproveita conexões HTTP entre requisições.
 builder.Services.AddSingleton<IInsightsGerador, ClaudeInsightsGerador>();
 builder.Services.AddScoped<IInsightsService, InsightsService>();
-var insightsLimitePorHora = builder.Configuration.GetSection(InsightsOptions.Secao).Get<InsightsOptions>()?.LimitePorHora
-    ?? new InsightsOptions().LimitePorHora;
+builder.Services.AddScoped<IAgenteService, AgenteService>();
+var insightsConfig = builder.Configuration.GetSection(InsightsOptions.Secao).Get<InsightsOptions>() ?? new InsightsOptions();
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var jwtSecret = jwtSection["Secret"] ?? throw new InvalidOperationException("JWT secret not configured.");
@@ -169,7 +171,11 @@ builder.Services.AddRateLimiter(options =>
     // Por empresa, não por IP: a IA gasta o dinheiro do operador (DEC-21).
     options.AddPolicy(RateLimits.Insights, http => RateLimitPartition.GetFixedWindowLimiter(
         http.User.FindFirst("empresaId")?.Value ?? http.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = insightsLimitePorHora, Window = TimeSpan.FromHours(1) }));
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = insightsConfig.LimitePorHora, Window = TimeSpan.FromHours(1) }));
+
+    options.AddPolicy(RateLimits.Agente, http => RateLimitPartition.GetFixedWindowLimiter(
+        http.User.FindFirst("empresaId")?.Value ?? http.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = insightsConfig.LimitePerguntasPorHora, Window = TimeSpan.FromHours(1) }));
 });
 
 // Origens liberadas vêm da configuração (Cors:AllowedOrigins); em produção,

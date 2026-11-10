@@ -18,6 +18,12 @@ public sealed class InsightsOptions
 
     public int MaxTokens { get; set; } = 16000;
 
-    // Gerações por empresa por hora (controle de custo da DEC-21).
+    // Teto por resposta do chat do Agente (inclui o raciocínio do modelo).
+    public int MaxTokensAgente { get; set; } = 4000;
+
+    // Gerações de insights por empresa por hora (controle de custo da DEC-21).
     public int LimitePorHora { get; set; } = 10;
+
+    // Perguntas ao Agente por empresa por hora.
+    public int LimitePerguntasPorHora { get; set; } = 30;
 }

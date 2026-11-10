@@ -95,7 +95,8 @@ public sealed class InsightsServiceTests
     [Fact]
     public void Gerador_SemChave_FicaDesabilitado()
     {
-        var gerador = new ClaudeInsightsGerador(Options.Create(new InsightsOptions { AnthropicApiKey = " " }));
+        var gerador = new ClaudeInsightsGerador(
+            Options.Create(new InsightsOptions { AnthropicApiKey = " " }), NullLogger<ClaudeInsightsGerador>.Instance);
         Assert.False(gerador.Habilitado);
     }
 }

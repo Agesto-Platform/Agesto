@@ -1,13 +1,22 @@
 namespace MicroERP.Api.Services.Insights;
 
-// Fronteira com o provedor de IA: recebe as métricas já calculadas (DEC-20)
-// e devolve a interpretação. Isolada para o serviço ser testável sem rede.
+// Fronteira com o provedor de IA: recebe dados já calculados (DEC-20) e devolve
+// a interpretação. Isolada para os serviços serem testáveis sem rede.
 public interface IInsightsGerador
 {
     bool Habilitado { get; }
 
+    // Relatório em quatro blocos para POST /api/insights.
     Task<InsightsGerados> GerarAsync(string metricasJson, CancellationToken cancellationToken);
+
+    // Conversa do painel Agente. A conversa começa e termina com o usuário e
+    // alterna os papéis; a última mensagem já traz os dados e a pergunta.
+    Task<RespostaIA> ResponderAsync(IReadOnlyList<MensagemIA> conversa, CancellationToken cancellationToken);
 }
+
+public sealed record MensagemIA(bool DoUsuario, string Texto);
+
+public sealed record RespostaIA(string Texto, string Modelo, long TokensEntrada, long TokensSaida);
 
 public sealed class InsightsGerados
 {
