@@ -21,6 +21,8 @@ public class AppDbContext : DbContext
     public DbSet<Orcamento> Orcamentos => Set<Orcamento>();
     public DbSet<ItemOrcamento> ItemOrcamentos => Set<ItemOrcamento>();
     public DbSet<ServicoItemSugerido> ServicoItemSugeridos => Set<ServicoItemSugerido>();
+    public DbSet<AdminPlataforma> AdminsPlataforma => Set<AdminPlataforma>();
+    public DbSet<AuditoriaAdmin> AuditoriasAdmin => Set<AuditoriaAdmin>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -42,6 +44,34 @@ public class AppDbContext : DbContext
         {
             entity.Property(e => e.Nome).HasMaxLength(150).IsRequired();
             entity.Property(e => e.Documento).HasMaxLength(18).IsRequired().IsRequired(false);
+            // Default no banco: as empresas que já existem nascem ativas na migration.
+            // Sentinela true: uma empresa inserida já suspensa (false) não cai no default.
+            entity.Property(e => e.Ativa).HasDefaultValue(true).HasSentinel(true);
+            entity.Property(e => e.MotivoBloqueio).HasMaxLength(300);
+        });
+
+        modelBuilder.Entity<AdminPlataforma>(entity =>
+        {
+            entity.ToTable("AdminsPlataforma");
+            entity.Property(e => e.Nome).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(150).IsRequired();
+            entity.Property(e => e.Senha).HasMaxLength(255).IsRequired();
+            entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<AuditoriaAdmin>(entity =>
+        {
+            entity.ToTable("AuditoriasAdmin");
+            entity.Property(e => e.Acao).HasMaxLength(60).IsRequired();
+            entity.Property(e => e.Detalhes).HasMaxLength(500);
+            entity.Property(e => e.Ip).HasMaxLength(64);
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.EmpresaId);
+            // Sem FK para Empresa/Usuario: o registro sobrevive à exclusão deles.
+            entity.HasOne(e => e.Admin)
+                .WithMany()
+                .HasForeignKey(e => e.AdminId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Usuario>(entity =>

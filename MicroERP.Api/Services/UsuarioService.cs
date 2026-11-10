@@ -149,7 +149,7 @@ public sealed class UsuarioService : IUsuarioService
             throw new ArgumentException("Perfil inválido.");
     }
 
-    private static string GerarSenhaProvisoria()
+    internal static string GerarSenhaProvisoria()
         => RandomNumberGenerator.GetString(AlfabetoSenha, TamanhoSenhaProvisoria);
 
     private static UsuarioResponse MapResponse(Usuario usuario) => new()

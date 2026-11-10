@@ -178,6 +178,24 @@ Para criar a primeira empresa local, defina `Auth__RegistrationKey` no `appsetti
 4. O Render e a Cloudflare publicam a `main` sozinhos depois do CI. Confira `/health`, um login na web e uma sincronização no app.
 5. Rollback: no Render, *Events → Rollback* para o deploy anterior; na Cloudflare, *Deployments → Rollback*. Migration não tem rollback automático.
 
+## 10. Área de superadmin (equipe do Agesto)
+
+A equipe gerencia as empresas clientes em `https://<web>/admin`: listar, ver detalhes, criar empresa com dono, bloquear e desbloquear, desativar usuários e gerar senha provisória. Toda ação fica na auditoria. As contas de admin são separadas das contas de cliente e o token delas tem outra audiência, então um não abre a área do outro.
+
+Para criar o **primeiro** admin:
+
+1. No Render, defina `Admin__SetupKey` com um valor longo e aleatório (`openssl rand -base64 32`).
+2. Chame o setup uma vez (senha com pelo menos 12 caracteres):
+   ```bash
+   curl -X POST https://agesto-api.onrender.com/api/admin/auth/setup \
+     -H "Content-Type: application/json" \
+     -H "X-Admin-Setup-Key: <a chave>" \
+     -d '{"nome":"...","email":"...","senha":"..."}'
+   ```
+3. Apague `Admin__SetupKey` no Render. O setup só funciona enquanto não existe nenhum admin; os próximos são cadastrados pela tela **Equipe**.
+
+Opcional: `Admin__ExpiresMinutes` define quanto tempo o login de admin vale (padrão 43200, 30 dias).
+
 ## Pendências
 
 - Backup periódico com `pg_dump` (o Supabase Free não tem backup automático).

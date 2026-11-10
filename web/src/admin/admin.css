@@ -1,0 +1,44 @@
+/*
+ * Área de superadmin (equipe do Agesto): casco próprio, mais simples que o do
+ * painel do cliente. Reaproveita os componentes (.card, .btn, .badge, tabela).
+ */
+@layer components {
+  .adm { min-height: 100vh; background: var(--canvas); color: var(--ink); }
+  .adm-top {
+    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 20px;
+    height: 56px; padding: 0 24px; background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .adm-brand { display: flex; align-items: center; gap: 10px; }
+  .adm-nav { display: flex; gap: 4px; }
+  .adm-nav a { padding: 6px 12px; border-radius: 8px; color: var(--ink-2); font-size: 13.5px; font-weight: 500; text-decoration: none; }
+  .adm-nav a:hover { background: var(--hover); color: var(--ink); }
+  .adm-nav a.active { background: var(--selected); color: var(--ink); }
+  .adm-user { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
+  .adm-main { max-width: 1200px; margin: 0 auto; padding: 24px; display: grid; gap: 16px; align-content: start; }
+
+  .adm-toolbar { max-width: 420px; }
+  .adm-cell { display: grid; gap: 2px; }
+  .adm-cell span { font-size: 12px; color: var(--ink-3); }
+  .adm-cell span.ink { font-size: inherit; color: var(--ink); }
+  .adm-acoes { display: inline-flex; gap: 6px; justify-content: flex-end; }
+  .adm-voltar { margin: 0; font-size: 13px; }
+  .adm-voltar a { color: var(--ink-2); text-decoration: none; }
+  .adm-alerta { margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--neg-bg); color: var(--neg-ink); font-size: 13px; }
+  .adm-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .adm-stats .card { padding: 14px 16px; display: grid; gap: 4px; }
+  .adm-stats span { font-size: 12px; color: var(--ink-3); }
+  .adm-stats b { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; font-variant-numeric: tabular-nums; }
+  .adm-bloco { overflow: hidden; }
+
+  .adm-login { min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--canvas); }
+  .adm-login-card { width: min(400px, 100%); padding: 28px; display: grid; gap: 14px; }
+  .adm-login-head { display: flex; align-items: center; justify-content: space-between; }
+  .adm-login-card h1 { margin: 6px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+  .adm-login-card .muted { margin: 0; font-size: 13px; color: var(--ink-2); }
+
+  @media (max-width: 760px) {
+    .adm-top { height: auto; flex-wrap: wrap; padding: 10px 16px; gap: 10px; }
+    .adm-main { padding: 16px; }
+    .adm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}

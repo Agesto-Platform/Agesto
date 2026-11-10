@@ -16,6 +16,12 @@ import { TrocarSenha } from './pages/TrocarSenha'
 import { BaixarApp } from './pages/BaixarApp'
 import { AceitarTermos } from './pages/AceitarTermos'
 import { Privacidade, Termos } from './pages/legal/Documento'
+import { AdminLogin } from './admin/AdminLogin'
+import { AdminLayout } from './admin/AdminLayout'
+import { AdminEmpresasPage } from './admin/AdminEmpresasPage'
+import { AdminEmpresaPage } from './admin/AdminEmpresaPage'
+import { AdminAuditoriaPage } from './admin/AuditoriaLista'
+import { AdminEquipePage } from './admin/AdminEquipePage'
 
 export default function App() {
   return (
@@ -26,6 +32,15 @@ export default function App() {
       {/* Públicas: links de Termos__UrlTermos e Termos__UrlPrivacidade na tela de aceite (B6). */}
       <Route path="/termos" element={<Termos />} />
       <Route path="/privacidade" element={<Privacidade />} />
+
+      {/* Área de superadmin (equipe do Agesto): sessão e token próprios. */}
+      <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminEmpresasPage />} />
+        <Route path="empresas/:id" element={<AdminEmpresaPage />} />
+        <Route path="auditoria" element={<AdminAuditoriaPage />} />
+        <Route path="equipe" element={<AdminEquipePage />} />
+      </Route>
 
       <Route element={<ProtectedRoute />}>
         <Route path="/aceitar-termos" element={<AceitarTermos />} />
