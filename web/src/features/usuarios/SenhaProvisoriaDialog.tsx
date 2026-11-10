@@ -2,14 +2,12 @@ import { useCallback, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '../../components/ui'
 import { useFocusTrap } from '../../components/ui/useFocusTrap'
-import type { UsuarioSenhaProvisoria } from '../../types/api'
-
 /** Mostra a senha provisória uma única vez, com botão de copiar. */
 export function SenhaProvisoriaDialog({
   dados,
   onClose,
 }: {
-  dados: UsuarioSenhaProvisoria | null
+  dados: { usuario: { nome: string; email: string }; senhaProvisoria: string } | null
   onClose: () => void
 }) {
   const [copiado, setCopiado] = useState(false)

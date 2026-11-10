@@ -38,10 +38,42 @@ public sealed class TokenRevalidatorTests
         Assert.False(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono"), CancellationToken.None));
     }
 
+    [Fact]
+    public async Task EmpresaSuspensa_DerrubaTokenDosUsuarios()
+    {
+        await using var db = await Seed();
+        var empresa = await db.Empresas.SingleAsync();
+        empresa.Ativa = false;
+        await db.SaveChangesAsync();
+
+        Assert.False(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task TokenDeAdmin_SoValeComAdminAtivoEEscopoDePlataforma()
+    {
+        await using var db = await Seed();
+        db.AdminsPlataforma.Add(new AdminPlataforma { Id = 5, Nome = "Equipe", Email = "equipe@agesto.com", Senha = "x" });
+        await db.SaveChangesAsync();
+
+        Assert.True(await TokenRevalidator.IsAdminValidAsync(db, Admin("5", "plataforma"), CancellationToken.None));
+        Assert.False(await TokenRevalidator.IsAdminValidAsync(db, Admin("5", "outro"), CancellationToken.None));
+        Assert.False(await TokenRevalidator.IsAdminValidAsync(db, Admin("6", "plataforma"), CancellationToken.None));
+
+        var admin = await db.AdminsPlataforma.SingleAsync();
+        admin.Ativo = false;
+        await db.SaveChangesAsync();
+        Assert.False(await TokenRevalidator.IsAdminValidAsync(db, Admin("5", "plataforma"), CancellationToken.None));
+    }
+
+    private static ClaimsPrincipal Admin(string sub, string escopo) =>
+        new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, sub), new Claim("escopo", escopo)], "test"));
+
     private static async Task<AppDbContext> Seed()
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.Empresas.Add(new Empresa { Id = 10, Nome = "Empresa" });
         db.Usuarios.Add(new Usuario { Id = 1, Nome = "Dono", Email = "dono@teste.com", EmpresaId = 10, Perfil = PerfilUsuario.Dono });
         await db.SaveChangesAsync();
         return db;

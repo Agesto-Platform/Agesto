@@ -94,6 +94,10 @@ builder.Services.PostConfigure<InsightsOptions>(options =>
 builder.Services.AddSingleton<IInsightsGerador, ClaudeInsightsGerador>();
 builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAgenteService, AgenteService>();
+
+// Área de superadmin (equipe do Agesto).
+builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();
+builder.Services.AddScoped<IAdminEmpresaService, AdminEmpresaService>();
 var insightsConfig = builder.Configuration.GetSection(InsightsOptions.Secao).Get<InsightsOptions>() ?? new InsightsOptions();
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
@@ -139,11 +143,46 @@ builder.Services.AddAuthentication(options =>
                 }
             }
         };
+    })
+    // Área de superadmin: mesma chave, audiência própria. O token de cliente
+    // não passa aqui e o de admin não passa no esquema padrão.
+    .AddJwtBearer(AdminAuth.Esquema, options =>
+    {
+        options.RequireHttpsMetadata = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = signingKey,
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = AdminAuth.Audiencia(jwtAudience),
+            ValidAlgorithms = [SecurityAlgorithms.HmacSha256],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(2)
+        };
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                if (!await TokenRevalidator.IsAdminValidAsync(db, context.Principal!, context.HttpContext.RequestAborted))
+                {
+                    context.Fail("Sessao revogada.");
+                }
+            }
+        };
     });
 
-// Telas e ações de gestão são do Dono; o Agente usa só o app (sync e agenda).
 builder.Services.AddAuthorization(options =>
-    options.AddPolicy(Policies.Dono, policy => policy.RequireClaim("perfil", "Dono")));
+{
+    // Telas e ações de gestão são do Dono; o Agente usa só o app (sync e agenda).
+    options.AddPolicy(Policies.Dono, policy => policy.RequireClaim("perfil", "Dono"));
+    options.AddPolicy(Policies.AdminPlataforma, policy => policy
+        .AddAuthenticationSchemes(AdminAuth.Esquema)
+        .RequireAuthenticatedUser()
+        .RequireClaim(AdminAuth.ClaimEscopo, AdminAuth.EscopoPlataforma));
+});
 
 // Limites por IP contra força bruta e abuso; a Descarga é limitada por usuário.
 builder.Services.AddRateLimiter(options =>
