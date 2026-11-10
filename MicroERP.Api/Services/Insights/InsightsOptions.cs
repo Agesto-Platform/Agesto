@@ -9,9 +9,9 @@ public sealed class InsightsOptions
 
     public string? AnthropicApiKey { get; set; }
 
-    // A DEC-21 sugere um modelo econômico para o uso comum: dá para trocar aqui
-    // (ex.: "claude-haiku-5-5") sem mudar código.
-    public string Modelo { get; set; } = "claude-opus-5-5";
+    // Modelo econômico para o uso comum (DEC-21). Para um modelo mais capaz,
+    // configure Insights__Modelo (ex.: "claude-opus-5-5") sem mudar código.
+    public string Modelo { get; set; } = "claude-haiku-5-5";
 
     // low | medium | high | xhigh | max. Interpretar métricas é tarefa simples.
     public string Esforco { get; set; } = "medium";
