@@ -341,7 +341,7 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 
 ## DEC-21 — IA nativa paga por uso; interpreta métricas; controles de custo
 
-**Status:** Decidido. (Reafirma e detalha a DEC-03.)
+**Status:** Decidido. (Reafirma e detalha a DEC-03.) 🟢 Implementado e em produção desde 10/11/2026 (PRs #126 a #130), pedido por Davi Oliveira para teste com as contas de teste. A IA segue fora do escopo do lançamento (DEC-46) até nova decisão.
 
 **Decisão:** A IA é nativa e paga por uso pelo operador do SaaS (Davi), não BYOK. Uma única chave da API (Anthropic Claude) fica no servidor; todos os tenants usam essa chave; o custo por token é embutido na mensalidade do plano. Todo cliente que assina tem acesso à IA.
 
@@ -358,6 +358,14 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 **Segurança (mantida da DEC-03):** chave só no servidor (nunca no front/mobile, nunca no `Configuracao` do tenant); mascarar CPF e dados sensíveis antes de enviar ao modelo; isolamento multi-tenant por `EmpresaId` em toda query que alimenta o prompt; read-only no MVP (a IA lê e sugere, nunca escreve).
 
 **Ponto em aberto:** ✅ RESOLVIDO em 20/07/2026. Decisão do dono (dev solo, Davi): a camada de IA roda **dentro do backend C#**, usando o SDK oficial da Anthropic — não um serviço Python/FastAPI separado (design original, KAN-30). Motivo: elimina um codebase extra para um dev solo, reduzindo superfície operacional (ver `project_solo_dev`). Consequência: o épico "Módulo IA/Insights (Python)" (KAN-30) fica **obsoleto** — ver TASKS.md.
+
+**Implementação (10/11/2026):**
+- `POST /api/insights`: relatório do período em quatro blocos (resumo, destaques, alertas e recomendações), com saída estruturada. `POST /api/agente/perguntar`: chat do painel Agente no web. Os dois só para o Dono.
+- Modelo padrão `claude-haiku-5-5` (o modelo econômico desta decisão), trocável por `Insights__Modelo` sem mudar código. Chave em `Insights__AnthropicApiKey` no Render; sem ela, os endpoints respondem 503.
+- O modelo recebe só as métricas já calculadas do período (DEC-20). No chat, recebe também a agenda dos próximos 7 dias sem nome, telefone nem endereço do cliente.
+- Só leitura: a IA não cria, altera nem apaga nada.
+- Controles de custo entregues: limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`. Pendentes: a tabela de consumo (`TenantUsage`) e o limite por plano.
+- Testes manuais de segurança em produção (vazamento de dados, isolamento entre empresas, injeção por nome de produto, pedidos de escrita) passaram em 10/11/2026.
 
 ---
 
@@ -815,7 +823,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ---
 
-> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub. A DEC-42 foi retomada em 28/10/2026; DEC-43 a DEC-45 seguem reservadas.
+> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub. A DEC-42 foi retomada em 28/10/2026; DEC-43 a DEC-45 foram retomadas em 11/11/2026 (PRs #133 e #134).
 
 ---
 
@@ -828,6 +836,42 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Por quê:** o web usa as listas completas em buscas e seletores, e o mobile não usa esses endpoints (só o sync); paginação opcional não quebra nenhum consumidor e fica pronta para quando uma tela precisar.
 
 **Impacto:** sem migration. A paginação é feita no banco e a ordenação ganhou desempate por `Id`.
+
+---
+
+## DEC-43 — Bloqueio da conta após senhas erradas
+
+**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira; migration `AddBloqueioLoginExclusaoLgpdDuracaoServico` aplicada no Supabase em 11/11/2026.
+
+**Decisão:** 5 senhas erradas seguidas na mesma conta bloqueiam o login por 15 minutos, mesmo com a senha certa; a API responde 423 com os minutos restantes. Login certo zera o contador. A senha provisória gerada pelo Dono ou pela equipe do Agesto (DEC-52) desbloqueia na hora. Vale para Dono e Agente; o login da área de superadmin não tem esse bloqueio.
+
+**Por quê:** complementa o limite por IP, que não segura tentativas vindas de vários IPs.
+
+**Impacto:** colunas `Usuarios.TentativasLoginFalhas` e `Usuarios.BloqueadoAte`. Quem sabe o email de alguém consegue bloquear essa conta por 15 minutos; o limite por IP reduz o abuso.
+
+---
+
+## DEC-44 — Exclusão da própria conta com anonimização
+
+**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira.
+
+**Decisão:** a exclusão da própria conta (`DELETE /api/usuario`, LGPD) deixa de apagar a linha: o usuário é anonimizado ("Usuário removido", email `removido-{id}@anonimo.invalid`), ganha uma senha aleatória e `DeletedAt`. O histórico (atendimentos, orçamentos) continua apontando para a linha, a pessoa não entra mais e o email real fica livre. A empresa não pode ficar sem Dono ativo.
+
+**Por quê:** o DELETE físico falhava com erro 500 para quem tinha atendimentos ou orçamentos (chaves estrangeiras *Restrict*) e contrariava o soft delete das entidades operacionais.
+
+**Impacto:** coluna `Usuarios.DeletedAt`. Listas de usuários, inclusive as da área de superadmin, ignoram os removidos, e o token deles cai na hora.
+
+---
+
+## DEC-45 — Duração do serviço e receita por hora
+
+**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes (KAN-79), integrado por Davi Oliveira.
+
+**Decisão:** `Servico.DuracaoMinutos` (opcional, de 1 a 1440) entra no cadastro de serviço do web. As métricas de serviços passam a devolver horas e receita por hora: serviço por hora usa as horas lançadas; serviço por empreitada usa execuções vezes a duração estimada, e fica sem R$/h quando não tem duração. Os Relatórios mostram o R$/h por serviço.
+
+**Por quê:** parte restante do KAN-79. A margem por hora continua pendente, porque o custo ainda não é atribuído ao serviço.
+
+**Impacto:** coluna `Servicos.DuracaoMinutos`. O Agente IA (DEC-21) recebe as horas e o R$/h junto com as métricas.
 
 ---
 
@@ -914,4 +958,20 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Por quê:** a DEC-46 pede o redesign no web antes do lançamento; o app recebe o mesmo visual depois.
 
-**Impacto:** só front-end, sem mudança na API. O painel do Agente aparece como "Prévia" e não faz parte do lançamento (a IA ficou fora do escopo na DEC-46). Falta fechar o design system até 17/11.
+**Impacto:** só front-end, sem mudança na API. O painel do Agente aparece como "Prévia" e não faz parte do lançamento (a IA ficou fora do escopo na DEC-46); desde 10/11/2026 o chat dele funciona com a IA da DEC-21, ainda com o selo "Prévia". Falta fechar o design system até 17/11.
+
+---
+
+## DEC-52 — Área de superadmin da equipe do Agesto
+
+**Status:** 🟢 Em `main` (PR #131, release #132, 10/11/2026), decidido por Davi Oliveira em 10/11/2026. Migration `AddSuperadmin` aplicada no Supabase em 10/11/2026; o primeiro admin foi criado no mesmo dia.
+
+**Decisão:** a equipe do Agesto gerencia as empresas clientes em `/admin`, no web atual:
+- contas de admin separadas dos usuários das empresas (tabela `AdminsPlataforma`); o token de admin tem audiência própria e a claim `escopo=plataforma`, então o token de um cliente não abre o `/admin` e o de admin não abre o painel do cliente;
+- listar e ver empresas, criar empresa com Dono (senha provisória), bloquear e desbloquear empresa com motivo, e desativar, reativar ou gerar senha provisória para usuários de qualquer empresa;
+- equipe de admins (cadastrar, desativar e reativar; ninguém desativa a si mesmo);
+- auditoria de toda ação de admin, inclusive logins e tentativas recusadas (tabela `AuditoriasAdmin`).
+
+**Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
+
+**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira. Pendências: bloqueio por conta no login de admin, verificação em duas etapas, e a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).

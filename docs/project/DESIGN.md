@@ -27,7 +27,7 @@ O sistema segue uma arquitetura em camadas clássica no backend, com separação
         └──────────────────────┘
 ```
 
-> A IA nativa está planejada dentro do backend C# (DEC-21), mas ainda não foi implementada. O design original em Python permanece apenas como histórico na seção 6. O Mobile offline-first foi implementado — ver seção 11.
+> A IA nativa está implementada dentro do backend C# (DEC-21), via SDK oficial da Anthropic: `POST /api/insights` e o chat `POST /api/agente/perguntar`, em produção desde 10/11/2026. O design original em Python permanece apenas como histórico na seção 6. O Mobile offline-first foi implementado — ver seção 11.
 
 ---
 
@@ -341,8 +341,9 @@ GET /api/metrics/vendas
 
 GET /api/metrics/servicos
      → Receita por tipo de serviço
+     → Horas e receita por hora por serviço (`Servico.DuracaoMinutos`, DEC-45)
      → KAN-79 — parcial: margem/hora e tempo médio adiados (dependem de
-       Custo/DEC-19/KAN-72 e de um campo de duração ainda não modelado)
+       Custo/DEC-19/KAN-72)
 
 GET /api/metrics/estoque
      → Giro de estoque, produtos parados (>30 dias), ruptura iminente (≤7 dias)

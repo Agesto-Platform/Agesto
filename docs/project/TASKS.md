@@ -38,7 +38,7 @@
 | 10/11 | Página de download do APK com passo a passo de instalação (`/baixar` no web) | L3 | Feito (PR #111, 28/10) |
 | 14/11 | Busca no app, motivo da recusa e cancelar atendimento no app | I1 a I3 | Feito (PR #112, 28/10) |
 | 28/11 | Sincronizar ao abrir o app e quando a internet volta | I5 | Feito (PR #113, 28/10) |
-| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Em andamento: paginação retomada (PR #98, DEC-42, 28/10); bloqueio da conta, exclusão de usuário e duração do serviço seguem parados |
+| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Feito: paginação (PR #98, DEC-42, 28/10); bloqueio da conta, exclusão de usuário e duração do serviço integrados por Davi Oliveira em 11/11 (PR #133, release #134, DEC-43 a 45), migration aplicada no Supabase |
 | 01/12 | Revisão do piloto e preço da assinatura (todos participam) | D10 | A fazer |
 | 12/12 | CNPJ e nota da assinatura; formalizar a propriedade das contribuições (DEC-29) e decidir se o repositório segue público (DEC-24) | Legal | A fazer |
 
@@ -57,6 +57,11 @@
 | 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | A fazer |
 | 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | A fazer |
 | 12/12 | Página de apresentação com preço, termos, download e contato | L4 | A fazer |
+| 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render |
+| 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
+| — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | A fazer |
+| — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52) | Extra | A fazer |
+| — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | A fazer |
 
 ### Diego — infra e redesign
 
@@ -166,11 +171,11 @@
 
 | Item | Descrição | Prioridade | Responsável | Depende de |
 |------|-----------|------------|-------------|------------|
-| Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Campo de duração (PR #101, DEC-45, parado) |
+| Margem/hora por serviço | Parte restante do KAN-79 — a duração do serviço e a receita por hora já existem (DEC-45, 11/11); falta atribuir custo ao serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Atribuição de custo ao serviço (DEC-19/KAN-72) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Davi Gomes | Decisão de produto |
 | ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
-| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
+| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render e "Otimizar dia" (fase 2); `Servico.DuracaoMinutos` já existe (DEC-45, 11/11) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | Davi Gomes | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — | — |
@@ -273,7 +278,7 @@
 
 | KAN | Descrição | Responsável | Observação |
 |-----|-----------|-------------|------------|
-| KAN-79 | Métricas de Serviços (`GET /api/metrics/servicos`) | Davi Gomes | Receita por tipo de serviço e margem por atendimento (via rentabilidade) já entregues. Margem/hora e tempo médio por serviço seguem pendentes — dependem de um campo de duração ainda não modelado. |
+| KAN-79 | Métricas de Serviços (`GET /api/metrics/servicos`) | Davi Gomes | Receita por tipo de serviço, margem por atendimento (via rentabilidade) e, desde 11/11, horas e receita por hora por serviço (DEC-45) já entregues. Margem/hora e tempo médio por serviço seguem pendentes — dependem da atribuição de custo ao serviço. |
 
 > Multi-tenant aplicado via `EmpresaId` + `DeletedAt == null` em todas as queries (join via `Atendimento`, já que `ItemProduto`/`ItemServico` não têm `EmpresaId` próprio). Receita conta só atendimentos `Concluido`; movimentação de estoque conta itens de atendimentos não-`Cancelado`. Bloco Vendas soma `ItemProduto.Subtotal`; bloco Serviços soma `ItemServico.Subtotal` — nunca o `ValorTotal` do atendimento, para não duplicar receita entre os blocos (concretiza a separação venda/serviço da DEC-15). Revisão do @revisor corrigiu, antes do commit, um bug em que os joins com `Produtos`/`Servicos` não filtravam `DeletedAt == null` (produtos/serviços soft-deletados entrariam nas somas) — coberto pelo teste `GetVendas_IgnoraProdutoSoftDeletado`.
 
