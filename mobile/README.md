@@ -1,56 +1,52 @@
-# Welcome to your Expo app 👋
+# Agesto — Mobile (App do Agente)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App do agente de campo do Agesto: offline-first e action-first, em React Native + Expo + TypeScript, com Expo Router e SQLite local (`expo-sqlite`). O agente registra e agenda atendimentos, cadastra clientes e serviços sem internet; a sincronização (Carga e Descarga) envia as pendências quando a conexão volta. Distribuído só como APK, fora das lojas (DEC-47).
 
-## Get started
+> Este arquivo substituiu o README padrão do `create-expo-app`. **Não rode `npm run reset-project`:** o script do template move `src/` e `scripts/` para `example/` e apaga o app.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Rodar localmente
 
 ```bash
-npm run reset-project
+cd mobile
+npm ci
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Crie `mobile/.env` antes:
 
-### Other setup steps
+```
+EXPO_PUBLIC_API_BASE_URL=http://<IP da sua máquina>:5216
+EXPO_PUBLIC_USE_MOCKS=false
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- `EXPO_PUBLIC_API_BASE_URL`: base da API. No celular, use o IP da máquina na rede local, não `localhost`. Em release, a URL precisa ser `https` (`src/lib/config.ts`).
+- `EXPO_PUBLIC_USE_MOCKS`: `true` usa os mocks locais, sem API.
 
-## Learn more
+A API local está em `deploy/README.md`, seção 8.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Verificações (as mesmas do CI)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npm run lint        # expo lint
+npm run typecheck   # tsc --noEmit
+npm test            # jest
+```
 
-## Join the community
+## Estrutura
 
-Join our community of developers creating universal apps.
+```
+src/
+  app/       rotas (Expo Router)
+  auth/      login, sessão e pendências do primeiro acesso
+  db/        SQLite local (fonte dos dados no aparelho)
+  sync/      Carga e Descarga
+  features/  telas por domínio
+  lib/       cliente da API e configuração
+  ui/        componentes base
+  mocks/     dados de demonstração
+  types/     tipos espelhando os DTOs da API
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## APK e atualizações
+
+Geração do APK, atualização OTA (`eas update`) e aviso de versão nova: `deploy/README.md`, seção 5.

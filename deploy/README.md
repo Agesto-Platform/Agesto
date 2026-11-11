@@ -65,6 +65,8 @@ SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER B
    - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
    - `Geocoding__OpenRouteServiceApiKey` (opcional): chave gratuita criada em openrouteservice.org (*Dashboard → Tokens*, plano Standard). Liga a geocodificação dos endereços dos clientes para o mapa da agenda (DEC-38); a API envia ao serviço só o endereço, nunca nome ou CPF. Sem ela, o mapa mostra que os clientes ainda não têm localização.
    - `App__VersaoMinimaAndroid` e `App__UrlDownload` (opcionais): versão mínima do APK e link para baixá-lo. Ver "APK" no passo 5.
+   - `Insights__AnthropicApiKey` (opcional): chave da Anthropic para a IA (DEC-21). Sem ela, `/api/insights` e `/api/agente/perguntar` respondem 503 e o resto da API segue normal. `Insights__Modelo` troca o modelo (padrão `claude-haiku-5-5`).
+   - `Admin__SetupKey` (temporária): libera a criação do primeiro admin da área de superadmin. Ver a seção 10.
 4. O serviço publica a branch `main` (DEC-41), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`). A `develop` não vai para a nuvem: é testada localmente (ver "Ambiente local" abaixo).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
 
@@ -155,7 +157,7 @@ npx wrangler deploy
 - Ao vivo, pelo terminal: `npx wrangler tail`.
 - Depois de 30 minutos, o `/health` deve responder em menos de 1 segundo, sem a espera da API acordando.
 
-Depois de conferir que o Worker roda, desligue o monitor antigo do cron-job.org. Os dois juntos não causam problema.
+O Worker foi publicado e conferido em 11/11/2026, e o monitor antigo do cron-job.org foi desligado no mesmo dia.
 
 **Alerta:** o Worker mantém tudo acordado, mas não avisa ninguém. Para receber aviso quando a API cair, cadastre o mesmo `/health` num monitor grátis com alerta (UptimeRobot, a cada 5 minutos, ou Better Stack, a cada 3 minutos). Ele também serve de segundo ping.
 
