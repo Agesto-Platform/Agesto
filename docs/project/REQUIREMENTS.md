@@ -138,7 +138,7 @@ A `Configuracao` tem mais dois parâmetros por Empresa, editáveis pelo Dono em 
 ### 6.4 Orçamento
 - **[Implementado]** `Orcamento` é uma entidade separada de `Atendimento` — não afeta estoque nem métricas financeiras enquanto não é aprovado (DEC-16)
 - Quando aprovado pelo cliente, o orçamento é convertido em `Atendimento` via `POST /api/orcamento/{id}/converter`; a baixa de estoque só acontece nesse momento
-- **[Implementado]** Orçamentos entram na Carga da sincronização mobile (`SyncCargaResponse.Orcamentos`), permitindo que o agente veja propostas offline
+- **[Implementado parcialmente]** Orçamentos entram na Carga da sincronização mobile (`SyncCargaResponse.Orcamentos`), mas o app ainda não os armazena nem tem tela de orçamento (conferido em 11/11/2026)
 - **[Planejado / não implementado]** Descarga de orçamento (criar orçamento a partir do mobile offline) — decisão de fluxo em aberto
 
 ---
@@ -159,7 +159,7 @@ Dois fluxos distintos:
 - Dispara quando o agente abre o app ou solicita sincronização
 - Envia: clientes atualizados, produtos, serviços, configuração da empresa
 - Critério: o backend aceita `ultimaSincronizacao`, mas o app sempre pede a Carga completa, para propagar exclusões (DEC-33)
-- **[Implementado]** `SyncCargaResponse.Orcamentos` — a Carga também envia os orçamentos da empresa, permitindo que o agente veja propostas offline (commit `5e82411`)
+- **[Implementado na API]** `SyncCargaResponse.Orcamentos` — a Carga também envia os orçamentos da empresa (commit `5e82411`); o app ainda não os armazena nem exibe
 - **[Implementado, com contorno]** A Carga **não inclui a agenda**. O app mobile contorna isso com um passo extra `syncAgenda`, que busca e cacheia `GET /api/atendimento/agenda` separadamente. **[Delta de backend]** o ideal é a agenda entrar na Carga — ver TASKS.md.
 
 **Descarga (Mobile → Servidor):**
@@ -259,7 +259,7 @@ Dois fluxos distintos:
 
 ## 15. Segurança
 
-- JWT obrigatório em todas as rotas exceto `/auth/register` e `/auth/login` (e, na área de superadmin, `/admin/auth/login` e `/admin/auth/setup`)
+- JWT obrigatório em todas as rotas exceto `/auth/register`, `/auth/login`, `/health` e `GET /api/app/versao` (e, na área de superadmin, `/admin/auth/login` e `/admin/auth/setup`)
 - `empresaId` e `usuarioId` sempre extraídos do JWT — nunca do corpo da requisição
 - Isolamento multi-tenant: toda query filtra por `EmpresaId`
 - CPF único por empresa (índice composto `EmpresaId + Cpf`)
