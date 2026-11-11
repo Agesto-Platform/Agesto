@@ -439,3 +439,6 @@ FodyWeavers.xsd
 
 # Script de migrations gerado localmente (dotnet ef migrations script); regenerar a cada uso
 deploy/migrate.sql
+
+# Cloudflare Wrangler (deploy/keepalive)
+.wrangler/

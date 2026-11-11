@@ -134,12 +134,34 @@ Aviso de APK novo: depois de publicar um APK com `expo.version` maior, defina no
 
 ## 6. Manter API e Supabase acordados
 
-Agende num monitor externo grátis (ex.: cron-job.org) uma chamada a `https://<URL da API>/health` **a cada 10 minutos**, com aviso por e-mail em caso de falha. Isso:
+Uma chamada a `https://<URL da API>/health` **a cada 5 minutos**:
 
-- evita que a API durma (consome ~744 das 750 horas mensais);
+- evita que a API durma (o Render Free dorme após 15 minutos sem tráfego e leva cerca de 1 minuto para acordar; o ping consome ~744 das 750 horas mensais);
 - gera atividade real no banco (`SELECT 1`) e evita a pausa do Supabase Free após 7 dias sem uso.
 
-Não use o GitHub Actions para isso: um ping a cada 10 minutos estoura a cota de minutos.
+Quem faz o ping é o Worker `agesto-keepalive` da Cloudflare, versionado em `deploy/keepalive/` (Cron Trigger a cada 5 minutos, grátis no plano Free da Cloudflare). Ele substitui o cron-job.org.
+
+**Publicar ou atualizar o Worker** (conta Cloudflare do Agesto):
+
+```bash
+cd deploy/keepalive
+npm test                 # testes do Worker, sem dependências
+npx wrangler login       # uma vez por máquina
+npx wrangler deploy
+```
+
+**Conferir:**
+- No painel da Cloudflare, em *Workers & Pages → agesto-keepalive → Logs*, cada execução registra `health 200 em N ms`. Uma falha aparece como execução com erro.
+- Ao vivo, pelo terminal: `npx wrangler tail`.
+- Depois de 30 minutos, o `/health` deve responder em menos de 1 segundo, sem a espera da API acordando.
+
+Depois de conferir que o Worker roda, desligue o monitor antigo do cron-job.org. Os dois juntos não causam problema.
+
+**Alerta:** o Worker mantém tudo acordado, mas não avisa ninguém. Para receber aviso quando a API cair, cadastre o mesmo `/health` num monitor grátis com alerta (UptimeRobot, a cada 5 minutos, ou Better Stack, a cada 3 minutos). Ele também serve de segundo ping.
+
+Não use o GitHub Actions para isso: o agendamento atrasa em horários de pico, o bastante para a API dormir.
+
+A solução definitiva é o Render Starter, sem sono, e o Supabase Pro, sem pausa e com backup (DEC-49). Com eles, o Worker vira só uma camada extra.
 
 ## 7. Usuário dedicado e TLS verificado (DEC-34)
 
