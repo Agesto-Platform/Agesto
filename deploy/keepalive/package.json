@@ -1,0 +1,9 @@
+{
+  "name": "agesto-keepalive",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"src/**/*.test.js\"",
+    "deploy": "npx wrangler deploy"
+  }
+}
