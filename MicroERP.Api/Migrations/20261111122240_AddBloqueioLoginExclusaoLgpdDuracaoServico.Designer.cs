@@ -12,18 +12,61 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MicroERP.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20261025184248_AddServicoDuracaoMinutos")]
-    partial class AddServicoDuracaoMinutos
+    [Migration("20261111122240_AddBloqueioLoginExclusaoLgpdDuracaoServico")]
+    partial class AddBloqueioLoginExclusaoLgpdDuracaoServico
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("MicroERP.Api.Models.AdminPlataforma", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("Senha")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("UltimoAcessoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("AdminsPlataforma", (string)null);
+                });
 
             modelBuilder.Entity("MicroERP.Api.Models.Atendimento", b =>
                 {
@@ -86,6 +129,50 @@ namespace MicroERP.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Atendimentos");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.AuditoriaAdmin", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Acao")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<long>("AdminId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detalhes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<long?>("EmpresaId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long?>("UsuarioId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.ToTable("AuditoriasAdmin", (string)null);
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Cliente", b =>
@@ -221,12 +308,24 @@ namespace MicroERP.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<bool>("Ativa")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("BloqueadaEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Documento")
                         .HasMaxLength(18)
                         .HasColumnType("character varying(18)");
+
+                    b.Property<string>("MotivoBloqueio")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -663,6 +762,13 @@ namespace MicroERP.Api.Migrations
                     b.Property<int>("TentativasLoginFalhas")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("TermosAceitosEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TermosVersaoAceita")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<DateTime?>("UltimoAcessoEm")
                         .HasColumnType("timestamp with time zone");
 
@@ -696,6 +802,17 @@ namespace MicroERP.Api.Migrations
                     b.Navigation("Cliente");
 
                     b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.AuditoriaAdmin", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.AdminPlataforma", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Cliente", b =>

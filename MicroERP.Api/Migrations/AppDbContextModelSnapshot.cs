@@ -721,6 +721,9 @@ namespace MicroERP.Api.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("BloqueadoAte")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -752,6 +755,9 @@ namespace MicroERP.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<int>("TentativasLoginFalhas")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("TermosAceitosEm")
                         .HasColumnType("timestamp with time zone");

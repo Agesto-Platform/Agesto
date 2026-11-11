@@ -92,6 +92,8 @@ public sealed class UsuarioAdminItem
     public PerfilUsuario Perfil { get; set; }
     public bool Ativo { get; set; }
     public bool DeveTrocarSenha { get; set; }
+    // Bloqueio temporário por senhas erradas; a senha provisória desbloqueia.
+    public DateTime? BloqueadoAte { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
     public DateTime CreatedAt { get; set; }
 }

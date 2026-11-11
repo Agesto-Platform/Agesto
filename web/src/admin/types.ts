@@ -43,6 +43,8 @@ export interface UsuarioAdminItem {
   perfil: PerfilUsuario
   ativo: boolean
   deveTrocarSenha: boolean
+  /** Bloqueio temporário por senhas erradas; a senha provisória desbloqueia. */
+  bloqueadoAte: string | null
   ultimoAcessoEm: string | null
   createdAt: string
 }

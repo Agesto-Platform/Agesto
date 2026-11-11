@@ -114,6 +114,10 @@ export function AdminEmpresaPage() {
           <Badge tone="neg" dot>
             Desativado
           </Badge>
+        ) : u.bloqueadoAte && new Date(u.bloqueadoAte) > new Date() ? (
+          <Badge tone="warn" dot>
+            Bloqueado até {hora(u.bloqueadoAte)}
+          </Badge>
         ) : u.deveTrocarSenha ? (
           <Badge tone="warn" dot>
             Aguardando 1º acesso
