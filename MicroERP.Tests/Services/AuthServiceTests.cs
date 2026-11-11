@@ -55,6 +55,24 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task RegisterAsync_EmpresaNova_NasceNoModoServico()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+
+        await service.RegisterAsync(new AuthRegisterRequest
+        {
+            Nome = "Dono",
+            Email = "modo@teste.com",
+            Senha = "Senha123!"
+        }, CancellationToken.None);
+
+        var usuario = await dbContext.Usuarios.SingleAsync(u => u.Email == "modo@teste.com");
+        var configuracao = await dbContext.Configuracoes.SingleAsync(c => c.EmpresaId == usuario.EmpresaId);
+        Assert.Equal(MicroERP.Api.Enums.TipoOperacao.Servico, configuracao.TipoOperacao);
+    }
+
+    [Fact]
     public async Task LoginAsync_WhenCredentialsAreValid_ReturnsToken()
     {
         await using var dbContext = CreateContext();

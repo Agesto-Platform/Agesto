@@ -193,7 +193,7 @@ ClockSkew: 2 minutos
 POST /api/auth/register
   → Cria Empresa (com NomeEmpresa do request)
   → Cria Usuario (Perfil=Dono, EmpresaId)
-  → Cria Configuracao padrão (TipoOperacao=Hibrido, EmpresaId)
+  → Cria Configuracao padrão (TipoOperacao=Servico, EmpresaId — DEC-15)
 ```
 
 ---

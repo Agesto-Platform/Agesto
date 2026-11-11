@@ -86,7 +86,7 @@ public sealed class AuthService : IAuthService
         var configuracao = new Configuracao
         {
             EmpresaId = empresa.Id,
-            TipoOperacao = TipoOperacao.Hibrido,
+            TipoOperacao = TipoOperacao.Servico, // DEC-15: foco no prestador de serviço
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
