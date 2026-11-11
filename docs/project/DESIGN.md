@@ -27,7 +27,7 @@ O sistema segue uma arquitetura em camadas clássica no backend, com separação
         └──────────────────────┘
 ```
 
-> A IA nativa está planejada dentro do backend C# (DEC-21), mas ainda não foi implementada. O design original em Python permanece apenas como histórico na seção 6. O Mobile offline-first foi implementado — ver seção 11.
+> A IA nativa está implementada dentro do backend C# (DEC-21), via SDK oficial da Anthropic: `POST /api/insights` e o chat `POST /api/agente/perguntar`, em produção desde 10/11/2026. O design original em Python permanece apenas como histórico na seção 6. O Mobile offline-first foi implementado — ver seção 11.
 
 ---
 
@@ -62,7 +62,7 @@ private bool TryGetUsuarioId(out long usuarioId)
 }
 ```
 
-> **Débito técnico registrado:** esse método está duplicado em todos os controllers. Refatorar para classe base `ApiControllerBase` em sprint futura.
+> **Débito resolvido:** os métodos `TryGetEmpresaId`, `TryGetUsuarioId` e `TryGetPerfil` vivem na classe base `ApiControllerBase`. A área de superadmin usa `AdminControllerBase`, com `TryGetAdminId` (DEC-52).
 
 ---
 
@@ -88,6 +88,8 @@ Servico     1 ──── * ItemServico
 ```
 
 ### 3.2 Entidades
+
+> Modelo resumido. A fonte é `MicroERP.Api/Models/` e `AppDbContext`, que já têm entidades e campos que não aparecem aqui: `Orcamento`/`ItemOrcamento` (DEC-16), `ServicoItemSugerido` (DEC-28), `AdminPlataforma`/`AuditoriaAdmin` e `Empresa.Ativa` (DEC-52), `Usuario.Ativo`, `DeletedAt`, `BloqueadoAte` e `TentativasLoginFalhas` (DEC-35, DEC-43, DEC-44) e `Servico.DuracaoMinutos` (DEC-45).
 
 #### `Empresa`
 ```
@@ -191,7 +193,7 @@ ClockSkew: 2 minutos
 POST /api/auth/register
   → Cria Empresa (com NomeEmpresa do request)
   → Cria Usuario (Perfil=Dono, EmpresaId)
-  → Cria Configuracao padrão (TipoOperacao=Hibrido, EmpresaId)
+  → Cria Configuracao padrão (TipoOperacao=Servico, EmpresaId — DEC-15)
 ```
 
 ---
@@ -208,19 +210,21 @@ POST /api/auth/register
 ### Enums existentes
 ```csharp
 // Enums/PerfilUsuario.cs
-public enum PerfilUsuario { Dono, Agente }
+public enum PerfilUsuario { Nenhum, Dono, Agente } // Nenhum = 0 evita cair em Dono por engano
 
 // Enums/TipoCobranca.cs
 public enum TipoCobranca { PorHora, Empreitada }
 ```
 
-### Enums planejados (débito técnico)
+### Outros enums (já existentes, persistidos como string)
 ```csharp
-// Enums/TipoOperacao.cs — atualmente string livre em Configuracao
+// Enums/TipoOperacao.cs — Configuracao.TipoOperacao (DEC-08)
 public enum TipoOperacao { Venda, Servico, Hibrido }
 
-// Enums/StatusAtendimento.cs — atualmente string livre em Atendimento
+// Enums/StatusAtendimento.cs — Atendimento.Status (DEC-08)
 public enum StatusAtendimento { Pendente, Concluido, Cancelado }
+
+// Também em Enums/: ModoAgendaAgente (DEC-27) e StatusOrcamento (DEC-16)
 ```
 
 ### Resposta padrão da API
@@ -314,9 +318,9 @@ O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois
 ## 8. Banco de Dados
 
 - **Provedor:** PostgreSQL no Supabase (plano Free, região East US / N. Virginia), ver DEC-32
-- **ORM:** Entity Framework Core 10.0.13 (provider Npgsql 10.0.3), ver DEC-40
+- **ORM:** Entity Framework Core 10.0.14 (provider Npgsql 10.0.3), ver DEC-40
 - **Migrations:** controladas via `dotnet ef migrations`
-- **Estado:** `InitialCreate` única aplicada em 08/10/2026 (DEC-31); migrations seguintes das DEC-35, DEC-36 e DEC-38 aplicadas no Supabase
+- **Estado:** `InitialCreate` única aplicada em 08/10/2026 (DEC-31); todas as migrations de `MicroERP.Api/Migrations` aplicadas no Supabase (última: `AddBloqueioLoginExclusaoLgpdDuracaoServico`, 11/11/2026)
 - **Secrets:** connection string em `appsettings.Development.json` (gitignored)
 
 ### DeleteBehavior
@@ -341,8 +345,9 @@ GET /api/metrics/vendas
 
 GET /api/metrics/servicos
      → Receita por tipo de serviço
+     → Horas e receita por hora por serviço (`Servico.DuracaoMinutos`, DEC-45)
      → KAN-79 — parcial: margem/hora e tempo médio adiados (dependem de
-       Custo/DEC-19/KAN-72 e de um campo de duração ainda não modelado)
+       Custo/DEC-19/KAN-72)
 
 GET /api/metrics/estoque
      → Giro de estoque, produtos parados (>30 dias), ruptura iminente (≤7 dias)
@@ -371,7 +376,7 @@ Front web do perfil Dono, em `web/` no monorepo `Agesto-Platform/Agesto`. Consom
 ### Stack
 - **Vite + React 19 + TypeScript**
 - **Tailwind CSS v4** — config CSS-first via `@theme` em `src/styles/tokens.css`, tokens portados do protótipo aprovado
-- **React Router** (`react-router-dom` fixado em `7.18.2` por segurança — advisory de modo RSC aceito, não usado no projeto)
+- **React Router** (`react-router-dom` em `7.18.5` por segurança — advisory de modo RSC aceito, não usado no projeto)
 - **TanStack Query** — todo dado de servidor (fetch, cache, invalidação)
 - **MSW (Mock Service Worker)** — mock stateful da API para desenvolvimento local sem backend; liga/desliga via `VITE_USE_MOCKS` (`false` em produção)
 - **Leaflet** — mapa da agenda, carregado sob demanda (DEC-38)
@@ -413,7 +418,7 @@ App mobile do agente de campo, em `mobile/` no monorepo `Agesto-Platform/Agesto`
 - **expo-sqlite** — persistência offline no device, atrás da interface `LocalDb`, com adapter em memória para Web/testes
 - **expo-secure-store** (device) / `localStorage` (web) — armazenamento do token JWT, com split por plataforma
 - **Camada de mock em código** (`config.useMocks`) — análoga ao `VITE_USE_MOCKS` do web (DEC-25)
-- **Jest (jest-expo)** — 77 testes no CI da `develop` (21/10/2026), cobrindo dados, sincronização e regras do app
+- **Jest (jest-expo)** — 119 testes no CI da `develop` (11/11/2026), cobrindo dados, sincronização e regras do app
 
 ### Arquitetura de pastas e camadas
 ```
@@ -434,7 +439,7 @@ mobile/src/
 
 ### Ciclo offline Carga/Descarga
 1. **Login** — autenticação JWT contra `/api/auth/login`; token guardado via `expo-secure-store`/`localStorage`.
-2. **Carga** — sempre completa (DEC-33); popula o banco local com clientes, produtos, serviços e configuração (`GET /api/sync/carga`), mais orçamentos (`SyncCargaResponse.Orcamentos`). Um passo adicional `syncAgenda` busca e cacheia `GET /api/atendimento/agenda` separadamente, pois a Carga não inclui a agenda (delta de backend, ver seção 7 e DEC-17).
+2. **Carga** — sempre completa (DEC-33); popula o banco local com clientes, produtos, serviços e configuração (`GET /api/sync/carga`), mais orçamentos (`SyncCargaResponse.Orcamentos`), que o app ainda não armazena nem exibe. Um passo adicional `syncAgenda` busca e cacheia `GET /api/atendimento/agenda` separadamente, pois a Carga não inclui a agenda (delta de backend, ver seção 7 e DEC-17).
 3. **Uso offline** — Home action-first (CTA Registrar + agenda do dia Próximo/Ainda hoje); registrar atendimento (cliente + itens de catálogo por quantidade + status) grava localmente como pendente; cadastro rápido de cliente offline grava como `PendingCliente`.
 4. **Descarga** — empurra clientes e atendimentos pendentes para `POST /api/sync/descarga`; marca como sincronizados só os uuids que o servidor confirmou (os rejeitados seguem pendentes) e religa atendimentos de clientes criados offline ao id do servidor (DEC-33). O botão Sincronizar faz Descarga seguida de Carga + agenda. O app também sincroniza sozinho ao abrir, ao voltar para ele e quando a internet volta (I5): com algo pendente envia logo, sem nada pendente só se a última foi há mais de 5 minutos, e nunca com a tela de registrar ou de cliente aberta, para não enviar uma correção pela metade. Uma sincronização por vez (`sincronizarUmaVez`), e as telas abertas recarregam ao terminar. Aba "Mais" mostra status de sync (pendentes, última sincronização, botão Sincronizar) e logout.
 
@@ -444,4 +449,4 @@ mobile/src/
 - Teste de componente React Native (`@testing-library/react-native`) foi adiado por incompatibilidade de versão (lib v14 + jest-expo + React 19).
 
 ### Verificação
-O ciclo foi validado no **Expo Web**, sem device Android/iOS físico nesta fase. O `LocalDb` atrás de interface permite usar adapter em memória no Web/testes. No CI da `develop` (21/10/2026): typecheck, lint e 77 testes Jest verdes. A validação em dispositivo físico permanece pendente.
+O ciclo foi validado no **Expo Web**, sem device Android/iOS físico nesta fase. O `LocalDb` atrás de interface permite usar adapter em memória no Web/testes. No CI da `develop` (11/11/2026): typecheck, lint e 119 testes Jest verdes. A validação em dispositivo físico permanece pendente.

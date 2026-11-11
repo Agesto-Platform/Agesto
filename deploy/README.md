@@ -65,6 +65,8 @@ SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER B
    - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
    - `Geocoding__OpenRouteServiceApiKey` (opcional): chave gratuita criada em openrouteservice.org (*Dashboard → Tokens*, plano Standard). Liga a geocodificação dos endereços dos clientes para o mapa da agenda (DEC-38); a API envia ao serviço só o endereço, nunca nome ou CPF. Sem ela, o mapa mostra que os clientes ainda não têm localização.
    - `App__VersaoMinimaAndroid` e `App__UrlDownload` (opcionais): versão mínima do APK e link para baixá-lo. Ver "APK" no passo 5.
+   - `Insights__AnthropicApiKey` (opcional): chave da Anthropic para a IA (DEC-21). Sem ela, `/api/insights` e `/api/agente/perguntar` respondem 503 e o resto da API segue normal. `Insights__Modelo` troca o modelo (padrão `claude-haiku-5-5`).
+   - `Admin__SetupKey` (temporária): libera a criação do primeiro admin da área de superadmin. Ver a seção 10.
 4. O serviço publica a branch `main` (DEC-41), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`). A `develop` não vai para a nuvem: é testada localmente (ver "Ambiente local" abaixo).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
 
@@ -134,12 +136,34 @@ Aviso de APK novo: depois de publicar um APK com `expo.version` maior, defina no
 
 ## 6. Manter API e Supabase acordados
 
-Agende num monitor externo grátis (ex.: cron-job.org) uma chamada a `https://<URL da API>/health` **a cada 10 minutos**, com aviso por e-mail em caso de falha. Isso:
+Uma chamada a `https://<URL da API>/health` **a cada 5 minutos**:
 
-- evita que a API durma (consome ~744 das 750 horas mensais);
+- evita que a API durma (o Render Free dorme após 15 minutos sem tráfego e leva cerca de 1 minuto para acordar; o ping consome ~744 das 750 horas mensais);
 - gera atividade real no banco (`SELECT 1`) e evita a pausa do Supabase Free após 7 dias sem uso.
 
-Não use o GitHub Actions para isso: um ping a cada 10 minutos estoura a cota de minutos.
+Quem faz o ping é o Worker `agesto-keepalive` da Cloudflare, versionado em `deploy/keepalive/` (Cron Trigger a cada 5 minutos, grátis no plano Free da Cloudflare). Ele substitui o cron-job.org.
+
+**Publicar ou atualizar o Worker** (conta Cloudflare do Agesto):
+
+```bash
+cd deploy/keepalive
+npm test                 # testes do Worker, sem dependências
+npx wrangler login       # uma vez por máquina
+npx wrangler deploy
+```
+
+**Conferir:**
+- No painel da Cloudflare, em *Workers & Pages → agesto-keepalive → Logs*, cada execução registra `health 200 em N ms`. Uma falha aparece como execução com erro.
+- Ao vivo, pelo terminal: `npx wrangler tail`.
+- Depois de 30 minutos, o `/health` deve responder em menos de 1 segundo, sem a espera da API acordando.
+
+O Worker foi publicado e conferido em 11/11/2026, e o monitor antigo do cron-job.org foi desligado no mesmo dia.
+
+**Alerta:** o Worker mantém tudo acordado, mas não avisa ninguém. Para receber aviso quando a API cair, cadastre o mesmo `/health` num monitor grátis com alerta (UptimeRobot, a cada 5 minutos, ou Better Stack, a cada 3 minutos). Ele também serve de segundo ping.
+
+Não use o GitHub Actions para isso: o agendamento atrasa em horários de pico, o bastante para a API dormir.
+
+A solução definitiva é o Render Starter, sem sono, e o Supabase Pro, sem pausa e com backup (DEC-49). Com eles, o Worker vira só uma camada extra.
 
 ## 7. Usuário dedicado e TLS verificado (DEC-34)
 

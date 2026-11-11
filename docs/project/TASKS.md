@@ -38,7 +38,7 @@
 | 10/11 | Página de download do APK com passo a passo de instalação (`/baixar` no web) | L3 | Feito (PR #111, 28/10) |
 | 14/11 | Busca no app, motivo da recusa e cancelar atendimento no app | I1 a I3 | Feito (PR #112, 28/10) |
 | 28/11 | Sincronizar ao abrir o app e quando a internet volta | I5 | Feito (PR #113, 28/10) |
-| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Em andamento: paginação retomada (PR #98, DEC-42, 28/10); bloqueio da conta, exclusão de usuário e duração do serviço seguem parados |
+| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Feito: paginação (PR #98, DEC-42, 28/10); bloqueio da conta, exclusão de usuário e duração do serviço integrados por Davi Oliveira em 11/11 (PR #133, release #134, DEC-43 a 45), migration aplicada no Supabase |
 | 01/12 | Revisão do piloto e preço da assinatura (todos participam) | D10 | A fazer |
 | 12/12 | CNPJ e nota da assinatura; formalizar a propriedade das contribuições (DEC-29) e decidir se o repositório segue público (DEC-24) | Legal | A fazer |
 
@@ -57,6 +57,13 @@
 | 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | A fazer |
 | 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | A fazer |
 | 12/12 | Página de apresentação com preço, termos, download e contato | L4 | A fazer |
+| 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render |
+| 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
+| — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | A fazer |
+| — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52, DEC-53) | Extra | A fazer |
+| — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | A fazer |
+| — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |
+| — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | A fazer |
 
 ### Diego — infra e redesign
 
@@ -134,7 +141,7 @@
 |-----|-----------|------------|-------------|------------|
 | — | ~~Paginação no GetAllAsync~~ ✅ PR #98 (paginação opcional, DEC-42), retomado e mesclado em 28/10/2026 | Baixa | Davi Gomes | — |
 
-> Backend Core está essencialmente completo: em 21/10/2026, build verde e 261 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
+> Backend Core está essencialmente completo: em 11/11/2026, build verde e 346 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
 
 ---
 
@@ -166,11 +173,11 @@
 
 | Item | Descrição | Prioridade | Responsável | Depende de |
 |------|-----------|------------|-------------|------------|
-| Margem/hora por serviço | Parte restante do KAN-79 — depende de campo de duração (inexistente) + atribuição de custo a serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Campo de duração (PR #101, DEC-45, parado) |
+| Margem/hora por serviço | Parte restante do KAN-79 — a duração do serviço e a receita por hora já existem (DEC-45, 11/11); falta atribuir custo ao serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Atribuição de custo ao serviço (DEC-19/KAN-72) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Davi Gomes | Decisão de produto |
 | ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
-| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render, `Servico.DuracaoMinutos` e "Otimizar dia" (fase 2) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
+| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render e "Otimizar dia" (fase 2); `Servico.DuracaoMinutos` já existe (DEC-45, 11/11) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — | — |
 | **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | Davi Gomes | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — | — |
@@ -228,8 +235,8 @@
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
 | Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio. Entra com o cadastro aberto até 28/11 (DEC-48) | Alta | Davi Oliveira |
-| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP). PR #99 (DEC-43) fechado sem merge em 25/10/2026 para retomar depois | Média | Davi Gomes |
-| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7. Hoje `DELETE /api/usuario` apaga a própria conta com DELETE físico e sem anonimização (`UsuarioRepository`), divergindo do invariante de soft delete do `AGENTS.md`. PR #100 (DEC-44: soft delete com anonimização) fechado sem merge em 25/10/2026 para retomar depois; a política de privacidade do lançamento depende disso | Média | Davi Gomes |
+| ~~Lockout por conta~~ | 🟢 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; a senha provisória desbloqueia. Em `main` desde 11/11/2026 (PR #133, release #134, DEC-43) | — | — |
+| ~~Exclusão de Usuario com LGPD~~ | 🟢 `DELETE /api/usuario` anonimiza o usuário com `DeletedAt` em vez de apagar a linha (corrige o erro 500 de quem tinha histórico). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-44) | — | — |
 
 ---
 
@@ -273,7 +280,7 @@
 
 | KAN | Descrição | Responsável | Observação |
 |-----|-----------|-------------|------------|
-| KAN-79 | Métricas de Serviços (`GET /api/metrics/servicos`) | Davi Gomes | Receita por tipo de serviço e margem por atendimento (via rentabilidade) já entregues. Margem/hora e tempo médio por serviço seguem pendentes — dependem de um campo de duração ainda não modelado. |
+| KAN-79 | Métricas de Serviços (`GET /api/metrics/servicos`) | Davi Gomes | Receita por tipo de serviço, margem por atendimento (via rentabilidade) e, desde 11/11, horas e receita por hora por serviço (DEC-45) já entregues. Margem/hora e tempo médio por serviço seguem pendentes — dependem da atribuição de custo ao serviço. |
 
 > Multi-tenant aplicado via `EmpresaId` + `DeletedAt == null` em todas as queries (join via `Atendimento`, já que `ItemProduto`/`ItemServico` não têm `EmpresaId` próprio). Receita conta só atendimentos `Concluido`; movimentação de estoque conta itens de atendimentos não-`Cancelado`. Bloco Vendas soma `ItemProduto.Subtotal`; bloco Serviços soma `ItemServico.Subtotal` — nunca o `ValorTotal` do atendimento, para não duplicar receita entre os blocos (concretiza a separação venda/serviço da DEC-15). Revisão do @revisor corrigiu, antes do commit, um bug em que os joins com `Produtos`/`Servicos` não filtravam `DeletedAt == null` (produtos/serviços soft-deletados entrariam nas somas) — coberto pelo teste `GetVendas_IgnoraProdutoSoftDeletado`.
 
@@ -324,7 +331,7 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 | web-11 | — | **Atendimentos** — itens/estoque/margem + dashboard honesto | `6c0e700` |
 | web-12 | KAN-49 | **Parametrização** — modo de operação (TipoOperacao) | `d922b61` |
 | web-13 | — | **Relatórios** — abas Rentabilidade/Serviços/Produtos/Estoque | `4576e25` |
-| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente; 33 testes em 21/10/2026 | `cee7fb9` + evoluções posteriores |
+| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente; 80 testes em 11/11/2026 | `cee7fb9` + evoluções posteriores |
 
 > \*Épico Operação: numeração KAN a atribuir no Jira quando reconectar.
 
@@ -369,7 +376,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
 | — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
 
-**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 77 testes Jest (21/10/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 119 testes Jest (11/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 

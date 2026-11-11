@@ -263,7 +263,7 @@ public enum StatusAtendimento { Pendente, Concluido, Cancelado }
 - `Cliente` ganhou os campos `Logradouro`, `Numero`, `Bairro`, `Cidade`, `Cep` (commit `da828bc`).
 - `Atendimento` ganhou `DataAgendada` e o endpoint `GET /api/atendimento/agenda`, com filtro por perfil (Agente vê só a própria agenda; Dono vê todas/filtra), viabilizado pelo novo helper `TryGetPerfil` em `ApiControllerBase` (commit `7007361`).
 - Depois, o endpoint de agenda foi enriquecido para devolver `AgendaItemResponse` com nome/telefone/endereço do cliente e resumo do serviço, eliminando N+1 no consumo mobile (commit `5e82411`).
-- **Pendente:** geolocalização (lat/lng no `Cliente`) e roteirização (ordenação por proximidade/rota do dia) — fase posterior desta decisão, ainda não iniciada.
+- **Pendente:** geolocalização e rota do dia foram entregues depois (DEC-37 e DEC-38); falta só a ordenação por proximidade ("Otimizar dia", fase 2).
 - **Delta identificado no mobile (mob-04, ver DEC-26):** a Carga da sincronização não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado (`GET /api/atendimento/agenda` cacheado) como contorno. Idealmente a agenda entraria na Carga.
 
 ---
@@ -335,13 +335,13 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 
 **Resolução aplicada (Fase 1):** implementados `MetricasController`, `MetricasService`/`IMetricasService`, `MetricasRepository`/`IMetricasRepository` e os endpoints `GET /api/metrics/vendas`, `/api/metrics/servicos`, `/api/metrics/estoque` e `/api/metrics/dashboard`, com DTOs próprios (`MetricasVendasResponse`, `MetricasServicosResponse`, `MetricasEstoqueResponse`, `DashboardResponse`) e testes `MetricasServiceTests` (DbContext InMemory). Todas as queries filtram por `EmpresaId` + `DeletedAt == null`, com join via `Atendimento` (já que `ItemProduto`/`ItemServico` não têm `EmpresaId` próprio). De KAN-79 (Métricas de Serviços), só a receita por tipo de serviço foi entregue nesta fase — margem/hora e tempo médio seguem pendentes, à espera do campo `Custo` (DEC-19/KAN-72) e de um campo de duração ainda não modelado.
 
-**Complemento posterior (commit `5e82411`):** com `Custo`/`Margem` já implementados (DEC-19), foi adicionado o `GET /api/metrics/rentabilidade` e o bloco `Rentabilidade` no `DashboardResponse` — faturamento, custo, margem, margem %, ticket médio e nº de atendimentos, considerando só `Concluido` no período. Margem/hora por serviço (parte restante da KAN-79) continua adiada — depende de um campo de duração ainda inexistente; decisão do dono é substituir "serviço mais rentável/hora" por "serviços que mais faturam" no painel, métrica que já existe.
+**Complemento posterior (commit `5e82411`):** com `Custo`/`Margem` já implementados (DEC-19), foi adicionado o `GET /api/metrics/rentabilidade` e o bloco `Rentabilidade` no `DashboardResponse` — faturamento, custo, margem, margem %, ticket médio e nº de atendimentos, considerando só `Concluido` no período. Margem/hora por serviço (parte restante da KAN-79) continua adiada — a duração do serviço e a receita por hora já existem (DEC-45, 11/11/2026), mas falta atribuir custo ao serviço; decisão do dono é substituir "serviço mais rentável/hora" por "serviços que mais faturam" no painel, métrica que já existe.
 
 ---
 
 ## DEC-21 — IA nativa paga por uso; interpreta métricas; controles de custo
 
-**Status:** Decidido. (Reafirma e detalha a DEC-03.)
+**Status:** Decidido. (Reafirma e detalha a DEC-03.) 🟢 Implementado e em produção desde 10/11/2026 (PRs #126 a #130), pedido por Davi Oliveira para teste com as contas de teste. A IA segue fora do escopo do lançamento (DEC-46) até nova decisão.
 
 **Decisão:** A IA é nativa e paga por uso pelo operador do SaaS (Davi), não BYOK. Uma única chave da API (Anthropic Claude) fica no servidor; todos os tenants usam essa chave; o custo por token é embutido na mensalidade do plano. Todo cliente que assina tem acesso à IA.
 
@@ -358,6 +358,14 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 **Segurança (mantida da DEC-03):** chave só no servidor (nunca no front/mobile, nunca no `Configuracao` do tenant); mascarar CPF e dados sensíveis antes de enviar ao modelo; isolamento multi-tenant por `EmpresaId` em toda query que alimenta o prompt; read-only no MVP (a IA lê e sugere, nunca escreve).
 
 **Ponto em aberto:** ✅ RESOLVIDO em 20/07/2026. Decisão do dono (dev solo, Davi): a camada de IA roda **dentro do backend C#**, usando o SDK oficial da Anthropic — não um serviço Python/FastAPI separado (design original, KAN-30). Motivo: elimina um codebase extra para um dev solo, reduzindo superfície operacional (ver `project_solo_dev`). Consequência: o épico "Módulo IA/Insights (Python)" (KAN-30) fica **obsoleto** — ver TASKS.md.
+
+**Implementação (10/11/2026):**
+- `POST /api/insights`: relatório do período em quatro blocos (resumo, destaques, alertas e recomendações), com saída estruturada. `POST /api/agente/perguntar`: chat do painel Agente no web. Os dois só para o Dono.
+- Modelo padrão `claude-haiku-5-5` (o modelo econômico desta decisão), trocável por `Insights__Modelo` sem mudar código. Chave em `Insights__AnthropicApiKey` no Render; sem ela, os endpoints respondem 503.
+- O modelo recebe só as métricas já calculadas do período (DEC-20). No chat, recebe também a agenda dos próximos 7 dias sem nome, telefone nem endereço do cliente.
+- Só leitura: a IA não cria, altera nem apaga nada.
+- Controles de custo entregues: limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`. Pendentes: a tabela de consumo (`TenantUsage`) e o limite por plano.
+- Testes manuais de segurança em produção (vazamento de dados, isolamento entre empresas, injeção por nome de produto, pedidos de escrita) passaram em 10/11/2026.
 
 ---
 
@@ -618,7 +626,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-32 — API no Render e banco no Supabase em N. Virginia
 
-**Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo cron-job.org
+**Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo Worker `agesto-keepalive` da Cloudflare a cada 5 min desde 11/11/2026 (antes, cron-job.org)
 
 **Decisão:** substitui a parte de API e banco da DEC-30:
 - **API (.NET 8; .NET 10 desde a DEC-40):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `main` (desde a DEC-41) só depois que o CI passa (`autoDeployTrigger: checksPass`).
@@ -635,7 +643,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Trocar a arquitetura da API** (TypeScript no Cloudflare Workers ou Supabase direto com RLS) → reescrever ~5.500 linhas e 51 endpoints já testados para resolver só a hospedagem; contraria o princípio de mudanças pequenas no MVP.
 
 **Riscos e mitigações:**
-- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo (cron-job.org) chama `/health` a cada 10 min (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h).
+- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo chama `/health` (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h). Era o cron-job.org a cada 10 min; desde 11/11/2026 é o Worker `agesto-keepalive` da Cloudflare a cada 5 min, versionado em `deploy/keepalive/` (`deploy/README.md`, seção 6).
 - **Pausa do Supabase Free** após 7 dias sem atividade → o mesmo ping, porque o `/health` executa `SELECT 1`.
 - **512 MB de RAM e 0,1 CPU** → suficiente para o MVP; reavaliar no primeiro sinal de lentidão.
 - **Sem disco persistente** → a API não grava arquivos hoje; uploads futuros precisam de storage externo.
@@ -650,7 +658,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-33 — Sincronização confiável: Carga completa, Descarga por atendimento e cliente offline por UUID
 
-**Status:** 🟢 Implementado em `develop` (PR #43, 10/10/2026)
+**Status:** 🟢 Implementado em `develop` e `main` (PR #43, 10/10/2026)
 
 **Contexto:** revisão do ciclo Carga/Descarga encontrou perda de dados no mobile:
 - a Carga era incremental (`ultimaSincronizacao`), mas o app substitui a tabela local inteira a cada Carga — a partir da segunda sincronização, clientes/produtos/serviços sem alteração sumiam do device; exclusões (soft delete) nunca chegavam ao device;
@@ -701,7 +709,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-35 — Gestão de usuários pelo Dono e responsável do atendimento
 
-**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
+**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026); migration aplicada no Supabase
 
 **Contexto:** não havia como criar um usuário Agente (o cadastro só cria Dono) e todo atendimento ficava com quem o criou (`UsuarioId` = criador). O app do agente só funcionava com usuário inserido direto no banco.
 
@@ -720,7 +728,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-36 — Agente cadastra serviço no app, com revisão do Dono
 
-**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase
+**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026); migration aplicada no Supabase
 
 **Contexto:** no web, serviço fora do catálogo já vira cadastro rápido (DEC-22), mas o app não conseguia: toda a API de serviço exige perfil Dono e a Descarga só aceitava itens com id do servidor. Em campo o agente ficava sem como registrar um serviço novo.
 
@@ -737,7 +745,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-37 — Rota do dia pelo endereço, sem geocodificação (fase 1)
 
-**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026)
+**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026)
 
 **Contexto:** o plano da rota pronta tem três fases e todas dependem de latitude e longitude do cliente, que exigem um serviço de geocodificação (custo, cota e envio do endereço a terceiro, ponto de LGPD ainda não decidido). Abrir o Google Maps com as paradas não precisa disso: a URL aceita endereços em texto.
 
@@ -747,7 +755,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 3. Cada visita com endereço ganha um botão que abre a navegação só até aquele cliente.
 4. O endereço vai ao Google pelo próprio celular do agente, por ação dele, como já aconteceria copiando o endereço. Nada é enviado pelo servidor.
 
-**Pendente (fases seguintes):** escolher o serviço de geocodificação (sugestão: OpenRouteService), registrar a decisão de LGPD, `Cliente.Latitude/Longitude`, `Servico.DuracaoMinutos`, mapa com pinos no web e "Otimizar dia".
+**Pendente (fases seguintes):** escolher o serviço de geocodificação (sugestão: OpenRouteService), registrar a decisão de LGPD, `Cliente.Latitude/Longitude`, `Servico.DuracaoMinutos`, mapa com pinos no web e "Otimizar dia". Atualização em 11/11/2026: só falta o "Otimizar dia"; o resto foi entregue (DEC-38 e DEC-45).
 
 **Impacto:** sem migration. Campo novo e opcional na agenda; app antigo ignora.
 
@@ -756,7 +764,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-38 — Geocodificação com OpenRouteService e mapa da agenda com Leaflet
 
-**Status:** 🟢 Implementado em `develop` (PR #47, 19/10/2026); migration aplicada no Supabase. Provedor aprovado por Diego em 17/10/2026.
+**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026); migration aplicada no Supabase. Provedor aprovado por Diego em 17/10/2026.
 
 **Contexto:** o mapa da agenda e a otimização da rota (fase 2) precisam de latitude e longitude dos clientes, e o sistema só guarda o endereço em texto.
 
@@ -772,7 +780,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-39 — Atendimento no app no mesmo nível do web
 
-**Status:** 🟢 Implementado em `develop` (PR #48, 20/10/2026). Pedido por Diego em 20/10/2026, depois do levantamento web × app (`modulos/atendimento-web-vs-app.md`).
+**Status:** 🟢 Implementado em `develop` e `main` (PR #48, 20/10/2026). Pedido por Diego em 20/10/2026, depois do levantamento web × app (documento fora do repositório).
 
 **Contexto:** no app o agente só usava o preço do catálogo, não conseguia concluir uma visita agendada (só criar outro atendimento), não corrigia nada depois de salvar e via um "Estimado" diferente do que o servidor cobrava na empreitada com quantidade 2.
 
@@ -788,7 +796,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-40 — Backend migrado para .NET 10
 
-**Status:** 🟢 Implementado em `develop` (PR #53, 21/10/2026) e validado em produção por Davi (deploy Live no Render, login e sync testados). Pedido por Davi em 20/10/2026.
+**Status:** 🟢 Implementado em `develop` e `main` (PR #53, 21/10/2026) e validado em produção por Davi (deploy Live no Render, login e sync testados). Pedido por Davi em 20/10/2026.
 
 **Decisão:** API e testes passam de `net8.0` para `net10.0` (LTS), antes do fim do suporte do .NET 8 em 10/11/2026.
 - Pacotes ASP.NET Core e EF Core em `10.0.13`, provider `Npgsql.EntityFrameworkCore.PostgreSQL` em `10.0.3`; Api e Tests seguem na mesma versão de EF Core (DEC-13).
@@ -815,19 +823,55 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ---
 
-> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub. A DEC-42 foi retomada em 28/10/2026; DEC-43 a DEC-45 seguem reservadas.
+> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub. A DEC-42 foi retomada em 28/10/2026; DEC-43 a DEC-45 foram retomadas em 11/11/2026 (PRs #133 e #134).
 
 ---
 
 ## DEC-42 — Paginação opcional nas listas
 
-**Status:** 🟢 Implementado em `develop` (PR #98, reaberto e mesclado em 28/10/2026), pedido por Davi.
+**Status:** 🟢 Implementado em `develop` e `main` (PR #98, reaberto e mesclado em 28/10/2026), pedido por Davi.
 
 **Decisão:** `GET` de clientes, atendimentos, orçamentos, produtos e serviços aceitam `?pagina=&tamanho=` (padrão 20, máximo 100) e então devolvem `{ itens, pagina, tamanho, total }`. Sem os parâmetros, a resposta continua sendo a lista inteira.
 
 **Por quê:** o web usa as listas completas em buscas e seletores, e o mobile não usa esses endpoints (só o sync); paginação opcional não quebra nenhum consumidor e fica pronta para quando uma tela precisar.
 
 **Impacto:** sem migration. A paginação é feita no banco e a ordenação ganhou desempate por `Id`.
+
+---
+
+## DEC-43 — Bloqueio da conta após senhas erradas
+
+**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira; migration `AddBloqueioLoginExclusaoLgpdDuracaoServico` aplicada no Supabase em 11/11/2026.
+
+**Decisão:** 5 senhas erradas seguidas na mesma conta bloqueiam o login por 15 minutos, mesmo com a senha certa; a API responde 423 com os minutos restantes. Login certo zera o contador. A senha provisória gerada pelo Dono ou pela equipe do Agesto (DEC-52) desbloqueia na hora. Vale para Dono e Agente; o login da área de superadmin não tem esse bloqueio.
+
+**Por quê:** complementa o limite por IP, que não segura tentativas vindas de vários IPs.
+
+**Impacto:** colunas `Usuarios.TentativasLoginFalhas` e `Usuarios.BloqueadoAte`. Quem sabe o email de alguém consegue bloquear essa conta por 15 minutos; o limite por IP reduz o abuso.
+
+---
+
+## DEC-44 — Exclusão da própria conta com anonimização
+
+**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira.
+
+**Decisão:** a exclusão da própria conta (`DELETE /api/usuario`, LGPD) deixa de apagar a linha: o usuário é anonimizado ("Usuário removido", email `removido-{id}@anonimo.invalid`), ganha uma senha aleatória e `DeletedAt`. O histórico (atendimentos, orçamentos) continua apontando para a linha, a pessoa não entra mais e o email real fica livre. A empresa não pode ficar sem Dono ativo.
+
+**Por quê:** o DELETE físico falhava com erro 500 para quem tinha atendimentos ou orçamentos (chaves estrangeiras *Restrict*) e contrariava o soft delete das entidades operacionais.
+
+**Impacto:** coluna `Usuarios.DeletedAt`. Listas de usuários, inclusive as da área de superadmin, ignoram os removidos, e o token deles cai na hora.
+
+---
+
+## DEC-45 — Duração do serviço e receita por hora
+
+**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes (KAN-79), integrado por Davi Oliveira.
+
+**Decisão:** `Servico.DuracaoMinutos` (opcional, de 1 a 1440) entra no cadastro de serviço do web. As métricas de serviços passam a devolver horas e receita por hora: serviço por hora usa as horas lançadas; serviço por empreitada usa execuções vezes a duração estimada, e fica sem R$/h quando não tem duração. Os Relatórios mostram o R$/h por serviço.
+
+**Por quê:** parte restante do KAN-79. A margem por hora continua pendente, porque o custo ainda não é atribuído ao serviço.
+
+**Impacto:** coluna `Servicos.DuracaoMinutos`. O Agente IA (DEC-21) recebe as horas e o R$/h junto com as métricas.
 
 ---
 
@@ -892,7 +936,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-50 — Sessão de 30 dias
 
-**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
+**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` e `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
 
 **Decisão:** o login vale 30 dias na API e no app (hoje o JWT expira em 120 minutos, `Jwt:ExpiresMinutes`). A revogação da DEC-34 continua: desativar o usuário ou trocar a senha derruba a sessão na próxima requisição.
 
@@ -914,4 +958,44 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Por quê:** a DEC-46 pede o redesign no web antes do lançamento; o app recebe o mesmo visual depois.
 
-**Impacto:** só front-end, sem mudança na API. O painel do Agente aparece como "Prévia" e não faz parte do lançamento (a IA ficou fora do escopo na DEC-46). Falta fechar o design system até 17/11.
+**Impacto:** só front-end, sem mudança na API. O painel do Agente aparece como "Prévia" e não faz parte do lançamento (a IA ficou fora do escopo na DEC-46); desde 10/11/2026 o chat dele funciona com a IA da DEC-21, ainda com o selo "Prévia". Falta fechar o design system até 17/11.
+
+---
+
+## DEC-52 — Área de superadmin da equipe do Agesto
+
+**Status:** 🟢 Em `main` (PR #131, release #132, 10/11/2026), decidido por Davi Oliveira em 10/11/2026. Migration `AddSuperadmin` aplicada no Supabase em 10/11/2026; o primeiro admin foi criado no mesmo dia.
+
+**Decisão:** a equipe do Agesto gerencia as empresas clientes em `/admin`, no web atual:
+- contas de admin separadas dos usuários das empresas (tabela `AdminsPlataforma`); o token de admin tem audiência própria e a claim `escopo=plataforma`, então o token de um cliente não abre o `/admin` e o de admin não abre o painel do cliente;
+- listar e ver empresas, criar empresa com Dono (senha provisória), bloquear e desbloquear empresa com motivo, e desativar, reativar ou gerar senha provisória para usuários de qualquer empresa;
+- equipe de admins (cadastrar, desativar e reativar; ninguém desativa a si mesmo);
+- auditoria de toda ação de admin, inclusive logins e tentativas recusadas (tabela `AuditoriasAdmin`).
+
+**Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
+
+**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira. Pendências: bloqueio por conta no login de admin, verificação em duas etapas, e a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
+
+---
+
+## DEC-53 — Token do web em `localStorage`: risco aceito no MVP
+
+**Status:** 🟡 Risco aceito por Davi Oliveira em 11/11/2026, com gatilhos de revisão. Sem mudança de código.
+
+**Decisão:** o web continua guardando o JWT em `localStorage`: o token das empresas em `web/src/lib/token.ts` e o de admin (`agesto_admin_token`) em `web/src/admin/sessao.ts`. O cookie httpOnly recomendado em `docs/SECURITY_NOTES.md` (seção 1) fica para depois. O app segue com `expo-secure-store`.
+
+**Por quê:**
+- API (`agesto-api.onrender.com`) e web (Cloudflare Pages) estão em sites diferentes. Cookie de login entre eles exige `SameSite=None`, proteção contra CSRF e credenciais no CORS, e navegadores que bloqueiam cookie de terceiros podem quebrar o login. Fazer bem pede domínio próprio com API e web no mesmo site.
+- O app usa token Bearer; a API teria de aceitar os dois modos.
+- O risco hoje é contido: a CSP de `web/public/_headers` só roda script do próprio site (`script-src 'self'`) e só conecta no próprio site e na API; o React escapa o texto exibido; o único `dangerouslySetInnerHTML` (`Icon.tsx`) usa desenhos fixos do código; o `TokenRevalidator` derruba na hora o token de usuário desativado ou de empresa bloqueada; e só há contas de teste.
+
+**Risco aceito:** um XSS que passe pela CSP leva um token válido por até 30 dias (DEC-50 e DEC-52), e trocar a senha ainda não derruba as sessões abertas.
+
+**Revisar quando acontecer o primeiro destes:** domínio próprio do Agesto, primeiro cliente pagante ou fim da fase de contas de teste. Nesse ponto, migrar o web para cookie httpOnly.
+
+**Até lá:**
+- não remover nem afrouxar a CSP de `web/public/_headers`;
+- não usar `dangerouslySetInnerHTML` com dado de usuário ou da API;
+- pendências que reduzem o risco sem migrar: encurtar a validade do token de admin (`Admin__ExpiresMinutes`) e fazer a troca de senha derrubar as sessões abertas (versão do token, também em aberto nas DEC-50 e DEC-52).
+
+**Impacto:** nenhum agora. A migração futura mexe na emissão do token, na autenticação da API, no CORS e no cliente HTTP do web.
