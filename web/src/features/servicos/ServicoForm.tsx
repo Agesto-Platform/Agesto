@@ -7,14 +7,16 @@ interface FormState {
   descricao: string
   tipoCobranca: TipoCobranca
   valor: number | undefined
+  duracao: number | undefined
 }
 
 function toState(s: Servico | null): FormState {
-  if (!s) return { descricao: '', tipoCobranca: 'PorHora', valor: undefined }
+  if (!s) return { descricao: '', tipoCobranca: 'PorHora', valor: undefined, duracao: undefined }
   return {
     descricao: s.descricao,
     tipoCobranca: s.tipoCobranca,
     valor: (s.tipoCobranca === 'PorHora' ? s.valorHora : s.valorEmpreitada) ?? undefined,
+    duracao: s.duracaoMinutos ?? undefined,
   }
 }
 
@@ -45,6 +47,8 @@ export function ServicoForm({
     else if (d.length > 200) e.descricao = 'Descrição deve ter no máximo 200 caracteres.'
     if (form.valor === undefined || form.valor < 0.01)
       e.valor = 'Informe um valor maior que zero.'
+    if (form.duracao !== undefined && (!Number.isInteger(form.duracao) || form.duracao < 1 || form.duracao > 1440))
+      e.duracao = 'Informe de 1 a 1440 minutos.'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -57,6 +61,7 @@ export function ServicoForm({
       tipoCobranca: form.tipoCobranca,
       valorHora: porHora ? form.valor : null,
       valorEmpreitada: porHora ? null : form.valor,
+      duracaoMinutos: form.duracao ?? null,
     })
   }
 
@@ -98,6 +103,14 @@ export function ServicoForm({
             required
           />
         </div>
+        <NumberField
+          label="Duração estimada (minutos)"
+          value={form.duracao}
+          onChange={(v) => setForm((f) => ({ ...f, duracao: v }))}
+          error={errors.duracao}
+          hint="Opcional. Usada para calcular a receita por hora dos serviços por empreitada."
+          min={1}
+        />
       </div>
 
       {initial && <ServicoSugeridosEditor servicoId={initial.id} />}

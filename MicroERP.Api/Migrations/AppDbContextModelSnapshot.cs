@@ -631,6 +631,9 @@ namespace MicroERP.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int?>("DuracaoMinutos")
+                        .HasColumnType("integer");
+
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
 
@@ -718,7 +721,13 @@ namespace MicroERP.Api.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("BloqueadoAte")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("DeveTrocarSenha")
@@ -746,6 +755,9 @@ namespace MicroERP.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<int>("TentativasLoginFalhas")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("TermosAceitosEm")
                         .HasColumnType("timestamp with time zone");

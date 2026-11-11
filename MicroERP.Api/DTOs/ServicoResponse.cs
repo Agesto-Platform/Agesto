@@ -9,6 +9,7 @@ public sealed class ServicoResponse
     public string Descricao { get; set; } = string.Empty;
     public decimal? ValorHora { get; set; }
     public decimal? ValorEmpreitada { get; set; }
+    public int? DuracaoMinutos { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public TipoCobranca TipoCobranca { get; set; }

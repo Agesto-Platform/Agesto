@@ -38,7 +38,7 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
             query = query.Where(e =>
                 EF.Functions.ILike(e.Nome, like)
                 || (e.Documento != null && EF.Functions.ILike(e.Documento, like))
-                || e.Usuarios.Any(u => EF.Functions.ILike(u.Email, like)));
+                || e.Usuarios.Any(u => u.DeletedAt == null && EF.Functions.ILike(u.Email, like)));
         }
 
         return await query
@@ -51,10 +51,11 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
                 Documento = e.Documento,
                 Ativa = e.Ativa,
                 CreatedAt = e.CreatedAt,
-                TotalUsuarios = e.Usuarios.Count,
-                UsuariosAtivos = e.Usuarios.Count(u => u.Ativo),
-                DonoNome = e.Usuarios.Where(u => u.Perfil == PerfilUsuario.Dono).OrderBy(u => u.Id).Select(u => u.Nome).FirstOrDefault(),
-                DonoEmail = e.Usuarios.Where(u => u.Perfil == PerfilUsuario.Dono).OrderBy(u => u.Id).Select(u => u.Email).FirstOrDefault(),
+                // Usuários que excluíram a conta (LGPD) ficam anonimizados e fora das contas.
+                TotalUsuarios = e.Usuarios.Count(u => u.DeletedAt == null),
+                UsuariosAtivos = e.Usuarios.Count(u => u.DeletedAt == null && u.Ativo),
+                DonoNome = e.Usuarios.Where(u => u.DeletedAt == null && u.Perfil == PerfilUsuario.Dono).OrderBy(u => u.Id).Select(u => u.Nome).FirstOrDefault(),
+                DonoEmail = e.Usuarios.Where(u => u.DeletedAt == null && u.Perfil == PerfilUsuario.Dono).OrderBy(u => u.Id).Select(u => u.Email).FirstOrDefault(),
                 UltimoAcessoEm = e.Usuarios.Max(u => u.UltimoAcessoEm),
             })
             .ToListAsync(cancellationToken);
@@ -81,7 +82,7 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         empresa.TotalClientes = await _db.Clientes.CountAsync(c => c.EmpresaId == empresaId && c.DeletedAt == null, cancellationToken);
         empresa.TotalAtendimentos = await _db.Atendimentos.CountAsync(a => a.EmpresaId == empresaId && a.DeletedAt == null, cancellationToken);
         empresa.Usuarios = await _db.Usuarios.AsNoTracking()
-            .Where(u => u.EmpresaId == empresaId)
+            .Where(u => u.EmpresaId == empresaId && u.DeletedAt == null)
             .OrderBy(u => u.Perfil).ThenBy(u => u.Nome)
             .Select(u => new UsuarioAdminItem
             {
@@ -91,6 +92,7 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
                 Perfil = u.Perfil,
                 Ativo = u.Ativo,
                 DeveTrocarSenha = u.DeveTrocarSenha,
+                BloqueadoAte = u.BloqueadoAte,
                 UltimoAcessoEm = u.UltimoAcessoEm,
                 CreatedAt = u.CreatedAt,
             })
@@ -149,6 +151,9 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         var senha = UsuarioService.GerarSenhaProvisoria();
         usuario.Senha = _hasher.HashPassword(usuario, senha);
         usuario.DeveTrocarSenha = true;
+        // Senha nova também desbloqueia quem errou a senha demais.
+        usuario.TentativasLoginFalhas = 0;
+        usuario.BloqueadoAte = null;
 
         // A senha em si nunca vai para a auditoria.
         AdminAuditoria.Registrar(_db, adminId, "redefinir-senha", empresaId, usuarioId, usuario.Email, ip);
@@ -185,6 +190,6 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
 
     // O usuário precisa ser da empresa da rota: um id de outra empresa dá 404.
     private async Task<Usuario> ObterUsuarioAsync(long empresaId, long usuarioId, CancellationToken cancellationToken) =>
-        await _db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId && u.EmpresaId == empresaId, cancellationToken)
+        await _db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId && u.EmpresaId == empresaId && u.DeletedAt == null, cancellationToken)
         ?? throw new NotFoundException("Usuário não encontrado nesta empresa.");
 }

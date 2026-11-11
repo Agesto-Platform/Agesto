@@ -21,7 +21,7 @@ public static class TokenRevalidator
         var perfil = principal.FindFirstValue("perfil");
         var usuario = await db.Usuarios
             .AsNoTracking()
-            .Where(u => u.Id == usuarioId)
+            .Where(u => u.Id == usuarioId && u.DeletedAt == null)
             .Select(u => new
             {
                 u.EmpresaId,

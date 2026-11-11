@@ -78,6 +78,36 @@ public sealed class MetricasServiceTests
     }
 
     [Fact]
+    public async Task GetServicos_ReceitaPorHora_UsaHorasLancadasOuDuracaoEstimada()
+    {
+        await using var db = CreateContext();
+        var instalacao = Servico(1, "Instalacao AC", TipoCobranca.Empreitada, empresaId: 1);
+        instalacao.DuracaoMinutos = 90;
+        db.Servicos.AddRange(
+            instalacao,
+            Servico(2, "Manutencao", TipoCobranca.PorHora, empresaId: 1),
+            Servico(3, "Limpeza de dreno", TipoCobranca.Empreitada, empresaId: 1)); // sem duração
+
+        AddAtendimentoComServico(db, atId: 1, empresaId: 1, StatusAtendimento.Concluido, valorTotal: 1000, NoPeriodo,
+            (servicoId: 1, qtd: 2, subtotal: 600m),   // 2 x 90 min = 3 h
+            (servicoId: 2, qtd: 4, subtotal: 400m),   // 4 h lançadas
+            (servicoId: 3, qtd: 1, subtotal: 120m));
+        await db.SaveChangesAsync();
+
+        var servicos = await new MetricasService(new MetricasRepository(db)).GetServicosAsync(1, De, Ate, CancellationToken.None);
+
+        var ac = servicos.ReceitaPorServico.Single(s => s.ServicoId == 1);
+        Assert.Equal(3m, ac.Horas);
+        Assert.Equal(200m, ac.ReceitaPorHora);
+        var manutencao = servicos.ReceitaPorServico.Single(s => s.ServicoId == 2);
+        Assert.Equal(4m, manutencao.Horas);
+        Assert.Equal(100m, manutencao.ReceitaPorHora);
+        var dreno = servicos.ReceitaPorServico.Single(s => s.ServicoId == 3);
+        Assert.Null(dreno.Horas);
+        Assert.Null(dreno.ReceitaPorHora);
+    }
+
+    [Fact]
     public async Task GetEstoque_CalculaGiroParadosERuptura()
     {
         await using var db = CreateContext();
