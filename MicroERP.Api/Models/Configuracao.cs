@@ -5,7 +5,7 @@ namespace MicroERP.Api.Models;
 public class Configuracao
 {
     public long Id { get; set; }
-    public TipoOperacao TipoOperacao { get; set; } = TipoOperacao.Hibrido;
+    public TipoOperacao TipoOperacao { get; set; } = TipoOperacao.Servico; // DEC-15
 
     // Modo de agenda do agente no mobile (equipe vs solo) — ver DEC de parametrização.
     public ModoAgendaAgente ModoAgendaAgente { get; set; } = ModoAgendaAgente.Flexivel;
