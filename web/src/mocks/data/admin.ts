@@ -40,6 +40,7 @@ const usuario = (id: number, nome: string, email: string, perfil: 'Dono' | 'Agen
   perfil,
   ativo: true,
   deveTrocarSenha: false,
+  bloqueadoAte: null,
   ultimoAcessoEm: acesso === null ? null : diasAtras(acesso),
   createdAt: diasAtras(40),
 })
@@ -48,7 +49,7 @@ let empresas: EmpresaMock[] = [
   {
     id: 1, nome: 'AC Fernando Climatização', documento: '12.345.678/0001-90', ativa: true, bloqueadaEm: null, motivoBloqueio: null,
     createdAt: diasAtras(45), totalClientes: 86, totalAtendimentos: 412, ultimoAcessoEm: diasAtras(0),
-    usuarios: [usuario(1, 'Fernando Lima', 'dono@agesto.app', 'Dono', 0), usuario(2, 'Carlos Souza', 'carlos@acfernando.com', 'Agente', 1)],
+    usuarios: [usuario(1, 'Fernando Lima', 'dono@agesto.app', 'Dono', 0), { ...usuario(2, 'Carlos Souza', 'carlos@acfernando.com', 'Agente', 1), bloqueadoAte: new Date(Date.now() + 12 * 60_000).toISOString() }],
   },
   {
     id: 2, nome: 'Elétrica Boa Luz', documento: null, ativa: true, bloqueadaEm: null, motivoBloqueio: null,
@@ -144,6 +145,7 @@ export const adminHandlers = [
     if (!e || !u) return fail(404, 'Usuário não encontrado nesta empresa.')
     if (params.acao === 'senha-provisoria') {
       u.deveTrocarSenha = true
+      u.bloqueadoAte = null
       auditar('redefinir-senha', e.id, u.email, u.id)
       return HttpResponse.json(ok({ email: u.email, senhaProvisoria: senhaProvisoria() }, 'Senha provisória gerada.'))
     }

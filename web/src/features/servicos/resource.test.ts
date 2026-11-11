@@ -3,7 +3,7 @@ import { aRevisar } from './resource'
 import type { Servico } from '../../types/api'
 
 const base: Servico = {
-  id: 1, uuid: 'u1', descricao: 'Instalação', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 350,
+  id: 1, uuid: 'u1', descricao: 'Instalação', tipoCobranca: 'Empreitada', valorHora: null, valorEmpreitada: 350, duracaoMinutos: null,
   revisado: true, criadoPorUsuarioId: null, criadoPorNome: null, createdAt: '', updatedAt: '',
 }
 

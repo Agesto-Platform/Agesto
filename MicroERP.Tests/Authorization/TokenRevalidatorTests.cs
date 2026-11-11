@@ -39,6 +39,17 @@ public sealed class TokenRevalidatorTests
     }
 
     [Fact]
+    public async Task UsuarioQueExcluiuAConta_PerdeOToken()
+    {
+        await using var db = await Seed();
+        var usuario = await db.Usuarios.SingleAsync();
+        usuario.DeletedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        Assert.False(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono"), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task EmpresaSuspensa_DerrubaTokenDosUsuarios()
     {
         await using var db = await Seed();

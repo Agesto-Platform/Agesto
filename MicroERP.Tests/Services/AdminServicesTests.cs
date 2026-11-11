@@ -172,6 +172,48 @@ public sealed class AdminServicesTests
     }
 
     [Fact]
+    public async Task UsuarioRemovidoPelaLgpd_NaoApareceNemPodeSerAlterado()
+    {
+        await using var db = CreateContext();
+        var adminId = await SeedAdmin(db);
+        db.Empresas.Add(new Empresa { Id = 3, Nome = "Loja" });
+        db.Usuarios.AddRange(
+            new Usuario { Id = 30, Nome = "Dono", Email = "dono@loja.com", Senha = "hash", EmpresaId = 3, Perfil = PerfilUsuario.Dono },
+            new Usuario { Id = 31, Nome = "Usuário removido", Email = "removido-31@anonimo.invalid", Senha = "hash", EmpresaId = 3,
+                Perfil = PerfilUsuario.Agente, Ativo = false, DeletedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        var service = new AdminEmpresaService(db, new AuthService(db, Config()));
+
+        var detalhe = await service.ObterAsync(3, CancellationToken.None);
+        Assert.Equal([30L], detalhe.Usuarios.Select(u => u.Id));
+
+        await Assert.ThrowsAsync<NotFoundException>(() => service.DefinirUsuarioAtivoAsync(adminId, 3, 31, true, null, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.RedefinirSenhaAsync(adminId, 3, 31, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SenhaProvisoriaDoAdmin_DesbloqueiaQuemErrouASenhaDemais()
+    {
+        await using var db = CreateContext();
+        var adminId = await SeedAdmin(db);
+        db.Empresas.Add(new Empresa { Id = 4, Nome = "Oficina" });
+        db.Usuarios.Add(new Usuario
+        {
+            Id = 40, Nome = "Bloqueado", Email = "b@oficina.com", Senha = "hash", EmpresaId = 4,
+            TentativasLoginFalhas = 3, BloqueadoAte = DateTime.UtcNow.AddMinutes(10),
+        });
+        await db.SaveChangesAsync();
+        var service = new AdminEmpresaService(db, new AuthService(db, Config()));
+
+        Assert.NotNull((await service.ObterAsync(4, CancellationToken.None)).Usuarios.Single().BloqueadoAte);
+
+        await service.RedefinirSenhaAsync(adminId, 4, 40, null, CancellationToken.None);
+        var usuario = await db.Usuarios.SingleAsync(u => u.Id == 40);
+        Assert.Null(usuario.BloqueadoAte);
+        Assert.Equal(0, usuario.TentativasLoginFalhas);
+    }
+
+    [Fact]
     public async Task LoginDeCliente_EmpresaSuspensa_EhBarrado()
     {
         await using var db = CreateContext();

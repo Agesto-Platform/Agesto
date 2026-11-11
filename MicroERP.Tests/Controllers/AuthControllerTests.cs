@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Moq;
 using MicroERP.Api.Controllers;
 using MicroERP.Api.DTOs;
+using MicroERP.Api.Services.Exceptions;
 using MicroERP.Api.Services.Interfaces;
 
 namespace MicroERP.Tests.Controllers;
@@ -54,6 +55,21 @@ public sealed class AuthControllerTests
 
         Assert.IsType<OkObjectResult>(result);
         auth.Verify(a => a.RegisterAsync(Request, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Login_ContaBloqueada_Devolve423ComAMensagem()
+    {
+        var auth = new Mock<IAuthService>();
+        auth.Setup(a => a.LoginAsync(It.IsAny<AuthLoginRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ContaBloqueadaException("Conta bloqueada por excesso de tentativas. Tente de novo em 15 min."));
+        var controller = new AuthController(auth.Object, Config(null));
+
+        var result = await controller.Login(new AuthLoginRequest { Email = "a@b.com", Senha = "x" }, CancellationToken.None);
+
+        var obj = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(423, obj.StatusCode);
+        Assert.Contains("15 min", Assert.IsType<ApiResponse>(obj.Value).Message);
     }
 
     private static IConfiguration Config(string? chave) =>
