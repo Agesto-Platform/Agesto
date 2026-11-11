@@ -12,23 +12,28 @@ export type NavGroup = {
   items: NavItem[]
 }
 
-/** Estrutura de navegação do painel do Dono (a mesma dos templates). */
+/**
+ * Estrutura de navegação do painel do Dono, na ordem do passo a passo:
+ * primeiro cadastrar (cliente, serviço, material), depois operar no ciclo do
+ * serviço (orçamento → agenda → atendimento, DEC-15) e por fim analisar.
+ * "Visão geral" (/) fica sempre no topo da sidebar, fora dos grupos.
+ */
 export const NAV: NavGroup[] = [
-  {
-    label: 'Operação',
-    items: [
-      { to: '/', label: 'Visão geral', icon: 'pie' },
-      { to: '/atendimentos', label: 'Atendimentos', icon: 'wrench' },
-      { to: '/orcamentos', label: 'Orçamentos', icon: 'file' },
-      { to: '/agenda', label: 'Agenda', icon: 'calendar' },
-    ],
-  },
   {
     label: 'Cadastros',
     items: [
       { to: '/clientes', label: 'Clientes', icon: 'users' },
-      { to: '/produtos', label: 'Produtos', icon: 'box' },
       { to: '/servicos', label: 'Serviços', icon: 'hammer' },
+      { to: '/produtos', label: 'Produtos', icon: 'box' },
+    ],
+  },
+  {
+    label: 'Operação',
+    items: [
+      { to: '/', label: 'Visão geral', icon: 'pie' },
+      { to: '/orcamentos', label: 'Orçamentos', icon: 'file' },
+      { to: '/agenda', label: 'Agenda', icon: 'calendar' },
+      { to: '/atendimentos', label: 'Atendimentos', icon: 'wrench' },
     ],
   },
   {
@@ -63,7 +68,10 @@ export function navVisivel(tipo: TipoOperacao | undefined): NavGroup[] {
   )
 }
 
-/** Rota -> grupo e rótulo, para a trilha do topo. */
-export const NAV_LOOKUP: Record<string, { grupo: string; label: string }> = Object.fromEntries(
-  NAV.flatMap((g) => g.items.map((i) => [i.to, { grupo: g.label, label: i.label }])),
+/**
+ * Rota -> grupo e rótulo, para a trilha do topo. A Visão geral (/) fica fora
+ * dos grupos na sidebar, então a trilha dela não tem grupo.
+ */
+export const NAV_LOOKUP: Record<string, { grupo?: string; label: string }> = Object.fromEntries(
+  NAV.flatMap((g) => g.items.map((i) => [i.to, { grupo: i.to === '/' ? undefined : g.label, label: i.label }])),
 )

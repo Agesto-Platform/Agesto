@@ -5,7 +5,7 @@ import { Icon } from '../components/Icon'
 import { Seg } from '../components/ui'
 import { setMode, useTheme, type Mode } from '../theme/theme'
 
-const EXTRAS: Record<string, { grupo: string; label: string }> = {
+const EXTRAS: Record<string, { grupo?: string; label: string }> = {
   '/trocar-senha': { grupo: 'Conta', label: 'Alterar senha' },
 }
 
@@ -41,7 +41,12 @@ export function Topbar({
         <Icon name="menu" />
       </button>
       <div className="crumbs">
-        {page.grupo} <span aria-hidden="true">/</span> <b>{page.label}</b>
+        {page.grupo && (
+          <>
+            {page.grupo} <span aria-hidden="true">/</span>{' '}
+          </>
+        )}
+        <b>{page.label}</b>
       </div>
       <label className="search">
         <Icon name="search" />
