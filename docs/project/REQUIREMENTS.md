@@ -25,10 +25,13 @@ Antes de qualquer implementação, entender a distinção entre esses termos é 
 - Email deve ser único no sistema
 - Senha mínima de 8 caracteres, armazenada com hash (ASP.NET Identity PasswordHasher)
 - **[Implementado]** Cadastro fechado: `POST /api/auth/register` exige `X-Registration-Key`; sem a chave responde 404. Reabrir depende de verificação de email, ainda não implementada (DEC-34)
+- **[Implementado]** A equipe do Agesto também cria empresa com Dono pela área de superadmin; o Dono recebe senha provisória e troca no primeiro acesso (DEC-52)
+- **[Implementado]** Exclusão da própria conta (`DELETE /api/usuario`, LGPD): o usuário é anonimizado com `DeletedAt` em vez de apagado; a empresa não fica sem Dono ativo (DEC-44)
 
 ### 1.2 Perfis de Acesso
 - **Dono:** acessa o módulo Web, vê dados de todos os agentes da empresa, gerencia configurações
 - **Agente:** acessa o módulo Mobile, vê apenas seus próprios atendimentos
+- **Admin da plataforma (equipe do Agesto):** conta separada, fora das empresas, que acessa só a área de superadmin em `/admin` (DEC-52)
 - O sistema deve distinguir perfis via claim `perfil` no JWT
 
 ### 1.3 Múltiplos Agentes
@@ -194,6 +197,9 @@ Dois fluxos distintos:
 - Visualização de atendimentos de todos os agentes — implementado
 - **[Implementado]** Gestão de usuários da empresa: o Dono cadastra agentes com senha provisória, edita, desativa/reativa e redefine senha; atribui atendimentos a um agente (DEC-35)
 - **[Implementado]** Mapa da agenda (aba "Mapa", Leaflet + OpenStreetMap) com os clientes geocodificados (DEC-38)
+- **[Implementado]** Duração estimada no cadastro de serviço e R$/h por serviço nos Relatórios (DEC-45)
+- **[Implementado]** Painel do Agente com chat de IA sobre os números do período e a agenda (DEC-21), ainda com o selo "Prévia"
+- **[Implementado]** Área de superadmin em `/admin` para a equipe do Agesto: empresas, usuários, equipe e auditoria (DEC-52)
 - Consome a API real em produção (DEC-32); o mock stateful (MSW) fica para desenvolvimento local, ver DEC-25
 
 ---
@@ -201,7 +207,7 @@ Dois fluxos distintos:
 ## 9. Módulo de Métricas (DEC-20)
 
 - **[Implementado]** Camada determinística de agregações (C#/SQL, sem IA) — mesma fonte de dados usada pelos dashboards e pela futura interpretação por IA
-- Endpoints: `GET /api/metrics/vendas` (produto mais vendido, ticket médio, receita por período), `/api/metrics/servicos` (receita por tipo de serviço — margem/hora e tempo médio pendentes, dependem de campo de duração ainda não modelado), `/api/metrics/estoque` (giro, produtos parados, ruptura iminente), `/api/metrics/dashboard` (agregador) e `/api/metrics/rentabilidade` (faturamento, custo, margem, margem %, ticket médio, nº de atendimentos concluídos)
+- Endpoints: `GET /api/metrics/vendas` (produto mais vendido, ticket médio, receita por período), `/api/metrics/servicos` (receita, horas e receita por hora por serviço, DEC-45 — margem/hora e tempo médio seguem pendentes, porque o custo ainda não é atribuído ao serviço), `/api/metrics/estoque` (giro, produtos parados, ruptura iminente), `/api/metrics/dashboard` (agregador) e `/api/metrics/rentabilidade` (faturamento, custo, margem, margem %, ticket médio, nº de atendimentos concluídos)
 - Toda query filtra por `EmpresaId` + `DeletedAt == null`
 - Receita conta apenas atendimentos `Concluido`; estoque conta itens de atendimentos não-`Cancelado`
 
@@ -230,7 +236,8 @@ Dois fluxos distintos:
 - **[Implementado]** `Atendimento.DataAgendada` + `GET /api/atendimento/agenda`, com filtro por perfil: Agente vê só a própria agenda; Dono vê todas/filtra (DEC-17)
 - **[Implementado]** Endpoint enriquecido com `AgendaItemResponse` (nome/telefone/endereço do cliente + resumo do serviço), evitando N+1 no consumo mobile (commit `5e82411`)
 - **[Implementado]** Geolocalização do `Cliente` (DEC-38), rota do dia no Google Maps pelo app (DEC-37) e mapa da agenda no web (DEC-38)
-- **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia") e `Servico.DuracaoMinutos` — fase 2
+- **[Implementado]** `Servico.DuracaoMinutos`, usado hoje na receita por hora (DEC-45)
+- **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia") — fase 2
 
 ---
 
@@ -243,12 +250,16 @@ Dois fluxos distintos:
 - Camada de métricas (§9) alimenta a IA — a IA nunca recebe dados brutos, só agregações já calculadas (DEC-20)
 - **[Decisão revisada — DEC-21]** A IA roda **dentro do backend C#** via SDK oficial da Anthropic Claude, e não como serviço Python/FastAPI separado. O módulo Python (KAN-30) está obsoleto — ver TASKS.md
 - Cobrança por uso é do operador do SaaS (Davi), não do cliente final (BYOK descartado — DEC-03, DEC-21)
+- **[Implementado]** `POST /api/insights` (resumo, destaques, alertas e recomendações do período) e `POST /api/agente/perguntar` (chat do painel Agente), só para o Dono, com Claude Haiku 5.5 por padrão (DEC-21)
+- **[Implementado]** O chat recebe as métricas do período e a agenda dos próximos 7 dias sem nome, telefone nem endereço do cliente
+- **[Implementado]** Limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`
+- **[Planejado / não implementado]** Registro do consumo por empresa (`TenantUsage`) e limite por plano (DEC-21)
 
 ---
 
 ## 15. Segurança
 
-- JWT obrigatório em todas as rotas exceto `/auth/register` e `/auth/login`
+- JWT obrigatório em todas as rotas exceto `/auth/register` e `/auth/login` (e, na área de superadmin, `/admin/auth/login` e `/admin/auth/setup`)
 - `empresaId` e `usuarioId` sempre extraídos do JWT — nunca do corpo da requisição
 - Isolamento multi-tenant: toda query filtra por `EmpresaId`
 - CPF único por empresa (índice composto `EmpresaId + Cpf`)
@@ -256,6 +267,9 @@ Dois fluxos distintos:
 - HTTPS obrigatório em produção
 - Senha nunca armazenada em texto puro
 - Chave da API de IA fica só no servidor — nunca no front/mobile, nunca em `Configuracao` do tenant (DEC-21)
+- **[Implementado]** Bloqueio da conta por 15 minutos após 5 senhas erradas seguidas, além do limite por IP; a senha provisória desbloqueia (DEC-43)
+- **[Implementado]** Área de superadmin com contas e JWT próprios (audiência separada): o token de cliente não abre o `/admin` e vice-versa; toda ação de admin vai para a auditoria (DEC-52)
+- **[Implementado]** Empresa bloqueada pela equipe do Agesto perde o login e os tokens já emitidos (DEC-52)
 
 ---
 

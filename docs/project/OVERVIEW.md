@@ -39,7 +39,7 @@ O Agesto oferece:
 │  Backend Principal                                       │
 │  ASP.NET Core .NET 10 (C#) + Entity Framework Core     │
 │  PostgreSQL — provedor da nova infraestrutura a definir  │
-│  IA nativa no backend C# — planejada (DEC-21)            │
+│  IA nativa no backend C# — em produção (DEC-21)          │
 └─────────────────────────────────────────────────────────┘
                           ↕ API REST (JWT)
 ┌─────────────────────────────────────────────────────────┐
@@ -59,8 +59,8 @@ O Agesto oferece:
 | Backend Core | C# — ASP.NET Core .NET 10 + Entity Framework Core |
 | Banco de Dados | PostgreSQL no Supabase, região N. Virginia (DEC-32) |
 | Mobile (App do Agente) | React Native + TypeScript (Expo/prebuild), Expo Router, `expo-sqlite` offline-first |
-| Módulo IA | Embutido no backend C#, via SDK oficial Anthropic Claude (DEC-21) — não há mais serviço Python separado |
-| Autenticação | JWT (HMAC-SHA256, 120min, claims: sub, email, jti, empresaId, perfil); sessão de 30 dias decidida para o piloto (DEC-50) |
+| Módulo IA | Embutido no backend C#, via SDK oficial Anthropic Claude (DEC-21), modelo padrão Claude Haiku 5.5 — não há mais serviço Python separado |
+| Autenticação | JWT (HMAC-SHA256, claims: sub, email, jti, empresaId, perfil), válido por 30 dias (DEC-50); bloqueio da conta após 5 senhas erradas (DEC-43). Área de superadmin com JWT de audiência própria (DEC-52) |
 | Nuvem | API no Render, web na Cloudflare Pages, banco no Supabase (DEC-32) |
 | Testes | Backend: xUnit + Moq + EF Core InMemory/SQLite (261 testes). Web: Vitest + Testing Library (33 testes). Mobile: Jest/jest-expo (77 testes) — CI da `develop`, 21/10/2026 |
 | Versionamento | Git + Gitflow |
@@ -70,7 +70,7 @@ O Agesto oferece:
 | Membro | Papel | Responsabilidade principal | GitHub |
 |--------|-------|---------------------------|--------|
 | Davi Gomes Rocha | Founder e Product Owner | Produto, prioridades e app mobile; coordenação geral | `falkz-cmd` — Owner |
-| Davi Oliveira | Cofounder | Web do Dono e tarefas gerais (backend, testes, suporte) | `ghzpro034` — Member/Write |
+| Davi Oliveira | Cofounder | Web do Dono e tarefas gerais (backend, testes, suporte) | `ghzpro034` — Member, com permissão Admin no repositório (conferido em 10/11/2026) |
 | Diego | Cofounder | Infraestrutura, DevOps, publicação do APK e redesign | `Depowo` — Owner |
 
 Divisão revista em 22/10/2026 para o lançamento do MVP (DEC-46); as tarefas de cada um estão em `TASKS.md`, seção "Lançamento do MVP". Os três integram o time visível `@Agesto-Platform/core`. Os papéis indicam o foco inicial, sem impedir contribuições cruzadas. As contribuições do time acadêmico original permanecem preservadas no histórico Git, mas não representam a composição atual.
@@ -84,6 +84,9 @@ Divisão revista em 22/10/2026 para o lançamento do MVP (DEC-46); as tarefas de
 - **Testes:** backend 261, web 33 e mobile 77 testes passando no CI da `develop` (21/10/2026)
 - **Frontend Web (Módulo Dono):** essencialmente completo — 14 tasks (web-01 a web-14) integradas na `main`, **sidebar 100% funcional**, cobrindo dashboard, autenticação, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização), consumindo a API real em produção (MSW só em desenvolvimento local). Depois ganhou gestão de usuários (DEC-35), revisão de serviços criados no app (DEC-36) e mapa da agenda (DEC-38). Testes base (Vitest) cobrindo masks, período, store, Money e ClienteForm. Ver DEC-25 em `DECISIONS.md` e seção 10 do `DESIGN.md`.
 - **Mobile (App do Agente):** MVP offline-first e action-first em `mobile/`: login JWT, Carga, agenda, registro/agendamento de atendimento, cadastro rápido de cliente, materiais sugeridos, Descarga e status de sincronização. Roda contra a API real; depois ganhou sync confiável (DEC-33), cadastro de serviço no app (DEC-36), rota do dia (DEC-37) e atendimento no nível do web (DEC-39). 77 testes Jest, typecheck e lint verdes. Resta o delta da agenda na Carga.
+- **IA (DEC-21):** em produção desde 10/11/2026 para teste com as contas de teste: relatório de insights (`POST /api/insights`) e chat do painel Agente no web (`POST /api/agente/perguntar`), com Claude Haiku 5.5. Fora do escopo do lançamento (DEC-46) até nova decisão; o painel segue com o selo "Prévia".
+- **Área de superadmin (DEC-52):** em produção desde 10/11/2026 em `/admin`, para a equipe do Agesto gerenciar empresas, usuários e equipe, com auditoria.
+- **Lote de outubro (DEC-43 a DEC-45):** bloqueio da conta após senhas erradas, exclusão da própria conta com anonimização e receita por hora por serviço, em produção desde 11/11/2026.
 - **Parametrização (DEC-27):** dois parâmetros por Empresa na `Configuracao`, ponta a ponta (backend + Carga + web + mobile) — `ModoAgendaAgente` (`Flexivel`/`Fixa`: se o agente pode agendar em campo) e `ControlaEstoque` (liga/desliga baixa e validação de estoque, para o prestador pass-through). Editáveis pelo Dono em Parametrização (web); propagados ao mobile pela Carga. 8 tasks (param-01 a param-08) integradas na `main`, revisadas (backend + frontend, aprovados). Testes: backend 83, mobile 25, web 17 — verdes. Agenda passou a incluir a `Configuracao`; contrato offline ganhou `DataAgendada`; `Fixa` com enforcement de servidor na Descarga.
 - **Kit de materiais sugeridos (DEC-28):** materiais sugeridos por Serviço (`ServicoItemSugerido`), ponta a ponta. Dono monta o kit na tela de Serviço; sugestão em 1 clique no Orçamento e Atendimento (web) e chip em 1 toque no registrar (mobile, offline via Carga); atalho "salvar materiais como sugeridos" a partir de um atendimento. 6 tasks (kit-01 a kit-06) na `main`. Testes: backend 90, mobile 29, web 17 — verdes.
 
@@ -93,4 +96,4 @@ Divisão revista em 22/10/2026 para o lançamento do MVP (DEC-46); as tarefas de
 - **Offline-first** — funciona sem internet no campo (implementado no Mobile, ver DEC-26)
 - Suporte a **múltiplos modos**: Venda, Serviço ou Híbrido (foco atual no Prestador de Serviço — DEC-15)
 - **Multi-agente** — dono gerencia equipe de agentes em campo
-- **IA nativa** para insights de negócio (planejada, embutida no backend C#, DEC-21) — ainda não implementada e fora do lançamento do MVP (DEC-46)
+- **IA nativa** para insights de negócio (embutida no backend C#, DEC-21) — em produção para teste desde 10/11/2026, fora do lançamento do MVP (DEC-46) até nova decisão
