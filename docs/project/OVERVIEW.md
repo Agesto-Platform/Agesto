@@ -38,7 +38,7 @@ O Agesto oferece:
 ┌─────────────────────────────────────────────────────────┐
 │  Backend Principal                                       │
 │  ASP.NET Core .NET 10 (C#) + Entity Framework Core     │
-│  PostgreSQL — provedor da nova infraestrutura a definir  │
+│  PostgreSQL no Supabase, N. Virginia (DEC-32)            │
 │  IA nativa no backend C# — em produção (DEC-21)          │
 └─────────────────────────────────────────────────────────┘
                           ↕ API REST (JWT)
@@ -62,7 +62,7 @@ O Agesto oferece:
 | Módulo IA | Embutido no backend C#, via SDK oficial Anthropic Claude (DEC-21), modelo padrão Claude Haiku 5.5 — não há mais serviço Python separado |
 | Autenticação | JWT (HMAC-SHA256, claims: sub, email, jti, empresaId, perfil), válido por 30 dias (DEC-50); bloqueio da conta após 5 senhas erradas (DEC-43). Área de superadmin com JWT de audiência própria (DEC-52) |
 | Nuvem | API no Render, web na Cloudflare Pages, banco no Supabase (DEC-32) |
-| Testes | Backend: xUnit + Moq + EF Core InMemory/SQLite (261 testes). Web: Vitest + Testing Library (33 testes). Mobile: Jest/jest-expo (77 testes) — CI da `develop`, 21/10/2026 |
+| Testes | Backend: xUnit + Moq + EF Core InMemory/SQLite (346 testes). Web: Vitest + Testing Library (80 testes). Mobile: Jest/jest-expo (119 testes) — CI da `develop`, 11/11/2026 |
 | Versionamento | Git + Gitflow |
 
 ## Time
@@ -78,10 +78,10 @@ Divisão revista em 22/10/2026 para o lançamento do MVP (DEC-46); as tarefas de
 ## Status atual
 
 - **Fase:** MVP em produção (API, banco e web reais, DEC-32), em desenvolvimento em equipe. Rumo ao lançamento oficial: ensaio geral em 03/11, piloto com um cliente real de 04/11 a 28/11 e lançamento em 15/12/2026, para o prestador de serviço com equipe pequena, app só Android por APK (DEC-46, DEC-47)
-- **Branch principal:** `main` (repositório `Agesto-Platform/Agesto`). A `main` é a produção (Render e Cloudflare Pages publicam a `main` depois do CI) e recebeu os marcos de outubro/2026 em 21/10/2026; a `develop` é integração e teste local (DEC-41)
+- **Branch principal:** `main` (repositório `Agesto-Platform/Agesto`). A `main` é a produção (Render e Cloudflare Pages publicam a `main` depois do CI) e recebeu a última promoção em 11/11/2026 (release #134); a `develop` é integração e teste local (DEC-41)
 - **Repositório:** [`Agesto-Platform/Agesto`](https://github.com/Agesto-Platform/Agesto) — repo próprio, **público** (portfólio + comercial, licença restritiva; ver DEC-24). O acadêmico original `github.com/Auto-academic-erp/micro-erp-auto` fica como legado abandonado. Manter o repositório público é uma decisão a revisar antes do lançamento (DEC-46).
-- **Banco:** Supabase em N. Virginia, com a `InitialCreate` única (DEC-31) e as migrations seguintes aplicadas; backup automático ainda pendente (DEC-34)
-- **Testes:** backend 261, web 33 e mobile 77 testes passando no CI da `develop` (21/10/2026)
+- **Banco:** Supabase em N. Virginia, com a `InitialCreate` única (DEC-31) e as migrations seguintes aplicadas (última: `AddBloqueioLoginExclusaoLgpdDuracaoServico`, 11/11/2026); API e banco mantidos acordados pelo Worker `agesto-keepalive` da Cloudflare (`deploy/README.md`, seção 6); backup automático ainda pendente (DEC-34)
+- **Testes:** backend 346, web 80 e mobile 119 testes passando no CI da `develop` (11/11/2026)
 - **Frontend Web (Módulo Dono):** essencialmente completo — 14 tasks (web-01 a web-14) integradas na `main`, **sidebar 100% funcional**, cobrindo dashboard, autenticação, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização), consumindo a API real em produção (MSW só em desenvolvimento local). Depois ganhou gestão de usuários (DEC-35), revisão de serviços criados no app (DEC-36) e mapa da agenda (DEC-38). Testes base (Vitest) cobrindo masks, período, store, Money e ClienteForm. Ver DEC-25 em `DECISIONS.md` e seção 10 do `DESIGN.md`.
 - **Mobile (App do Agente):** MVP offline-first e action-first em `mobile/`: login JWT, Carga, agenda, registro/agendamento de atendimento, cadastro rápido de cliente, materiais sugeridos, Descarga e status de sincronização. Roda contra a API real; depois ganhou sync confiável (DEC-33), cadastro de serviço no app (DEC-36), rota do dia (DEC-37) e atendimento no nível do web (DEC-39). 77 testes Jest, typecheck e lint verdes. Resta o delta da agenda na Carga.
 - **IA (DEC-21):** em produção desde 10/11/2026 para teste com as contas de teste: relatório de insights (`POST /api/insights`) e chat do painel Agente no web (`POST /api/agente/perguntar`), com Claude Haiku 5.5. Fora do escopo do lançamento (DEC-46) até nova decisão; o painel segue com o selo "Prévia".

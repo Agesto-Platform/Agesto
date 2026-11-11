@@ -41,7 +41,7 @@ E o middleware JWT lê do cookie em vez de header `Authorization`. Documentaçã
 
 ### Decisão precedente
 
-Hoje (sem frontend), a API retorna o token no **body** de `POST /api/auth/login` (campo `Token` em `AuthResponse`). Funciona pra qualquer cliente (curl, Postman, Swagger), mas o frontend final precisa decidir como guardar.
+A API retorna o token no **body** de `POST /api/auth/login` (campo `Token` em `AuthResponse`). Estado atual (11/11/2026): o web guarda o JWT em `localStorage` (`web/src/lib/token.ts`) e o app usa `expo-secure-store`. O cookie httpOnly recomendado acima não foi adotado no web: o risco do `localStorage` foi aceito para o MVP na DEC-53 (`docs/project/DECISIONS.md`), que lista os gatilhos para migrar (domínio próprio, primeiro cliente pagante ou fim das contas de teste) e as regras até lá (manter a CSP de `web/public/_headers` e não usar `dangerouslySetInnerHTML` com dado de usuário). Com API e web em sites diferentes, o cookie precisaria de `SameSite=None` e proteção contra CSRF, não do `Strict` do exemplo acima.
 
 ---
 
@@ -218,7 +218,7 @@ builder.Services.AddCors(options =>
 
 ## 6. Rate limiting
 
-> ✅ **Implementado (DEC-34):** login 10 a cada 5 min e cadastro 5 por hora por IP; sync 30/min por usuário. O lockout por conta abaixo continua como melhoria futura.
+> ✅ **Implementado (DEC-34):** login 10 a cada 5 min e cadastro 5 por hora por IP; sync 30/min por usuário. ✅ **Lockout por conta implementado (DEC-43, 11/11/2026):** 5 senhas erradas seguidas bloqueiam o login por 15 minutos (resposta 423). O código abaixo é o desenho original.
 
 ### Por que importa
 
@@ -248,17 +248,17 @@ app.UseRateLimiter();
 public async Task<ActionResult<AuthResponse>> Login(...)
 ```
 
-5 tentativas por minuto por IP. Excedeu = 429 Too Many Requests.
+Desenho original: 5 tentativas por minuto por IP. Em produção ficou 10 a cada 5 minutos por IP. Excedeu = 429 Too Many Requests.
 
-### Lockout adicional (futuro)
+### Lockout adicional
 
-Após N falhas consecutivas em **um email específico** (não IP), bloquear conta por X minutos. Requer coluna `FailedLoginAttempts` e `LockedUntil` em Usuario.
+✅ Implementado (DEC-43): após 5 falhas consecutivas em **um email específico** (não IP), a conta fica bloqueada por 15 minutos. Colunas `Usuarios.TentativasLoginFalhas` e `Usuarios.BloqueadoAte`. A senha provisória (do Dono ou da equipe do Agesto) desbloqueia. O login da área de superadmin ainda não tem esse bloqueio (DEC-52).
 
 ---
 
 ## 7. LGPD — direito ao esquecimento (KAN-55)
 
-> ✅ **Clientes (DEC-34):** soft delete + anonimização. Nome, CPF, telefone e endereço são apagados na exclusão; a linha fica para histórico e métricas. O Agente recebe CPF mascarado e orçamentos sem custo. A exclusão de **Usuario** segue o desenho abaixo.
+> ✅ **Clientes (DEC-34):** soft delete + anonimização. Nome, CPF, telefone e endereço são apagados na exclusão; a linha fica para histórico e métricas. O Agente recebe CPF mascarado e orçamentos sem custo. ✅ **Usuario (DEC-44, 11/11/2026):** soft delete (`DeletedAt`) + anonimização do nome e do email; o histórico continua apontando para a linha. O restante desta seção é o desenho original.
 
 **Quando ler isto:** quando implementar `DELETE /api/usuario` (KAN-55).
 
@@ -296,7 +296,9 @@ Deletar `Usuario` com `Restrict` falha se houver Clientes/Atendimentos. Estraté
 4. Antes de commitar migration, rodar `dotnet ef database update --no-build` em ambiente isolado pra confirmar que aplica sem erro.
 5. **Nunca apagar migration mergeada em `develop`/`main`** — gera divergência entre devs. Se precisar reverter, gerar nova migration que desfaz.
 
-### Migration pendente
+### Migration pendente (histórico)
+
+> Resolvido: a `InitialCreate` foi gerada e aplicada no Supabase em 08/10/2026 (DEC-31), com o índice único `(EmpresaId, Cpf)` em Clientes. O texto abaixo é o plano original.
 
 A migration **InitialCreate** ainda não foi gerada. Será criada quando provisionarmos o Supabase (KAN-29). Vai conter:
 - 8 tabelas (Usuarios, Configuracoes, Clientes, Atendimentos, Produtos, Servicos, ItemProdutos, ItemServicos)
@@ -311,3 +313,4 @@ A migration **InitialCreate** ainda não foi gerada. Será criada quando provisi
 |------|------|---------|
 | 2026-05-12 | Diego Mendes (Depowo) | Criação inicial — coletânea pós security review do PR #1 |
 | 2026-10-10 | Equipe Agesto | Auditoria completa e endurecimento validado em produção (DEC-34): rate limiting, perfis, revogação de token, LGPD de clientes, RLS, role `agesto_api` e TLS verificado |
+| 2026-11-11 | Equipe Agesto | Estado atualizado: lockout por conta (DEC-43), exclusão de usuário com anonimização (DEC-44), armazenamento atual do token no web e no app, `InitialCreate` aplicada; risco do token em `localStorage` aceito no MVP (DEC-53) |

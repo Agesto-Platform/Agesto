@@ -60,7 +60,9 @@
 | 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render |
 | 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
 | — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | A fazer |
-| — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52) | Extra | A fazer |
+| — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52, DEC-53) | Extra | A fazer |
+| — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | A fazer |
+| — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |
 | — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | A fazer |
 
 ### Diego — infra e redesign
@@ -139,7 +141,7 @@
 |-----|-----------|------------|-------------|------------|
 | — | ~~Paginação no GetAllAsync~~ ✅ PR #98 (paginação opcional, DEC-42), retomado e mesclado em 28/10/2026 | Baixa | Davi Gomes | — |
 
-> Backend Core está essencialmente completo: em 21/10/2026, build verde e 261 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
+> Backend Core está essencialmente completo: em 11/11/2026, build verde e 346 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
 
 ---
 
@@ -233,8 +235,8 @@
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
 | Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio. Entra com o cadastro aberto até 28/11 (DEC-48) | Alta | Davi Oliveira |
-| Lockout por conta | Bloqueio após N falhas no mesmo email (complementa o rate limit por IP). PR #99 (DEC-43) fechado sem merge em 25/10/2026 para retomar depois | Média | Davi Gomes |
-| Exclusão de Usuario com LGPD | Desenho em `docs/SECURITY_NOTES.md` §7. Hoje `DELETE /api/usuario` apaga a própria conta com DELETE físico e sem anonimização (`UsuarioRepository`), divergindo do invariante de soft delete do `AGENTS.md`. PR #100 (DEC-44: soft delete com anonimização) fechado sem merge em 25/10/2026 para retomar depois; a política de privacidade do lançamento depende disso | Média | Davi Gomes |
+| ~~Lockout por conta~~ | 🟢 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; a senha provisória desbloqueia. Em `main` desde 11/11/2026 (PR #133, release #134, DEC-43) | — | — |
+| ~~Exclusão de Usuario com LGPD~~ | 🟢 `DELETE /api/usuario` anonimiza o usuário com `DeletedAt` em vez de apagar a linha (corrige o erro 500 de quem tinha histórico). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-44) | — | — |
 
 ---
 
@@ -329,7 +331,7 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 | web-11 | — | **Atendimentos** — itens/estoque/margem + dashboard honesto | `6c0e700` |
 | web-12 | KAN-49 | **Parametrização** — modo de operação (TipoOperacao) | `d922b61` |
 | web-13 | — | **Relatórios** — abas Rentabilidade/Serviços/Produtos/Estoque | `4576e25` |
-| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente; 33 testes em 21/10/2026 | `cee7fb9` + evoluções posteriores |
+| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente; 80 testes em 11/11/2026 | `cee7fb9` + evoluções posteriores |
 
 > \*Épico Operação: numeração KAN a atribuir no Jira quando reconectar.
 
@@ -374,7 +376,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
 | — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
 
-**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 77 testes Jest (21/10/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 119 testes Jest (11/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 
