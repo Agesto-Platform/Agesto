@@ -911,7 +911,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-48 — Cadastro aberto com verificação de email e período de teste
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026 para o lançamento (15/12), com aval do Davi Gomes (PR #106, 27/10/2026). A fazer. O cadastro segue fechado por chave (DEC-34) até lá.
+**Status:** ⛔ Substituída pela DEC-57 (12/11/2026): não haverá cadastro aberto; a assinatura começa pelo contato. Decidida antes por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026).
 
 **Decisão:** no lançamento, qualquer prestador cria a conta pelo web, confirma o email e ganha um período de teste antes de assinar. Isso substitui, a partir do lançamento, o cadastro fechado por `Auth__RegistrationKey` da DEC-34. O rate limit por IP continua.
 
@@ -1052,3 +1052,19 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Por quê:** pedido de Davi Oliveira em 12/11/2026, para o Dono falar com os clientes pelo WhatsApp a partir do Agesto. O Baileys foi avaliado e recusado: não é oficial e pode levar ao banimento do número do Dono; a sessão guardada daria acesso ao WhatsApp inteiro dele; exigiria um serviço Node.js sempre ligado, fora da arquitetura atual; quebra quando o WhatsApp muda; e aumentaria muito os dados pessoais sob responsabilidade do Agesto (LGPD). O link entrega o principal, cabe antes do lançamento e não tem nenhum desses riscos.
 
 **Impacto:** `OrcamentoResponse` ganha `ClienteTelefone`, e `ConfiguracaoResponse` ganha `EmpresaNome` e `EmpresaDocumento` (sem migration; o nome também passa a aparecer na conta do web, no lugar de "Minha empresa"). Utilitários `web/src/lib/whatsapp.ts` e `mobile/src/lib/whatsapp.ts`; PDF em `web/src/features/orcamentos/pdf.ts`, com a dependência `jspdf` carregada só quando o orçamento abre. O app só recebe o botão num próximo build ou update.
+
+## DEC-57 — Venda por contato, sem cadastro aberto; página de venda na raiz do web
+
+**Status:** 🟡 Implementado na branch `feature/pagina-de-venda` (12/11/2026), decidido por Davi Oliveira. Substitui a DEC-48.
+
+**Decisão:** o Agesto **não terá cadastro aberto**. Quem quer assinar entra em contato, e a equipe cria a empresa no superadmin; o Dono recebe o convite por email e cria a senha (DEC-52, DEC-55).
+- **Página de venda:** quem não está logado e abre a raiz do web (`/`) vê a apresentação do Agesto. Quem está logado continua indo direto para a Visão geral. A página fica sempre no modo claro (paleta Marinho), e o login ganha o link "Conheça e fale com a gente".
+- **Conteúdo:** a promessa "sua empresa inteira em um lugar só", os recursos, o fluxo do orçamento ao resultado, como começar, os preços, as dúvidas frequentes e o contato.
+- **Preços** (definidos pelo Davi em 12/11/2026): **assinatura de R$ 49,90/mês** por empresa, com o acesso do Dono e todos os recursos, **mais 1 licença de funcionário inclusa**. Cada funcionário a mais custa **R$ 19,90/mês**. A página tem uma calculadora que leva a quantidade de funcionários para a mensagem do WhatsApp.
+- **Pagamento:** cartão de crédito, boleto ou Pix. A forma, e outros acordos, são combinados no contato; a página não fala de fidelidade nem de cancelamento.
+- **Contato:** WhatsApp comercial (34) 99632-6130, pelo link `wa.me` (DEC-56), e o email agesto.contact@gmail.com. Não há formulário, para não abrir endpoint público na API.
+- **Hospedagem:** no mesmo projeto do web (Cloudflare Pages), com o código da página num pedaço separado, carregado só por quem a abre. Quando houver domínio próprio, ou se o marketing crescer, a página pode ir para um projeto próprio (ex.: `agesto.com.br` e o painel em `app.agesto.com.br`).
+
+**Por quê:** pedido de Davi Oliveira em 12/11/2026. A venda é feita pela equipe, com assinatura e licenças combinadas no contato. A DEC-48 previa cadastro aberto com verificação de email e período de teste; isso deixa de ser necessário. No mesmo projeto não há infra nova nem dependência do domínio próprio, que ainda não existe.
+
+**Impacto:** sem mudança na API nem migration. `ProtectedRoute` ganha `raizPublica`; a página fica em `web/src/pages/venda/`. As tarefas de cadastro aberto saem do TASKS, e a página de apresentação passa a ser feita agora. O controle de assinatura (quem pagou e quem está em atraso) continua em aberto.

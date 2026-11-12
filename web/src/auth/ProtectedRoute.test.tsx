@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -20,13 +21,13 @@ function auth(over: Partial<AuthContextValue>): AuthContextValue {
   }
 }
 
-function emRota(caminho: string, valor: AuthContextValue) {
+function emRota(caminho: string, valor: AuthContextValue, raizPublica?: ReactNode) {
   render(
     <AuthContext.Provider value={valor}>
       <MemoryRouter initialEntries={[caminho]}>
         <Routes>
           <Route path="/login" element={<p>tela login</p>} />
-          <Route element={<ProtectedRoute />}>
+          <Route element={<ProtectedRoute raizPublica={raizPublica} />}>
             <Route path="/" element={<p>tela painel</p>} />
             <Route path="/aceitar-termos" element={<p>tela termos</p>} />
             <Route path="/trocar-senha" element={<p>tela senha</p>} />
@@ -38,6 +39,21 @@ function emRota(caminho: string, valor: AuthContextValue) {
 }
 
 describe('ProtectedRoute', () => {
+  it('sem login, a raiz mostra a página pública (DEC-57)', () => {
+    emRota('/', auth({ isAuthenticated: false, user: null }), <p>tela venda</p>)
+    expect(screen.getByText('tela venda')).toBeInTheDocument()
+  })
+
+  it('sem login, outra rota protegida continua indo para o login', () => {
+    emRota('/trocar-senha', auth({ isAuthenticated: false, user: null }), <p>tela venda</p>)
+    expect(screen.getByText('tela login')).toBeInTheDocument()
+  })
+
+  it('logado, a raiz mostra o painel, não a página pública', () => {
+    emRota('/', auth({}), <p>tela venda</p>)
+    expect(screen.getByText('tela painel')).toBeInTheDocument()
+  })
+
   it('com termos pendentes, prende na tela de aceite', () => {
     emRota('/', auth({ termos: TERMOS }))
     expect(screen.getByText('tela termos')).toBeInTheDocument()

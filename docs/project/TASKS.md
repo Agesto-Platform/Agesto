@@ -50,13 +50,13 @@
 | 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
 | 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
 | 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Em `main` desde 12/11 (release #163); Brevo configurado no Render e envio testado em produção. Desde a DEC-55 vale também para o Agente, no app e no web |
-| 17/11 | Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48) | D11 | A fazer |
-| 28/11 | Cadastro aberto no ar com verificação de email e período de teste | L1 | A fazer |
+| ~~17/11~~ | ~~Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48)~~ | D11 | Cancelado (12/11): sem cadastro aberto, a venda é por contato (DEC-57) |
+| ~~28/11~~ | ~~Cadastro aberto no ar com verificação de email e período de teste~~ | L1 | Cancelado (12/11, DEC-57). A conta nova é criada pela equipe no superadmin, com convite por email (DEC-55) |
 | 01/12 | Canal de suporte: WhatsApp Business e email | D14 | A fazer |
 | 08/12 | Cobrança mínima no web: atendimento pago ou em aberto, forma e data do pagamento | L5 | A fazer |
 | 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | A fazer |
 | 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | A fazer |
-| 12/12 | Página de apresentação com preço, termos, download e contato | L4 | A fazer |
+| 12/11 | Página de apresentação com preço, termos, download e contato | L4 | Feito no código (12/11), branch `feature/pagina-de-venda`: página de venda na raiz do web, com assinatura de R$ 49,90 (Dono e 1 funcionário) e R$ 19,90 por funcionário a mais; pagamento por cartão, boleto ou Pix, combinado no contato (DEC-57) |
 | 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render |
 | 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
 | — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | A fazer |
@@ -254,7 +254,7 @@
 
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
-| Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio. Entra com o cadastro aberto até 28/11 (DEC-48) | Alta | Davi Oliveira |
+| Verificação de email | Feita pelo convite: o email fica confirmado quando a pessoa cria a senha pelo link (DEC-55). Cadastro aberto cancelado (DEC-57) | Alta | Davi Oliveira |
 | ~~Lockout por conta~~ | 🟢 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; criar a senha pelo link do email desbloqueia (DEC-55). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-43) | — | — |
 | ~~Exclusão de Usuario com LGPD~~ | 🟢 `DELETE /api/usuario` anonimiza o usuário com `DeletedAt` em vez de apagar a linha (corrige o erro 500 de quem tinha histórico). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-44) | — | — |
 
