@@ -1,6 +1,9 @@
+using Microsoft.EntityFrameworkCore;
+using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Enums;
 using MicroERP.Api.Models;
+using MicroERP.Api.Repositories;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services;
 using Moq;
@@ -41,6 +44,27 @@ public sealed class ConfiguracaoServiceTests
         Assert.NotNull(result);
         Assert.Equal(ModoAgendaAgente.Fixa, result!.ModoAgendaAgente);
         Assert.False(result.ControlaEstoque);
+    }
+
+    [Fact]
+    public async Task GetByEmpresaAsync_TrazNomeEDocumentoDaEmpresa()
+    {
+        // DEC-56: o nome vai no cabeçalho do PDF do orçamento e na conta do web.
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.Empresas.AddRange(
+            new Empresa { Id = 1, Nome = "Clima Bom", Documento = "12.345.678/0001-90" },
+            new Empresa { Id = 2, Nome = "Outra Empresa" });
+        db.Configuracoes.AddRange(
+            new Configuracao { Id = 1, EmpresaId = 1 },
+            new Configuracao { Id = 2, EmpresaId = 2 });
+        await db.SaveChangesAsync();
+
+        var result = await new ConfiguracaoService(new ConfiguracaoRepository(db)).GetByEmpresaAsync(1, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("Clima Bom", result!.EmpresaNome);
+        Assert.Equal("12.345.678/0001-90", result.EmpresaDocumento);
     }
 
     [Fact]

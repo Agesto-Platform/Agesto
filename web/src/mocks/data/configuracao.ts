@@ -12,6 +12,8 @@ let config: Configuracao = {
   controlaEstoque: true,
   agenteCadastraServico: true,
   empresaId: 1,
+  empresaNome: 'Clima Bom Instalações',
+  empresaDocumento: '12.345.678/0001-90',
   createdAt: now,
   updatedAt: now,
 }

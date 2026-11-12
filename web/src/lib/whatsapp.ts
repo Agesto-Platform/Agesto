@@ -24,42 +24,66 @@ export function linkWhatsApp(telefone: string | null | undefined, mensagem?: str
   return mensagem ? `https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}` : `https://wa.me/${numero}`
 }
 
-const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-/** Intl usa espaço não separável depois do "R$"; no WhatsApp fica melhor o espaço comum. */
-const reais = (v: number) => moeda.format(v).replace(/\s/g, ' ')
+/** Texto que acompanha o PDF do orçamento. */
+export function mensagemPdfOrcamento(clienteNome: string, numero: string): string {
+  const nome = clienteNome.trim()
+  return `Olá${nome ? ', ' + nome : ''}! Segue o orçamento ${numero} em PDF. Qualquer dúvida, é só responder por aqui.`
+}
 
-export interface LinhaOrcamento {
-  descricao: string
-  quantidade: number
-  subtotal: number
+export type ResultadoEnvio = 'compartilhado' | 'cancelado' | 'baixado-com-conversa' | 'baixado'
+
+/** Aparelho de toque que sabe compartilhar arquivo (celular, tablet). */
+function podeCompartilhar(arquivo: File): boolean {
+  return (
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare({ files: [arquivo] }) &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse)').matches
+  )
+}
+
+/** Baixa o arquivo pelo navegador. */
+export function baixarArquivo(blob: Blob, nome: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nome
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 /**
- * Mensagem do orçamento para o cliente: saudação, itens, total e fechamento.
- * Usa o nome inteiro: o cliente pode ser uma empresa ou um condomínio.
+ * Envia o PDF pelo WhatsApp do jeito que o aparelho permite (DEC-56):
+ * - celular: abre o compartilhar do sistema com o arquivo; a pessoa escolhe o WhatsApp e o contato;
+ * - computador: baixa o PDF e abre a conversa do cliente no WhatsApp, para anexar o arquivo.
+ * O wa.me não aceita anexo, por isso o computador fica em dois passos.
  */
-export function mensagemOrcamento({
-  clienteNome,
-  numero,
-  linhas,
-  total,
+export async function enviarPdfPorWhatsApp({
+  pdf,
+  nomeArquivo,
+  telefone,
+  texto,
 }: {
-  clienteNome: string
-  numero: string
-  linhas: LinhaOrcamento[]
-  total: number
-}): string {
-  const itens = linhas.map((l) => {
-    const qtd = l.quantidade === 1 ? '' : `${l.quantidade.toLocaleString('pt-BR')} × `
-    return `• ${qtd}${l.descricao}: ${reais(l.subtotal)}`
-  })
-  return [
-    `Olá${clienteNome.trim() ? ', ' + clienteNome.trim() : ''}! Segue o orçamento ${numero}:`,
-    '',
-    ...itens,
-    '',
-    `*Total: ${reais(total)}*`,
-    '',
-    'Qualquer dúvida, é só responder por aqui.',
-  ].join('\n')
+  pdf: Blob
+  nomeArquivo: string
+  telefone: string | null | undefined
+  texto: string
+}): Promise<ResultadoEnvio> {
+  const arquivo = new File([pdf], nomeArquivo, { type: 'application/pdf' })
+  if (podeCompartilhar(arquivo)) {
+    try {
+      await navigator.share({ files: [arquivo], text: texto })
+      return 'compartilhado'
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return 'cancelado'
+      // Outro erro (ex.: permissão expirada): segue pelo download.
+    }
+  }
+  baixarArquivo(pdf, nomeArquivo)
+  const link = linkWhatsApp(telefone, texto)
+  if (!link) return 'baixado'
+  window.open(link, '_blank', 'noopener,noreferrer')
+  return 'baixado-com-conversa'
 }
