@@ -82,6 +82,10 @@ public sealed class ProdutoController : ApiControllerBase
         {
             return NotFound(new ApiResponse { Success = false, Message = ex.Message });
         }
+        catch (EstoqueAlteradoException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
+        }
     }
 
     [HttpDelete("{id:long}")]
@@ -98,6 +102,10 @@ public sealed class ProdutoController : ApiControllerBase
         catch (NotFoundException ex)
         {
             return NotFound(new ApiResponse { Success = false, Message = ex.Message });
+        }
+        catch (EstoqueAlteradoException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
         }
     }
 }
