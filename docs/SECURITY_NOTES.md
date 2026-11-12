@@ -318,3 +318,4 @@ A migration **InitialCreate** ainda não foi gerada. Será criada quando provisi
 | 2026-11-11 | Equipe Agesto | Estado atualizado: lockout por conta (DEC-43), exclusão de usuário com anonimização (DEC-44), armazenamento atual do token no web e no app, `InitialCreate` aplicada; risco do token em `localStorage` aceito no MVP (DEC-53) |
 | 2026-11-12 | Equipe Agesto | "Esqueci a senha" do Dono implementado conforme a seção 3, com envio pelo Brevo (DEC-54) |
 | 2026-11-12 | Equipe Agesto | Fim da senha provisória: acessos novos recebem convite por email (72 horas, uso único) e a pessoa cria a própria senha; "Esqueci a senha" também para o Agente (DEC-55) |
+| 2026-11-12 | Equipe Agesto | RLS ligado em `AdminsPlataforma` e `AuditoriasAdmin`, as únicas tabelas que estavam sem; volta a valer "RLS em todas as tabelas" (DEC-34) |
