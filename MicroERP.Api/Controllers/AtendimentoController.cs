@@ -23,19 +23,32 @@ public sealed class AtendimentoController : ApiControllerBase
 
     [HttpGet]
     [Authorize(Policy = Policies.Dono)]
-    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, [FromQuery] AtendimentoFiltroQuery filtro, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
-        if (paginacao.Informada)
+        // Com filtro, a lista é sempre paginada (PAG-01).
+        if (paginacao.Informada || filtro.Informado)
         {
-            var pagina = await _atendimentoService.GetPaginaAsync(empresaId, paginacao, cancellationToken);
+            var pagina = await _atendimentoService.GetPaginaAsync(empresaId, paginacao, filtro, cancellationToken);
             return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = pagina });
         }
 
         var atendimentos = await _atendimentoService.GetAllAsync(empresaId, cancellationToken);
         return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = atendimentos });
+    }
+
+    // PAG-01: os números das abas da tela de Atendimentos, sem baixar a lista inteira.
+    [HttpGet("contagem")]
+    [Authorize(Policy = Policies.Dono)]
+    public async Task<ActionResult<ApiResponse>> Contagem(CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        var contagem = await _atendimentoService.ContarPorStatusAsync(empresaId, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Contagem encontrada.", Data = contagem });
     }
 
     [HttpGet("agenda")]
@@ -57,8 +70,15 @@ public sealed class AtendimentoController : ApiControllerBase
             filtroAgente = usuarioId;
         }
 
-        var agenda = await _atendimentoService.GetAgendaAsync(empresaId, de, ate, filtroAgente, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Agenda encontrada.", Data = agenda });
+        try
+        {
+            var agenda = await _atendimentoService.GetAgendaAsync(empresaId, de, ate, filtroAgente, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Agenda encontrada.", Data = agenda });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
+        }
     }
 
     [HttpGet("{id:long}")]

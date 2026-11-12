@@ -251,4 +251,92 @@ public sealed class AtendimentoServiceTests
         Assert.Equal(string.Empty, result[1].ClienteNome);
         Assert.Null(result[1].EnderecoResumo);
     }
+
+    // PAG-02: a agenda não pagina; o teto do período limita o tamanho da resposta.
+    [Theory]
+    [InlineData(62, true)]
+    [InlineData(63, false)]
+    [InlineData(365, false)]
+    public async Task GetAgendaAsync_LimitaOPeriodoA62Dias(int dias, bool aceita)
+    {
+        var de = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
+        var ate = de.AddDays(dias);
+        _atendimentoRepoMock
+            .Setup(r => r.GetAgendaAsync(1, de, ate, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Atendimento>());
+
+        if (aceita)
+        {
+            Assert.Empty(await _service.GetAgendaAsync(1, de, ate, null, CancellationToken.None));
+        }
+        else
+        {
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.GetAgendaAsync(1, de, ate, null, CancellationToken.None));
+            Assert.Contains("62 dias", ex.Message);
+            _atendimentoRepoMock.Verify(r => r.GetAgendaAsync(It.IsAny<long>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
+                It.IsAny<long?>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+    }
+
+    [Fact]
+    public async Task GetAgendaAsync_FimAntesDoInicio_ThrowsArgumentException()
+    {
+        var de = new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _service.GetAgendaAsync(1, de, de.AddDays(-1), null, CancellationToken.None));
+    }
+
+    // PAG-02: a listagem traz o resumo, para o web não pedir a agenda do ano só por ele.
+    [Fact]
+    public async Task GetAllAsync_PreencheOResumo()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.GetAllAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Atendimento> { new() { Id = 1 }, new() { Id = 2 }, new() { Id = 3 } });
+        _atendimentoRepoMock
+            .Setup(r => r.GetResumosAsync(1, It.Is<IReadOnlyCollection<long>>(ids => ids.SequenceEqual(new long[] { 1, 2, 3 })), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<long, string?> { [1] = "Instalação de AC", [2] = "Filtro", [3] = null });
+
+        var result = await _service.GetAllAsync(1, CancellationToken.None);
+
+        Assert.Equal(["Instalação de AC", "Filtro", null], result.Select(a => a.Resumo).ToArray());
+    }
+
+    // PAG-01: a página traz nome, telefone e endereço do cliente (o web não baixa mais
+    // todos os clientes) e repassa os filtros ao repositório.
+    [Fact]
+    public async Task GetPaginaAsync_TrazOClienteERepassaOsFiltros()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.GetPaginaAsync(1, 2, 50, "joao", StatusAtendimento.Pendente, 7L, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Atendimento>
+            {
+                new() { Id = 1, Cliente = new Cliente { Nome = "João", Telefone = "(34) 9999", Logradouro = "R. A", Numero = "1", Bairro = "Centro" } },
+                new() { Id = 2, Cliente = new Cliente { Nome = "Removido", DeletedAt = DateTime.UtcNow } }
+            }, 51));
+        _atendimentoRepoMock
+            .Setup(r => r.GetResumosAsync(1, It.IsAny<IReadOnlyCollection<long>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<long, string?>());
+
+        var pagina = await _service.GetPaginaAsync(1, new PaginacaoQuery { Pagina = 2, Tamanho = 50 },
+            new AtendimentoFiltroQuery { Busca = "joao", Status = StatusAtendimento.Pendente, ClienteId = 7 }, CancellationToken.None);
+
+        Assert.Equal(51, pagina.Total);
+        Assert.Equal("João", pagina.Itens[0].ClienteNome);
+        Assert.Equal("(34) 9999", pagina.Itens[0].ClienteTelefone);
+        Assert.Equal("R. A, 1 — Centro", pagina.Itens[0].EnderecoResumo);
+        Assert.Null(pagina.Itens[1].ClienteNome); // cliente excluído = ausente
+    }
+
+    [Fact]
+    public async Task ContarPorStatusAsync_SomaAsAbas()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.ContarPorStatusAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<StatusAtendimento, int> { [StatusAtendimento.Pendente] = 3, [StatusAtendimento.Concluido] = 5 });
+
+        var contagem = await _service.ContarPorStatusAsync(1, CancellationToken.None);
+
+        Assert.Equal((8, 3, 5, 0), (contagem.Todos, contagem.Pendente, contagem.Concluido, contagem.Cancelado));
+    }
 }

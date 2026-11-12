@@ -20,14 +20,15 @@ public sealed class ClienteController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, [FromQuery] ClienteFiltroQuery filtro, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
-        if (paginacao.Informada)
+        // Com busca, a lista é sempre paginada (PAG-01).
+        if (paginacao.Informada || filtro.Informado)
         {
-            var pagina = await _clienteService.GetPaginaAsync(empresaId, paginacao, cancellationToken);
+            var pagina = await _clienteService.GetPaginaAsync(empresaId, paginacao, filtro, cancellationToken);
             return Ok(new ApiResponse { Success = true, Message = "Clientes encontrados.", Data = pagina });
         }
 

@@ -126,7 +126,15 @@ export interface SyncCargaResponse {
   servicos: Servico[]
   sugeridos?: ServicoSugerido[]
   configuracao?: Configuracao | null
+  /** Na Carga incremental (PERF-01): ids excluídos desde `ultimaSincronizacao`. Ausente na completa. */
+  removidos?: SyncRemovidos | null
   sincronizadoEm: string
+}
+
+export interface SyncRemovidos {
+  clientes: number[]
+  produtos: number[]
+  servicos: number[]
 }
 
 /** Payload de atendimento offline (AtendimentoSyncRequest) — enxuto. */

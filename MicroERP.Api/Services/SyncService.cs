@@ -50,7 +50,10 @@ public sealed class SyncService : ISyncService
     // O app em campo não precisa desses dados, e um celular perdido não os expõe (LGPD).
     public async Task<SyncCargaResponse> CargaAsync(long empresaId, DateTime? ultimaSincronizacao, CancellationToken cancellationToken, bool restringirDadosSensiveis = false)
     {
-        var desde = ultimaSincronizacao ?? DateTime.MinValue;
+        // Antes das consultas: o que mudar durante a Carga entra na próxima.
+        var sincronizadoEm = DateTime.UtcNow;
+        var incremental = ultimaSincronizacao.HasValue;
+        var desde = incremental ? DesdeComMargem(ultimaSincronizacao!.Value) : DateTime.MinValue;
 
         var clientes = await _dbContext.Clientes
             .AsNoTracking()
@@ -185,6 +188,26 @@ public sealed class SyncService : ISyncService
                 AgenteCadastraServico = true
             };
 
+        // PERF-01: na Carga incremental, o app precisa saber o que sumiu. A exclusão é
+        // soft delete e o SaveChanges atualiza UpdatedAt, então "excluído desde" é
+        // DeletedAt preenchido com UpdatedAt depois de 'desde'.
+        SyncRemovidosResponse? removidos = null;
+        if (incremental)
+        {
+            removidos = new SyncRemovidosResponse
+            {
+                Clientes = await _dbContext.Clientes.AsNoTracking()
+                    .Where(c => c.EmpresaId == empresaId && c.DeletedAt != null && c.UpdatedAt > desde)
+                    .Select(c => c.Id).ToListAsync(cancellationToken),
+                Produtos = await _dbContext.Produtos.AsNoTracking()
+                    .Where(p => p.EmpresaId == empresaId && p.DeletedAt != null && p.UpdatedAt > desde)
+                    .Select(p => p.Id).ToListAsync(cancellationToken),
+                Servicos = await _dbContext.Servicos.AsNoTracking()
+                    .Where(s => s.EmpresaId == empresaId && s.DeletedAt != null && s.UpdatedAt > desde)
+                    .Select(s => s.Id).ToListAsync(cancellationToken)
+            };
+        }
+
         return new SyncCargaResponse
         {
             Clientes = clientes,
@@ -193,8 +216,26 @@ public sealed class SyncService : ISyncService
             Orcamentos = orcamentos,
             Sugeridos = sugeridos,
             Configuracao = configuracao,
-            SincronizadoEm = DateTime.UtcNow
+            Removidos = removidos,
+            SincronizadoEm = sincronizadoEm
         };
+    }
+
+    // Margem da Carga incremental: UpdatedAt é marcado antes do commit, então uma
+    // gravação que termina durante a Carga anterior pode ter UpdatedAt um pouco antes
+    // do SincronizadoEm dela. Repetir alguns minutos só regrava o que o app já tem.
+    internal static readonly TimeSpan MargemIncremental = TimeSpan.FromMinutes(5);
+
+    private static DateTime DesdeComMargem(DateTime ultimaSincronizacao)
+    {
+        // A query string com "Z" chega como Local; o Npgsql só compara timestamptz em UTC.
+        var utc = ultimaSincronizacao.Kind switch
+        {
+            DateTimeKind.Local => ultimaSincronizacao.ToUniversalTime(),
+            DateTimeKind.Unspecified => DateTime.SpecifyKind(ultimaSincronizacao, DateTimeKind.Utc),
+            _ => ultimaSincronizacao
+        };
+        return utc - MargemIncremental;
     }
 
     // porDono: serviço criado pelo Dono no app já nasce revisado e ignora a chave

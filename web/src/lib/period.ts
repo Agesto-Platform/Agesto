@@ -1,4 +1,9 @@
-import type { Period } from '../layout/PeriodSwitch'
+import type { AgendaPeriod, Period } from '../layout/PeriodSwitch'
+
+/** Na agenda, "Ano" vira "Mês": a API não devolve o ano inteiro (PAG-02). */
+export function agendaPeriod(p: Period): AgendaPeriod {
+  return p === 'ano' ? 'mes' : p
+}
 
 /** Converte o período da topbar numa janela [de, ate] em ISO (UTC). */
 export function periodRange(
@@ -24,7 +29,7 @@ export function periodRange(
  * range analítico, que termina em "agora"). Cobre o período inteiro.
  */
 export function agendaRange(
-  period: Period,
+  period: AgendaPeriod,
   now = new Date(),
 ): { de: string; ate: string } {
   const de = new Date(now)
@@ -34,12 +39,9 @@ export function agendaRange(
 
   if (period === '7d') {
     ate.setDate(ate.getDate() + 7)
-  } else if (period === 'mes') {
+  } else {
     de.setDate(1)
     ate.setMonth(ate.getMonth() + 1, 0) // último dia do mês corrente
-  } else {
-    de.setMonth(0, 1)
-    ate.setMonth(11, 31)
   }
 
   return { de: de.toISOString(), ate: ate.toISOString() }

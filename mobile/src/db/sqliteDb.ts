@@ -23,6 +23,18 @@ export function createSqliteDb(): LocalDb {
       }
     })
   }
+  // Carga incremental (PERF-01): só as linhas que mudaram, numa transação.
+  async function mergeRef(table: string, items: { id: number }[], removidos: number[]): Promise<void> {
+    const d = await conn()
+    await d.withTransactionAsync(async () => {
+      for (const id of removidos) {
+        await d.runAsync(`DELETE FROM ${table} WHERE id = ?`, id)
+      }
+      for (const it of items) {
+        await d.runAsync(`INSERT OR REPLACE INTO ${table} (id, json) VALUES (?, ?)`, it.id, JSON.stringify(it))
+      }
+    })
+  }
   async function getRef<T>(table: string): Promise<T[]> {
     const d = await conn()
     const rows = await d.getAllAsync<Row>(`SELECT json FROM ${table} ORDER BY id`)
@@ -48,6 +60,9 @@ export function createSqliteDb(): LocalDb {
     saveProdutos: (items) => saveRef('produtos', items),
     saveServicos: (items) => saveRef('servicos', items),
     saveAgenda: (items) => saveRef('agenda', items),
+    mergeClientes: (items, removidos) => mergeRef('clientes', items, removidos),
+    mergeProdutos: (items, removidos) => mergeRef('produtos', items, removidos),
+    mergeServicos: (items, removidos) => mergeRef('servicos', items, removidos),
     getClientes: () => getRef<Cliente>('clientes'),
     getProdutos: () => getRef<Produto>('produtos'),
     getServicos: () => getRef<Servico>('servicos'),

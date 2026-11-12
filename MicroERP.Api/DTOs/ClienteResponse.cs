@@ -12,6 +12,10 @@ public sealed class ClienteResponse
     public string? Bairro { get; set; }
     public string? Cidade { get; set; }
     public string? Cep { get; set; }
+    // Só na lista paginada (PAG-01): atendimentos vivos do cliente e a data do mais
+    // recente (agendada, senão a de registro).
+    public int? TotalAtendimentos { get; set; }
+    public DateTime? UltimoAtendimento { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

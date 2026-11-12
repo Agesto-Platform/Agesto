@@ -11,6 +11,14 @@ export interface ApiResponse<T> {
   errors: string[]
 }
 
+/** Página de uma lista paginada (`?pagina=&tamanho=`, PaginaResponse do backend). */
+export interface Pagina<T> {
+  itens: T[]
+  pagina: number
+  tamanho: number
+  total: number
+}
+
 /* ---------- Auth ---------- */
 
 export interface AuthResponse {
@@ -164,6 +172,9 @@ export interface Cliente {
   bairro: string | null
   cidade: string | null
   cep: string | null
+  /** Só na lista paginada (PAG-01): atendimentos do cliente e a data do mais recente. */
+  totalAtendimentos?: number | null
+  ultimoAtendimento?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -332,8 +343,22 @@ export interface Atendimento {
   clienteId: number
   /** Agente responsável (quem executa). */
   usuarioId: number
+  /** Primeiro serviço, senão o primeiro produto; null sem itens. Vem na listagem. */
+  resumo?: string | null
+  /** Só na lista paginada (PAG-01): o cliente vem junto, sem baixar todos os clientes. */
+  clienteNome?: string | null
+  clienteTelefone?: string | null
+  enderecoResumo?: string | null
   createdAt: string
   updatedAt: string
+}
+
+/** Números das abas da tela de Atendimentos (GET /api/atendimento/contagem). */
+export interface AtendimentoContagem {
+  todos: number
+  pendente: number
+  concluido: number
+  cancelado: number
 }
 
 export interface AtendimentoInput {

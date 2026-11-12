@@ -53,6 +53,11 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // translate() nativo do Postgres, para a busca sem acento (PAG-01).
+        modelBuilder.HasDbFunction(typeof(FuncoesSql).GetMethod(nameof(FuncoesSql.Translate))!)
+            .HasName("translate")
+            .IsBuiltIn();
+
         modelBuilder.Entity<Empresa>(entity =>
         {
             entity.Property(e => e.Nome).HasMaxLength(150).IsRequired();

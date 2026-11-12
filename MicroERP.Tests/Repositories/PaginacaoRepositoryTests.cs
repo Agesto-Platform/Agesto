@@ -23,14 +23,14 @@ public sealed class PaginacaoRepositoryTests
 
         var repo = new ClienteRepository(db);
 
-        var (pagina2, total) = await repo.GetPaginaAsync(1, pagina: 2, tamanho: 10, CancellationToken.None);
+        var (pagina2, total) = await repo.GetPaginaAsync(1, pagina: 2, tamanho: 10, busca: null, CancellationToken.None);
         Assert.Equal(25, total);
         Assert.Equal(Enumerable.Range(11, 10).Select(i => $"Cliente {i:00}"), pagina2.Select(c => c.Nome));
 
-        var (pagina3, _) = await repo.GetPaginaAsync(1, pagina: 3, tamanho: 10, CancellationToken.None);
+        var (pagina3, _) = await repo.GetPaginaAsync(1, pagina: 3, tamanho: 10, busca: null, CancellationToken.None);
         Assert.Equal(5, pagina3.Count);
 
-        var (alemDoFim, totalAlem) = await repo.GetPaginaAsync(1, pagina: 9, tamanho: 10, CancellationToken.None);
+        var (alemDoFim, totalAlem) = await repo.GetPaginaAsync(1, pagina: 9, tamanho: 10, busca: null, CancellationToken.None);
         Assert.Empty(alemDoFim);
         Assert.Equal(25, totalAlem);
     }
@@ -43,8 +43,8 @@ public sealed class PaginacaoRepositoryTests
         await db.SaveChangesAsync();
 
         var repo = new ClienteRepository(db);
-        var (p1, _) = await repo.GetPaginaAsync(1, 1, 2, CancellationToken.None);
-        var (p2, _) = await repo.GetPaginaAsync(1, 2, 2, CancellationToken.None);
+        var (p1, _) = await repo.GetPaginaAsync(1, 1, 2, null, CancellationToken.None);
+        var (p2, _) = await repo.GetPaginaAsync(1, 2, 2, null, CancellationToken.None);
 
         Assert.Equal(new long[] { 1, 2, 3 }, p1.Concat(p2).Select(c => c.Id));
     }

@@ -93,6 +93,53 @@ public sealed class SyncServiceTests
         Assert.False(carga.Configuracao.ControlaEstoque);
     }
 
+    // PERF-01: com ultimaSincronizacao, só o que mudou desde então (com margem) e os
+    // ids excluídos, para o app apagar do SQLite.
+    [Fact]
+    public async Task CargaAsync_Incremental_TrazSoOQueMudouEOsExcluidos()
+    {
+        await using var db = CreateContext();
+        var ultima = new DateTime(2026, 11, 10, 12, 0, 0, DateTimeKind.Utc);
+        var antes = ultima.AddHours(-1);
+        var depois = ultima.AddMinutes(10);
+        var dentroDaMargem = ultima.AddMinutes(-2);
+        db.Clientes.AddRange(
+            new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Sem mudança", Cpf = "1", EmpresaId = 1, UpdatedAt = antes },
+            new Cliente { Id = 2, Uuid = Guid.NewGuid(), Nome = "Editado", Cpf = "2", EmpresaId = 1, UpdatedAt = depois },
+            new Cliente { Id = 3, Uuid = Guid.NewGuid(), Nome = "Na margem", Cpf = "3", EmpresaId = 1, UpdatedAt = dentroDaMargem },
+            new Cliente { Id = 4, Uuid = Guid.NewGuid(), Nome = "Excluído", Cpf = "4", EmpresaId = 1, UpdatedAt = depois, DeletedAt = depois },
+            new Cliente { Id = 5, Uuid = Guid.NewGuid(), Nome = "Excluído antes", Cpf = "5", EmpresaId = 1, UpdatedAt = antes, DeletedAt = antes },
+            new Cliente { Id = 6, Uuid = Guid.NewGuid(), Nome = "Outra empresa", Cpf = "6", EmpresaId = 2, UpdatedAt = depois, DeletedAt = depois });
+        db.Produtos.Add(new Produto { Id = 10, Uuid = Guid.NewGuid(), Nome = "Excluído", EmpresaId = 1, UpdatedAt = depois, DeletedAt = depois });
+        db.Servicos.Add(new Servico { Id = 20, Uuid = Guid.NewGuid(), Descricao = "Editado", EmpresaId = 1, UpdatedAt = depois });
+        await db.SaveChangesAsync();
+
+        var carga = await BuildSync(db).CargaAsync(1, ultima, CancellationToken.None);
+
+        Assert.Equal([2, 3], carga.Clientes.Select(c => c.Id).Order().ToArray());
+        Assert.Empty(carga.Produtos);
+        Assert.Equal([20], carga.Servicos.Select(s => s.Id).ToArray());
+        Assert.NotNull(carga.Removidos);
+        Assert.Equal([4], carga.Removidos!.Clientes);
+        Assert.Equal([10], carga.Removidos.Produtos);
+        Assert.Empty(carga.Removidos.Servicos);
+    }
+
+    [Fact]
+    public async Task CargaAsync_Completa_NaoTrazRemovidosEMarcaOInicio()
+    {
+        await using var db = CreateContext();
+        db.Clientes.Add(new Cliente { Id = 4, Uuid = Guid.NewGuid(), Nome = "Excluído", Cpf = "4", EmpresaId = 1, DeletedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+        var antesDaCarga = DateTime.UtcNow;
+
+        var carga = await BuildSync(db).CargaAsync(1, null, CancellationToken.None);
+
+        Assert.Null(carga.Removidos);
+        Assert.Empty(carga.Clientes);
+        Assert.InRange(carga.SincronizadoEm, antesDaCarga, DateTime.UtcNow);
+    }
+
     [Fact]
     public async Task CargaAsync_SemConfiguracao_RetornaPadraoSeguro()
     {
