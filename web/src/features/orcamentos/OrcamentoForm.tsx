@@ -73,6 +73,9 @@ export function OrcamentoForm({
 
   const servicoSelId = tipo === 'servico' && refId ? Number(refId) : 0
   const sugeridos = useServicoSugeridos(servicoSelId)
+  // E2E-02: no atendimento a empreitada não multiplica pela quantidade (DEC-04).
+  // Travada em 1 aqui, o orçamento cobra o mesmo que o atendimento convertido.
+  const empreitada = servicos.find((s) => s.id === servicoSelId)?.tipoCobranca === 'Empreitada'
 
   function addSugeridos() {
     const list = sugeridos.data ?? []
@@ -115,7 +118,8 @@ export function OrcamentoForm({
 
   function addItem() {
     setDraftError(null)
-    if (!quantidade || quantidade < 1) return setDraftError('Quantidade inválida.')
+    const qtd = empreitada ? 1 : quantidade
+    if (!qtd || qtd < 1) return setDraftError('Quantidade inválida.')
     if (preco === undefined || preco < 0) return setDraftError('Preço inválido.')
 
     let produtoId: number | null = null
@@ -145,7 +149,7 @@ export function OrcamentoForm({
         servicoId,
         descricao: desc,
         label,
-        quantidade,
+        quantidade: qtd,
         precoUnitario: preco,
       },
     ])
@@ -329,7 +333,14 @@ export function OrcamentoForm({
           />
         )}
         <div className="form-row">
-          <NumberField label="Qtd." step={1} value={quantidade} onChange={setQuantidade} />
+          <NumberField
+            label="Qtd."
+            step={1}
+            value={empreitada ? 1 : quantidade}
+            onChange={setQuantidade}
+            disabled={empreitada}
+            hint={empreitada ? 'Empreitada: 1 por linha. Para cobrar de novo, adicione outra linha.' : undefined}
+          />
           <NumberField label="Preço unit." prefix="R$" step={0.01} value={preco} onChange={setPreco} />
         </div>
         {draftError && (

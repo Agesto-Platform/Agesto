@@ -180,6 +180,38 @@ public sealed class OrcamentoServiceTests
             }, CancellationToken.None));
     }
 
+    // E2E-02: no atendimento a empreitada cobra 1 × valor; o orçamento trava em 1
+    // para não cobrar 2 × e converter em 1 ×.
+    [Theory]
+    [InlineData(TipoCobranca.Empreitada, 2, false)]
+    [InlineData(TipoCobranca.Empreitada, 1, true)]
+    [InlineData(TipoCobranca.PorHora, 3, true)]
+    public async Task CreateAsync_ServicoDeEmpreitada_TravaQuantidadeEm1(TipoCobranca tipo, int quantidade, bool aceita)
+    {
+        await using var db = CreateContext();
+        SeedCliente(db, id: 1, empresaId: 1);
+        db.Servicos.Add(new Servico { Id = 20, Uuid = Guid.NewGuid(), Descricao = "Serviço", TipoCobranca = tipo, EmpresaId = 1 });
+        await db.SaveChangesAsync();
+
+        var request = new OrcamentoCreateRequest
+        {
+            ClienteId = 1,
+            Itens = [new() { ServicoId = 20, Quantidade = quantidade, PrecoUnitario = 100m }]
+        };
+        var service = BuildService(db);
+
+        if (aceita)
+        {
+            var orcamento = await service.CreateAsync(1, 7, request, CancellationToken.None);
+            Assert.Equal(quantidade * 100m, orcamento.ValorTotal);
+        }
+        else
+        {
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.CreateAsync(1, 7, request, CancellationToken.None));
+            Assert.Contains("quantidade é 1", ex.Message);
+        }
+    }
+
     // Rollback real: o provider InMemory ignora transacoes, entao este teste usa SQLite
     // relacional (in-memory) para provar que uma falha no meio da conversao desfaz tudo.
     [Fact]
