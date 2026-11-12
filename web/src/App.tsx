@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppShell } from './layout/AppShell'
 import { ProtectedRoute } from './auth/ProtectedRoute'
@@ -25,6 +26,9 @@ import { AdminEmpresaPage } from './admin/AdminEmpresaPage'
 import { AdminAuditoriaPage } from './admin/AuditoriaLista'
 import { AdminEquipePage } from './admin/AdminEquipePage'
 
+// DEC-57: a página de venda carrega à parte; quem usa o painel não baixa o código dela.
+const PaginaDeVenda = lazy(() => import('./pages/venda/PaginaDeVenda'))
+
 export default function App() {
   return (
     <Routes>
@@ -50,7 +54,17 @@ export default function App() {
         <Route path="equipe" element={<AdminEquipePage />} />
       </Route>
 
-      <Route element={<ProtectedRoute />}>
+      <Route
+        element={
+          <ProtectedRoute
+            raizPublica={
+              <Suspense fallback={null}>
+                <PaginaDeVenda />
+              </Suspense>
+            }
+          />
+        }
+      >
         <Route path="/aceitar-termos" element={<AceitarTermos />} />
         <Route path="/trocar-senha" element={<TrocarSenha />} />
         <Route element={<AppShell />}>
