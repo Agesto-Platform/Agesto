@@ -48,6 +48,10 @@ export interface LocalDb {
   saveProdutos(items: Produto[]): Promise<void>
   saveServicos(items: Servico[]): Promise<void>
   saveAgenda(items: AgendaItem[]): Promise<void>
+  /** Carga incremental (PERF-01): grava ou atualiza pelo id e apaga os excluídos no servidor. */
+  mergeClientes(items: Cliente[], removidos: number[]): Promise<void>
+  mergeProdutos(items: Produto[], removidos: number[]): Promise<void>
+  mergeServicos(items: Servico[], removidos: number[]): Promise<void>
   getClientes(): Promise<Cliente[]>
   getProdutos(): Promise<Produto[]>
   getServicos(): Promise<Servico[]>
