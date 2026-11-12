@@ -287,19 +287,72 @@ public sealed class AtendimentoServiceTests
     }
 
     // PAG-02: a listagem traz o resumo, para o web não pedir a agenda do ano só por ele.
+    // PAG-01 fase 3: sem parâmetros, primeira página com 20 e a ordem da tela.
     [Fact]
-    public async Task GetAllAsync_PreencheOResumo()
+    public async Task GetPaginaAsync_SemParametros_PreencheOResumo()
     {
         _atendimentoRepoMock
-            .Setup(r => r.GetAllAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<Atendimento> { new() { Id = 1 }, new() { Id = 2 }, new() { Id = 3 } });
+            .Setup(r => r.GetPaginaAsync(1, 1, 20, null, null, null, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Atendimento> { new() { Id = 1 }, new() { Id = 2 }, new() { Id = 3 } }, 3));
         _atendimentoRepoMock
             .Setup(r => r.GetResumosAsync(1, It.Is<IReadOnlyCollection<long>>(ids => ids.SequenceEqual(new long[] { 1, 2, 3 })), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<long, string?> { [1] = "Instalação de AC", [2] = "Filtro", [3] = null });
 
-        var result = await _service.GetAllAsync(1, CancellationToken.None);
+        var result = await _service.GetPaginaAsync(1, new PaginacaoQuery(), null, CancellationToken.None);
 
-        Assert.Equal(["Instalação de AC", "Filtro", null], result.Select(a => a.Resumo).ToArray());
+        Assert.Equal((1, 20, 3), (result.Pagina, result.Tamanho, result.Total));
+        Assert.Equal(new string?[] { "Instalação de AC", "Filtro", null }, result.Itens.Select(a => a.Resumo).ToArray());
+    }
+
+    // PAG-01: aberto pelo id (e depois de criar/editar), o atendimento traz o cliente.
+    [Fact]
+    public async Task GetByIdAsync_TrazOCliente()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.GetByIdAsync(1, 3, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Atendimento { Id = 3, EmpresaId = 1, ClienteId = 5 });
+        _clienteRepoMock
+            .Setup(r => r.GetByIdAsync(1, 5, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Cliente { Id = 5, EmpresaId = 1, Nome = "João", Telefone = "(34) 9999", Logradouro = "R. A", Numero = "1", Bairro = "Centro" });
+
+        var atendimento = await _service.GetByIdAsync(1, 3, CancellationToken.None);
+
+        Assert.Equal("João", atendimento.ClienteNome);
+        Assert.Equal("(34) 9999", atendimento.ClienteTelefone);
+        Assert.Equal("R. A, 1 — Centro", atendimento.EnderecoResumo);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_DevolveOCliente()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.GetByIdAsync(1, 3, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Atendimento { Id = 3, EmpresaId = 1, ClienteId = 5, Status = StatusAtendimento.Pendente });
+        _clienteRepoMock
+            .Setup(r => r.GetByIdAsync(1, 5, false, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Cliente { Id = 5, EmpresaId = 1, Nome = "João" });
+
+        var atendimento = await _service.UpdateAsync(1, 3,
+            new AtendimentoUpdateRequest { Status = StatusAtendimento.Pendente }, CancellationToken.None);
+
+        Assert.Equal("João", atendimento.ClienteNome);
+    }
+
+    // Dashboard ("últimos atendimentos"): ordem=registro chega ao repositório.
+    [Fact]
+    public async Task GetPaginaAsync_OrdemRegistro_RepassaAoRepositorio()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.GetPaginaAsync(1, 1, 6, null, null, null, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Atendimento>(), 0));
+        _atendimentoRepoMock
+            .Setup(r => r.GetResumosAsync(1, It.IsAny<IReadOnlyCollection<long>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<long, string?>());
+
+        await _service.GetPaginaAsync(1, new PaginacaoQuery { Pagina = 1, Tamanho = 6 },
+            new AtendimentoFiltroQuery { Ordem = AtendimentoFiltroQuery.OrdemRegistro }, CancellationToken.None);
+
+        _atendimentoRepoMock.Verify(r => r.GetPaginaAsync(1, 1, 6, null, null, null, true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // PAG-01: a página traz nome, telefone e endereço do cliente (o web não baixa mais
@@ -308,7 +361,7 @@ public sealed class AtendimentoServiceTests
     public async Task GetPaginaAsync_TrazOClienteERepassaOsFiltros()
     {
         _atendimentoRepoMock
-            .Setup(r => r.GetPaginaAsync(1, 2, 50, "joao", StatusAtendimento.Pendente, 7L, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetPaginaAsync(1, 2, 50, "joao", StatusAtendimento.Pendente, 7L, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync((new List<Atendimento>
             {
                 new() { Id = 1, Cliente = new Cliente { Nome = "João", Telefone = "(34) 9999", Logradouro = "R. A", Numero = "1", Bairro = "Centro" } },

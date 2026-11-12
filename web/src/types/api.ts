@@ -246,12 +246,18 @@ export interface ItemOrcamento {
   precoUnitario: number
   subtotal: number
   custo: number | null
+  /** PAG-01: nome do produto e do serviço vêm no item, sem baixar o catálogo. */
+  produtoNome?: string | null
+  servicoDescricao?: string | null
+  tipoCobranca?: TipoCobranca | null
 }
 
 export interface Orcamento {
   id: number
   uuid: string
   clienteId: number
+  /** PAG-01: o cliente vem junto, sem baixar todos os clientes. */
+  clienteNome?: string | null
   status: StatusOrcamento
   valorTotal: number
   dataRegistro: string
@@ -259,6 +265,13 @@ export interface Orcamento {
   createdAt: string
   updatedAt: string
   itens: ItemOrcamento[]
+}
+
+/** GET /api/orcamento/resumo: quantidade e valor por status (PAG-01). */
+export interface OrcamentoResumo {
+  status: StatusOrcamento
+  quantidade: number
+  valorTotal: number
 }
 
 export interface ItemOrcamentoInput {
@@ -320,6 +333,8 @@ export type ConfiguracaoPatch = Partial<
 export interface ServicoSugerido {
   produtoId: number
   produtoNome: string
+  /** PAG-01: preço atual do produto, para lançar o kit sem baixar o catálogo. */
+  produtoPreco?: number
   quantidadePadrao: number
 }
 
@@ -386,6 +401,8 @@ export interface ItemProdutoResp {
   descricao: string | null
   atendimentoId: number
   produtoId: number | null
+  /** PAG-01: nome do produto do catálogo, sem baixar o catálogo. */
+  produtoNome?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -407,6 +424,9 @@ export interface ItemServicoResp {
   subtotal: number
   atendimentoId: number
   servicoId: number
+  /** PAG-01: descrição e cobrança do serviço, sem baixar o catálogo. */
+  servicoDescricao?: string | null
+  tipoCobranca?: TipoCobranca | null
   createdAt: string
   updatedAt: string
 }

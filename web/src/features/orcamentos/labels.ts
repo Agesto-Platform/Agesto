@@ -1,17 +1,11 @@
-import type { Produto, Servico } from '../../types/api'
+import type { ItemOrcamento } from '../../types/api'
 
-/** Rótulo legível de um item de orçamento (catálogo ou avulso). */
+/** Rótulo legível de um item de orçamento (catálogo ou avulso). O nome vem no item (PAG-01). */
 export function itemLabel(
-  item: { produtoId: number | null; servicoId: number | null; descricao: string | null },
-  produtos: Produto[],
-  servicos: Servico[],
+  item: Pick<ItemOrcamento, 'produtoId' | 'servicoId' | 'descricao' | 'produtoNome' | 'servicoDescricao'>,
 ): string {
-  if (item.produtoId != null)
-    return produtos.find((p) => p.id === item.produtoId)?.nome ?? `Produto #${item.produtoId}`
-  if (item.servicoId != null)
-    return (
-      servicos.find((s) => s.id === item.servicoId)?.descricao ?? `Serviço #${item.servicoId}`
-    )
+  if (item.produtoId != null) return item.produtoNome ?? item.descricao ?? `Produto #${item.produtoId}`
+  if (item.servicoId != null) return item.servicoDescricao ?? item.descricao ?? `Serviço #${item.servicoId}`
   return item.descricao ?? 'Item avulso'
 }
 

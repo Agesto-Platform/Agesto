@@ -4,7 +4,6 @@ namespace MicroERP.Api.Services.Interfaces;
 
 public interface IAtendimentoService
 {
-    Task<IReadOnlyList<AtendimentoResponse>> GetAllAsync(long empresaId, CancellationToken cancellationToken);
     Task<PaginaResponse<AtendimentoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, AtendimentoFiltroQuery? filtro, CancellationToken cancellationToken);
     Task<AtendimentoContagemResponse> ContarPorStatusAsync(long empresaId, CancellationToken cancellationToken);
     Task<IReadOnlyList<AgendaItemResponse>> GetAgendaAsync(long empresaId, DateTime? de, DateTime? ate, long? agenteId, CancellationToken cancellationToken);

@@ -62,11 +62,27 @@ public sealed class BuscaListagemTests
         await using var db = new AppDbContext(options);
 
         var (itens, total) = await new AtendimentoRepository(db)
-            .GetPaginaAsync(1, 1, 50, busca, status, clienteId, CancellationToken.None);
+            .GetPaginaAsync(1, 1, 50, busca, status, clienteId, porRegistro: false, CancellationToken.None);
 
         Assert.Equal(esperados, itens.Select(a => a.Id).ToArray());
         Assert.Equal(esperados.Length, total);
         Assert.All(itens, a => Assert.NotNull(a.Cliente)); // o nome vem junto, sem lista de clientes
+    }
+
+    // Dashboard ("últimos atendimentos", ordem=registro): só a data de registro conta;
+    // o 11, agendado para depois, cai para o meio.
+    [Fact]
+    public async Task Atendimentos_OrdemPorRegistro_MaisRecentePrimeiro()
+    {
+        await using var connection = AbrirSqlite(out var options);
+        await SeedAsync(options);
+        await using var db = new AppDbContext(options);
+
+        var (itens, total) = await new AtendimentoRepository(db)
+            .GetPaginaAsync(1, 1, 50, null, null, null, porRegistro: true, CancellationToken.None);
+
+        Assert.Equal(new long[] { 20, 11, 10 }, itens.Select(a => a.Id).ToArray());
+        Assert.Equal(3, total);
     }
 
     [Fact]

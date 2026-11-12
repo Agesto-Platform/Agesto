@@ -25,15 +25,9 @@ public sealed class ClienteController : ApiControllerBase
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
-        // Com busca, a lista é sempre paginada (PAG-01).
-        if (paginacao.Informada || filtro.Informado)
-        {
-            var pagina = await _clienteService.GetPaginaAsync(empresaId, paginacao, filtro, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Clientes encontrados.", Data = pagina });
-        }
-
-        var clientes = await _clienteService.GetAllAsync(empresaId, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Clientes encontrados.", Data = clientes });
+        // PAG-01 fase 3: a lista é sempre paginada (sem parâmetros, página 1 com 20).
+        var pagina = await _clienteService.GetPaginaAsync(empresaId, paginacao, filtro, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Clientes encontrados.", Data = pagina });
     }
 
     [HttpGet("{id:long}")]

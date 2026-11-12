@@ -1,20 +1,23 @@
 import { useState, type KeyboardEvent } from 'react'
-import { aRevisar, servicosResource, useMarcarRevisado } from './resource'
+import { servicosResource, useMarcarRevisado, useServicosARevisarTotal, useServicosPaginados } from './resource'
 import { useServicoSugeridos } from './sugeridosQueries'
 import { ServicoForm } from './ServicoForm'
 import {
   Badge,
   Button,
+  CarregarMais,
   ConfirmDialog,
   Drawer,
   Empty,
   PageHead,
+  SearchBox,
   Seg,
   brl,
   useToast,
 } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { ApiError } from '../../lib/api'
+import { useDebounced } from '../../lib/paginacao'
 import { useDashboard } from '../../lib/queries'
 import type { Servico, ServicoInput, ServicoReceitaItem } from '../../types/api'
 import './servicos.css'
@@ -173,7 +176,6 @@ function ServicoDetalhe({
 }
 
 export function ServicosPage() {
-  const list = servicosResource.useList()
   const create = servicosResource.useCreate()
   const update = servicosResource.useUpdate()
   const remove = servicosResource.useRemove()
@@ -183,16 +185,22 @@ export function ServicosPage() {
   const dash = useDashboard('mes')
 
   const [filtro, setFiltro] = useState<Filtro>('todos')
-  const [selId, setSelId] = useState<number | null>(null)
+  const [busca, setBusca] = useState('')
+  // Guarda o serviço escolhido inteiro: um recém-salvo pode estar fora das páginas carregadas.
+  const [escolhido, setEscolhido] = useState<Servico | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Servico | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [toDelete, setToDelete] = useState<Servico | null>(null)
 
-  const pendentes = aRevisar(list.data)
-  const filtrando = filtro === 'revisar' && pendentes.length > 0
-  const rows = (filtrando ? pendentes : list.data) ?? []
-  const sel = rows.find((s) => s.id === selId) ?? rows[0] ?? null
+  // PAG-01 fase 3: 50 por vez, busca e "A revisar" no servidor.
+  const termo = useDebounced(busca.trim())
+  const aRevisar = useServicosARevisarTotal().data ?? 0
+  const filtrando = filtro === 'revisar' && aRevisar > 0
+  const list = useServicosPaginados(termo, filtrando)
+  const rows = list.itens
+  const sel = rows.find((s) => s.id === escolhido?.id) ?? escolhido ?? rows[0] ?? null
+  const setSelId = (id: number) => setEscolhido(rows.find((s) => s.id === id) ?? null)
   const stats = (id: number) => dash.data?.servicos.receitaPorServico.find((r) => r.servicoId === id)
 
   function openCreate() {
@@ -213,7 +221,7 @@ export function ServicosPage() {
     setServerError(null)
     const onSuccess = (salvo: Servico) => {
       setDrawerOpen(false)
-      setSelId(salvo.id)
+      setEscolhido(salvo)
       toast.success(editing ? 'Serviço atualizado.' : 'Serviço criado.')
     }
     const onError = (e: unknown) =>
@@ -235,6 +243,7 @@ export function ServicosPage() {
     remove.mutate(toDelete.id, {
       onSuccess: () => {
         toast.success('Serviço removido.')
+        if (escolhido?.id === toDelete.id) setEscolhido(null)
         setToDelete(null)
       },
       onError: () => {
@@ -258,24 +267,27 @@ export function ServicosPage() {
 
       <div className="grid g-main-side">
         <section className="card">
-          {pendentes.length > 0 && (
-            <div className="toolbar">
-              <Seg<Filtro>
-                label="Filtro"
-                value={filtro}
-                onChange={setFiltro}
-                options={[
-                  { value: 'todos', label: 'Todos' },
-                  { value: 'revisar', label: `A revisar (${pendentes.length})` },
-                ]}
-              />
-              <span className="hint" style={{ marginLeft: 'auto' }}>
-                {pendentes.length === 1
-                  ? '1 serviço criado no app espera revisão'
-                  : `${pendentes.length} serviços criados no app esperam revisão`}
-              </span>
-            </div>
-          )}
+          <div className="toolbar">
+            <SearchBox value={busca} onChange={setBusca} placeholder="Buscar serviço" label="Buscar serviço" />
+            {aRevisar > 0 && (
+              <>
+                <Seg<Filtro>
+                  label="Filtro"
+                  value={filtro}
+                  onChange={setFiltro}
+                  options={[
+                    { value: 'todos', label: 'Todos' },
+                    { value: 'revisar', label: `A revisar (${aRevisar})` },
+                  ]}
+                />
+                <span className="hint" style={{ marginLeft: 'auto' }}>
+                  {aRevisar === 1
+                    ? '1 serviço criado no app espera revisão'
+                    : `${aRevisar} serviços criados no app esperam revisão`}
+                </span>
+              </>
+            )}
+          </div>
           <div className="table-wrap" style={{ marginTop: 0 }}>
             <table className="t">
               <thead>
@@ -342,7 +354,15 @@ export function ServicosPage() {
               </tbody>
             </table>
           </div>
-          {list.isSuccess && rows.length === 0 && (
+          <CarregarMais
+            carregados={rows.length}
+            total={list.total}
+            temMais={list.hasNextPage}
+            carregando={list.isFetchingNextPage}
+            onClick={() => list.fetchNextPage()}
+            rotulo="serviços"
+          />
+          {list.isSuccess && rows.length === 0 && !termo && !filtrando && (
             <div className="empty">
               <span className="ic">
                 <Icon name="hammer" />
@@ -352,6 +372,15 @@ export function ServicosPage() {
               <Button size="sm" variant="primary" icon="plus" style={{ marginTop: 6 }} onClick={openCreate}>
                 Novo serviço
               </Button>
+            </div>
+          )}
+          {list.isSuccess && rows.length === 0 && (!!termo || filtrando) && (
+            <div className="empty">
+              <span className="ic">
+                <Icon name="hammer" />
+              </span>
+              <b>Nenhum serviço encontrado</b>
+              <p>Tente outro nome.</p>
             </div>
           )}
         </section>

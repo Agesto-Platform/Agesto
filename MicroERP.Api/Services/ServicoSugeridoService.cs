@@ -31,6 +31,7 @@ public sealed class ServicoSugeridoService : IServicoSugeridoService
         {
             ProdutoId = i.ProdutoId,
             ProdutoNome = i.Produto?.Nome ?? string.Empty,
+            ProdutoPreco = i.Produto?.Preco ?? 0m,
             QuantidadePadrao = i.QuantidadePadrao,
         }).ToList();
     }
@@ -65,6 +66,7 @@ public sealed class ServicoSugeridoService : IServicoSugeridoService
             {
                 ProdutoId = produto.Id,
                 ProdutoNome = produto.Nome,
+                ProdutoPreco = produto.Preco,
                 QuantidadePadrao = item.QuantidadePadrao,
             });
         }

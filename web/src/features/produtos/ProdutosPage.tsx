@@ -1,10 +1,11 @@
 import { useState, type KeyboardEvent } from 'react'
-import { produtosResource } from './resource'
+import { produtosResource, useProdutosPaginados } from './resource'
 import { ProdutoForm } from './ProdutoForm'
 import {
   Alert,
   Badge,
   Button,
+  CarregarMais,
   ConfirmDialog,
   Drawer,
   PageHead,
@@ -16,6 +17,7 @@ import {
 } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { ApiError } from '../../lib/api'
+import { useDebounced } from '../../lib/paginacao'
 import { useDashboard } from '../../lib/queries'
 import { MES_LONGO } from '../../lib/format'
 import { useConfiguracao, useUpdateConfiguracao } from '../parametrizacao/queries'
@@ -31,7 +33,6 @@ type Filtro = 'todos' | 'atencao'
 const num = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
 
 export function ProdutosPage() {
-  const list = produtosResource.useList()
   const create = produtosResource.useCreate()
   const update = produtosResource.useUpdate()
   const remove = produtosResource.useRemove()
@@ -43,6 +44,8 @@ export function ProdutosPage() {
   const dash = useDashboard('mes')
 
   const [q, setQ] = useState('')
+  // Hora da abertura da tela: base dos "dias sem saída" e do mês das colunas.
+  const [agora] = useState(() => Date.now())
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Produto | null>(null)
@@ -56,18 +59,15 @@ export function ProdutosPage() {
   // com menos de 5 no ranking, quem ficou de fora não vendeu nada no mês
   const rankingCompleto = top.length < TOP_PRODUTOS
 
-  const todos = list.data ?? []
-  const maxEst = Math.max(1, ...todos.map((p) => p.quantidadeEstoque))
-  const termo = q.trim().toLowerCase()
-  const rows = todos
-    .filter((p) => !termo || p.nome.toLowerCase().includes(termo))
-    .filter(
-      (p) =>
-        !controlaEstoque ||
-        filtro === 'todos' ||
-        ruptura.some((r) => r.produtoId === p.id) ||
-        parados.some((r) => r.produtoId === p.id),
-    )
+  // PAG-01 fase 3: 50 por vez, com a busca no servidor. "Atenção" pede só os
+  // produtos dos alertas de estoque (pelos ids).
+  const termo = useDebounced(q.trim())
+  const atencao = controlaEstoque && filtro === 'atencao'
+  const idsAtencao = [...ruptura.map((r) => r.produtoId), ...parados.map((r) => r.produtoId)]
+  const semAtencao = atencao && idsAtencao.length === 0
+  const list = useProdutosPaginados(termo, atencao ? idsAtencao : undefined, !semAtencao && (!atencao || !!dash.data))
+  const rows = semAtencao ? [] : list.itens
+  const maxEst = Math.max(1, ...rows.map((p) => p.quantidadeEstoque))
 
   function openCreate() {
     setEditing(null)
@@ -164,13 +164,16 @@ export function ProdutosPage() {
   }
 
   const colunas = controlaEstoque ? 7 : 6
-  const n = todos.length
+  // Total do cadastro: só quando a lista não está filtrada.
+  const filtrada = !!termo || atencao
+  const n = list.total
+  const listaPronta = list.isSuccess || semAtencao
 
   return (
     <>
       <PageHead
         title="Produtos"
-        badge={list.data && <Badge>{n === 1 ? '1 item' : `${n} itens`}</Badge>}
+        badge={list.isSuccess && !filtrada && <Badge>{n === 1 ? '1 item' : `${n} itens`}</Badge>}
         sub={
           controlaEstoque
             ? 'Materiais que você usa e vende nos atendimentos. O estoque baixa quando um orçamento aprovado vira atendimento.'
@@ -201,7 +204,7 @@ export function ProdutosPage() {
               icon="archive"
               title={
                 p.ultimaVenda
-                  ? `${p.nome} sem saída há ${Math.floor((Date.now() - new Date(p.ultimaVenda).getTime()) / DIA_MS)} dias`
+                  ? `${p.nome} sem saída há ${Math.floor((agora - new Date(p.ultimaVenda).getTime()) / DIA_MS)} dias`
                   : `${p.nome} sem saída registrada`
               }
               subtitle={`${p.quantidadeEstoque} ${p.quantidadeEstoque === 1 ? 'unidade parada' : 'unidades paradas'}`}
@@ -213,7 +216,7 @@ export function ProdutosPage() {
       <section className="card mt">
         <div className="toolbar">
           <SearchBox value={q} onChange={setQ} placeholder="Buscar produto" label="Buscar produto" />
-          <span className="hint">Vendidos e receita: {MES_LONGO[new Date().getMonth()]}</span>
+          <span className="hint">Vendidos e receita: {MES_LONGO[new Date(agora).getMonth()]}</span>
           {controlaEstoque && (
             <Seg<Filtro>
               label="Filtro"
@@ -247,7 +250,7 @@ export function ProdutosPage() {
               </tr>
             </thead>
             <tbody>
-              {list.isLoading && (
+              {list.isLoading && !semAtencao && (
                 <tr>
                   <td colSpan={colunas} className="muted" style={{ textAlign: 'center', padding: '28px 16px' }}>
                     Carregando…
@@ -305,7 +308,17 @@ export function ProdutosPage() {
             </tbody>
           </table>
         </div>
-        {list.isSuccess && n === 0 && (
+        {!semAtencao && (
+          <CarregarMais
+            carregados={rows.length}
+            total={list.total}
+            temMais={list.hasNextPage}
+            carregando={list.isFetchingNextPage}
+            onClick={() => list.fetchNextPage()}
+            rotulo="produtos"
+          />
+        )}
+        {list.isSuccess && !filtrada && n === 0 && (
           <div className="empty">
             <span className="ic">
               <Icon name="box" />
@@ -317,7 +330,7 @@ export function ProdutosPage() {
             </Button>
           </div>
         )}
-        {list.isSuccess && n > 0 && rows.length === 0 && (
+        {listaPronta && filtrada && rows.length === 0 && (
           <div className="empty">
             <span className="ic">
               <Icon name="box" />

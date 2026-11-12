@@ -15,12 +15,6 @@ public sealed class ClienteService : IClienteService
         _clienteRepository = clienteRepository;
     }
 
-    public async Task<IReadOnlyList<ClienteResponse>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
-    {
-        var clientes = await _clienteRepository.GetAllAsync(empresaId, cancellationToken);
-        return clientes.Select(MapResponse).ToList();
-    }
-
     public async Task<PaginaResponse<ClienteResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, ClienteFiltroQuery? filtro, CancellationToken cancellationToken)
     {
         var (itens, total) = await _clienteRepository.GetPaginaAsync(

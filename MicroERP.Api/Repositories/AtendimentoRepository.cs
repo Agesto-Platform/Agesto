@@ -15,15 +15,11 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
         _dbContext = dbContext;
     }
 
-    public async Task<List<Atendimento>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
-    {
-        return await Listagem(empresaId).ToListAsync(cancellationToken);
-    }
-
     // PAG-01: a lista do web, paginada, com os filtros da tela e o cliente junto. Ordem
     // da tela: a data agendada, senão a de registro, da mais recente para a mais antiga.
+    // porRegistro: só a data de registro (os "últimos atendimentos" do Dashboard).
     public Task<(List<Atendimento> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho,
-        string? busca, StatusAtendimento? status, long? clienteId, CancellationToken cancellationToken)
+        string? busca, StatusAtendimento? status, long? clienteId, bool porRegistro, CancellationToken cancellationToken)
     {
         var query = _dbContext.Atendimentos
             .AsNoTracking()
@@ -42,10 +38,12 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
                     && FuncoesSql.Translate((i.Descricao ?? i.Produto!.Nome).ToLower(), FuncoesSql.ComAcento, FuncoesSql.SemAcento).Contains(termo)));
         }
 
-        return query
-            .Include(a => a.Cliente)
-            .OrderByDescending(a => a.DataAgendada ?? a.DataRegistro)
+        var ordenada = porRegistro
+            ? query.OrderByDescending(a => a.DataRegistro)
+            : query.OrderByDescending(a => a.DataAgendada ?? a.DataRegistro);
+        return ordenada
             .ThenByDescending(a => a.Id)
+            .Include(a => a.Cliente)
             .ToPaginaAsync(pagina, tamanho, cancellationToken);
     }
 
@@ -92,15 +90,6 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
             l => !string.IsNullOrWhiteSpace(l.Servico) ? l.Servico
                : !string.IsNullOrWhiteSpace(l.Produto) ? l.Produto
                : null);
-    }
-
-    private IQueryable<Atendimento> Listagem(long empresaId)
-    {
-        return _dbContext.Atendimentos
-            .AsNoTracking()
-            .Where(a => a.EmpresaId == empresaId && a.DeletedAt == null)
-            .OrderByDescending(a => a.DataRegistro)
-            .ThenBy(a => a.Id);
     }
 
     public async Task<List<Atendimento>> GetAgendaAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, CancellationToken cancellationToken)

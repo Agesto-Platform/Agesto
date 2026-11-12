@@ -14,7 +14,6 @@ import { useConfiguracao } from '../parametrizacao/queries'
 import { useCreateAtendimento } from '../atendimentos/queries'
 import { AtendimentoForm } from '../atendimentos/AtendimentoForm'
 import { StatusAtendimentoPill } from '../atendimentos/status'
-import { clientesResource } from '../clientes/resource'
 import type { AgendaItem, AtendimentoInput, ModoAgendaAgente } from '../../types/api'
 import { chaveDoDia, coresPorResponsavel, diaInicial, diasComVisitas, pontosDoDia } from './mapa'
 import './agenda.css'
@@ -141,8 +140,7 @@ export function AgendaPage() {
     }
   }
 
-  // Agendar: mesmo formulário de "Novo atendimento".
-  const clientes = clientesResource.useList()
+  // Agendar: mesmo formulário de "Novo atendimento" (cliente por busca, PAG-01).
   const create = useCreateAtendimento()
   const qc = useQueryClient()
   const [agendarAberto, setAgendarAberto] = useState(false)
@@ -468,7 +466,6 @@ export function AgendaPage() {
       >
         {agendarAberto && (
           <AtendimentoForm
-            clientes={clientes.data ?? []}
             responsaveis={responsaveis(usuarios.data)}
             onSubmit={agendar}
             submitting={create.isPending}

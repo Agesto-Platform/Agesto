@@ -22,9 +22,8 @@ import {
 } from '../components/ui'
 import { BarsChart } from '../components/BarsChart'
 import { useAgenda, useDashboard } from '../lib/queries'
-import { useAtendimentos } from '../features/atendimentos/queries'
+import { useUltimosAtendimentos } from '../features/atendimentos/queries'
 import { StatusAtendimentoPill } from '../features/atendimentos/status'
-import { clientesResource } from '../features/clientes/resource'
 import { ApiError } from '../lib/api'
 import { dataCurta, hojeExtenso, hora, iniciais, mesNome, MES_LONGO, SEMANA_CURTA } from '../lib/format'
 import type { Atendimento } from '../types/api'
@@ -52,9 +51,9 @@ function Conta({ value, brlFmt = false }: { value: number; brlFmt?: boolean }) {
 export function Dashboard() {
   const { period, setPeriod, entradaPronta } = useOutletContext<ShellContext>()
   const { data, isLoading, isError, error } = useDashboard(period)
-  const atend = useAtendimentos()
+  // PAG-01 fase 2: só os 6 últimos, já com cliente e resumo, sem baixar listas inteiras.
+  const atend = useUltimosAtendimentos(6)
   const agenda = useAgenda('mes')
-  const clientes = clientesResource.useList()
   const [verTabela, setVerTabela] = useState(false)
   const [agora] = useState(() => Date.now())
 
@@ -64,9 +63,8 @@ export function Dashboard() {
     if (pronto) entradaPronta()
   }, [pronto, entradaPronta])
 
-  const clienteNome = (id: number) => clientes.data?.find((c) => c.id === id)?.nome ?? `Cliente #${id}`
-  const resumo = (id: number) => agenda.data?.find((a) => a.id === id)?.resumo ?? '—'
-  const ultimos = [...(atend.data ?? [])].sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro)).slice(0, 6)
+  const clienteNome = (a: Atendimento) => a.clienteNome ?? `Cliente #${a.clienteId}`
+  const ultimos = atend.data?.itens ?? []
   const proximo = (agenda.data ?? [])
     .filter((a) => a.status === 'Pendente' && a.dataAgendada && new Date(a.dataAgendada).getTime() >= agora)
     .sort((a, b) => a.dataAgendada!.localeCompare(b.dataAgendada!))[0]
@@ -116,12 +114,12 @@ export function Dashboard() {
       header: 'Cliente',
       cell: (a) => (
         <div className="cell">
-          <span className="avatar sm">{iniciais(clienteNome(a.clienteId))}</span>
-          <span className="strong">{clienteNome(a.clienteId)}</span>
+          <span className="avatar sm">{iniciais(clienteNome(a))}</span>
+          <span className="strong">{clienteNome(a)}</span>
         </div>
       ),
     },
-    { header: 'Serviço', className: 'muted', cell: (a) => resumo(a.id) },
+    { header: 'Serviço', className: 'muted', cell: (a) => a.resumo ?? '—' },
     { header: 'Data', cell: (a) => dataCurta(a.dataAgendada ?? a.dataRegistro) },
     { header: 'Status', cell: (a) => <StatusAtendimentoPill status={a.status} /> },
     { header: 'Total', align: 'right', className: 'strong', cell: (a) => brl(a.valorTotal) },

@@ -93,7 +93,6 @@ seedItemProd(a3.id, null, 'Cabo especial', 1, 30, 12)
 ;[a1, a2, a3].forEach((a) => recalc(a.id))
 
 export const atendimentoHandlers = [
-  http.get('*/api/atendimento', () => HttpResponse.json(ok(atendimentos.map((a) => ({ ...a, resumo: resumo(a.id) }))))),
 
   http.post('*/api/atendimento', async ({ request }) => {
     const b = (await request.json()) as AtendimentoInput
@@ -147,7 +146,11 @@ export const atendimentoHandlers = [
   // ---- Itens de produto ----
   http.get('*/api/itemproduto', ({ request }) => {
     const atId = Number(new URL(request.url).searchParams.get('atendimentoId'))
-    return HttpResponse.json(ok(itemProdutos.filter((i) => i.atendimentoId === atId)))
+    // PAG-01: o nome do produto vem no item, como na API.
+    const itens = itemProdutos
+      .filter((i) => i.atendimentoId === atId)
+      .map((i) => ({ ...i, produtoNome: i.produtoId != null ? produtoStore.get(i.produtoId)?.nome ?? null : null }))
+    return HttpResponse.json(ok(itens))
   }),
   http.post('*/api/itemproduto', async ({ request }) => {
     const b = (await request.json()) as ItemProdutoInput
@@ -193,7 +196,14 @@ export const atendimentoHandlers = [
   // ---- Itens de serviço ----
   http.get('*/api/itemservico', ({ request }) => {
     const atId = Number(new URL(request.url).searchParams.get('atendimentoId'))
-    return HttpResponse.json(ok(itemServicos.filter((i) => i.atendimentoId === atId)))
+    // PAG-01: descrição e cobrança do serviço vêm no item, como na API.
+    const itens = itemServicos
+      .filter((i) => i.atendimentoId === atId)
+      .map((i) => {
+        const s = servicoStore.get(i.servicoId)
+        return { ...i, servicoDescricao: s?.descricao ?? null, tipoCobranca: s?.tipoCobranca ?? null }
+      })
+    return HttpResponse.json(ok(itens))
   }),
   http.post('*/api/itemservico', async ({ request }) => {
     const b = (await request.json()) as ItemServicoInput
