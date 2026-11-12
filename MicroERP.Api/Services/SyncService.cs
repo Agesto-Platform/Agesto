@@ -481,6 +481,14 @@ public sealed class SyncService : ISyncService
                 atendimentosImportados++;
                 atendimentosSincronizados.Add(atendimentoRequest.Uuid);
             }
+            catch (EstoqueAlteradoException)
+            {
+                // Outra venda gravou o mesmo produto antes: nada foi salvo e o
+                // atendimento continua pendente no device, que reenvia depois.
+                await tx.RollbackAsync(cancellationToken);
+                _dbContext.ChangeTracker.Clear();
+                Recusar(atendimentoRequest.Uuid, rotulo, "o estoque de um produto mudou durante o envio; o app tenta de novo na próxima sincronização.");
+            }
             catch (Exception ex)
             {
                 await tx.RollbackAsync(cancellationToken);
@@ -564,6 +572,14 @@ public sealed class SyncService : ISyncService
                 await tx.CommitAsync(cancellationToken);
                 conclusoesImportadas++;
                 conclusoesSincronizadas.Add(conclusao.Uuid);
+            }
+            catch (EstoqueAlteradoException)
+            {
+                // Outra venda gravou o mesmo produto antes: nada foi salvo e o
+                // atendimento continua pendente no device, que reenvia depois.
+                await tx.RollbackAsync(cancellationToken);
+                _dbContext.ChangeTracker.Clear();
+                Recusar(conclusao.Uuid, rotulo, "o estoque de um produto mudou durante o envio; o app tenta de novo na próxima sincronização.");
             }
             catch (Exception ex)
             {

@@ -49,6 +49,17 @@ public sealed class OrcamentoRepository : IOrcamentoRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    // UPDATE condicional que trava a linha até o fim da transação: numa conversão
+    // concorrente, a segunda espera o commit da primeira e então não acha mais o
+    // orçamento livre (0 linhas). Precisa rodar dentro de uma transação.
+    public async Task<bool> ReservarParaConversaoAsync(long empresaId, long id, CancellationToken cancellationToken)
+    {
+        var linhas = await _dbContext.Orcamentos
+            .Where(o => o.EmpresaId == empresaId && o.Id == id && o.DeletedAt == null && o.AtendimentoConvertidoId == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(o => o.UpdatedAt, DateTime.UtcNow), cancellationToken);
+        return linhas == 1;
+    }
+
     public async Task AddAsync(Orcamento orcamento, CancellationToken cancellationToken)
     {
         await _dbContext.Orcamentos.AddAsync(orcamento, cancellationToken);
