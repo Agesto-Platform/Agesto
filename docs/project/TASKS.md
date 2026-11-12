@@ -49,7 +49,7 @@
 | 24/10 | CPF com dígito verificador no web | B5 | Feito (PR #117, 28/10) |
 | 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
 | 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
-| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Falta configurar o Brevo no Render (`deploy/README.md`, seção 11). Desde a DEC-55 vale também para o Agente, no app e no web |
+| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Em `main` desde 12/11 (release #163); Brevo configurado no Render e envio testado em produção. Desde a DEC-55 vale também para o Agente, no app e no web |
 | 17/11 | Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48) | D11 | A fazer |
 | 28/11 | Cadastro aberto no ar com verificação de email e período de teste | L1 | A fazer |
 | 01/12 | Canal de suporte: WhatsApp Business e email | D14 | A fazer |
@@ -63,7 +63,7 @@
 | — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52, DEC-53) | Extra | Pronto no PR #155 (SEG-01), em espera: fora da `develop` por decisão do Davi (12/11) |
 | — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | A fazer |
 | — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |
-| 12/11 | Convites por email: acesso novo (pelo Dono ou pela equipe do Agesto) e convite de admin, com a pessoa criando a própria senha; fim da senha provisória (DEC-55) | Extra | Feito no código (12/11). Falta configurar o Brevo no Render |
+| 12/11 | Convites por email: acesso novo (pelo Dono ou pela equipe do Agesto) e convite de admin, com a pessoa criando a própria senha; fim da senha provisória (DEC-55) | Extra | Feito (PR #162, release #163, 12/11); migrations aplicadas no Supabase e envio testado em produção |
 | — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | A fazer |
 
 ### Diego — infra e redesign
@@ -79,7 +79,7 @@
 | 31/10 | Primeiro `eas build` antes do ensaio | B1, B8 | A fazer. A promoção `develop → main` que fazia parte desta tarefa já acontece a cada release (a última foi a #158, em 12/11), e a migration `AddUsuarioAceiteTermos` está no Supabase desde 28/10 |
 | 03/11 | Ensaio geral com os dois Davis | Portão | A fazer |
 | 10/11 | Domínio próprio na web e na API, com CORS e CSP ajustados | L2, D12 | A fazer |
-| 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | A fazer. Provedor escolhido: Brevo (DEC-54, 12/11); o passo a passo está em `deploy/README.md`, seção 11 |
+| 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | Feito (12/11): conta no Brevo (DEC-54) e variáveis `Email__*` no Render; o passo a passo está em `deploy/README.md`, seção 11 |
 | 17/11 | Fechar o design system | D13 | A fazer |
 | 05/12 | Cópia da chave de assinatura do APK guardada fora do repositório e do Expo | B1 | A fazer |
 | 12/12 | Redesign do web (DEC-51): em `main` desde 25/10; falta o acabamento final | L6 | Em andamento |

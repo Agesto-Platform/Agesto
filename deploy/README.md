@@ -233,7 +233,7 @@ Opcional: `Admin__ExpiresMinutes` define quanto tempo o login de admin vale (pad
    - `Email__UrlWeb`: o endereço do web, base do link enviado (ex.: `https://agesto.pages.dev`).
 5. Teste: em `/esqueci-senha`, peça o link para o email de um Dono e confira a caixa de entrada. Falhas de envio aparecem no log do Render como "Falha ao enviar email", sem o destinatário nem o link.
 
-O link vale 15 minutos e uma vez só. Em desenvolvimento (`ASPNETCORE_ENVIRONMENT=Development`), o link também sai no log da API, para testar sem o Brevo; em produção, nunca.
+O link de redefinição vale 15 minutos; o convite, 72 horas. Os dois valem uma vez só. Em desenvolvimento (`ASPNETCORE_ENVIRONMENT=Development`), o link também sai no log da API, para testar sem o Brevo; em produção, nunca.
 
 ## Pendências
 
