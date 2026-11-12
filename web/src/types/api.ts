@@ -332,6 +332,8 @@ export interface Atendimento {
   clienteId: number
   /** Agente responsável (quem executa). */
   usuarioId: number
+  /** Primeiro serviço, senão o primeiro produto; null sem itens. Vem na listagem. */
+  resumo?: string | null
   createdAt: string
   updatedAt: string
 }

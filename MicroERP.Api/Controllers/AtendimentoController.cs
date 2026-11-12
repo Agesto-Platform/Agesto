@@ -57,8 +57,15 @@ public sealed class AtendimentoController : ApiControllerBase
             filtroAgente = usuarioId;
         }
 
-        var agenda = await _atendimentoService.GetAgendaAsync(empresaId, de, ate, filtroAgente, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Agenda encontrada.", Data = agenda });
+        try
+        {
+            var agenda = await _atendimentoService.GetAgendaAsync(empresaId, de, ate, filtroAgente, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Agenda encontrada.", Data = agenda });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
+        }
     }
 
     [HttpGet("{id:long}")]

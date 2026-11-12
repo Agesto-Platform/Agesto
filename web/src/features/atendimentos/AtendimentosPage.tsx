@@ -27,7 +27,6 @@ import {
 } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { ApiError } from '../../lib/api'
-import { useAgenda } from '../../lib/queries'
 import { dataCurta, iniciais, semanaHora } from '../../lib/format'
 import type { Atendimento, AtendimentoInput, Cliente, StatusAtendimento } from '../../types/api'
 
@@ -61,8 +60,6 @@ export function AtendimentosPage() {
   const produtos = produtosResource.useList()
   const servicos = servicosResource.useList()
   const usuarios = useUsuarios()
-  // O resumo do serviço só vem na agenda (atendimentos agendados no ano).
-  const agenda = useAgenda('ano')
 
   const [aba, setAba] = useState<Aba>('todos')
   const [busca, setBusca] = useState('')
@@ -73,14 +70,13 @@ export function AtendimentosPage() {
 
   const cliente = (id: number) => clientes.data?.find((c) => c.id === id)
   const clienteNome = (id: number) => cliente(id)?.nome ?? `Cliente #${id}`
-  const resumo = (id: number) => agenda.data?.find((a) => a.id === id)?.resumo || null
   const detail = list.data?.find((a) => a.id === detailId) ?? null
 
   const todos = list.data ?? []
   const q = busca.trim().toLowerCase()
   const linhas = todos
     .filter((a) => aba === 'todos' || a.status === aba)
-    .filter((a) => !q || `${clienteNome(a.clienteId)} ${resumo(a.id) ?? ''}`.toLowerCase().includes(q))
+    .filter((a) => !q || `${clienteNome(a.clienteId)} ${a.resumo ?? ''}`.toLowerCase().includes(q))
     .sort((a, b) => dataRef(b).localeCompare(dataRef(a)))
 
   function openCreate() {
@@ -158,13 +154,13 @@ export function AtendimentosPage() {
       header: 'Serviço',
       className: 'wrap',
       cell: (a) => {
-        const r = resumo(a.id)
+        const r = a.resumo
         return (
           <>
             {r ? (
               <span>{r}</span>
             ) : (
-              <span className="muted" title="O resumo do serviço só aparece para atendimentos agendados neste ano">
+              <span className="muted" title="Atendimento sem itens">
                 —
               </span>
             )}

@@ -9,6 +9,9 @@ namespace MicroERP.Api.Services;
 
 public sealed class AtendimentoService : IAtendimentoService
 {
+    // Dois meses cheios: cobre a visão de mês do web e a navegação para o mês seguinte.
+    public const int PeriodoMaximoAgendaDias = 62;
+
     private readonly IAtendimentoRepository _atendimentoRepository;
     private readonly IClienteRepository _clienteRepository;
     private readonly IItemProdutoRepository _itemProdutoRepository;
@@ -52,16 +55,18 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task<IReadOnlyList<AtendimentoResponse>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
     {
         var atendimentos = await _atendimentoRepository.GetAllAsync(empresaId, cancellationToken);
-        return atendimentos.Select(MapResponse).ToList();
+        var resumos = await _atendimentoRepository.GetResumosAsync(empresaId, atendimentos.Select(a => a.Id).ToList(), cancellationToken);
+        return atendimentos.Select(a => MapResponse(a, resumos.GetValueOrDefault(a.Id))).ToList();
     }
 
     public async Task<PaginaResponse<AtendimentoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
     {
         var (itens, total) = await _atendimentoRepository.GetPaginaAsync(
             empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+        var resumos = await _atendimentoRepository.GetResumosAsync(empresaId, itens.Select(a => a.Id).ToList(), cancellationToken);
         return new PaginaResponse<AtendimentoResponse>
         {
-            Itens = itens.Select(MapResponse).ToList(),
+            Itens = itens.Select(a => MapResponse(a, resumos.GetValueOrDefault(a.Id))).ToList(),
             Pagina = paginacao.PaginaOuPadrao,
             Tamanho = paginacao.TamanhoOuPadrao,
             Total = total
@@ -71,6 +76,11 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task<IReadOnlyList<AgendaItemResponse>> GetAgendaAsync(long empresaId, DateTime? de, DateTime? ate, long? agenteId, CancellationToken cancellationToken)
     {
         var (inicio, fim) = ResolvePeriodo(de, ate);
+        // PAG-02: a agenda vem inteira, sem paginação; o teto do período limita a resposta.
+        if (fim < inicio)
+            throw new ArgumentException("O fim do período da agenda vem antes do início.");
+        if (fim - inicio > TimeSpan.FromDays(PeriodoMaximoAgendaDias))
+            throw new ArgumentException($"O período da agenda é de no máximo {PeriodoMaximoAgendaDias} dias.");
         var atendimentos = await _atendimentoRepository.GetAgendaAsync(empresaId, inicio, fim, agenteId, cancellationToken);
         return atendimentos.Select(MapAgendaItem).ToList();
     }
@@ -170,14 +180,19 @@ public sealed class AtendimentoService : IAtendimentoService
         await _atendimentoRepository.SaveChangesAsync(cancellationToken);
     }
 
+    // Descrição curta do atendimento: o primeiro serviço, senão o primeiro produto.
+    private static string? Resumo(Atendimento a)
+    {
+        var servico = a.ItensServico.Where(i => i.DeletedAt == null).OrderBy(i => i.Id).FirstOrDefault()?.Servico?.Descricao;
+        if (!string.IsNullOrWhiteSpace(servico)) return servico;
+        var itemProduto = a.ItensProduto.Where(i => i.DeletedAt == null).OrderBy(i => i.Id).FirstOrDefault();
+        var produto = itemProduto?.Descricao ?? itemProduto?.Produto?.Nome;
+        return string.IsNullOrWhiteSpace(produto) ? null : produto;
+    }
+
     private static AgendaItemResponse MapAgendaItem(Atendimento a)
     {
-        var servico = a.ItensServico.FirstOrDefault(i => i.DeletedAt == null)?.Servico?.Descricao;
-        var itemProduto = a.ItensProduto.FirstOrDefault(i => i.DeletedAt == null);
-        var produto = itemProduto?.Descricao ?? itemProduto?.Produto?.Nome;
-        var resumo = !string.IsNullOrWhiteSpace(servico) ? servico
-                   : !string.IsNullOrWhiteSpace(produto) ? produto
-                   : "Atendimento";
+        var resumo = Resumo(a) ?? "Atendimento";
 
         // Cliente soft-deletado e tratado como ausente (mantem a invariante de soft-delete).
         var cliente = a.Cliente is { DeletedAt: null } ? a.Cliente : null;
@@ -227,7 +242,9 @@ public sealed class AtendimentoService : IAtendimentoService
         return (inicio, fim);
     }
 
-    private static AtendimentoResponse MapResponse(Atendimento atendimento)
+    private static AtendimentoResponse MapResponse(Atendimento atendimento) => MapResponse(atendimento, null);
+
+    private static AtendimentoResponse MapResponse(Atendimento atendimento, string? resumo)
     {
         return new AtendimentoResponse
         {
@@ -241,6 +258,7 @@ public sealed class AtendimentoService : IAtendimentoService
             Margem = atendimento.ValorTotal - atendimento.CustoTotal,
             ClienteId = atendimento.ClienteId,
             UsuarioId = atendimento.UsuarioId,
+            Resumo = resumo,
             CreatedAt = atendimento.CreatedAt,
             UpdatedAt = atendimento.UpdatedAt
         };

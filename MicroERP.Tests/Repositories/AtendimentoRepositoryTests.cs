@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MicroERP.Api.Data;
 using MicroERP.Api.Enums;
@@ -39,6 +40,47 @@ public sealed class AtendimentoRepositoryTests
         var doAgente = await repo.GetAgendaAsync(1, De, Ate, 5L, CancellationToken.None);
         Assert.Single(doAgente);
         Assert.Equal(1, doAgente[0].Id);
+    }
+
+    // PAG-02: o resumo da linha é o primeiro serviço vivo, senão o primeiro produto;
+    // só da empresa. SQLite: as subconsultas precisam de SQL de verdade.
+    [Fact]
+    public async Task GetResumosAsync_PrimeiroServicoVivoSenaoProduto()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options;
+        await using (var setup = new AppDbContext(options))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            setup.Empresas.AddRange(new Empresa { Id = 1, Nome = "Empresa" }, new Empresa { Id = 2, Nome = "Outra" });
+            setup.Usuarios.Add(new Usuario { Id = 5, Nome = "Dono", Email = "d@t.com", Senha = "x", EmpresaId = 1, Perfil = PerfilUsuario.Dono });
+            setup.Clientes.Add(new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Cliente 1", Cpf = "cpf1", EmpresaId = 1 });
+            setup.Servicos.AddRange(
+                new Servico { Id = 1, Uuid = Guid.NewGuid(), Descricao = "Removido", EmpresaId = 1 },
+                new Servico { Id = 2, Uuid = Guid.NewGuid(), Descricao = "Instalação", EmpresaId = 1 },
+                new Servico { Id = 3, Uuid = Guid.NewGuid(), Descricao = "Limpeza", EmpresaId = 1 });
+            setup.Atendimentos.AddRange(
+                At(1, empresaId: 1, usuarioId: 5, agendada: null),
+                At(2, empresaId: 1, usuarioId: 5, agendada: null),
+                At(3, empresaId: 1, usuarioId: 5, agendada: null),
+                At(4, empresaId: 2, usuarioId: 5, agendada: null));
+            setup.ItemServicos.AddRange(
+                new ItemServico { Id = 1, Uuid = Guid.NewGuid(), AtendimentoId = 1, ServicoId = 1, Quantidade = 1, DeletedAt = DateTime.UtcNow },
+                new ItemServico { Id = 2, Uuid = Guid.NewGuid(), AtendimentoId = 1, ServicoId = 2, Quantidade = 1 },
+                new ItemServico { Id = 3, Uuid = Guid.NewGuid(), AtendimentoId = 1, ServicoId = 3, Quantidade = 1 },
+                new ItemServico { Id = 4, Uuid = Guid.NewGuid(), AtendimentoId = 4, ServicoId = 2, Quantidade = 1 });
+            setup.ItemProdutos.Add(new ItemProduto { Id = 1, Uuid = Guid.NewGuid(), AtendimentoId = 2, Descricao = "Filtro", Quantidade = 1 });
+            await setup.SaveChangesAsync();
+        }
+
+        await using var db = new AppDbContext(options);
+        var resumos = await new AtendimentoRepository(db).GetResumosAsync(1, [1, 2, 3, 4], CancellationToken.None);
+
+        Assert.Equal(3, resumos.Count); // o 4 é de outra empresa
+        Assert.Equal("Instalação", resumos[1]);
+        Assert.Equal("Filtro", resumos[2]);
+        Assert.Null(resumos[3]);
     }
 
     private static Atendimento At(long id, long empresaId, long usuarioId, DateTime? agendada) => new()
