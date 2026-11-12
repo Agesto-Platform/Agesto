@@ -28,15 +28,9 @@ public sealed class AtendimentoController : ApiControllerBase
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
-        // Com filtro, a lista é sempre paginada (PAG-01).
-        if (paginacao.Informada || filtro.Informado)
-        {
-            var pagina = await _atendimentoService.GetPaginaAsync(empresaId, paginacao, filtro, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = pagina });
-        }
-
-        var atendimentos = await _atendimentoService.GetAllAsync(empresaId, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = atendimentos });
+        // PAG-01 fase 3: a lista é sempre paginada (sem parâmetros, página 1 com 20).
+        var pagina = await _atendimentoService.GetPaginaAsync(empresaId, paginacao, filtro, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Atendimentos encontrados.", Data = pagina });
     }
 
     // PAG-01: os números das abas da tela de Atendimentos, sem baixar a lista inteira.

@@ -69,7 +69,7 @@ public sealed class ItemServicoService : IItemServicoService
 
         await RecalculateTotalAsync(atendimento, cancellationToken);
 
-        return MapResponse(item);
+        return MapResponse(item, servico);
     }
 
     public async Task<ItemServicoResponse> UpdateAsync(long empresaId, long id, ItemServicoUpdateRequest request, CancellationToken cancellationToken)
@@ -97,7 +97,7 @@ public sealed class ItemServicoService : IItemServicoService
             await RecalculateTotalAsync(atendimento, cancellationToken);
         }
 
-        return MapResponse(item);
+        return MapResponse(item, servico);
     }
 
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
@@ -135,7 +135,10 @@ public sealed class ItemServicoService : IItemServicoService
             ? servico.ValorEmpreitada ?? 0m
             : servico.ValorHora ?? 0m;
 
-    private static ItemServicoResponse MapResponse(ItemServico item)
+    // servico: o já carregado pela operação; senão o que veio junto na consulta do item.
+    private static ItemServicoResponse MapResponse(ItemServico item) => MapResponse(item, item.Servico);
+
+    private static ItemServicoResponse MapResponse(ItemServico item, Servico? servico)
     {
         return new ItemServicoResponse
         {
@@ -146,6 +149,8 @@ public sealed class ItemServicoService : IItemServicoService
             Subtotal = item.Subtotal,
             AtendimentoId = item.AtendimentoId,
             ServicoId = item.ServicoId,
+            ServicoDescricao = servico?.Descricao,
+            TipoCobranca = servico?.TipoCobranca,
             CreatedAt = item.CreatedAt,
             UpdatedAt = item.UpdatedAt
         };

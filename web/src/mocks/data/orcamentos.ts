@@ -7,6 +7,28 @@ import type {
   StatusOrcamento,
 } from '../../types/api'
 import { ok, fail } from '../lib/http'
+import { clienteStore } from './clientes'
+import { produtoStore } from './produtos'
+import { servicoStore } from './servicos'
+
+/** PAG-01: cliente e nomes dos itens vêm no orçamento, como na API. */
+function comNomes(o: Orcamento): Orcamento {
+  return {
+    ...o,
+    clienteNome: clienteStore.get(o.clienteId)?.nome ?? null,
+    itens: o.itens.map((i) => {
+      const s = i.servicoId != null ? servicoStore.get(i.servicoId) : undefined
+      return {
+        ...i,
+        produtoNome: i.produtoId != null ? produtoStore.get(i.produtoId)?.nome ?? null : null,
+        servicoDescricao: s?.descricao ?? null,
+        tipoCobranca: s?.tipoCobranca ?? null,
+      }
+    }),
+  }
+}
+
+const sem = (t: string) => t.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
 let nextId = 1
 let nextItemId = 1
@@ -64,7 +86,39 @@ let orcamentos: Orcamento[] = [
 ]
 
 export const orcamentoHandlers = [
-  http.get('*/api/orcamento', () => HttpResponse.json(ok(orcamentos))),
+  // PAG-01: sempre paginada, mais recentes primeiro, com busca pelo cliente e status.
+  http.get('*/api/orcamento', ({ request }) => {
+    const url = new URL(request.url)
+    const pagina = Number(url.searchParams.get('pagina') ?? 1)
+    const tamanho = Number(url.searchParams.get('tamanho') ?? 20)
+    const termo = sem(url.searchParams.get('busca')?.trim() ?? '')
+    const status = url.searchParams.get('status')
+    const lista = orcamentos
+      .map(comNomes)
+      .filter((o) => !status || o.status === status)
+      .filter((o) => !termo || sem(o.clienteNome ?? '').includes(termo))
+      .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro) || b.id - a.id)
+    return HttpResponse.json(
+      ok({ itens: lista.slice((pagina - 1) * tamanho, pagina * tamanho), pagina, tamanho, total: lista.length }),
+    )
+  }),
+
+  http.get('*/api/orcamento/resumo', () => {
+    const status: StatusOrcamento[] = ['Rascunho', 'Enviado', 'Aprovado', 'Recusado']
+    return HttpResponse.json(
+      ok(
+        status.map((s) => {
+          const l = orcamentos.filter((o) => o.status === s)
+          return { status: s, quantidade: l.length, valorTotal: l.reduce((t, o) => t + o.valorTotal, 0) }
+        }),
+      ),
+    )
+  }),
+
+  http.get('*/api/orcamento/:id', ({ params }) => {
+    const o = orcamentos.find((x) => x.id === Number(params.id))
+    return o ? HttpResponse.json(ok(comNomes(o))) : fail(404, 'Orçamento não encontrado.')
+  }),
 
   // Conversão (path específico antes do :id genérico)
   http.post('*/api/orcamento/:id/converter', ({ params }) => {

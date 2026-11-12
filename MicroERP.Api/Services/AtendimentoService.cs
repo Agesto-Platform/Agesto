@@ -52,18 +52,11 @@ public sealed class AtendimentoService : IAtendimentoService
         return config?.ControlaEstoque ?? true;
     }
 
-    public async Task<IReadOnlyList<AtendimentoResponse>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
-    {
-        var atendimentos = await _atendimentoRepository.GetAllAsync(empresaId, cancellationToken);
-        var resumos = await _atendimentoRepository.GetResumosAsync(empresaId, atendimentos.Select(a => a.Id).ToList(), cancellationToken);
-        return atendimentos.Select(a => MapResponse(a, resumos.GetValueOrDefault(a.Id))).ToList();
-    }
-
     public async Task<PaginaResponse<AtendimentoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, AtendimentoFiltroQuery? filtro, CancellationToken cancellationToken)
     {
         var (itens, total) = await _atendimentoRepository.GetPaginaAsync(
             empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao,
-            filtro?.Busca, filtro?.Status, filtro?.ClienteId, cancellationToken);
+            filtro?.Busca, filtro?.Status, filtro?.ClienteId, filtro?.Ordem == AtendimentoFiltroQuery.OrdemRegistro, cancellationToken);
         var resumos = await _atendimentoRepository.GetResumosAsync(empresaId, itens.Select(a => a.Id).ToList(), cancellationToken);
         return new PaginaResponse<AtendimentoResponse>
         {
@@ -102,7 +95,9 @@ public sealed class AtendimentoService : IAtendimentoService
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
         if (atendimento is null) throw new NotFoundException("Atendimento não encontrado.");
-        return MapResponse(atendimento);
+        // PAG-01: o atendimento aberto pelo id já vem com o cliente; o web não baixa mais todos.
+        var cliente = await _clienteRepository.GetByIdAsync(empresaId, atendimento.ClienteId, false, cancellationToken);
+        return MapResponse(atendimento, null, cliente);
     }
 
     public async Task<AtendimentoResponse> CreateAsync(long empresaId, long usuarioId, AtendimentoCreateRequest request, CancellationToken cancellationToken)
@@ -133,7 +128,7 @@ public sealed class AtendimentoService : IAtendimentoService
         await _atendimentoRepository.AddAsync(atendimento, cancellationToken);
         await _atendimentoRepository.SaveChangesAsync(cancellationToken);
 
-        return MapResponse(atendimento);
+        return MapResponse(atendimento, null, cliente);
     }
 
     public async Task<AtendimentoResponse> UpdateAsync(long empresaId, long id, AtendimentoUpdateRequest request, CancellationToken cancellationToken)
@@ -166,7 +161,8 @@ public sealed class AtendimentoService : IAtendimentoService
 
         await _atendimentoRepository.SaveChangesAsync(cancellationToken);
 
-        return MapResponse(atendimento);
+        var cliente = await _clienteRepository.GetByIdAsync(empresaId, atendimento.ClienteId, false, cancellationToken);
+        return MapResponse(atendimento, null, cliente);
     }
 
     public async Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken)
@@ -255,11 +251,11 @@ public sealed class AtendimentoService : IAtendimentoService
         return (inicio, fim);
     }
 
-    private static AtendimentoResponse MapResponse(Atendimento atendimento) => MapResponse(atendimento, null);
-
-    private static AtendimentoResponse MapResponse(Atendimento atendimento, string? resumo)
+    // cliente: o carregado à parte (id, criação, edição); senão o que veio na consulta (lista).
+    private static AtendimentoResponse MapResponse(Atendimento atendimento, string? resumo, Cliente? cliente = null)
     {
-        var cliente = atendimento.Cliente is { DeletedAt: null } c ? c : null;
+        cliente ??= atendimento.Cliente;
+        if (cliente is { DeletedAt: not null }) cliente = null;
         return new AtendimentoResponse
         {
             Id = atendimento.Id,
@@ -273,7 +269,7 @@ public sealed class AtendimentoService : IAtendimentoService
             ClienteId = atendimento.ClienteId,
             UsuarioId = atendimento.UsuarioId,
             Resumo = resumo,
-            // Só quando a consulta trouxe o cliente (lista paginada); excluído = ausente.
+            // Excluído = ausente.
             ClienteNome = cliente?.Nome,
             ClienteTelefone = cliente?.Telefone,
             EnderecoResumo = cliente is null ? null : Enderecos.Resumo(cliente),

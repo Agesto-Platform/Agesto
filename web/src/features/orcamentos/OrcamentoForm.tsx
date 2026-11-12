@@ -7,6 +7,7 @@ import type {
   StatusOrcamento,
 } from '../../types/api'
 import { Button, IconButton, NumberField, SelectField, TextField, brl } from '../../components/ui'
+import { ClienteField, ProdutoField, ServicoField } from '../../components/CamposDeEscolha'
 import { Icon, type IconName } from '../../components/Icon'
 import { useServicoSugeridos } from '../servicos/sugeridosQueries'
 import { useConfiguracao } from '../parametrizacao/queries'
@@ -34,30 +35,26 @@ function servicoPreco(s: Servico): number | undefined {
 }
 
 export function OrcamentoForm({
-  clientes,
-  produtos,
-  servicos,
   onSubmit,
   submitting,
   serverError,
   onCancel,
 }: {
-  clientes: Cliente[]
-  produtos: Produto[]
-  servicos: Servico[]
   onSubmit: (input: OrcamentoInput) => void
   submitting: boolean
   serverError?: string | null
   onCancel: () => void
 }) {
-  const [clienteId, setClienteId] = useState('')
+  // PAG-01 fase 2: cliente, produto e serviço vêm da busca no servidor, inteiros.
+  const [cliente, setCliente] = useState<Cliente | null>(null)
   const [status, setStatus] = useState<StatusOrcamento>('Rascunho')
   const [itens, setItens] = useState<DraftItem[]>([])
   const [errors, setErrors] = useState<{ cliente?: string; itens?: string }>({})
 
   // rascunho do item em edição
   const [tipo, setTipo] = useState<Tipo>('produto')
-  const [refId, setRefId] = useState('')
+  const [produtoSel, setProdutoSel] = useState<Produto | null>(null)
+  const [servicoSel, setServicoSel] = useState<Servico | null>(null)
   const [descricao, setDescricao] = useState('')
   const [quantidade, setQuantidade] = useState<number | undefined>(1)
   const [preco, setPreco] = useState<number | undefined>(undefined)
@@ -71,11 +68,11 @@ export function OrcamentoForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [permiteServico])
 
-  const servicoSelId = tipo === 'servico' && refId ? Number(refId) : 0
+  const servicoSelId = tipo === 'servico' && servicoSel ? servicoSel.id : 0
   const sugeridos = useServicoSugeridos(servicoSelId)
   // E2E-02: no atendimento a empreitada não multiplica pela quantidade (DEC-04).
   // Travada em 1 aqui, o orçamento cobra o mesmo que o atendimento convertido.
-  const empreitada = servicos.find((s) => s.id === servicoSelId)?.tipoCobranca === 'Empreitada'
+  const empreitada = tipo === 'servico' && servicoSel?.tipoCobranca === 'Empreitada'
 
   function addSugeridos() {
     const list = sugeridos.data ?? []
@@ -83,36 +80,33 @@ export function OrcamentoForm({
       ...prev,
       ...list
         .filter((s) => !prev.some((i) => i.produtoId === s.produtoId))
-        .map((s) => {
-          const p = produtos.find((x) => x.id === s.produtoId)
-          return {
-            key: crypto.randomUUID(),
-            produtoId: s.produtoId,
-            servicoId: null,
-            descricao: null,
-            label: p?.nome ?? s.produtoNome,
-            quantidade: s.quantidadePadrao,
-            precoUnitario: p?.preco ?? 0,
-          }
-        }),
+        .map((s) => ({
+          key: crypto.randomUUID(),
+          produtoId: s.produtoId,
+          servicoId: null,
+          descricao: null,
+          label: s.produtoNome,
+          quantidade: s.quantidadePadrao,
+          precoUnitario: s.produtoPreco ?? 0,
+        })),
     ])
   }
 
   function changeTipo(t: Tipo) {
     setTipo(t)
-    setRefId('')
+    setProdutoSel(null)
+    setServicoSel(null)
     setDescricao('')
     setPreco(undefined)
     setDraftError(null)
   }
 
-  function pickProduto(id: string) {
-    setRefId(id)
-    setPreco(produtos.find((p) => p.id === Number(id))?.preco)
+  function pickProduto(p: Produto | null) {
+    setProdutoSel(p)
+    setPreco(p?.preco)
   }
-  function pickServico(id: string) {
-    setRefId(id)
-    const s = servicos.find((x) => x.id === Number(id))
+  function pickServico(s: Servico | null) {
+    setServicoSel(s)
     setPreco(s ? servicoPreco(s) : undefined)
   }
 
@@ -128,13 +122,13 @@ export function OrcamentoForm({
     let label = ''
 
     if (tipo === 'produto') {
-      if (!refId) return setDraftError('Escolha um produto.')
-      produtoId = Number(refId)
-      label = produtos.find((p) => p.id === produtoId)?.nome ?? 'Produto'
+      if (!produtoSel) return setDraftError('Escolha um produto.')
+      produtoId = produtoSel.id
+      label = produtoSel.nome
     } else if (tipo === 'servico') {
-      if (!refId) return setDraftError('Escolha um serviço.')
-      servicoId = Number(refId)
-      label = servicos.find((s) => s.id === servicoId)?.descricao ?? 'Serviço'
+      if (!servicoSel) return setDraftError('Escolha um serviço.')
+      servicoId = servicoSel.id
+      label = servicoSel.descricao
     } else {
       if (!descricao.trim()) return setDraftError('Descreva o item avulso.')
       desc = descricao.trim()
@@ -153,7 +147,8 @@ export function OrcamentoForm({
         precoUnitario: preco,
       },
     ])
-    setRefId('')
+    setProdutoSel(null)
+    setServicoSel(null)
     setDescricao('')
     setQuantidade(1)
     setPreco(undefined)
@@ -166,13 +161,13 @@ export function OrcamentoForm({
   function handleSubmit(ev: FormEvent) {
     ev.preventDefault()
     const e: { cliente?: string; itens?: string } = {}
-    if (!clienteId) e.cliente = 'Selecione um cliente.'
+    if (!cliente) e.cliente = 'Selecione um cliente.'
     if (itens.length === 0) e.itens = 'Adicione ao menos um item.'
     setErrors(e)
-    if (Object.keys(e).length > 0) return
+    if (!cliente || Object.keys(e).length > 0) return
 
     onSubmit({
-      clienteId: Number(clienteId),
+      clienteId: cliente.id,
       status,
       itens: itens.map((i) => ({
         produtoId: i.produtoId,
@@ -193,17 +188,7 @@ export function OrcamentoForm({
           </p>
         )}
 
-        <SelectField
-          label="Cliente"
-          required
-          value={clienteId}
-          onChange={setClienteId}
-          error={errors.cliente}
-          options={[
-            { value: '', label: 'Selecione…' },
-            ...clientes.map((c) => ({ value: String(c.id), label: c.nome })),
-          ]}
-        />
+        <ClienteField required value={cliente} onChange={setCliente} error={errors.cliente} />
 
         <SelectField
           label="Status inicial"
@@ -288,28 +273,8 @@ export function OrcamentoForm({
             { value: 'avulso', label: 'Item avulso' },
           ]}
         />
-        {tipo === 'produto' && (
-          <SelectField
-            label="Produto"
-            value={refId}
-            onChange={pickProduto}
-            options={[
-              { value: '', label: 'Escolha o produto…' },
-              ...produtos.map((p) => ({ value: String(p.id), label: p.nome })),
-            ]}
-          />
-        )}
-        {tipo === 'servico' && (
-          <SelectField
-            label="Serviço"
-            value={refId}
-            onChange={pickServico}
-            options={[
-              { value: '', label: 'Escolha o serviço…' },
-              ...servicos.map((s) => ({ value: String(s.id), label: s.descricao })),
-            ]}
-          />
-        )}
+        {tipo === 'produto' && <ProdutoField value={produtoSel} onChange={pickProduto} />}
+        {tipo === 'servico' && <ServicoField value={servicoSel} onChange={pickServico} />}
         {tipo === 'servico' && servicoSelId > 0 && (sugeridos.data?.length ?? 0) > 0 && (
           <div className="field">
             <span className="label">Materiais sugeridos ({sugeridos.data!.length})</span>

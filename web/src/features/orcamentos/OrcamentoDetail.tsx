@@ -4,7 +4,7 @@ import { Icon, type IconName } from '../../components/Icon'
 import { MES_LONGO, iniciais } from '../../lib/format'
 import { itemLabel, numero } from './labels'
 import { StatusOrcamentoPill } from './status'
-import type { ItemOrcamento, Orcamento, Produto, Servico, StatusOrcamento } from '../../types/api'
+import type { ItemOrcamento, Orcamento, StatusOrcamento } from '../../types/api'
 
 const COBRANCA: Record<string, string> = { PorHora: 'Por hora', Empreitada: 'Empreitada' }
 const ORDEM: StatusOrcamento[] = ['Rascunho', 'Enviado', 'Aprovado', 'Recusado']
@@ -24,8 +24,6 @@ function tipoItem(it: ItemOrcamento): { icon: IconName; label: string } {
 export function OrcamentoDetail({
   orcamento: o,
   clienteNome,
-  produtos,
-  servicos,
   onChangeStatus,
   onConvert,
   onEdit,
@@ -33,8 +31,6 @@ export function OrcamentoDetail({
 }: {
   orcamento: Orcamento
   clienteNome: string
-  produtos: Produto[]
-  servicos: Servico[]
   onChangeStatus: (status: StatusOrcamento) => void
   onConvert: () => void
   onEdit: () => void
@@ -113,8 +109,7 @@ export function OrcamentoDetail({
           <tbody>
             {o.itens.map((it) => {
               const t = tipoItem(it)
-              const cobranca =
-                it.servicoId != null ? servicos.find((s) => s.id === it.servicoId)?.tipoCobranca : undefined
+              const cobranca = it.servicoId != null ? it.tipoCobranca ?? undefined : undefined
               return (
                 <tr key={it.id}>
                   <td>
@@ -123,7 +118,7 @@ export function OrcamentoDetail({
                         <Icon name={t.icon} />
                       </span>
                       <span>
-                        <span className="strong">{itemLabel(it, produtos, servicos)}</span>
+                        <span className="strong">{itemLabel(it)}</span>
                         <span className="sub">
                           {t.label}
                           {cobranca ? ' · ' + (COBRANCA[cobranca] ?? cobranca) : ''}

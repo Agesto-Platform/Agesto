@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { produtosResource } from '../produtos/resource'
 import { useServicoSugeridos, useUpdateServicoSugeridos } from './sugeridosQueries'
-import { Button, Empty, IconButton, SelectField, useToast } from '../../components/ui'
+import { Button, Empty, IconButton, useToast } from '../../components/ui'
+import { ProdutoField } from '../../components/CamposDeEscolha'
 import { Icon } from '../../components/Icon'
 import { ApiError } from '../../lib/api'
-import type { ServicoSugeridoInput } from '../../types/api'
+import type { Produto, ServicoSugeridoInput } from '../../types/api'
 
 function norm(rows: ServicoSugeridoInput[]): string {
   return JSON.stringify([...rows].sort((a, b) => a.produtoId - b.produtoId))
@@ -12,21 +12,21 @@ function norm(rows: ServicoSugeridoInput[]): string {
 
 /** Editor do kit de materiais de um serviço (só ao editar um serviço existente). */
 export function ServicoSugeridosEditor({ servicoId }: { servicoId: number }) {
-  const produtos = produtosResource.useList()
   const sugeridos = useServicoSugeridos(servicoId)
   const update = useUpdateServicoSugeridos(servicoId)
   const toast = useToast()
 
   const [rows, setRows] = useState<ServicoSugeridoInput[]>([])
-  const [addId, setAddId] = useState('')
+  // PAG-01 fase 2: os nomes vêm do kit salvo e do produto escolhido na busca.
+  const [nomesNovos, setNomesNovos] = useState<Record<number, string>>({})
 
   const serverRows = useMemo(
     () => (sugeridos.data ?? []).map((s) => ({ produtoId: s.produtoId, quantidadePadrao: s.quantidadePadrao })),
     [sugeridos.data],
   )
 
-  const nomeDe = (id: number) => produtos.data?.find((p) => p.id === id)?.nome ?? `Produto #${id}`
-  const disponiveis = (produtos.data ?? []).filter((p) => !rows.some((r) => r.produtoId === p.id))
+  const nomeDe = (id: number) =>
+    nomesNovos[id] ?? sugeridos.data?.find((s) => s.produtoId === id)?.produtoNome ?? `Produto #${id}`
   const dirty = norm(rows) !== norm(serverRows)
 
   // Sincroniza com o servidor só quando não há edição pendente (não clobbera o usuário).
@@ -35,10 +35,10 @@ export function ServicoSugeridosEditor({ servicoId }: { servicoId: number }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverRows])
 
-  function add(produtoId: number) {
-    if (!produtoId || rows.some((r) => r.produtoId === produtoId)) return
-    setRows((r) => [...r, { produtoId, quantidadePadrao: 1 }])
-    setAddId('')
+  function add(p: Produto | null) {
+    if (!p || rows.some((r) => r.produtoId === p.id)) return
+    setNomesNovos((n) => ({ ...n, [p.id]: p.nome }))
+    setRows((r) => [...r, { produtoId: p.id, quantidadePadrao: 1 }])
   }
 
   function setQtd(produtoId: number, quantidadePadrao: number) {
@@ -128,20 +128,13 @@ export function ServicoSugeridosEditor({ servicoId }: { servicoId: number }) {
         </Empty>
       )}
 
-      {disponiveis.length > 0 && (
-        <SelectField<string>
-          label="Adicionar material"
-          value={addId}
-          onChange={(v) => {
-            setAddId(v)
-            if (v) add(Number(v))
-          }}
-          options={[
-            { value: '', label: 'Selecione um produto…' },
-            ...disponiveis.map((p) => ({ value: String(p.id), label: p.nome })),
-          ]}
-        />
-      )}
+      {/* Escolher adiciona na hora; o campo volta vazio para o próximo material. */}
+      <ProdutoField
+        label="Adicionar material"
+        value={null}
+        onChange={add}
+        hint="Produtos que já estão no kit não entram duas vezes."
+      />
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button size="sm" onClick={salvar} disabled={!dirty || update.isPending}>

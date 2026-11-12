@@ -4,7 +4,6 @@ namespace MicroERP.Api.Repositories.Interfaces;
 
 public interface IClienteRepository
 {
-    Task<List<Cliente>> GetAllAsync(long empresaId, CancellationToken cancellationToken);
     Task<(List<Cliente> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, string? busca, CancellationToken cancellationToken);
     Task<Dictionary<long, (int Total, DateTime? Ultimo)>> GetEstatisticasAsync(long empresaId, IReadOnlyCollection<long> clienteIds, CancellationToken cancellationToken);
     Task<Cliente?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken);

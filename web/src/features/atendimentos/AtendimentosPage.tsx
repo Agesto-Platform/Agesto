@@ -10,9 +10,6 @@ import {
 import { AtendimentoForm } from './AtendimentoForm'
 import { AtendimentoDetail } from './AtendimentoDetail'
 import { StatusAtendimentoPill } from './status'
-import { clientesResource } from '../clientes/resource'
-import { produtosResource } from '../produtos/resource'
-import { servicosResource } from '../servicos/resource'
 import { useUsuarios, responsaveis } from '../usuarios/queries'
 import {
   Button,
@@ -58,10 +55,7 @@ export function AtendimentosPage() {
   const remove = useDeleteAtendimento()
   const toast = useToast()
 
-  // Ainda a lista inteira: o campo de cliente do formulário (fase 2 do PAG-01).
-  const clientes = clientesResource.useList()
-  const produtos = produtosResource.useList()
-  const servicos = servicosResource.useList()
+  // PAG-01 fase 2: cliente, produto e serviço são escolhidos por busca no servidor.
   const usuarios = useUsuarios()
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -75,8 +69,7 @@ export function AtendimentosPage() {
   const avulso = useAtendimento(detailId !== null && !daLista ? detailId : null)
   const detail = daLista ?? (avulso.data?.id === detailId ? avulso.data : null)
 
-  const clienteNome = (a: Atendimento) =>
-    a.clienteNome ?? clientes.data?.find((c) => c.id === a.clienteId)?.nome ?? `Cliente #${a.clienteId}`
+  const clienteNome = (a: Atendimento) => a.clienteNome ?? `Cliente #${a.clienteId}`
   const nenhumAinda = contagem.data?.todos === 0
 
   function openCreate() {
@@ -259,7 +252,6 @@ export function AtendimentosPage() {
       <Drawer open={createOpen} onClose={() => setCreateOpen(false)} title="Novo atendimento">
         {createOpen && (
           <AtendimentoForm
-            clientes={clientes.data ?? []}
             responsaveis={responsaveis(usuarios.data)}
             onSubmit={handleCreate}
             submitting={create.isPending}
@@ -280,8 +272,6 @@ export function AtendimentosPage() {
             key={detail.id}
             atendimento={detail}
             responsaveis={usuarios.data ?? []}
-            produtos={produtos.data ?? []}
-            servicos={servicos.data ?? []}
             onUpdate={handleUpdate}
             onDelete={() => setConfirmDelete(true)}
             busy={{ update: update.isPending, delete: remove.isPending }}

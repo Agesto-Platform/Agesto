@@ -17,6 +17,8 @@ public sealed class SyncServiceTests
     {
         await using var db = CreateContext();
         var antiga = DateTime.UtcNow.AddDays(-10);
+        db.Clientes.Add(new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Maria", Cpf = "1", EmpresaId = 1 });
+        db.Servicos.Add(new Servico { Id = 5, Uuid = Guid.NewGuid(), Descricao = "Instalação", TipoCobranca = TipoCobranca.Empreitada, EmpresaId = 1 });
 
         // Recente, empresa 1 -> deve vir (com item)
         db.Orcamentos.Add(new Orcamento
@@ -49,6 +51,10 @@ public sealed class SyncServiceTests
         Assert.Equal(StatusOrcamento.Enviado, carga.Orcamentos[0].Status);
         Assert.Single(carga.Orcamentos[0].Itens);
         Assert.Equal(5, carga.Orcamentos[0].Itens[0].ServicoId);
+        // PAG-01: o mesmo mapeamento do web, com cliente e rótulo do serviço.
+        Assert.Equal("Maria", carga.Orcamentos[0].ClienteNome);
+        Assert.Equal("Instalação", carga.Orcamentos[0].Itens[0].ServicoDescricao);
+        Assert.Equal(TipoCobranca.Empreitada, carga.Orcamentos[0].Itens[0].TipoCobranca);
     }
 
     [Theory]

@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import {
-  useOrcamentos,
+  useOrcamento,
+  useOrcamentoResumo,
+  useOrcamentosPaginados,
   useCreateOrcamento,
   useUpdateStatus,
   useDeleteOrcamento,
@@ -10,28 +12,37 @@ import { OrcamentoForm } from './OrcamentoForm'
 import { OrcamentoDetail, OrcamentoEditForm } from './OrcamentoDetail'
 import { StatusOrcamentoPill } from './status'
 import { numero } from './labels'
-import { clientesResource } from '../clientes/resource'
-import { produtosResource } from '../produtos/resource'
-import { servicosResource } from '../servicos/resource'
-import { Button, Card, ConfirmDialog, Drawer, Empty, PageHead, brl, useToast } from '../../components/ui'
+import {
+  Button,
+  Card,
+  CarregarMais,
+  ConfirmDialog,
+  Drawer,
+  Empty,
+  PageHead,
+  SearchBox,
+  brl,
+  useToast,
+} from '../../components/ui'
 import { ApiError } from '../../lib/api'
 import { dataCurta } from '../../lib/format'
-import type { OrcamentoInput, StatusOrcamento } from '../../types/api'
+import { useDebounced } from '../../lib/paginacao'
+import type { Orcamento, OrcamentoInput, StatusOrcamento } from '../../types/api'
 import './orcamentos.css'
 
 const ORDEM: StatusOrcamento[] = ['Rascunho', 'Enviado', 'Aprovado', 'Recusado']
 
 export function OrcamentosPage() {
-  const list = useOrcamentos()
+  const [busca, setBusca] = useState('')
+  const buscaServidor = useDebounced(busca.trim())
+  // PAG-01: 50 por vez, os mais recentes primeiro, com busca pelo cliente no servidor.
+  const list = useOrcamentosPaginados({ busca: buscaServidor || undefined })
+  const resumo = useOrcamentoResumo()
   const create = useCreateOrcamento()
   const updateStatus = useUpdateStatus()
   const remove = useDeleteOrcamento()
   const converter = useConverterOrcamento()
   const toast = useToast()
-
-  const clientes = clientesResource.useList()
-  const produtos = produtosResource.useList()
-  const servicos = servicosResource.useList()
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -39,12 +50,15 @@ export function OrcamentosPage() {
   const [selId, setSelId] = useState<number | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const clienteNome = (id: number) =>
-    clientes.data?.find((c) => c.id === id)?.nome ?? `Cliente #${id}`
+  const clienteNome = (o: Orcamento) => o.clienteNome ?? `Cliente #${o.clienteId}`
 
-  const orcamentos = [...(list.data ?? [])].sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro) || a.id - b.id)
+  const orcamentos = list.itens
+  // Selecionado: das páginas carregadas; um recém-criado fora delas vem pelo id.
   // Sem seleção (ou a selecionada sumiu): mostra o mais recente.
-  const sel = orcamentos.find((o) => o.id === selId) ?? orcamentos[0] ?? null
+  const daLista = orcamentos.find((o) => o.id === selId) ?? null
+  const avulso = useOrcamento(selId !== null && !daLista ? selId : null)
+  const sel = daLista ?? (avulso.data?.id === selId ? avulso.data : null) ?? orcamentos[0] ?? null
+  const nenhumAinda = resumo.data?.every((r) => r.quantidade === 0) ?? false
 
   function openCreate() {
     setServerError(null)
@@ -118,14 +132,14 @@ export function OrcamentosPage() {
       <Card label="Orçamentos por status">
         <div className="pipeline">
           {ORDEM.map((st) => {
-            const l = orcamentos.filter((o) => o.status === st)
+            const r = resumo.data?.find((x) => x.status === st)
             return (
               <div className="pipe" key={st}>
                 <div className="top">
                   <StatusOrcamentoPill status={st} />
                 </div>
-                <b>{l.length}</b>
-                <span className="v">{brl(l.reduce((s, o) => s + o.valorTotal, 0))}</span>
+                <b>{resumo.isLoading ? '…' : r?.quantidade ?? 0}</b>
+                <span className="v">{brl(r?.valorTotal ?? 0)}</span>
               </div>
             )
           })}
@@ -134,6 +148,9 @@ export function OrcamentosPage() {
 
       <div className="split-view">
         <Card>
+          <div style={{ padding: '12px 12px 0' }}>
+            <SearchBox value={busca} onChange={setBusca} placeholder="Buscar pelo cliente…" label="Buscar orçamentos" />
+          </div>
           <div className="q-list" role="list">
             {list.isLoading && (
               <p className="hint" style={{ margin: 0, padding: 12 }}>
@@ -150,7 +167,7 @@ export function OrcamentosPage() {
                 onClick={() => setSelId(o.id)}
               >
                 <span>
-                  <span className="who">{clienteNome(o.clienteId)}</span>
+                  <span className="who">{clienteNome(o)}</span>
                   <br />
                   <span className="num">
                     {numero(o.id)} · {dataCurta(o.dataRegistro)}
@@ -164,9 +181,25 @@ export function OrcamentosPage() {
               </button>
             ))}
           </div>
-          {!list.isLoading && orcamentos.length === 0 && (
-            <Empty icon="file" title="Nenhum orçamento ainda">
-              Clique em Novo orçamento para montar o primeiro.
+          <CarregarMais
+            carregados={orcamentos.length}
+            total={list.total}
+            temMais={list.hasNextPage}
+            carregando={list.isFetchingNextPage}
+            onClick={() => list.fetchNextPage()}
+            rotulo="orçamentos"
+          />
+          {list.isError && (
+            <p className="hint" role="alert" style={{ margin: 0, padding: 12 }}>
+              Não foi possível carregar os orçamentos.
+              {list.error instanceof ApiError ? ` ${list.error.message}` : ''}
+            </p>
+          )}
+          {!list.isLoading && !list.isError && orcamentos.length === 0 && (
+            <Empty icon="file" title={nenhumAinda || !buscaServidor ? 'Nenhum orçamento ainda' : 'Nenhum orçamento encontrado'}>
+              {nenhumAinda || !buscaServidor
+                ? 'Clique em Novo orçamento para montar o primeiro.'
+                : 'Confira o nome do cliente ou limpe a busca.'}
             </Empty>
           )}
         </Card>
@@ -174,9 +207,7 @@ export function OrcamentosPage() {
           {sel ? (
             <OrcamentoDetail
               orcamento={sel}
-              clienteNome={clienteNome(sel.clienteId)}
-              produtos={produtos.data ?? []}
-              servicos={servicos.data ?? []}
+              clienteNome={clienteNome(sel)}
               onChangeStatus={(s) => handleChangeStatus(s)}
               onConvert={handleConvert}
               onEdit={() => setEditOpen(true)}
@@ -196,9 +227,6 @@ export function OrcamentosPage() {
       <Drawer open={createOpen} onClose={() => setCreateOpen(false)} title="Novo orçamento">
         {createOpen && (
           <OrcamentoForm
-            clientes={clientes.data ?? []}
-            produtos={produtos.data ?? []}
-            servicos={servicos.data ?? []}
             onSubmit={handleCreate}
             submitting={create.isPending}
             serverError={serverError}
@@ -212,7 +240,7 @@ export function OrcamentosPage() {
         open={editOpen && sel !== null}
         onClose={() => setEditOpen(false)}
         title={sel ? `Editar orçamento ${numero(sel.id)}` : 'Editar orçamento'}
-        sub={sel ? clienteNome(sel.clienteId) : undefined}
+        sub={sel ? clienteNome(sel) : undefined}
       >
         {editOpen && sel && (
           <OrcamentoEditForm
@@ -229,7 +257,7 @@ export function OrcamentosPage() {
       <ConfirmDialog
         open={confirmDelete && sel !== null}
         title="Excluir orçamento"
-        message={`Remover o orçamento ${sel ? numero(sel.id) : ''} de ${sel ? clienteNome(sel.clienteId) : ''}? Esta ação não pode ser desfeita.`}
+        message={`Remover o orçamento ${sel ? numero(sel.id) : ''} de ${sel ? clienteNome(sel) : ''}? Esta ação não pode ser desfeita.`}
         loading={remove.isPending}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}

@@ -16,17 +16,20 @@ public sealed class ItemProdutoRepository : IItemProdutoRepository
 
     public async Task<List<ItemProduto>> GetAllByAtendimentoAsync(long empresaId, long atendimentoId, CancellationToken cancellationToken)
     {
+        // PAG-01: o produto vem junto (mesmo excluído) para nomear o item, sem N+1.
         return await _dbContext.ItemProdutos
             .AsNoTracking()
             .Where(i => i.AtendimentoId == atendimentoId && i.DeletedAt == null && i.Atendimento!.EmpresaId == empresaId)
+            .Include(i => i.Produto)
             .OrderBy(i => i.Id)
             .ToListAsync(cancellationToken);
     }
 
     public async Task<ItemProduto?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)
     {
-        var query = _dbContext.ItemProdutos
-            .Where(i => i.Id == id && i.DeletedAt == null && i.Atendimento!.EmpresaId == empresaId);
+        IQueryable<ItemProduto> query = _dbContext.ItemProdutos
+            .Where(i => i.Id == id && i.DeletedAt == null && i.Atendimento!.EmpresaId == empresaId)
+            .Include(i => i.Produto);
 
         if (!track)
         {
