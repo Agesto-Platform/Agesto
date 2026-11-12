@@ -1006,7 +1006,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-54 — "Esqueci a senha" do Dono por email, com o Brevo
 
-**Status:** 🟡 Implementado na branch `feature/esqueci-senha-brevo` (12/11/2026), escolhido por Davi Oliveira. Falta aplicar a migration `AddTokenRedefinicaoSenha` no Supabase e configurar o Brevo no Render.
+**Status:** 🟢 Em `main` (PR #161, release #163, 12/11/2026), escolhido por Davi Oliveira. Migration `AddTokenRedefinicaoSenha` aplicada no Supabase; Brevo configurado no Render e envio testado em produção em 12/11/2026.
 
 **Decisão:** o Dono pede, na tela de login, um link para criar uma senha nova:
 - `POST /api/auth/esqueci-senha` responde sempre a mesma mensagem, exista o email ou não. Só gera link para Dono ativo de empresa ativa; o agente continua recebendo senha provisória do Dono (DEC-35).
@@ -1026,7 +1026,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-55 — Acessos novos por convite no email; fim da senha provisória
 
-**Status:** 🟡 Implementado na branch `feature/convites-por-email` (12/11/2026), decidido por Davi Oliveira. Depende do Brevo configurado no Render (DEC-54).
+**Status:** 🟢 Em `main` (PR #162, release #163, 12/11/2026), decidido por Davi Oliveira. Migration `AddConvitesPorEmail` aplicada no Supabase; envio testado em produção em 12/11/2026.
 
 **Decisão:** ninguém mais recebe senha de outra pessoa. Todo acesso novo nasce com o **convite pendente** e a pessoa cria a própria senha pelo link do email:
 - **Quem cria acesso:** o Dono, na tela Usuários (funcionário Agente ou outro Dono da empresa), e a equipe do Agesto, no superadmin (Dono da empresa nova e qualquer acesso de uma empresa). Novo administrador da equipe também é convidado assim; só o primeiro admin continua pelo setup com `Admin__SetupKey`.
@@ -1038,3 +1038,17 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Por quê:** pedido de Davi Oliveira em 12/11/2026. A senha provisória passava por terceiros (Dono, equipe, WhatsApp); com o convite, só a própria pessoa conhece a senha e o email fica confirmado.
 
 **Impacto:** migration `AddConvitesPorEmail` (colunas `EmailConfirmadoEm`, e `AdminId` e `Tipo` na tabela de links). Rotas novas: `POST /api/usuario/{id}/reenviar-convite`, `POST /api/admin/empresas/{id}/usuarios`, `POST /api/admin/empresas/{id}/usuarios/{usuarioId}/enviar-link-senha`, `POST /api/admin/equipe/{id}/reenviar-convite` e `POST /api/admin/auth/criar-senha`. Saem `POST /api/usuario/{id}/redefinir-senha` e `.../senha-provisoria`. Telas novas no web: `/criar-senha` e `/admin/criar-senha`; o app ganha "Esqueci a senha". Revê o item 2 da DEC-35 e a senha provisória da DEC-52.
+
+## DEC-56 — WhatsApp por link (wa.me), sem integração com a conta do Dono
+
+**Status:** 🟡 Implementado na branch `feature/whatsapp-wame` (12/11/2026), escolhido por Davi Oliveira.
+
+**Decisão:** o Agesto conversa com o WhatsApp só por **links `wa.me`**. O botão abre o WhatsApp de quem está usando o Agesto (web ou app), na conversa com o cliente e, quando faz sentido, com a mensagem já escrita. A pessoa revisa e envia pelo próprio WhatsApp. O Agesto não guarda sessão, credencial nem conversa:
+- **Orçamento (web):** "Enviar por WhatsApp" monta a mensagem com o nome do cliente, os itens e o total.
+- **Clientes e Agenda (web), agenda do app:** botão ou link que abre a conversa com o cliente.
+- **Telefone:** aceita DDD + número (10 ou 11 dígitos) ou já com o 55; sem telefone válido, o botão não aparece (no orçamento, fica desligado e explica o motivo).
+- **Fora desta fase:** conversar com os clientes dentro do Agesto. Se for preciso, o caminho é a API oficial do WhatsApp (Cloud API, da Meta), em uma DEC própria com custo e escopo. **Baileys não**, nem outras bibliotecas que imitam o WhatsApp Web.
+
+**Por quê:** pedido de Davi Oliveira em 12/11/2026, para o Dono falar com os clientes pelo WhatsApp a partir do Agesto. O Baileys foi avaliado e recusado: não é oficial e pode levar ao banimento do número do Dono; a sessão guardada daria acesso ao WhatsApp inteiro dele; exigiria um serviço Node.js sempre ligado, fora da arquitetura atual; quebra quando o WhatsApp muda; e aumentaria muito os dados pessoais sob responsabilidade do Agesto (LGPD). O link entrega o principal, cabe antes do lançamento e não tem nenhum desses riscos.
+
+**Impacto:** `OrcamentoResponse` ganha `ClienteTelefone` (sem migration). Utilitários `web/src/lib/whatsapp.ts` e `mobile/src/lib/whatsapp.ts`. O app só recebe o botão num próximo build ou update.

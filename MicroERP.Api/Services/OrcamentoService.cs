@@ -145,7 +145,7 @@ public sealed class OrcamentoService : IOrcamentoService
         await _orcamentoRepository.AddAsync(orcamento, cancellationToken);
         await _orcamentoRepository.SaveChangesAsync(cancellationToken);
 
-        return await MapComRotulosAsync(empresaId, orcamento, cancellationToken, cliente.Nome);
+        return await MapComRotulosAsync(empresaId, orcamento, cancellationToken, cliente);
     }
 
     public async Task<OrcamentoResponse> UpdateStatusAsync(long empresaId, long id, OrcamentoUpdateRequest request, CancellationToken cancellationToken)
@@ -242,11 +242,15 @@ public sealed class OrcamentoService : IOrcamentoService
         }
     }
 
-    private async Task<OrcamentoResponse> MapComRotulosAsync(long empresaId, Orcamento orcamento, CancellationToken cancellationToken, string? clienteNome = null)
+    private async Task<OrcamentoResponse> MapComRotulosAsync(long empresaId, Orcamento orcamento, CancellationToken cancellationToken, Cliente? cliente = null)
     {
         var rotulos = await _orcamentoRepository.GetRotulosDosItensAsync(empresaId, orcamento.Itens, cancellationToken);
         var resposta = MapResponse(orcamento, rotulos);
-        if (clienteNome is not null) resposta.ClienteNome = clienteNome;
+        if (cliente is not null)
+        {
+            resposta.ClienteNome = cliente.Nome;
+            resposta.ClienteTelefone = cliente.Telefone;
+        }
         return resposta;
     }
 
@@ -259,6 +263,7 @@ public sealed class OrcamentoService : IOrcamentoService
             Uuid = orcamento.Uuid.ToString(),
             ClienteId = orcamento.ClienteId,
             ClienteNome = orcamento.Cliente?.Nome,
+            ClienteTelefone = orcamento.Cliente?.Telefone,
             Status = orcamento.Status,
             ValorTotal = orcamento.ValorTotal,
             DataRegistro = orcamento.DataRegistro,

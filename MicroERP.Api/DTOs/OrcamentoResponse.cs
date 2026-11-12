@@ -9,6 +9,8 @@ public sealed class OrcamentoResponse
     public long ClienteId { get; set; }
     // PAG-01: o web deixa de baixar todos os clientes para os nomes.
     public string? ClienteNome { get; set; }
+    // Envio do orçamento por WhatsApp (link wa.me) direto da tela.
+    public string? ClienteTelefone { get; set; }
     public StatusOrcamento Status { get; set; }
     public decimal ValorTotal { get; set; }
     public DateTime DataRegistro { get; set; }
