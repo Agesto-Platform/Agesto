@@ -69,13 +69,13 @@
 
 | Prazo | Tarefa | Origem | Status |
 |-------|--------|--------|--------|
-| 24/10 | Render Starter, para a API não dormir (DEC-49) | B2, D2 | A fazer |
+| 24/10 | Render Starter para o piloto e o lançamento (DEC-49) | B2, D2 | A fazer. Não é mais para a API não dormir: desde 11/11 o Worker `agesto-keepalive` mantém a API e o banco acordados (DEC-32). O plano pago segue previsto na DEC-49 |
 | 24/10 | Organização `agesto` no expo.dev, com os dois Davis | D3 | A fazer |
 | 24/10 | Monitor do `/health` com alerta e chave `Geocoding__OpenRouteServiceApiKey` no Render | B7, B9 | A fazer |
 | 24/10 | Acesso de push e merge para os Davis, ou o app do Claude no GitHub da organização | Operação | A fazer |
 | 27/10 | Ícone, ícone adaptativo e splash do Agesto para o APK | B1 | A fazer |
 | 31/10 | Backup diário com `pg_dump` (GitHub Actions) e um teste de restauração (DEC-49) | B3 | A fazer |
-| 31/10 | Primeiro `eas build` e promoção `develop → main` antes do ensaio (a migration `AddUsuarioAceiteTermos` já está no Supabase desde 28/10) | B1, B8 | A fazer |
+| 31/10 | Primeiro `eas build` antes do ensaio | B1, B8 | A fazer. A promoção `develop → main` que fazia parte desta tarefa já acontece a cada release (a última foi a #158, em 12/11), e a migration `AddUsuarioAceiteTermos` está no Supabase desde 28/10 |
 | 03/11 | Ensaio geral com os dois Davis | Portão | A fazer |
 | 10/11 | Domínio próprio na web e na API, com CORS e CSP ajustados | L2, D12 | A fazer |
 | 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | A fazer |
