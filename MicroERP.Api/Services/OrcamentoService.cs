@@ -171,6 +171,12 @@ public sealed class OrcamentoService : IOrcamentoService
         await using var tx = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
+            // A checagem acima sozinha deixa duas conversões simultâneas passarem
+            // (atendimento duplicado e estoque baixado duas vezes); a reserva trava o
+            // orçamento até o commit e só a primeira segue.
+            if (!await _orcamentoRepository.ReservarParaConversaoAsync(empresaId, id, cancellationToken))
+                throw new ArgumentException("Orçamento já foi convertido.");
+
             var atendimento = await _atendimentoService.CreateAsync(empresaId, usuarioId,
                 new AtendimentoCreateRequest { ClienteId = orcamento.ClienteId, Status = StatusAtendimento.Pendente },
                 cancellationToken);

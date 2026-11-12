@@ -55,10 +55,14 @@ public sealed class OrcamentoServiceTests
             }, CancellationToken.None));
     }
 
+    // A conversão reserva o orçamento com um UPDATE em lote (ExecuteUpdate), que o
+    // provider InMemory não suporta: por isso este teste roda em SQLite.
     [Fact]
     public async Task ConverterAsync_QuandoAprovado_GeraAtendimentoEBaixaEstoque()
     {
-        await using var db = CreateContext();
+        await using var connection = AbrirSqlite(out var options);
+        await using var db = new AppDbContext(options);
+        db.Empresas.Add(new Empresa { Id = 1, Nome = "Empresa Teste" });
         SeedCliente(db, id: 1, empresaId: 1);
         SeedProduto(db, id: 10, empresaId: 1, estoque: 10, preco: 20m);
         db.Orcamentos.Add(new Orcamento
@@ -241,6 +245,70 @@ public sealed class OrcamentoServiceTests
         }
     }
 
+    // Corrida da conversão (E2E-01): outra requisição converteu o orçamento depois que
+    // esta já o tinha lido como livre. A reserva no banco tem de barrar a segunda
+    // conversão antes de criar o atendimento ou mexer no estoque.
+    [Fact]
+    public async Task ConverterAsync_ConvertidoPorOutraRequisicaoDepoisDaLeitura_NaoDuplica()
+    {
+        await using var connection = AbrirSqlite(out var options);
+        await using (var seedDb = new AppDbContext(options))
+        {
+            seedDb.Empresas.Add(new Empresa { Id = 1, Nome = "Empresa Teste" });
+            SeedCliente(seedDb, id: 1, empresaId: 1);
+            SeedProduto(seedDb, id: 10, empresaId: 1, estoque: 10, preco: 20m);
+            // atendimento gerado pela conversão concorrente que terminou primeiro
+            seedDb.Atendimentos.Add(new Atendimento
+            {
+                Id = 50,
+                Uuid = Guid.NewGuid(),
+                EmpresaId = 1,
+                UsuarioId = 7,
+                ClienteId = 1,
+                Status = StatusAtendimento.Pendente,
+                DataRegistro = DateTime.UtcNow
+            });
+            seedDb.Orcamentos.Add(new Orcamento
+            {
+                Id = 1,
+                Uuid = Guid.NewGuid(),
+                EmpresaId = 1,
+                UsuarioId = 7,
+                ClienteId = 1,
+                Status = StatusOrcamento.Aprovado,
+                DataRegistro = DateTime.UtcNow,
+                ValorTotal = 75m,
+                Itens = new List<ItemOrcamento>
+                {
+                    new() { Uuid = Guid.NewGuid(), ProdutoId = 10, Quantidade = 3, PrecoUnitario = 25m, Subtotal = 75m }
+                }
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        await using var db = new AppDbContext(options);
+        // esta requisição já leu o orçamento como livre...
+        var lido = await db.Orcamentos.Include(o => o.Itens).FirstAsync(o => o.Id == 1);
+        Assert.Null(lido.AtendimentoConvertidoId);
+        // ...e a concorrente gravou a conversão antes dela
+        await using (var outra = new AppDbContext(options))
+        {
+            var orcamento = await outra.Orcamentos.FirstAsync(o => o.Id == 1);
+            orcamento.AtendimentoConvertidoId = 50;
+            await outra.SaveChangesAsync();
+        }
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            BuildService(db).ConverterAsync(1, 7, 1, CancellationToken.None));
+        Assert.Equal("Orçamento já foi convertido.", ex.Message);
+
+        await using var verifyDb = new AppDbContext(options);
+        Assert.Equal(new long[] { 50 }, await verifyDb.Atendimentos.Select(a => a.Id).ToListAsync());
+        Assert.Empty(await verifyDb.ItemProdutos.ToListAsync());
+        Assert.Equal(10, (await verifyDb.Produtos.FirstAsync(p => p.Id == 10)).QuantidadeEstoque);
+        Assert.Equal(50, (await verifyDb.Orcamentos.FirstAsync(o => o.Id == 1)).AtendimentoConvertidoId);
+    }
+
     [Fact]
     public async Task CreateAsync_ProdutoDeOutraEmpresa_ThrowsNotFound()
     {
@@ -283,6 +351,17 @@ public sealed class OrcamentoServiceTests
         var atendimentoService = new AtendimentoService(atendimentoRepo, clienteRepo, itemProdutoRepo, itemServicoRepo, produtoRepo, configuracaoRepo, new UsuarioRepository(db));
 
         return new OrcamentoService(db, orcamentoRepo, clienteRepo, atendimentoService, itemProdutoService, itemServicoService);
+    }
+
+    // SQLite relacional em memória, com o schema criado: vive enquanto a conexão estiver aberta.
+    private static SqliteConnection AbrirSqlite(out DbContextOptions<AppDbContext> options)
+    {
+        var connection = new SqliteConnection("DataSource=:memory:");
+        connection.Open();
+        options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options;
+        using var db = new AppDbContext(options);
+        db.Database.EnsureCreated();
+        return connection;
     }
 
     private static AppDbContext CreateContext() =>
