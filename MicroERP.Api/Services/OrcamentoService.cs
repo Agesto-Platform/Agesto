@@ -88,10 +88,20 @@ public sealed class OrcamentoService : IOrcamentoService
                 throw new NotFoundException($"Produto {produtoId} não encontrado.");
             }
 
-            if (itemRequest.ServicoId is { } servicoId && !await _dbContext.Servicos.AnyAsync(
-                    s => s.Id == servicoId && s.EmpresaId == empresaId && s.DeletedAt == null, cancellationToken))
+            if (itemRequest.ServicoId is { } servicoId)
             {
-                throw new NotFoundException($"Serviço {servicoId} não encontrado.");
+                var tipoCobranca = await _dbContext.Servicos
+                    .Where(s => s.Id == servicoId && s.EmpresaId == empresaId && s.DeletedAt == null)
+                    .Select(s => (TipoCobranca?)s.TipoCobranca)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (tipoCobranca is null)
+                    throw new NotFoundException($"Serviço {servicoId} não encontrado.");
+
+                // E2E-02: no atendimento a empreitada não multiplica pela quantidade (DEC-04),
+                // então o orçamento trava em 1 para cobrar o mesmo valor depois de convertido.
+                // Para cobrar duas vezes, adiciona-se outra linha.
+                if (tipoCobranca == TipoCobranca.Empreitada && itemRequest.Quantidade != 1)
+                    throw new ArgumentException("Na empreitada, a quantidade é 1. Para cobrar de novo, adicione outra linha.");
             }
 
             itens.Add(new ItemOrcamento
