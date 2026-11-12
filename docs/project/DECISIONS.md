@@ -1041,14 +1041,14 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-56 — WhatsApp por link (wa.me), sem integração com a conta do Dono
 
-**Status:** 🟡 Implementado na branch `feature/whatsapp-wame` (12/11/2026), escolhido por Davi Oliveira.
+**Status:** 🟢 Links em `main` (PR #168, release #169, 12/11/2026), escolhido por Davi Oliveira. PDF do orçamento na branch `feature/orcamento-pdf` (12/11/2026).
 
 **Decisão:** o Agesto conversa com o WhatsApp só por **links `wa.me`**. O botão abre o WhatsApp de quem está usando o Agesto (web ou app), na conversa com o cliente e, quando faz sentido, com a mensagem já escrita. A pessoa revisa e envia pelo próprio WhatsApp. O Agesto não guarda sessão, credencial nem conversa:
-- **Orçamento (web):** "Enviar por WhatsApp" monta a mensagem com o nome do cliente, os itens e o total.
+- **Orçamento (web):** vai como **PDF** (pedido do Davi em 12/11/2026, no lugar da mensagem com os itens). O PDF é gerado no navegador e leva empresa, cliente, itens e total, **nunca custo nem margem**. Como o `wa.me` não aceita anexo: no celular, "Enviar PDF por WhatsApp" abre o compartilhar do sistema com o arquivo, e a pessoa escolhe o WhatsApp e o contato; no computador, o PDF é baixado e a conversa do cliente abre no WhatsApp, para anexar o arquivo. "Baixar PDF" serve para email ou impressão.
 - **Clientes e Agenda (web), agenda do app:** botão ou link que abre a conversa com o cliente.
 - **Telefone:** aceita DDD + número (10 ou 11 dígitos) ou já com o 55; sem telefone válido, o botão não aparece (no orçamento, fica desligado e explica o motivo).
 - **Fora desta fase:** conversar com os clientes dentro do Agesto. Se for preciso, o caminho é a API oficial do WhatsApp (Cloud API, da Meta), em uma DEC própria com custo e escopo. **Baileys não**, nem outras bibliotecas que imitam o WhatsApp Web.
 
 **Por quê:** pedido de Davi Oliveira em 12/11/2026, para o Dono falar com os clientes pelo WhatsApp a partir do Agesto. O Baileys foi avaliado e recusado: não é oficial e pode levar ao banimento do número do Dono; a sessão guardada daria acesso ao WhatsApp inteiro dele; exigiria um serviço Node.js sempre ligado, fora da arquitetura atual; quebra quando o WhatsApp muda; e aumentaria muito os dados pessoais sob responsabilidade do Agesto (LGPD). O link entrega o principal, cabe antes do lançamento e não tem nenhum desses riscos.
 
-**Impacto:** `OrcamentoResponse` ganha `ClienteTelefone` (sem migration). Utilitários `web/src/lib/whatsapp.ts` e `mobile/src/lib/whatsapp.ts`. O app só recebe o botão num próximo build ou update.
+**Impacto:** `OrcamentoResponse` ganha `ClienteTelefone`, e `ConfiguracaoResponse` ganha `EmpresaNome` e `EmpresaDocumento` (sem migration; o nome também passa a aparecer na conta do web, no lugar de "Minha empresa"). Utilitários `web/src/lib/whatsapp.ts` e `mobile/src/lib/whatsapp.ts`; PDF em `web/src/features/orcamentos/pdf.ts`, com a dependência `jspdf` carregada só quando o orçamento abre. O app só recebe o botão num próximo build ou update.

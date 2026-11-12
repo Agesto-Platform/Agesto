@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { linkWhatsApp, mensagemOrcamento, numeroWhatsApp } from './whatsapp'
+import { linkWhatsApp, mensagemPdfOrcamento, numeroWhatsApp } from './whatsapp'
 
 describe('numeroWhatsApp', () => {
   it('celular com máscara ganha o 55', () => {
@@ -36,28 +36,13 @@ describe('linkWhatsApp', () => {
   })
 })
 
-describe('mensagemOrcamento', () => {
-  it('monta saudação com o nome, itens e total', () => {
-    const msg = mensagemOrcamento({
-      clienteNome: 'Maria da Silva',
-      numero: '#0007',
-      linhas: [
-        { descricao: 'Instalação de tomada', quantidade: 1, subtotal: 80 },
-        { descricao: 'Cabo 2,5 mm', quantidade: 10, subtotal: 45.5 },
-      ],
-      total: 125.5,
-    })
-    expect(msg).toBe(
-      [
-        'Olá, Maria da Silva! Segue o orçamento #0007:',
-        '',
-        '• Instalação de tomada: R$ 80,00',
-        '• 10 × Cabo 2,5 mm: R$ 45,50',
-        '',
-        '*Total: R$ 125,50*',
-        '',
-        'Qualquer dúvida, é só responder por aqui.',
-      ].join('\n'),
+describe('mensagemPdfOrcamento', () => {
+  it('cumprimenta pelo nome e cita o número do orçamento', () => {
+    expect(mensagemPdfOrcamento('Maria da Silva', '#0007')).toBe(
+      'Olá, Maria da Silva! Segue o orçamento #0007 em PDF. Qualquer dúvida, é só responder por aqui.',
     )
+  })
+  it('sem nome, só o cumprimento', () => {
+    expect(mensagemPdfOrcamento('  ', '#0001')).toMatch(/^Olá! Segue o orçamento #0001/)
   })
 })

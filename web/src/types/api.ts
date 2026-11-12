@@ -327,6 +327,9 @@ export interface Configuracao {
   /** O agente pode cadastrar serviço novo pelo app (vai para revisão). */
   agenteCadastraServico: boolean
   empresaId: number
+  /** Nome e documento da empresa: cabeçalho do PDF do orçamento e nome na conta. */
+  empresaNome?: string | null
+  empresaDocumento?: string | null
   createdAt: string
   updatedAt: string
 }

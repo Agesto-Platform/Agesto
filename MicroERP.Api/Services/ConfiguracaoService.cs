@@ -58,6 +58,8 @@ public sealed class ConfiguracaoService : IConfiguracaoService
             ControlaEstoque = configuracao.ControlaEstoque,
             AgenteCadastraServico = configuracao.AgenteCadastraServico,
             EmpresaId = configuracao.EmpresaId,
+            EmpresaNome = configuracao.Empresa?.Nome,
+            EmpresaDocumento = configuracao.Empresa?.Documento,
             CreatedAt = configuracao.CreatedAt,
             UpdatedAt = configuracao.UpdatedAt
         };

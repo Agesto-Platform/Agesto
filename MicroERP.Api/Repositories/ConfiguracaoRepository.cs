@@ -17,6 +17,7 @@ public sealed class ConfiguracaoRepository : IConfiguracaoRepository
     public async Task<Configuracao?> GetByEmpresaAsync(long empresaId, bool track, CancellationToken cancellationToken)
     {
         var query = _dbContext.Configuracoes
+            .Include(c => c.Empresa)
             .Where(c => c.EmpresaId == empresaId);
 
         if (!track)
