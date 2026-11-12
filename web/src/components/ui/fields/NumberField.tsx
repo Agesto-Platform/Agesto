@@ -10,6 +10,7 @@ export function NumberField({
   step = 1,
   min = 0,
   required = false,
+  disabled = false,
   placeholder,
 }: {
   label: string
@@ -21,6 +22,7 @@ export function NumberField({
   step?: number
   min?: number
   required?: boolean
+  disabled?: boolean
   placeholder?: string
 }) {
   const id = useId()
@@ -41,6 +43,7 @@ export function NumberField({
           min={min}
           value={value ?? ''}
           placeholder={placeholder}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
           aria-invalid={error ? true : undefined}
           aria-describedby={error || hint ? id + '-msg' : undefined}
