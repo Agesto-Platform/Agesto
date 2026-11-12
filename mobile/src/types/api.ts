@@ -98,6 +98,8 @@ export interface AgendaItem {
   /** Uuid do atendimento no servidor; é a chave para concluí-lo no app. */
   uuid: string
   dataAgendada: string | null
+  /** Quando foi registrado. Ausente em respostas antigas. */
+  dataRegistro?: string
   status: StatusAtendimento
   valorTotal: number
   clienteId: number
@@ -109,6 +111,14 @@ export interface AgendaItem {
   resumo: string
   /** Itens já lançados (ex.: pelo Dono no web). Ausente em respostas antigas. */
   itens?: AgendaItemLinha[]
+}
+
+/** Uma página de lista da API (?pagina=&tamanho=). */
+export interface PaginaResponse<T> {
+  itens: T[]
+  pagina: number
+  tamanho: number
+  total: number
 }
 
 export interface AgendaItemLinha {

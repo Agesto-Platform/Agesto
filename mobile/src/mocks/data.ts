@@ -40,6 +40,21 @@ function hoje(hour: number, min = 0): string {
   return d.toISOString()
 }
 
+/** Histórico do agente (GET /api/atendimento/historico): o que já aconteceu, do mais recente. */
+export function seedHistorico(): AgendaItem[] {
+  const diasAtras = (dias: number, hour: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() - dias)
+    d.setHours(hour, 0, 0, 0)
+    return d.toISOString()
+  }
+  return [
+    { id: 91, uuid: 'at-91', dataAgendada: diasAtras(1, 10), dataRegistro: diasAtras(5, 9), status: 'Concluido', valorTotal: 380, clienteId: 2, clienteNome: 'Marina Alves', clienteTelefone: '(34) 98888-1010', enderecoResumo: 'Av. Leopoldino, 45 — Fabrício', resumo: 'Manutenção preventiva', itens: [{ descricao: 'Manutenção preventiva', quantidade: 2, precoUnitario: 140, subtotal: 280 }, { descricao: 'Cano de dreno (m)', quantidade: 5, precoUnitario: 20, subtotal: 100 }] },
+    { id: 90, uuid: 'at-90', dataAgendada: null, dataRegistro: diasAtras(3, 15), status: 'Concluido', valorTotal: 90, clienteId: 1, clienteNome: 'Vó Joana', clienteTelefone: '(34) 99999-0000', enderecoResumo: 'R. das Acácias, 120 — Centro', resumo: 'Limpeza / higienização', itens: [{ descricao: 'Limpeza / higienização', quantidade: 1, precoUnitario: 90, subtotal: 90 }] },
+    { id: 89, uuid: 'at-89', dataAgendada: diasAtras(8, 8), dataRegistro: diasAtras(9, 8), status: 'Cancelado', valorTotal: 0, clienteId: 3, clienteNome: 'Renata Vieira', clienteTelefone: null, enderecoResumo: 'Centro', resumo: 'Atendimento', itens: [] },
+  ]
+}
+
 /** Agenda do dia do agente (GET /api/atendimento/agenda). */
 export function seedAgenda(): AgendaItem[] {
   return [

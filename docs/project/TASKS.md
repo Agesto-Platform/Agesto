@@ -393,7 +393,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
 | — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
 
-**Ciclo offline verificado no último marco:** login → Carga (com a agenda) → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 123 testes Jest (12/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Ciclo offline verificado no último marco:** login → Carga (com a agenda) → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 128 testes Jest (12/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 
@@ -407,7 +407,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
 | ~~APK e atualização OTA~~ | ✅ `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão em `develop` (DEC-47, PR #108). Falta o primeiro `eas build` (Diego, ver Lançamento do MVP) | Alta | — |
-| Histórico de atendimentos próprios | Não implementado nesta fase (fora do escopo mob-01 a mob-07) | Baixa | Davi Gomes |
+| ~~Histórico de atendimentos próprios~~ | 🟢 Resolvido em 12/11/2026: a aba Atendimentos mostra o histórico do servidor (`GET /api/atendimento/historico`, paginado, o Agente só os próprios), com os não enviados no topo; sem internet, só o que está no aparelho | — | — |
 | Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2, depois do lançamento) | Baixa | Davi Gomes |
 | Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa | Davi Gomes |
 | ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta | — |
@@ -425,7 +425,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 ### Depois do lançamento
 2. Auditoria de `REQUIREMENTS.md` e remoção da documentação legada (Davi Gomes)
-3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync e histórico no app (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
+3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
 
 ---
 

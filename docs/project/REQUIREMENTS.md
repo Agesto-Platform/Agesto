@@ -176,7 +176,7 @@ Dois fluxos distintos:
 - **[Implementado]** Consulta de catálogo de Produtos e Serviços (via Carga)
 - **[Implementado]** Cadastro rápido de serviço no registrar, offline, enviado na Descarga e marcado para revisão do Dono; o Dono liga ou desliga em Parametrização (DEC-36)
 - **[Implementado]** Registro de Atendimentos (cliente + itens de catálogo por quantidade + status), salvo offline como pendente
-- Consulta de histórico de atendimentos próprios — não implementado nesta fase (fora do escopo de mob-01 a mob-07)
+- **[Implementado]** Histórico de atendimentos na aba Atendimentos (12/11/2026): o que já aconteceu, do mais recente, vindo de `GET /api/atendimento/historico` (paginado, 20 por vez, "Carregar mais"; o Agente vê só os próprios, o Dono os de todos; sem custo nem margem). Os não enviados ficam no topo. Sem internet, a aba mostra só o que foi registrado no aparelho, com um aviso
 - **[Implementado]** Sincronização manual (aba "Mais": pendentes, última sync, botão Sincronizar) e automática ao abrir o app, ao voltar para ele e quando a internet volta (I5). Com o app fechado não sincroniza (sem tarefa em segundo plano)
 - **[Implementado]** Home action-first com CTA de registrar atendimento e agenda do dia (Próximo / Ainda hoje), consumindo o endpoint de Agenda (`GET /api/atendimento/agenda`, enriquecido com `AgendaItemResponse`) que chega na Carga (7.2). **[Implementado]** "Iniciar rota" abre o Google Maps com as visitas pendentes do dia, pela ordem dos horários (DEC-37). **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia", fase 2).
 - **[Implementado]** Telas dedicadas de **Agenda** (agenda completa agrupada por dia) e **Atendimentos** (lista com status e badge de pendência de envio).
@@ -235,6 +235,7 @@ Dois fluxos distintos:
 
 - **[Implementado]** `Atendimento.DataAgendada` + `GET /api/atendimento/agenda`, com filtro por perfil: Agente vê só a própria agenda; Dono vê todas/filtra (DEC-17)
 - **[Implementado]** Endpoint enriquecido com `AgendaItemResponse` (nome/telefone/endereço do cliente + resumo do serviço), evitando N+1 no consumo mobile (commit `5e82411`)
+- **[Implementado]** `GET /api/atendimento/historico?pagina=&tamanho=`: o que já aconteceu (data agendada, senão a de registro, até agora), do mais recente, em `PaginaResponse<AgendaItemResponse>`; mesma regra de perfil da agenda (só o Dono vê os de todos). `AgendaItemResponse` ganhou `DataRegistro` (12/11/2026)
 - **[Implementado]** Geolocalização do `Cliente` (DEC-38), rota do dia no Google Maps pelo app (DEC-37) e mapa da agenda no web (DEC-38)
 - **[Implementado]** `Servico.DuracaoMinutos`, usado hoje na receita por hora (DEC-45)
 - **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia") — fase 2

@@ -117,6 +117,30 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
             .ToListAsync(cancellationToken);
     }
 
+    // Histórico do app: o que já aconteceu (data agendada, senão a de registro, até
+    // `ate`), do mais recente para o mais antigo. O que ainda vai acontecer fica na agenda.
+    public Task<(List<Atendimento> Itens, int Total)> GetHistoricoAsync(long empresaId, long? usuarioId, DateTime ate, int pagina, int tamanho, CancellationToken cancellationToken)
+    {
+        var query = _dbContext.Atendimentos
+            .AsNoTracking()
+            .Where(a => a.EmpresaId == empresaId
+                        && a.DeletedAt == null
+                        && (a.DataAgendada ?? a.DataRegistro) <= ate);
+
+        if (usuarioId.HasValue)
+        {
+            query = query.Where(a => a.UsuarioId == usuarioId.Value);
+        }
+
+        return query
+            .OrderByDescending(a => a.DataAgendada ?? a.DataRegistro)
+            .ThenByDescending(a => a.Id)
+            .Include(a => a.Cliente)
+            .Include(a => a.ItensServico).ThenInclude(i => i.Servico)
+            .Include(a => a.ItensProduto).ThenInclude(i => i.Produto)
+            .ToPaginaAsync(pagina, tamanho, cancellationToken);
+    }
+
     public async Task<Atendimento?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)
     {
         var query = _dbContext.Atendimentos

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
@@ -7,17 +7,15 @@ import { useAoSincronizar } from '@/sync/automatica'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { getRecusas, motivoDaRecusa } from '@/sync/sync'
-import type { StatusAtendimento } from '@/types/api'
+import { brl } from '@/ui/ValorEditavel'
+import { buscarHistorico, montarLista, type LinhaAtendimento } from '@/features/atendimentos/historico'
+import type { AgendaItem, StatusAtendimento } from '@/types/api'
 
-interface Row {
-  key: string
-  cliente: string
-  data: string
-  itens: number
-  status: StatusAtendimento
-  pending: boolean
-  /** Por que o servidor não aceitou no último envio (I2); null se não recusou. */
-  motivo: string | null
+/** Histórico do servidor já carregado; null quando não deu para buscar. */
+interface Historico {
+  itens: AgendaItem[]
+  pagina: number
+  total: number
 }
 
 const STATUS: Record<StatusAtendimento, { label: string; fg: string; bg: string }> = {
@@ -35,7 +33,13 @@ function dataCurta(iso: string): string {
 
 export default function Atendimentos() {
   const router = useRouter()
-  const [rows, setRows] = useState<Row[]>([])
+  const [locais, setLocais] = useState<LinhaAtendimento[]>([])
+  const [historico, setHistorico] = useState<Historico | null>(null)
+  const [semHistorico, setSemHistorico] = useState(false)
+  const [carregandoMais, setCarregandoMais] = useState(false)
+  const [erroMais, setErroMais] = useState(false)
+  const rows = useMemo(() => montarLista(locais, historico?.itens ?? null), [locais, historico])
+  const temMais = historico !== null && historico.itens.length < historico.total
 
   const carregar = useCallback(async (ativo: () => boolean = () => true) => {
     const [atends, clientes, pend, recusas] = await Promise.all([
@@ -47,22 +51,58 @@ export default function Atendimentos() {
     if (!ativo()) return
     const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
     const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
-    const list = [...atends]
-      .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
-      .map((a) => ({
+    // O que está no aparelho aparece na hora; o histórico do servidor chega depois.
+    setLocais(
+      atends.map((a) => ({
         key: a.uuid,
         cliente:
           (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
           (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
           `Cliente #${a.clienteId ?? 'novo'}`,
-        data: dataCurta(a.dataRegistro),
+        data: a.dataAgendada ?? a.dataRegistro,
         itens: a.itensProduto.length + a.itensServico.length,
         status: a.status,
         pending: a.syncedAt === null,
         motivo: a.syncedAt === null ? motivoDaRecusa(a, recusas) : null,
-      }))
-    setRows(list)
+        resumo: null,
+        valor: null,
+      })),
+    )
+
+    // Sem internet (ou API anterior ao histórico): fica só com o que está no aparelho.
+    try {
+      const primeira = await buscarHistorico(1)
+      if (!ativo()) return
+      setHistorico({ itens: primeira.itens, pagina: 1, total: primeira.total })
+      setSemHistorico(false)
+    } catch {
+      if (!ativo()) return
+      setHistorico(null)
+      setSemHistorico(true)
+    }
+    setErroMais(false)
   }, [])
+
+  const carregarMais = async () => {
+    if (!historico || carregandoMais) return
+    setCarregandoMais(true)
+    setErroMais(false)
+    try {
+      const proxima = await buscarHistorico(historico.pagina + 1)
+      setHistorico((h) =>
+        h && {
+          itens: [...h.itens, ...proxima.itens],
+          pagina: h.pagina + 1,
+          // Página vazia: o total encolheu desde a primeira; para de oferecer mais.
+          total: proxima.itens.length === 0 ? h.itens.length : proxima.total,
+        },
+      )
+    } catch {
+      setErroMais(true)
+    } finally {
+      setCarregandoMais(false)
+    }
+  }
 
   useAoSincronizar(carregar)
   useFocusEffect(
@@ -89,6 +129,14 @@ export default function Atendimentos() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
+        {semHistorico && (
+          <View style={styles.aviso}>
+            <Ionicons name="cloud-offline-outline" size={16} color={colors.ink3} />
+            <Text style={styles.avisoText}>
+              Não deu para buscar o histórico agora. Mostrando só o que foi registrado neste aparelho.
+            </Text>
+          </View>
+        )}
         {rows.map((r) => {
           const s = STATUS[r.status]
           // Ainda não enviado: toque para corrigir ou excluir.
@@ -105,8 +153,13 @@ export default function Atendimentos() {
             >
               <View style={{ flex: 1, gap: space(1) }}>
                 <Text style={styles.rowName}>{r.cliente}</Text>
+                {r.resumo && (
+                  <Text style={styles.rowResumo} numberOfLines={1}>
+                    {r.resumo}
+                  </Text>
+                )}
                 <Text style={styles.rowSub}>
-                  {r.data} · {r.itens} {r.itens === 1 ? 'item' : 'itens'}
+                  {r.data ? dataCurta(r.data) : 'Sem data'} · {r.itens} {r.itens === 1 ? 'item' : 'itens'}
                 </Text>
                 {r.motivo && (
                   <View style={styles.motivo}>
@@ -119,6 +172,7 @@ export default function Atendimentos() {
                 <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
                   <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
                 </View>
+                {r.valor !== null && r.status !== 'Cancelado' && <Text style={styles.valor}>{brl(r.valor)}</Text>}
                 {r.pending && (
                   <View style={styles.pendingPill}>
                     <Ionicons name="cloud-upload-outline" size={12} color={colors.warn} />
@@ -133,6 +187,17 @@ export default function Atendimentos() {
         {rows.length === 0 && (
           <Text style={styles.empty}>Nenhum atendimento registrado ainda.</Text>
         )}
+        {temMais && (
+          <Pressable
+            onPress={carregarMais}
+            disabled={carregandoMais}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.mais, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={styles.maisText}>{carregandoMais ? 'Carregando…' : 'Carregar mais'}</Text>
+          </Pressable>
+        )}
+        {erroMais && <Text style={styles.erroMais}>Não deu para carregar mais. Tente de novo.</Text>}
       </ScrollView>
     </Screen>
   )
@@ -165,6 +230,7 @@ const styles = StyleSheet.create({
   },
   rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
   rowSub: { fontSize: 12.5, color: colors.ink3 },
+  rowResumo: { fontSize: 13, color: colors.ink2 },
   motivo: { flexDirection: 'row', alignItems: 'flex-start', gap: space(1.5), marginTop: space(0.5) },
   motivoText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: colors.bad },
   tags: { alignItems: 'flex-end', gap: space(1.5) },
@@ -172,6 +238,13 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11.5, fontWeight: '700' },
   pendingPill: { flexDirection: 'row', alignItems: 'center', gap: space(1), backgroundColor: colors.warnSoft, borderRadius: radius.pill, paddingHorizontal: space(2), paddingVertical: space(0.75) },
   pendingText: { color: colors.warn, fontSize: 10.5, fontWeight: '700' },
+
+  valor: { fontSize: 12.5, fontWeight: '600', color: colors.ink2 },
+  aviso: { flexDirection: 'row', alignItems: 'flex-start', gap: space(2), backgroundColor: colors.surface2, borderRadius: radius.sm, padding: space(3) },
+  avisoText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: colors.ink3 },
+  mais: { alignItems: 'center', borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: space(3) },
+  maisText: { fontSize: 13.5, fontWeight: '600', color: colors.ink },
+  erroMais: { fontSize: 12.5, color: colors.bad, textAlign: 'center' },
 
   empty: { fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
 })

@@ -62,6 +62,42 @@ public sealed class AtendimentoControllerTests
         svc.Verify(s => s.GetAgendaAsync(It.IsAny<long>(), It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<long?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData("Agente", 5L)]
+    [InlineData("Dono", null)]
+    public async Task GetHistorico_AgenteVeSoOsProprios_DonoVeTodos(string perfil, long? filtroEsperado)
+    {
+        var svc = new Mock<IAtendimentoService>();
+        svc.Setup(s => s.GetHistoricoAsync(1, It.IsAny<long?>(), It.IsAny<PaginacaoQuery>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(new PaginaResponse<AgendaItemResponse>());
+
+        var controller = BuildController(svc,
+            new Claim("empresaId", "1"),
+            new Claim("sub", "5"),
+            new Claim("perfil", perfil));
+
+        var paginacao = new PaginacaoQuery { Pagina = 2 };
+        var result = await controller.GetHistorico(paginacao, CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        svc.Verify(s => s.GetHistoricoAsync(1, filtroEsperado, paginacao, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetHistorico_SemClaimDePerfil_Retorna401ENaoConsultaServico()
+    {
+        var svc = new Mock<IAtendimentoService>();
+
+        var controller = BuildController(svc,
+            new Claim("empresaId", "1"),
+            new Claim("sub", "5")); // sem claim "perfil"
+
+        var result = await controller.GetHistorico(new PaginacaoQuery(), CancellationToken.None);
+
+        Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        svc.Verify(s => s.GetHistoricoAsync(It.IsAny<long>(), It.IsAny<long?>(), It.IsAny<PaginacaoQuery>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static AtendimentoController BuildController(Mock<IAtendimentoService> svc, params Claim[] claims)
     {
         var identity = new ClaimsIdentity(claims, "TestAuth");

@@ -91,6 +91,19 @@ public sealed class AtendimentoService : IAtendimentoService
         return atendimentos.Select(MapAgendaItem).ToList();
     }
 
+    public async Task<PaginaResponse<AgendaItemResponse>> GetHistoricoAsync(long empresaId, long? agenteId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    {
+        var (itens, total) = await _atendimentoRepository.GetHistoricoAsync(
+            empresaId, agenteId, DateTime.UtcNow, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+        return new PaginaResponse<AgendaItemResponse>
+        {
+            Itens = itens.Select(MapAgendaItem).ToList(),
+            Pagina = paginacao.PaginaOuPadrao,
+            Tamanho = paginacao.TamanhoOuPadrao,
+            Total = total
+        };
+    }
+
     public async Task<AtendimentoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, false, cancellationToken);
@@ -211,6 +224,7 @@ public sealed class AtendimentoService : IAtendimentoService
             Id = a.Id,
             Uuid = a.Uuid.ToString(),
             DataAgendada = a.DataAgendada,
+            DataRegistro = a.DataRegistro,
             Status = a.Status,
             ValorTotal = a.ValorTotal,
             UsuarioId = a.UsuarioId,

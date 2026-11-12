@@ -252,6 +252,40 @@ public sealed class AtendimentoServiceTests
         Assert.Null(result[1].EnderecoResumo);
     }
 
+    [Fact]
+    public async Task GetHistoricoAsync_PaginaAteAgoraEMapeiaComoAgenda()
+    {
+        var antes = DateTime.UtcNow;
+        var registro = new DateTime(2026, 6, 3, 14, 0, 0, DateTimeKind.Utc);
+        _atendimentoRepoMock
+            .Setup(r => r.GetHistoricoAsync(1, 5L, It.IsAny<DateTime>(), 2, 10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Atendimento>
+            {
+                new()
+                {
+                    Id = 7,
+                    DataRegistro = registro,
+                    Status = StatusAtendimento.Concluido,
+                    ValorTotal = 380m,
+                    Cliente = new Cliente { Nome = "Marina" },
+                    ItensServico = new List<ItemServico> { new() { Servico = new Servico { Descricao = "Manutenção" }, Quantidade = 1, PrecoUnitario = 380m, Subtotal = 380m } }
+                }
+            }, 11));
+
+        var pagina = await _service.GetHistoricoAsync(1, 5L, new PaginacaoQuery { Pagina = 2, Tamanho = 10 }, CancellationToken.None);
+
+        Assert.Equal((2, 10, 11), (pagina.Pagina, pagina.Tamanho, pagina.Total));
+        var item = Assert.Single(pagina.Itens);
+        Assert.Equal(registro, item.DataRegistro);
+        Assert.Null(item.DataAgendada);
+        Assert.Equal("Marina", item.ClienteNome);
+        Assert.Equal("Manutenção", item.Resumo);
+        Assert.Equal(380m, Assert.Single(item.Itens).Subtotal);
+        // O corte é "agora": o que ainda vai acontecer fica na agenda.
+        _atendimentoRepoMock.Verify(r => r.GetHistoricoAsync(1, 5L,
+            It.Is<DateTime>(d => d >= antes && d <= DateTime.UtcNow), 2, 10, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     // PAG-02: a agenda não pagina; o teto do período limita o tamanho da resposta.
     [Theory]
     [InlineData(62, true)]

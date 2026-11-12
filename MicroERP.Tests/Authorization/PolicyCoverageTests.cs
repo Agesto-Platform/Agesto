@@ -24,6 +24,7 @@ public sealed class PolicyCoverageTests
         "SyncController.Carga",
         "SyncController.Descarga",
         "AtendimentoController.GetAgenda",
+        "AtendimentoController.GetHistorico",
         "UsuarioController.Delete",
         "AppController.GetVersao",
     ];

@@ -75,6 +75,31 @@ public sealed class AtendimentoController : ApiControllerBase
         }
     }
 
+    // Histórico do app: o que já aconteceu, do mais recente para o mais antigo, paginado.
+    // Mesma regra da agenda: o Agente vê só os próprios, o Dono vê os de todos. Não traz
+    // custo nem margem, por isso não usa a lista do Dono.
+    [HttpGet("historico")]
+    public async Task<ActionResult<ApiResponse>> GetHistorico([FromQuery] PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        if (!TryGetPerfil(out var perfil))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Perfil não identificado no token." });
+
+        // Só o Dono vê os de todos; qualquer outro perfil fica restrito aos próprios.
+        long? filtroAgente = null;
+        if (perfil != PerfilUsuario.Dono)
+        {
+            if (!TryGetUsuarioId(out var usuarioId))
+                return Unauthorized(new ApiResponse { Success = false, Message = "Token inválido." });
+            filtroAgente = usuarioId;
+        }
+
+        var historico = await _atendimentoService.GetHistoricoAsync(empresaId, filtroAgente, paginacao, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Histórico encontrado.", Data = historico });
+    }
+
     [HttpGet("{id:long}")]
     [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> GetById(long id, CancellationToken cancellationToken)

@@ -42,6 +42,56 @@ public sealed class AtendimentoRepositoryTests
         Assert.Equal(1, doAgente[0].Id);
     }
 
+    // SQLite: confere que o COALESCE das datas, os includes e a paginação viram SQL.
+    [Fact]
+    public async Task GetHistoricoAsync_SoOQueJaAconteceu_DoMaisRecente_PorAgente()
+    {
+        var agora = new DateTime(2026, 7, 20, 12, 0, 0, DateTimeKind.Utc);
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options;
+        await using (var setup = new AppDbContext(options))
+        {
+            await setup.Database.EnsureCreatedAsync();
+            setup.Empresas.AddRange(new Empresa { Id = 1, Nome = "Empresa" }, new Empresa { Id = 2, Nome = "Outra" });
+            setup.Usuarios.AddRange(
+                new Usuario { Id = 5, Nome = "Agente", Email = "a@t.com", Senha = "x", EmpresaId = 1, Perfil = PerfilUsuario.Agente },
+                new Usuario { Id = 9, Nome = "Outro", Email = "o@t.com", Senha = "x", EmpresaId = 1, Perfil = PerfilUsuario.Agente });
+            setup.Clientes.Add(new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Cliente 1", Cpf = "cpf1", EmpresaId = 1 });
+            setup.Servicos.Add(new Servico { Id = 1, Uuid = Guid.NewGuid(), Descricao = "Limpeza", EmpresaId = 1 });
+
+            var deletado = At(6, empresaId: 1, usuarioId: 5, agendada: agora.AddDays(-2));
+            deletado.DeletedAt = DateTime.UtcNow;
+            var registradoDepois = At(7, empresaId: 1, usuarioId: 5, agendada: null);
+            registradoDepois.DataRegistro = agora.AddDays(-10);                       // 10/07
+            setup.Atendimentos.AddRange(
+                At(1, empresaId: 1, usuarioId: 5, agendada: null),                    // registro 01/06
+                At(2, empresaId: 1, usuarioId: 5, agendada: agora.AddDays(-3)),       // 17/07
+                At(3, empresaId: 1, usuarioId: 5, agendada: agora.AddHours(2)),       // ainda vai acontecer
+                At(4, empresaId: 1, usuarioId: 9, agendada: agora.AddDays(-1)),       // outro agente, 19/07
+                At(5, empresaId: 2, usuarioId: 5, agendada: agora.AddDays(-1)),       // outra empresa
+                deletado,
+                registradoDepois);
+            setup.ItemServicos.Add(new ItemServico { Id = 1, Uuid = Guid.NewGuid(), AtendimentoId = 2, ServicoId = 1, Quantidade = 1 });
+            await setup.SaveChangesAsync();
+        }
+
+        await using var db = new AppDbContext(options);
+        var repo = new AtendimentoRepository(db);
+
+        // Agente 5: ordena pela data agendada, senão a de registro, do mais recente.
+        var (doAgente, total) = await repo.GetHistoricoAsync(1, 5L, agora, 1, 20, CancellationToken.None);
+        Assert.Equal(new long[] { 2, 7, 1 }, doAgente.Select(a => a.Id).ToArray());
+        Assert.Equal(3, total);
+        Assert.Equal("Limpeza", Assert.Single(doAgente[0].ItensServico).Servico!.Descricao);
+        Assert.Equal("Cliente 1", doAgente[0].Cliente!.Nome);
+
+        // Dono (sem filtro): entra o do outro agente; a página respeita o tamanho.
+        var (pagina2, totalDono) = await repo.GetHistoricoAsync(1, null, agora, 2, 2, CancellationToken.None);
+        Assert.Equal(4, totalDono);
+        Assert.Equal(new long[] { 7, 1 }, pagina2.Select(a => a.Id).ToArray());
+    }
+
     // PAG-02: o resumo da linha é o primeiro serviço vivo, senão o primeiro produto;
     // só da empresa. SQLite: as subconsultas precisam de SQL de verdade.
     [Fact]

@@ -444,7 +444,7 @@ mobile/src/
 4. **Descarga** — empurra clientes e atendimentos pendentes para `POST /api/sync/descarga`; marca como sincronizados só os uuids que o servidor confirmou (os rejeitados seguem pendentes) e religa atendimentos de clientes criados offline ao id do servidor (DEC-33). O botão Sincronizar faz Descarga seguida de Carga + agenda. O app também sincroniza sozinho ao abrir, ao voltar para ele e quando a internet volta (I5): com algo pendente envia logo, sem nada pendente só se a última foi há mais de 5 minutos, e nunca com a tela de registrar ou de cliente aberta, para não enviar uma correção pela metade. Uma sincronização por vez (`sincronizarUmaVez`), e as telas abertas recarregam ao terminar. Aba "Mais" mostra status de sync (pendentes, última sincronização, botão Sincronizar) e logout.
 
 ### Limitações conhecidas (ver DEC-26 e TASKS.md)
-- Consulta de histórico de atendimentos próprios não foi implementada nesta fase (fora do escopo de mob-01 a mob-07).
+- O histórico de atendimentos (aba Atendimentos, `GET /api/atendimento/historico`) precisa de internet e não fica guardado no aparelho; offline a aba mostra só o que foi registrado ali.
 - Rota do dia pelo endereço já existe (DEC-37); a otimização por proximidade ("Otimizar dia") ainda não.
 - Teste de componente React Native (`@testing-library/react-native`) foi adiado por incompatibilidade de versão (lib v14 + jest-expo + React 19).
 

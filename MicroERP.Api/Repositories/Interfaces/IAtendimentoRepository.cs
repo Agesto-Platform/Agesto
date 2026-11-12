@@ -10,6 +10,7 @@ public interface IAtendimentoRepository
     Task<Dictionary<StatusAtendimento, int>> ContarPorStatusAsync(long empresaId, CancellationToken cancellationToken);
     Task<Dictionary<long, string?>> GetResumosAsync(long empresaId, IReadOnlyCollection<long> ids, CancellationToken cancellationToken);
     Task<List<Atendimento>> GetAgendaAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, CancellationToken cancellationToken);
+    Task<(List<Atendimento> Itens, int Total)> GetHistoricoAsync(long empresaId, long? usuarioId, DateTime ate, int pagina, int tamanho, CancellationToken cancellationToken);
     Task<Atendimento?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken);
     Task AddAsync(Atendimento atendimento, CancellationToken cancellationToken);
     Task SaveChangesAsync(CancellationToken cancellationToken);

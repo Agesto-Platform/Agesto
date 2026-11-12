@@ -1,6 +1,6 @@
 import { ApiError } from '@/lib/errors'
 import type { AuthResponse } from '@/types/api'
-import { seedCarga, seedAgenda } from './data'
+import { seedCarga, seedAgenda, seedHistorico } from './data'
 
 export const DEMO_EMAIL = 'agente@agesto.app'
 export const DEMO_SENHA = 'agesto123'
@@ -78,6 +78,20 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
 
   if (method === 'GET' && path.startsWith('/api/atendimento/agenda')) {
     return seedAgenda() as T
+  }
+
+  if (method === 'GET' && path.startsWith('/api/atendimento/historico')) {
+    // Sem URLSearchParams: no React Native ele não tem get().
+    const param = (nome: string, padrao: number) => Number(new RegExp(`[?&]${nome}=(\\d+)`).exec(path)?.[1] ?? padrao)
+    const pagina = param('pagina', 1)
+    const tamanho = param('tamanho', 20)
+    const todos = seedHistorico()
+    return {
+      itens: todos.slice((pagina - 1) * tamanho, pagina * tamanho),
+      pagina,
+      tamanho,
+      total: todos.length,
+    } as T
   }
 
   if (method === 'POST' && path.startsWith('/api/sync/descarga')) {
