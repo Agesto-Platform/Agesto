@@ -69,7 +69,7 @@ Controller  →  Service (interface)  →  Repository (interface)  →  AppDbCon
 | Segurança | 🟢 Auditoria aplicada e validada em produção: rate limit, cadastro fechado, revogação de token, RLS e LGPD de clientes (DEC-34); bloqueio da conta após senhas erradas (DEC-43) e exclusão de conta com anonimização (DEC-44) |
 | Camada de métricas + rentabilidade | 🟢 Implementada |
 | Orçamento / Agendamento / Margem | 🟢 Implementados |
-| Usuários agentes e responsável do atendimento | 🟢 Gestão pelo Dono no web, senha provisória (DEC-35) |
+| Usuários agentes e responsável do atendimento | 🟢 Gestão pelo Dono no web, convite por email para criar a senha (DEC-35, DEC-55) |
 | Serviço cadastrado pelo app | 🟢 Agente cria offline, Dono revisa no web (DEC-36) |
 | Rota e mapa | 🟢 Fase 1: rota do dia no Google Maps e mapa da agenda no web (DEC-37 e DEC-38) |
 | IA nativa (insights e chat do Agente) | 🟡 Em produção para teste, fora do lançamento (DEC-21, DEC-46) |

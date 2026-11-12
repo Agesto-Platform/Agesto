@@ -43,13 +43,12 @@ public sealed class RedefinicaoSenhaServiceTests
 
         var registro = await db.TokensRedefinicaoSenha.SingleAsync();
         Assert.NotEqual(token, registro.TokenHash);
-        Assert.Equal(RedefinicaoSenhaService.Hash(token), registro.TokenHash);
+        Assert.Equal(LinksDeSenha.Hash(token), registro.TokenHash);
         Assert.InRange(registro.ExpiraEm - registro.CreatedAt, TimeSpan.FromMinutes(14.9), TimeSpan.FromMinutes(15.1));
     }
 
     [Theory]
     [InlineData("ninguem@teste.com")]   // não existe
-    [InlineData("agente@teste.com")]    // Agente: a senha vem do Dono
     [InlineData("inativo@teste.com")]   // desativado
     [InlineData("bloqueada@teste.com")] // empresa suspensa pela equipe do Agesto
     public async Task Solicitar_ForaDoPublico_NaoGeraNemEnvia(string email)
@@ -61,6 +60,22 @@ public sealed class RedefinicaoSenhaServiceTests
 
         Assert.Empty(fila.Enviados);
         Assert.Empty(db.TokensRedefinicaoSenha);
+    }
+
+    [Fact]
+    public async Task Solicitar_Agente_TambemRecebeOLink()
+    {
+        await using var db = await Seed();
+        var fila = new FilaFalsa();
+        var servico = Servico(db, fila);
+
+        await servico.SolicitarAsync(new EsqueciSenhaRequest { Email = "agente@teste.com" }, CancellationToken.None);
+
+        var email = Assert.Single(fila.Enviados);
+        Assert.Equal("agente@teste.com", email.ParaEmail);
+        var perfil = await servico.RedefinirAsync(
+            new RedefinirSenhaRequest { Token = TokenDoLink(email.Texto), NovaSenha = "SenhaNova9" }, CancellationToken.None);
+        Assert.Equal(PerfilUsuario.Agente, perfil);
     }
 
     [Fact]
@@ -111,9 +126,11 @@ public sealed class RedefinicaoSenhaServiceTests
         await servico.SolicitarAsync(new EsqueciSenhaRequest { Email = "dono@teste.com" }, CancellationToken.None);
         var token = TokenDoLink(fila.Enviados[0].Texto);
 
-        await servico.RedefinirAsync(new RedefinirSenhaRequest { Token = token, NovaSenha = "SenhaNova9" }, CancellationToken.None);
+        var perfil = await servico.RedefinirAsync(new RedefinirSenhaRequest { Token = token, NovaSenha = "SenhaNova9" }, CancellationToken.None);
 
+        Assert.Equal(PerfilUsuario.Dono, perfil);
         dono = await db.Usuarios.SingleAsync(u => u.Email == "dono@teste.com");
+        Assert.NotNull(dono.EmailConfirmadoEm);
         Assert.Equal(PasswordVerificationResult.Success, new PasswordHasher<Usuario>().VerifyHashedPassword(dono, dono.Senha, "SenhaNova9"));
         Assert.Equal(0, dono.TentativasLoginFalhas);
         Assert.Null(dono.BloqueadoAte);

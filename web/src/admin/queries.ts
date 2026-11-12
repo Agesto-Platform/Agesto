@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from './sessao'
 import type {
   AdminConta,
-  AdminCriarInput,
+  AdminConvidarInput,
   AuditoriaAdminItem,
+  ConviteEnviado,
   EmpresaAdminCriada,
   EmpresaAdminCriarInput,
   EmpresaAdminDetalhe,
   EmpresaAdminResumo,
-  SenhaProvisoriaAdmin,
+  UsuarioAdminCriarInput,
 } from './types'
 
 /** Tudo da área de superadmin fica sob ['admin', ...] no cache. */
@@ -85,13 +86,34 @@ export function useAtivoUsuarioAdmin(empresaId: number) {
   })
 }
 
-export function useSenhaProvisoriaAdmin(empresaId: number) {
+/** Acesso novo numa empresa: a pessoa recebe o convite por email (DEC-55). */
+export function useCriarUsuarioAdmin(empresaId: number) {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: (input: UsuarioAdminCriarInput) =>
+      adminApi.post<ConviteEnviado>(`/api/admin/empresas/${empresaId}/usuarios`, input),
+    onSuccess: invalidar,
+  })
+}
+
+/** Reenvia o convite ou manda um link de senha nova (no lugar da senha provisória). */
+export function useEnviarLinkSenhaAdmin(empresaId: number) {
   const invalidar = useInvalidarAdmin()
   return useMutation({
     mutationFn: (usuarioId: number) =>
-      adminApi.post<SenhaProvisoriaAdmin>(`/api/admin/empresas/${empresaId}/usuarios/${usuarioId}/senha-provisoria`, {}),
+      adminApi.post<ConviteEnviado>(`/api/admin/empresas/${empresaId}/usuarios/${usuarioId}/enviar-link-senha`, {}),
     onSuccess: invalidar,
   })
+}
+
+/** Texto do aviso depois de um convite ou link de senha. */
+export function avisoDeEnvio(r: ConviteEnviado, oQue = 'Convite enviado'): { ok: boolean; texto: string } {
+  return r.envioHabilitado
+    ? { ok: true, texto: `${oQue} para ${r.email}. O link vale por 72 horas.` }
+    : {
+        ok: false,
+        texto: `Registrado, mas o envio de email está desligado: configure o Brevo no Render (deploy/README.md, seção 11).`,
+      }
 }
 
 export function useAtivoAdmin() {
@@ -103,10 +125,19 @@ export function useAtivoAdmin() {
   })
 }
 
-export function useCriarAdmin() {
+/** Convida alguém para a equipe: o email leva o link para criar a senha (DEC-55). */
+export function useConvidarAdmin() {
   const invalidar = useInvalidarAdmin()
   return useMutation({
-    mutationFn: (input: AdminCriarInput) => adminApi.post<AdminConta>('/api/admin/equipe', input),
+    mutationFn: (input: AdminConvidarInput) => adminApi.post<ConviteEnviado>('/api/admin/equipe', input),
+    onSuccess: invalidar,
+  })
+}
+
+export function useReenviarConviteAdmin() {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: (id: number) => adminApi.post<ConviteEnviado>(`/api/admin/equipe/${id}/reenviar-convite`, {}),
     onSuccess: invalidar,
   })
 }

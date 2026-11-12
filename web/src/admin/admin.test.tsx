@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AdminLayout } from './AdminLayout'
 import { AdminEmpresasPage } from './AdminEmpresasPage'
+import { ToastProvider } from '../components/ui'
 import { adminApi, adminLogado, setAdminToken } from './sessao'
 
 vi.mock('./sessao', async (importOriginal) => {
@@ -24,14 +25,16 @@ function emRotas(inicial: string) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[inicial]}>
-        <Routes>
-          <Route path="/admin/login" element={<p>tela de login do admin</p>} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminEmpresasPage />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[inicial]}>
+          <Routes>
+            <Route path="/admin/login" element={<p>tela de login do admin</p>} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<AdminEmpresasPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
     </QueryClientProvider>,
   )
 }

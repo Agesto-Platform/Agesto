@@ -11,16 +11,14 @@ namespace MicroERP.Api.Services;
 
 public sealed class UsuarioService : IUsuarioService
 {
-    // Sem caracteres que se confundem ao ditar ou ler (0/O, 1/l/I).
-    private const string AlfabetoSenha = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-    private const int TamanhoSenhaProvisoria = 10;
-
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IConviteService _convites;
     private readonly PasswordHasher<Usuario> _passwordHasher = new();
 
-    public UsuarioService(IUsuarioRepository usuarioRepository)
+    public UsuarioService(IUsuarioRepository usuarioRepository, IConviteService convites)
     {
         _usuarioRepository = usuarioRepository;
+        _convites = convites;
     }
 
     public async Task<bool> DeleteAsync(long usuarioId, long empresaId, CancellationToken cancellationToken)
@@ -55,17 +53,19 @@ public sealed class UsuarioService : IUsuarioService
         return usuarios.Select(MapResponse).ToList();
     }
 
-    public async Task<UsuarioSenhaProvisoriaResponse> CreateAsync(long empresaId, UsuarioCreateRequest request, CancellationToken cancellationToken)
+    // O Dono cria o acesso de um funcionário; a pessoa recebe o convite por email e
+    // cria a própria senha pelo link (DEC-55). Não há mais senha provisória.
+    public async Task<UsuarioConviteResponse> CreateAsync(long empresaId, UsuarioCreateRequest request, CancellationToken cancellationToken)
     {
         ValidarPerfil(request.Perfil);
 
-        var email = request.Email.Trim().ToLowerInvariant();
+        var email = AuthService.NormalizeEmail(request.Email);
         if (await _usuarioRepository.EmailExistsAsync(email, cancellationToken))
         {
             throw new EmailAlreadyExistsException("Email já cadastrado.");
         }
 
-        var senha = GerarSenhaProvisoria();
+        var agora = DateTime.UtcNow;
         var usuario = new Usuario
         {
             Nome = request.Nome.Trim(),
@@ -73,16 +73,30 @@ public sealed class UsuarioService : IUsuarioService
             EmpresaId = empresaId,
             Perfil = request.Perfil,
             Ativo = true,
-            DeveTrocarSenha = true,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            CreatedAt = agora,
+            UpdatedAt = agora
         };
-        usuario.Senha = _passwordHasher.HashPassword(usuario, senha);
+        // Até o convite ser usado, a senha é um valor aleatório que ninguém conhece.
+        usuario.Senha = _passwordHasher.HashPassword(usuario, AuthService.SenhaDesconhecida());
 
         await _usuarioRepository.AddAsync(usuario, cancellationToken);
         await _usuarioRepository.SaveChangesAsync(cancellationToken);
+        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
 
-        return new UsuarioSenhaProvisoriaResponse { Usuario = MapResponse(usuario), SenhaProvisoria = senha };
+        return new UsuarioConviteResponse { Usuario = MapResponse(usuario), EnvioHabilitado = _convites.EnvioHabilitado };
+    }
+
+    // Reenvia o convite a quem ainda não criou a senha (o link anterior deixa de valer).
+    public async Task<UsuarioConviteResponse> ReenviarConviteAsync(long empresaId, long id, CancellationToken cancellationToken)
+    {
+        var usuario = await ObterAsync(empresaId, id, cancellationToken);
+        if (usuario.EmailConfirmadoEm is not null)
+            throw new RegraUsuarioException("Esta pessoa já criou a senha. Se esqueceu, ela pode usar \"Esqueci a senha\".");
+        if (!usuario.Ativo)
+            throw new RegraUsuarioException("Reative o acesso antes de reenviar o convite.");
+
+        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
+        return new UsuarioConviteResponse { Usuario = MapResponse(usuario), EnvioHabilitado = _convites.EnvioHabilitado };
     }
 
     public async Task<UsuarioResponse> UpdateAsync(long empresaId, long donoId, long id, UsuarioUpdateRequest request, CancellationToken cancellationToken)
@@ -127,22 +141,6 @@ public sealed class UsuarioService : IUsuarioService
         return MapResponse(usuario);
     }
 
-    public async Task<UsuarioSenhaProvisoriaResponse> RedefinirSenhaAsync(long empresaId, long id, CancellationToken cancellationToken)
-    {
-        var usuario = await ObterAsync(empresaId, id, cancellationToken);
-
-        var senha = GerarSenhaProvisoria();
-        usuario.Senha = _passwordHasher.HashPassword(usuario, senha);
-        usuario.DeveTrocarSenha = true;
-        // senha nova do Dono desbloqueia quem errou demais
-        usuario.TentativasLoginFalhas = 0;
-        usuario.BloqueadoAte = null;
-        usuario.UpdatedAt = DateTime.UtcNow;
-
-        await _usuarioRepository.SaveChangesAsync(cancellationToken);
-        return new UsuarioSenhaProvisoriaResponse { Usuario = MapResponse(usuario), SenhaProvisoria = senha };
-    }
-
     private async Task<Usuario> ObterAsync(long empresaId, long id, CancellationToken cancellationToken)
     {
         var usuario = await _usuarioRepository.GetByIdAsync(empresaId, id, cancellationToken);
@@ -155,9 +153,6 @@ public sealed class UsuarioService : IUsuarioService
             throw new ArgumentException("Perfil inválido.");
     }
 
-    internal static string GerarSenhaProvisoria()
-        => RandomNumberGenerator.GetString(AlfabetoSenha, TamanhoSenhaProvisoria);
-
     private static UsuarioResponse MapResponse(Usuario usuario) => new()
     {
         Id = usuario.Id,
@@ -166,6 +161,7 @@ public sealed class UsuarioService : IUsuarioService
         Perfil = usuario.Perfil,
         Ativo = usuario.Ativo,
         DeveTrocarSenha = usuario.DeveTrocarSenha,
+        ConvitePendente = usuario.EmailConfirmadoEm == null,
         UltimoAcessoEm = usuario.UltimoAcessoEm,
         CreatedAt = usuario.CreatedAt
     };

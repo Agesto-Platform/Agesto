@@ -16,7 +16,14 @@ const ACAO: Record<string, string> = {
   'desbloquear-empresa': 'Desbloqueou empresa',
   'desativar-usuario': 'Desativou usuário',
   'reativar-usuario': 'Reativou usuário',
+  // Registros antigos, de antes do convite por email (DEC-55).
   'redefinir-senha': 'Gerou senha provisória',
+  'convidar-admin': 'Convidou administrador',
+  'reenviar-convite-admin': 'Reenviou convite de administrador',
+  'criar-senha': 'Criou a senha pelo convite',
+  'criar-usuario': 'Criou acesso e enviou convite',
+  'reenviar-convite': 'Reenviou convite',
+  'enviar-link-senha': 'Enviou link de senha',
 }
 
 /** Registro das ações da equipe (todas, ou só as de uma empresa). */

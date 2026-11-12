@@ -49,7 +49,7 @@
 | 24/10 | CPF com dígito verificador no web | B5 | Feito (PR #117, 28/10) |
 | 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
 | 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
-| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Falta aplicar a migration `AddTokenRedefinicaoSenha` e configurar o Brevo no Render (`deploy/README.md`, seção 11) |
+| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Falta configurar o Brevo no Render (`deploy/README.md`, seção 11). Desde a DEC-55 vale também para o Agente, no app e no web |
 | 17/11 | Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48) | D11 | A fazer |
 | 28/11 | Cadastro aberto no ar com verificação de email e período de teste | L1 | A fazer |
 | 01/12 | Canal de suporte: WhatsApp Business e email | D14 | A fazer |
@@ -63,6 +63,7 @@
 | — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52, DEC-53) | Extra | Pronto no PR #155 (SEG-01), em espera: fora da `develop` por decisão do Davi (12/11) |
 | — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | A fazer |
 | — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |
+| 12/11 | Convites por email: acesso novo (pelo Dono ou pela equipe do Agesto) e convite de admin, com a pessoa criando a própria senha; fim da senha provisória (DEC-55) | Extra | Feito no código (12/11). Falta configurar o Brevo no Render |
 | — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | A fazer |
 
 ### Diego — infra e redesign
@@ -192,7 +193,7 @@
 |------|-----------|------------|-------------|------------|
 | Margem/hora por serviço | Parte restante do KAN-79 — a duração do serviço e a receita por hora já existem (DEC-45, 11/11); falta atribuir custo ao serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Atribuição de custo ao serviço (DEC-19/KAN-72) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Davi Gomes | Decisão de produto |
-| ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, senha provisória com troca no 1º acesso (web e app), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
+| ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, convite por email para criar a senha (DEC-55; antes, senha provisória), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
 | Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render e "Otimizar dia" (fase 2); `Servico.DuracaoMinutos` já existe (DEC-45, 11/11) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — | — |
@@ -252,7 +253,7 @@
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
 | Verificação de email | Necessária antes de reabrir o cadastro; depende de provedor HTTP (ex.: Resend) e domínio próprio. Entra com o cadastro aberto até 28/11 (DEC-48) | Alta | Davi Oliveira |
-| ~~Lockout por conta~~ | 🟢 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; a senha provisória desbloqueia. Em `main` desde 11/11/2026 (PR #133, release #134, DEC-43) | — | — |
+| ~~Lockout por conta~~ | 🟢 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; criar a senha pelo link do email desbloqueia (DEC-55). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-43) | — | — |
 | ~~Exclusão de Usuario com LGPD~~ | 🟢 `DELETE /api/usuario` anonimiza o usuário com `DeletedAt` em vez de apagar a linha (corrige o erro 500 de quem tinha histórico). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-44) | — | — |
 
 ---

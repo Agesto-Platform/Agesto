@@ -105,6 +105,8 @@ builder.Services.AddSingleton<FilaDeEmails>();
 builder.Services.AddSingleton<IFilaDeEmails>(sp => sp.GetRequiredService<FilaDeEmails>());
 builder.Services.AddHostedService<EnvioDeEmailWorker>();
 builder.Services.AddScoped<IRedefinicaoSenhaService, RedefinicaoSenhaService>();
+// Convites por email da equipe do Agesto (DEC-55).
+builder.Services.AddScoped<IConviteService, ConviteService>();
 
 // Área de superadmin (equipe do Agesto).
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();

@@ -84,7 +84,6 @@ const resumo = (e: EmpresaMock): EmpresaAdminResumo => {
   }
 }
 
-const senhaProvisoria = () => Math.random().toString(36).slice(2, 12)
 const autenticado = (request: Request) => request.headers.get('Authorization')?.startsWith('Bearer ') === true
 
 export const adminHandlers = [
@@ -113,13 +112,27 @@ export const adminHandlers = [
     const email = body.emailDono.trim().toLowerCase()
     if (empresas.some((e) => e.usuarios.some((u) => u.email === email))) return fail(409, 'Email já cadastrado.')
     const id = Math.max(...empresas.map((e) => e.id)) + 1
-    const dono = { ...usuario(id * 10, body.nomeDono, email, 'Dono', null), deveTrocarSenha: true }
+    // O Dono recebe o convite por email para criar a senha (DEC-55).
+    const dono = { ...usuario(id * 10, body.nomeDono, email, 'Dono', null), convitePendente: true }
     empresas = [
       { id, nome: body.nomeEmpresa, documento: body.documento, ativa: true, bloqueadaEm: null, motivoBloqueio: null, createdAt: agora(), totalClientes: 0, totalAtendimentos: 0, ultimoAcessoEm: null, usuarios: [dono] },
       ...empresas,
     ]
     auditar('criar-empresa', id, `Empresa "${body.nomeEmpresa}" com dono ${email}`, dono.id)
-    return HttpResponse.json(ok({ empresaId: id, emailDono: email, senhaProvisoria: senhaProvisoria() }, 'Empresa criada.'))
+    return HttpResponse.json(ok({ empresaId: id, emailDono: email, envioHabilitado: true }, 'Empresa criada.'))
+  }),
+
+  // Acesso novo numa empresa, com convite por email (DEC-55).
+  http.post('*/api/admin/empresas/:id/usuarios', async ({ params, request }) => {
+    const e = empresas.find((x) => x.id === Number(params.id))
+    if (!e) return fail(404, 'Empresa não encontrada.')
+    const body = (await request.json()) as { nome: string; email: string; perfil: 'Dono' | 'Agente' }
+    const email = body.email.trim().toLowerCase()
+    if (empresas.some((x) => x.usuarios.some((u) => u.email === email))) return fail(409, 'Email já cadastrado.')
+    const id = Math.max(0, ...empresas.flatMap((x) => x.usuarios.map((u) => u.id))) + 1
+    e.usuarios.push({ ...usuario(id, body.nome.trim(), email, body.perfil, null), convitePendente: true, createdAt: agora() })
+    auditar('criar-usuario', e.id, `${email} (${body.perfil})`, id)
+    return HttpResponse.json(ok({ email, envioHabilitado: true }, 'Acesso criado. Convite enviado.'))
   }),
 
   http.post('*/api/admin/empresas/:id/bloquear', async ({ params, request }) => {
@@ -143,11 +156,10 @@ export const adminHandlers = [
     const e = empresas.find((x) => x.id === Number(params.id))
     const u = e?.usuarios.find((x) => x.id === Number(params.usuarioId))
     if (!e || !u) return fail(404, 'Usuário não encontrado nesta empresa.')
-    if (params.acao === 'senha-provisoria') {
-      u.deveTrocarSenha = true
-      u.bloqueadoAte = null
-      auditar('redefinir-senha', e.id, u.email, u.id)
-      return HttpResponse.json(ok({ email: u.email, senhaProvisoria: senhaProvisoria() }, 'Senha provisória gerada.'))
+    if (params.acao === 'enviar-link-senha') {
+      if (!u.ativo) return fail(409, 'Reative o acesso antes de enviar o link de senha.')
+      auditar(u.convitePendente ? 'reenviar-convite' : 'enviar-link-senha', e.id, u.email, u.id)
+      return HttpResponse.json(ok({ email: u.email, envioHabilitado: true }, 'Link de senha enviado.'))
     }
     u.ativo = params.acao === 'reativar'
     auditar(u.ativo ? 'reativar-usuario' : 'desativar-usuario', e.id, u.email, u.id)
@@ -165,6 +177,11 @@ export const adminHandlers = [
   http.post('*/api/admin/equipe/:id/:acao', ({ params }) => {
     const alvo = admins.find((a) => a.id === Number(params.id))
     if (!alvo) return fail(404, 'Administrador não encontrado.')
+    if (params.acao === 'reenviar-convite') {
+      if (!alvo.convitePendente) return fail(409, 'Este administrador já criou a senha.')
+      auditar('reenviar-convite-admin', null, alvo.email)
+      return HttpResponse.json(ok({ email: alvo.email, envioHabilitado: true }, 'Convite reenviado.'))
+    }
     if (alvo.id === 1 && params.acao === 'desativar') return fail(409, 'Você não pode desativar o seu próprio acesso.')
     alvo.ativo = params.acao === 'reativar'
     auditar(alvo.ativo ? 'reativar-admin' : 'desativar-admin', null, alvo.email)
@@ -173,9 +190,18 @@ export const adminHandlers = [
 
   http.post('*/api/admin/equipe', async ({ request }) => {
     const body = (await request.json()) as { nome: string; email: string }
-    const novo: AdminConta = { id: admins.length + 1, nome: body.nome, email: body.email.toLowerCase(), ativo: true, ultimoAcessoEm: null, createdAt: agora() }
+    const email = body.email.trim().toLowerCase()
+    if (admins.some((a) => a.email === email)) return fail(409, 'Email já cadastrado como administrador.')
+    const novo: AdminConta = { id: admins.length + 1, nome: body.nome, email, ativo: true, convitePendente: true, ultimoAcessoEm: null, createdAt: agora() }
     admins.push(novo)
-    auditar('criar-admin', null, `Novo admin: ${novo.email}`)
-    return HttpResponse.json(ok(novo, 'Administrador criado.'))
+    auditar('convidar-admin', null, `Novo admin: ${novo.email}`)
+    return HttpResponse.json(ok({ email, envioHabilitado: true }, 'Convite enviado.'))
+  }),
+
+  // Senha de quem foi convidado para a equipe; o token de demonstração é "demo".
+  http.post('*/api/admin/auth/criar-senha', async ({ request }) => {
+    const body = (await request.json()) as { token?: string }
+    if (body.token !== 'demo') return fail(400, 'Link inválido ou expirado. Peça um novo em "Esqueci a senha".')
+    return HttpResponse.json(ok(null, 'Senha criada. Entre na área de administração.'))
   }),
 ]

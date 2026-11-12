@@ -2,11 +2,11 @@ import { useState, type FormEvent } from 'react'
 import { Badge, Button, ConfirmDialog, DataTable, Drawer, PageHead, TextField, useToast, type Column } from '../components/ui'
 import { ApiError } from '../lib/api'
 import { dataCurta } from '../lib/format'
-import { useAtivoAdmin, useCriarAdmin, useEquipeAdmin } from './queries'
+import { avisoDeEnvio, useAtivoAdmin, useConvidarAdmin, useEquipeAdmin, useReenviarConviteAdmin } from './queries'
 import { adminLogado } from './sessao'
-import type { AdminConta, AdminCriarInput } from './types'
+import type { AdminConta, AdminConvidarInput, ConviteEnviado } from './types'
 
-const VAZIO: AdminCriarInput = { nome: '', email: '', senha: '' }
+const VAZIO: AdminConvidarInput = { nome: '', email: '' }
 
 const COLUNAS: Column<AdminConta>[] = [
   {
@@ -23,7 +23,11 @@ const COLUNAS: Column<AdminConta>[] = [
   {
     header: 'Situação',
     cell: (a) =>
-      a.ativo ? (
+      a.ativo && a.convitePendente ? (
+        <Badge tone="warn" dot>
+          Convite pendente
+        </Badge>
+      ) : a.ativo ? (
         <Badge tone="ok" dot>
           Ativo
         </Badge>
@@ -39,13 +43,28 @@ const COLUNAS: Column<AdminConta>[] = [
 export function AdminEquipePage() {
   const toast = useToast()
   const equipe = useEquipeAdmin()
-  const criar = useCriarAdmin()
+  const criar = useConvidarAdmin()
+  const reenviar = useReenviarConviteAdmin()
   const ativo = useAtivoAdmin()
   const [aberto, setAberto] = useState(false)
   const [form, setForm] = useState(VAZIO)
   const [erro, setErro] = useState<string | null>(null)
   const [alvo, setAlvo] = useState<AdminConta | null>(null)
   const meuId = adminLogado()?.sub
+
+  const avisar = (r: ConviteEnviado, oQue: string) => {
+    const aviso = avisoDeEnvio(r, oQue)
+    if (aviso.ok) toast.success(aviso.texto)
+    else toast.error(aviso.texto)
+  }
+
+  const reenviarConvite = async (a: AdminConta) => {
+    try {
+      avisar(await reenviar.mutateAsync(a.id), 'Convite reenviado')
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Não foi possível reenviar o convite.')
+    }
+  }
 
   const confirmarAtivo = async () => {
     if (!alvo) return
@@ -67,31 +86,38 @@ export function AdminEquipePage() {
         String(a.id) === meuId ? (
           <span className="muted">Você</span>
         ) : (
-          <Button size="sm" variant="ghost" onClick={() => setAlvo(a)}>
-            {a.ativo ? 'Desativar' : 'Reativar'}
-          </Button>
+          <div className="adm-acoes">
+            {a.ativo && a.convitePendente && (
+              <Button size="sm" icon="mail" onClick={() => reenviarConvite(a)} disabled={reenviar.isPending}>
+                Reenviar convite
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setAlvo(a)}>
+              {a.ativo ? 'Desativar' : 'Reativar'}
+            </Button>
+          </div>
         ),
     },
   ]
 
   const salvar = async (e: FormEvent) => {
     e.preventDefault()
-    if (!form.nome.trim() || !form.email.trim() || form.senha.length < 12) {
-      setErro('Preencha nome e email. A senha precisa de pelo menos 12 caracteres.')
+    if (!form.nome.trim() || !form.email.trim()) {
+      setErro('Preencha o nome e o email.')
       return
     }
     setErro(null)
     try {
-      await criar.mutateAsync({ ...form, nome: form.nome.trim(), email: form.email.trim() })
+      const r = await criar.mutateAsync({ nome: form.nome.trim(), email: form.email.trim() })
       setAberto(false)
       setForm(VAZIO)
-      toast.success('Administrador cadastrado. Passe a senha para a pessoa por um canal seguro.')
+      avisar(r, 'Convite enviado')
     } catch (err) {
-      setErro(err instanceof ApiError ? [err.message, ...err.errors].join(' ') : 'Não foi possível cadastrar.')
+      setErro(err instanceof ApiError ? [err.message, ...err.errors].join(' ') : 'Não foi possível convidar.')
     }
   }
 
-  const campo = (k: keyof AdminCriarInput) => (v: string) => setForm((f) => ({ ...f, [k]: v }))
+  const campo = (k: keyof AdminConvidarInput) => (v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   return (
     <>
@@ -100,7 +126,7 @@ export function AdminEquipePage() {
         sub="Pessoas do Agesto com acesso a esta área."
         actions={
           <Button variant="primary" icon="plus" onClick={() => setAberto(true)}>
-            Novo administrador
+            Convidar administrador
           </Button>
         }
       />
@@ -119,7 +145,7 @@ export function AdminEquipePage() {
       />
       <DataTable columns={colunas} rows={equipe.data} getKey={(a) => a.id} loading={equipe.isLoading} empty={{ title: 'Ninguém cadastrado' }} />
 
-      <Drawer open={aberto} onClose={() => setAberto(false)} title="Novo administrador" sub="Acesso total a todas as empresas. Cadastre só quem é da equipe.">
+      <Drawer open={aberto} onClose={() => setAberto(false)} title="Convidar administrador" sub="Acesso total a todas as empresas. Convide só quem é da equipe.">
         <form className="form" onSubmit={salvar} noValidate>
           {erro && (
             <p className="form-error" role="alert">
@@ -127,15 +153,13 @@ export function AdminEquipePage() {
             </p>
           )}
           <TextField label="Nome" value={form.nome} onChange={campo('nome')} maxLength={120} required />
-          <TextField label="Email" type="email" value={form.email} onChange={campo('email')} maxLength={150} required />
           <TextField
-            label="Senha"
-            type="password"
-            value={form.senha}
-            onChange={campo('senha')}
-            maxLength={128}
-            autoComplete="new-password"
-            hint="Pelo menos 12 caracteres."
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={campo('email')}
+            maxLength={150}
+            hint="A pessoa recebe um convite neste email para criar a própria senha (o link vale por 72 horas)."
             required
           />
           <div className="form-actions">
@@ -143,7 +167,7 @@ export function AdminEquipePage() {
               Cancelar
             </Button>
             <Button variant="primary" type="submit" disabled={criar.isPending}>
-              {criar.isPending ? 'Salvando…' : 'Cadastrar'}
+              {criar.isPending ? 'Enviando…' : 'Enviar convite'}
             </Button>
           </div>
         </form>

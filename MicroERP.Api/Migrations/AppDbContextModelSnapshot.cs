@@ -41,6 +41,9 @@ namespace MicroERP.Api.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<DateTime?>("EmailConfirmadoEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -722,11 +725,19 @@ namespace MicroERP.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<long?>("AdminId")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("ExpiraEm")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -736,17 +747,22 @@ namespace MicroERP.Api.Migrations
                     b.Property<DateTime?>("UsadoEm")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<long>("UsuarioId")
+                    b.Property<long?>("UsuarioId")
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
 
                     b.HasIndex("TokenHash")
                         .IsUnique();
 
                     b.HasIndex("UsuarioId");
 
-                    b.ToTable("TokensRedefinicaoSenha", (string)null);
+                    b.ToTable("TokensRedefinicaoSenha", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_TokensRedefinicaoSenha_UmDono", "(\"UsuarioId\" IS NULL) <> (\"AdminId\" IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Usuario", b =>
@@ -776,6 +792,9 @@ namespace MicroERP.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime?>("EmailConfirmadoEm")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
@@ -982,11 +1001,17 @@ namespace MicroERP.Api.Migrations
 
             modelBuilder.Entity("MicroERP.Api.Models.TokenRedefinicaoSenha", b =>
                 {
+                    b.HasOne("MicroERP.Api.Models.AdminPlataforma", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MicroERP.Api.Models.Usuario", "Usuario")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Admin");
 
                     b.Navigation("Usuario");
                 });

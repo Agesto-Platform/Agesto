@@ -14,7 +14,7 @@ import { RelatoriosPage } from './features/relatorios/RelatoriosPage'
 import { UsuariosPage } from './features/usuarios/UsuariosPage'
 import { TrocarSenha } from './pages/TrocarSenha'
 import { EsqueciSenha } from './pages/EsqueciSenha'
-import { RedefinirSenha } from './pages/RedefinirSenha'
+import { AdminCriarSenha, CriarSenha, RedefinirSenha } from './pages/RedefinirSenha'
 import { BaixarApp } from './pages/BaixarApp'
 import { AceitarTermos } from './pages/AceitarTermos'
 import { Privacidade, Termos } from './pages/legal/Documento'
@@ -32,6 +32,9 @@ export default function App() {
       {/* Públicas: "Esqueci a senha" do Dono e o link do email (DEC-54). */}
       <Route path="/esqueci-senha" element={<EsqueciSenha />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+      {/* Públicas: primeira senha pelo convite por email (DEC-55). */}
+      <Route path="/criar-senha" element={<CriarSenha />} />
+      <Route path="/admin/criar-senha" element={<AdminCriarSenha />} />
       {/* Pública: o agente abre no celular para instalar o APK (DEC-47). */}
       <Route path="/baixar" element={<BaixarApp />} />
       {/* Públicas: links de Termos__UrlTermos e Termos__UrlPrivacidade na tela de aceite (B6). */}

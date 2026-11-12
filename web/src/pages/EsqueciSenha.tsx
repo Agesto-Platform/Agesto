@@ -54,11 +54,8 @@ export function EsqueciSenha() {
           {enviado ? (
             <div className="lform" role="status">
               <p style={{ margin: 0 }}>
-                Se <b>{email.trim()}</b> for o e-mail de um Dono cadastrado, o link chega em alguns minutos. Ele vale
-                por 15 minutos e funciona uma vez só. Confira também o spam.
-              </p>
-              <p className="hint" style={{ margin: 0 }}>
-                Agentes: a senha nova é gerada pelo Dono da empresa, em Usuários.
+                Se <b>{email.trim()}</b> tiver acesso ao Agesto, o link chega em alguns minutos. Ele vale por 15
+                minutos e funciona uma vez só. Confira também o spam.
               </p>
             </div>
           ) : (

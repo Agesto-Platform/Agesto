@@ -15,11 +15,17 @@ public sealed class AdminServicesTests
 {
     private const string ChaveSetup = "chave-de-setup-de-teste";
 
+    private static AdminAuthService Auth(AppDbContext db, ConvitesFalsos? convites = null, string? setupKey = ChaveSetup) =>
+        new(db, Config(setupKey), convites ?? new ConvitesFalsos());
+
+    private static AdminEmpresaService Empresas(AppDbContext db, ConvitesFalsos? convites = null) =>
+        new(db, new AuthService(db, Config()), convites ?? new ConvitesFalsos());
+
     [Fact]
     public async Task Setup_CriaPrimeiroAdminSoComAChaveCertaEUmaVez()
     {
         await using var db = CreateContext();
-        var service = new AdminAuthService(db, Config());
+        var service = Auth(db);
         var request = new AdminCriarRequest { Nome = "Equipe", Email = "Equipe@Agesto.com ", Senha = "senha-bem-longa-123" };
 
         var semChave = await Assert.ThrowsAsync<AdminSetupException>(() => service.SetupAsync(request, "errada", null, CancellationToken.None));
@@ -39,7 +45,7 @@ public sealed class AdminServicesTests
     public async Task Setup_SemChaveConfigurada_FicaDesligado()
     {
         await using var db = CreateContext();
-        var service = new AdminAuthService(db, Config(setupKey: null));
+        var service = Auth(db, setupKey: null);
 
         var ex = await Assert.ThrowsAsync<AdminSetupException>(() => service.SetupAsync(
             new AdminCriarRequest { Nome = "Equipe", Email = "equipe@agesto.com", Senha = "senha-bem-longa-123" },
@@ -51,7 +57,7 @@ public sealed class AdminServicesTests
     public async Task Login_TokenDeAdminTemAudienciaPropriaENaoTemEmpresa()
     {
         await using var db = CreateContext();
-        var service = new AdminAuthService(db, Config());
+        var service = Auth(db);
         await service.SetupAsync(new AdminCriarRequest { Nome = "Equipe", Email = "equipe@agesto.com", Senha = "senha-bem-longa-123" },
             ChaveSetup, null, CancellationToken.None);
 
@@ -72,11 +78,13 @@ public sealed class AdminServicesTests
     public async Task DesativarAdmin_CortaOAcessoMasNinguemSeDesativaSozinho()
     {
         await using var db = CreateContext();
-        var service = new AdminAuthService(db, Config());
+        var service = Auth(db);
         var eu = await service.SetupAsync(new AdminCriarRequest { Nome = "Eu", Email = "eu@agesto.com", Senha = "senha-bem-longa-123" },
             ChaveSetup, null, CancellationToken.None);
-        var outro = await service.CriarAsync(eu.Id,
-            new AdminCriarRequest { Nome = "Saiu", Email = "saiu@agesto.com", Senha = "senha-bem-longa-456" }, null, CancellationToken.None);
+        await service.ConvidarAsync(eu.Id, new AdminConvidarRequest { Nome = "Saiu", Email = "saiu@agesto.com" }, null, CancellationToken.None);
+        var outro = await db.AdminsPlataforma.SingleAsync(a => a.Email == "saiu@agesto.com");
+        outro.Senha = new PasswordHasher<AdminPlataforma>().HashPassword(outro, "senha-bem-longa-456");
+        await db.SaveChangesAsync();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.DefinirAtivoAsync(eu.Id, eu.Id, false, null, CancellationToken.None));
 
@@ -84,6 +92,33 @@ public sealed class AdminServicesTests
         Assert.Null(await service.LoginAsync(new AdminLoginRequest { Email = "saiu@agesto.com", Senha = "senha-bem-longa-456" }, null, CancellationToken.None));
         Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "desativar-admin" && a.Detalhes == "saiu@agesto.com");
         Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "login-falhou" && a.AdminId == outro.Id);
+    }
+
+    [Fact]
+    public async Task ConvidarAdmin_NasceSemSenhaConhecidaERecebeOConvite()
+    {
+        await using var db = CreateContext();
+        var convites = new ConvitesFalsos();
+        var service = Auth(db, convites);
+        var eu = await service.SetupAsync(new AdminCriarRequest { Nome = "Eu", Email = "eu@agesto.com", Senha = "senha-bem-longa-123" },
+            ChaveSetup, null, CancellationToken.None);
+
+        var convite = await service.ConvidarAsync(eu.Id, new AdminConvidarRequest { Nome = "Nova", Email = " Nova@Agesto.com " }, null, CancellationToken.None);
+
+        Assert.Equal("nova@agesto.com", convite.Email);
+        Assert.Equal(["nova@agesto.com"], convites.Admins.Select(a => a.Email));
+        var lista = await service.ListarAsync(CancellationToken.None);
+        Assert.False(lista.Single(a => a.Email == "eu@agesto.com").ConvitePendente);
+        Assert.True(lista.Single(a => a.Email == "nova@agesto.com").ConvitePendente);
+        Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "convidar-admin");
+
+        // Reenviar só vale para quem ainda não criou a senha.
+        var nova = lista.Single(a => a.Email == "nova@agesto.com");
+        await service.ReenviarConviteAsync(eu.Id, nova.Id, null, CancellationToken.None);
+        Assert.Equal(2, convites.Admins.Count);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReenviarConviteAsync(eu.Id, eu.Id, null, CancellationToken.None));
+        await Assert.ThrowsAsync<EmailAlreadyExistsException>(() =>
+            service.ConvidarAsync(eu.Id, new AdminConvidarRequest { Nome = "De novo", Email = "nova@agesto.com" }, null, CancellationToken.None));
     }
 
     [Fact]
@@ -95,16 +130,17 @@ public sealed class AdminServicesTests
         db.AdminsPlataforma.Add(admin);
         await db.SaveChangesAsync();
 
-        var service = new AdminAuthService(db, Config());
+        var service = Auth(db);
         Assert.Null(await service.LoginAsync(new AdminLoginRequest { Email = "ex@agesto.com", Senha = "senha-bem-longa-123" }, null, CancellationToken.None));
     }
 
     [Fact]
-    public async Task CriarEmpresa_CriaDonoComSenhaProvisoriaEAudita()
+    public async Task CriarEmpresa_CriaDonoComConvitePendenteEAudita()
     {
         await using var db = CreateContext();
         var adminId = await SeedAdmin(db);
-        var service = new AdminEmpresaService(db, new AuthService(db, Config()));
+        var convites = new ConvitesFalsos();
+        var service = Empresas(db, convites);
 
         var criada = await service.CriarAsync(adminId,
             new EmpresaAdminCriarRequest { NomeEmpresa = "Clima Frio", NomeDono = "Ana", EmailDono = "ANA@clima.com" },
@@ -113,15 +149,45 @@ public sealed class AdminServicesTests
         var dono = await db.Usuarios.SingleAsync();
         Assert.Equal("ana@clima.com", dono.Email);
         Assert.Equal(PerfilUsuario.Dono, dono.Perfil);
-        Assert.True(dono.DeveTrocarSenha);
+        Assert.Null(dono.EmailConfirmadoEm);
+        Assert.False(dono.DeveTrocarSenha);
         Assert.Equal(criada.EmpresaId, dono.EmpresaId);
-        Assert.Equal(10, criada.SenhaProvisoria.Length);
-        Assert.NotEqual(criada.SenhaProvisoria, dono.Senha);
+        Assert.True(criada.EnvioHabilitado);
+        Assert.Equal(["ana@clima.com"], convites.Usuarios.Select(u => u.Email));
         Assert.Single(db.Configuracoes.Where(c => c.EmpresaId == criada.EmpresaId));
+        Assert.Equal(criada.EmpresaId, (await db.AuditoriasAdmin.SingleAsync(a => a.Acao == "criar-empresa")).EmpresaId);
+    }
 
-        var log = await db.AuditoriasAdmin.SingleAsync(a => a.Acao == "criar-empresa");
-        Assert.Equal(criada.EmpresaId, log.EmpresaId);
-        Assert.DoesNotContain(criada.SenhaProvisoria, log.Detalhes ?? "");
+    [Fact]
+    public async Task CriarUsuario_SoPelaEquipe_NasceComConvitePendente()
+    {
+        await using var db = CreateContext();
+        var adminId = await SeedAdmin(db);
+        db.Empresas.Add(new Empresa { Id = 5, Nome = "Refrigeração" });
+        db.Usuarios.Add(new Usuario { Id = 50, Nome = "Dono", Email = "dono@refri.com", Senha = "hash", EmpresaId = 5, Perfil = PerfilUsuario.Dono });
+        await db.SaveChangesAsync();
+        var convites = new ConvitesFalsos();
+        var service = Empresas(db, convites);
+
+        var convite = await service.CriarUsuarioAsync(adminId, 5,
+            new UsuarioCreateRequest { Nome = " Carlos ", Email = " Carlos@Refri.com ", Perfil = PerfilUsuario.Agente }, null, CancellationToken.None);
+
+        var carlos = await db.Usuarios.SingleAsync(u => u.Email == "carlos@refri.com");
+        Assert.Equal("Carlos", carlos.Nome);
+        Assert.Equal(5, carlos.EmpresaId);
+        Assert.Equal(PerfilUsuario.Agente, carlos.Perfil);
+        Assert.Null(carlos.EmailConfirmadoEm);
+        Assert.Equal("carlos@refri.com", convite.Email);
+        Assert.Equal(["carlos@refri.com"], convites.Usuarios.Select(u => u.Email));
+        Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "criar-usuario" && a.UsuarioId == carlos.Id);
+        Assert.True((await service.ObterAsync(5, CancellationToken.None)).Usuarios.Single(u => u.Id == carlos.Id).ConvitePendente);
+
+        await Assert.ThrowsAsync<EmailAlreadyExistsException>(() => service.CriarUsuarioAsync(adminId, 5,
+            new UsuarioCreateRequest { Nome = "Outro", Email = "DONO@refri.com" }, null, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CriarUsuarioAsync(adminId, 5,
+            new UsuarioCreateRequest { Nome = "X", Email = "x@refri.com", Perfil = PerfilUsuario.Nenhum }, null, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.CriarUsuarioAsync(adminId, 999,
+            new UsuarioCreateRequest { Nome = "Y", Email = "y@refri.com" }, null, CancellationToken.None));
     }
 
     [Fact]
@@ -131,7 +197,7 @@ public sealed class AdminServicesTests
         var adminId = await SeedAdmin(db);
         db.Empresas.Add(new Empresa { Id = 7, Nome = "Inadimplente" });
         await db.SaveChangesAsync();
-        var service = new AdminEmpresaService(db, new AuthService(db, Config()));
+        var service = Empresas(db);
 
         await service.BloquearAsync(adminId, 7, "Mensalidade atrasada", null, CancellationToken.None);
         var empresa = await db.Empresas.SingleAsync(e => e.Id == 7);
@@ -156,19 +222,24 @@ public sealed class AdminServicesTests
         db.Empresas.AddRange(new Empresa { Id = 1, Nome = "A" }, new Empresa { Id = 2, Nome = "B" });
         db.Usuarios.Add(new Usuario { Id = 20, Nome = "Bia", Email = "bia@b.com", Senha = "hash", EmpresaId = 2 });
         await db.SaveChangesAsync();
-        var service = new AdminEmpresaService(db, new AuthService(db, Config()));
+        var convites = new ConvitesFalsos();
+        var service = Empresas(db, convites);
 
         await Assert.ThrowsAsync<NotFoundException>(() => service.DefinirUsuarioAtivoAsync(adminId, 1, 20, false, null, CancellationToken.None));
-        await Assert.ThrowsAsync<NotFoundException>(() => service.RedefinirSenhaAsync(adminId, 1, 20, null, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.EnviarLinkSenhaAsync(adminId, 1, 20, null, CancellationToken.None));
 
         await service.DefinirUsuarioAtivoAsync(adminId, 2, 20, false, null, CancellationToken.None);
         Assert.False((await db.Usuarios.SingleAsync()).Ativo);
+        // Desativado não recebe link; reativado, sim.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.EnviarLinkSenhaAsync(adminId, 2, 20, null, CancellationToken.None));
 
-        var nova = await service.RedefinirSenhaAsync(adminId, 2, 20, null, CancellationToken.None);
-        var usuario = await db.Usuarios.SingleAsync();
-        Assert.True(usuario.DeveTrocarSenha);
-        Assert.Equal(PasswordVerificationResult.Success,
-            new PasswordHasher<Usuario>().VerifyHashedPassword(usuario, usuario.Senha, nova.SenhaProvisoria));
+        await service.DefinirUsuarioAtivoAsync(adminId, 2, 20, true, null, CancellationToken.None);
+        var envio = await service.EnviarLinkSenhaAsync(adminId, 2, 20, null, CancellationToken.None);
+        Assert.Equal("bia@b.com", envio.Email);
+        Assert.Equal(["bia@b.com"], convites.Usuarios.Select(u => u.Email));
+        // A senha atual continua valendo até a pessoa usar o link.
+        Assert.Equal("hash", (await db.Usuarios.SingleAsync()).Senha);
+        Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "reenviar-convite" && a.UsuarioId == 20);
     }
 
     [Fact]
@@ -182,35 +253,13 @@ public sealed class AdminServicesTests
             new Usuario { Id = 31, Nome = "Usuário removido", Email = "removido-31@anonimo.invalid", Senha = "hash", EmpresaId = 3,
                 Perfil = PerfilUsuario.Agente, Ativo = false, DeletedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
-        var service = new AdminEmpresaService(db, new AuthService(db, Config()));
+        var service = Empresas(db);
 
         var detalhe = await service.ObterAsync(3, CancellationToken.None);
         Assert.Equal([30L], detalhe.Usuarios.Select(u => u.Id));
 
         await Assert.ThrowsAsync<NotFoundException>(() => service.DefinirUsuarioAtivoAsync(adminId, 3, 31, true, null, CancellationToken.None));
-        await Assert.ThrowsAsync<NotFoundException>(() => service.RedefinirSenhaAsync(adminId, 3, 31, null, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task SenhaProvisoriaDoAdmin_DesbloqueiaQuemErrouASenhaDemais()
-    {
-        await using var db = CreateContext();
-        var adminId = await SeedAdmin(db);
-        db.Empresas.Add(new Empresa { Id = 4, Nome = "Oficina" });
-        db.Usuarios.Add(new Usuario
-        {
-            Id = 40, Nome = "Bloqueado", Email = "b@oficina.com", Senha = "hash", EmpresaId = 4,
-            TentativasLoginFalhas = 3, BloqueadoAte = DateTime.UtcNow.AddMinutes(10),
-        });
-        await db.SaveChangesAsync();
-        var service = new AdminEmpresaService(db, new AuthService(db, Config()));
-
-        Assert.NotNull((await service.ObterAsync(4, CancellationToken.None)).Usuarios.Single().BloqueadoAte);
-
-        await service.RedefinirSenhaAsync(adminId, 4, 40, null, CancellationToken.None);
-        var usuario = await db.Usuarios.SingleAsync(u => u.Id == 40);
-        Assert.Null(usuario.BloqueadoAte);
-        Assert.Equal(0, usuario.TentativasLoginFalhas);
+        await Assert.ThrowsAsync<NotFoundException>(() => service.EnviarLinkSenhaAsync(adminId, 3, 31, null, CancellationToken.None));
     }
 
     [Fact]

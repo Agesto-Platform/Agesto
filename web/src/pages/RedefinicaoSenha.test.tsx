@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { EsqueciSenha } from './EsqueciSenha'
-import { RedefinirSenha } from './RedefinirSenha'
+import { AdminCriarSenha, CriarSenha, RedefinirSenha } from './RedefinirSenha'
 import { ApiError } from '../lib/api'
 
 // "Esqueci a senha" do Dono (DEC-54).
@@ -31,7 +31,7 @@ describe('EsqueciSenha', () => {
     await user.click(screen.getByRole('button', { name: 'Enviar link' }))
 
     expect(post).toHaveBeenCalledWith('/api/auth/esqueci-senha', { email: 'dono@empresa.com' })
-    expect(screen.getByRole('status')).toHaveTextContent('Se dono@empresa.com for o e-mail de um Dono cadastrado')
+    expect(screen.getByRole('status')).toHaveTextContent('Se dono@empresa.com tiver acesso ao Agesto')
   })
 
   it('não envia e-mail inválido', async () => {
@@ -99,5 +99,57 @@ describe('RedefinirSenha', () => {
     abrir('')
     expect(screen.queryByLabelText('Nova senha')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Pedir um link novo/ })).toBeInTheDocument()
+  })
+})
+
+// Convites por email (DEC-55).
+describe('CriarSenha e AdminCriarSenha', () => {
+  async function preencher(senha: string) {
+    const user = userEvent.setup()
+    await user.type(screen.getByLabelText('Nova senha'), senha)
+    await user.type(screen.getByLabelText('Confirme a nova senha'), senha)
+    await user.click(screen.getByRole('button', { name: 'Salvar senha nova' }))
+  }
+
+  it('convite de agente: cria a senha e manda entrar pelo app', async () => {
+    post.mockResolvedValue({ perfil: 'Agente' })
+    window.history.replaceState(null, '', '/criar-senha#token=convite1')
+    render(
+      <MemoryRouter>
+        <CriarSenha />
+      </MemoryRouter>,
+    )
+    expect(screen.getByText('Crie a sua senha')).toBeInTheDocument()
+    await preencher('SenhaNova9')
+
+    expect(post).toHaveBeenCalledWith('/api/auth/redefinir-senha', { token: 'convite1', novaSenha: 'SenhaNova9' })
+    expect(screen.getByText('Senha criada')).toBeInTheDocument()
+    expect(screen.getByText(/abra o app do Agesto/)).toBeInTheDocument()
+  })
+
+  it('convite de admin: exige 12 caracteres e usa a rota da área de admin', async () => {
+    post.mockResolvedValue(null)
+    window.history.replaceState(null, '', '/admin/criar-senha#token=adm1')
+    render(
+      <MemoryRouter>
+        <AdminCriarSenha />
+      </MemoryRouter>,
+    )
+    await preencher('curta12345')
+    expect(post).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('12 caracteres')
+  })
+
+  it('convite de admin com senha longa vai para /api/admin/auth/criar-senha', async () => {
+    post.mockResolvedValue(null)
+    window.history.replaceState(null, '', '/admin/criar-senha#token=adm2')
+    render(
+      <MemoryRouter>
+        <AdminCriarSenha />
+      </MemoryRouter>,
+    )
+    await preencher('senha-bem-longa-1')
+    expect(post).toHaveBeenCalledWith('/api/admin/auth/criar-senha', { token: 'adm2', novaSenha: 'senha-bem-longa-1' })
+    expect(screen.getByRole('link', { name: 'Ir para a área de administração' })).toBeInTheDocument()
   })
 })

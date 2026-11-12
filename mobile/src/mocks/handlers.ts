@@ -64,6 +64,11 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
     return null as T
   }
 
+  // Como a API: mesma resposta exista o email ou não.
+  if (method === 'POST' && path === '/api/auth/esqueci-senha') {
+    return null as T
+  }
+
   if (method === 'POST' && path === '/api/auth/trocar-senha') {
     const b = (body ?? {}) as { senhaAtual?: string; novaSenha?: string }
     if (b.senhaAtual !== DEMO_SENHA_PROVISORIA && b.senhaAtual !== DEMO_SENHA) {

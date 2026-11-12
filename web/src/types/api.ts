@@ -54,6 +54,8 @@ export interface Usuario {
   perfil: PerfilUsuario
   ativo: boolean
   deveTrocarSenha: boolean
+  /** Ainda não criou a senha pelo link do convite (DEC-55). */
+  convitePendente?: boolean
   ultimoAcessoEm: string | null
   createdAt: string
 }
@@ -69,10 +71,13 @@ export interface UsuarioUpdateInput {
   perfil: PerfilUsuario
 }
 
-/** Resposta de criação e redefinição: a senha só aparece aqui, uma vez. */
-export interface UsuarioSenhaProvisoria {
+/**
+ * Acesso criado ou convite reenviado (DEC-55): a pessoa recebe o link por email e
+ * cria a própria senha. envioHabilitado = false quando o email ainda não está configurado.
+ */
+export interface UsuarioConvite {
   usuario: Usuario
-  senhaProvisoria: string
+  envioHabilitado: boolean
 }
 
 /* ---------- Métricas / Dashboard ---------- */
