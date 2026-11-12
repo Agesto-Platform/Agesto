@@ -167,6 +167,8 @@ public sealed class AdminServicesTests
         var nova = await service.RedefinirSenhaAsync(adminId, 2, 20, null, CancellationToken.None);
         var usuario = await db.Usuarios.SingleAsync();
         Assert.True(usuario.DeveTrocarSenha);
+        // SEG-01: desativar e redefinir a senha sobem a versão de sessão.
+        Assert.Equal(2, usuario.VersaoSessao);
         Assert.Equal(PasswordVerificationResult.Success,
             new PasswordHasher<Usuario>().VerifyHashedPassword(usuario, usuario.Senha, nova.SenhaProvisoria));
     }

@@ -63,7 +63,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const trocarSenha = useCallback(async (senhaAtual: string, novaSenha: string) => {
-    await api.post<null>('/api/auth/trocar-senha', { senhaAtual, novaSenha })
+    // A troca encerra as outras sessões (SEG-01); a API devolve um token novo para este
+    // aparelho. Mesmo usuário: os dados locais e as pendências continuam.
+    const res = await api.post<AuthResponse | null>('/api/auth/trocar-senha', { senhaAtual, novaSenha })
+    if (res?.token) {
+      await setToken(res.token)
+      setTok(res.token)
+    }
     await db.setMeta(META_TROCA, '0')
     setDeve(false)
   }, [])

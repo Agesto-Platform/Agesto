@@ -121,6 +121,9 @@ public sealed class UsuarioService : IUsuarioService
         }
 
         usuario.Ativo = ativo;
+        // Desativar encerra as sessões de vez: ao reativar, o token antigo não volta (SEG-01).
+        if (!ativo)
+            usuario.VersaoSessao++;
         usuario.UpdatedAt = DateTime.UtcNow;
 
         await _usuarioRepository.SaveChangesAsync(cancellationToken);
@@ -134,6 +137,8 @@ public sealed class UsuarioService : IUsuarioService
         var senha = GerarSenhaProvisoria();
         usuario.Senha = _passwordHasher.HashPassword(usuario, senha);
         usuario.DeveTrocarSenha = true;
+        // senha nova encerra as sessões abertas do usuário (SEG-01)
+        usuario.VersaoSessao++;
         // senha nova do Dono desbloqueia quem errou demais
         usuario.TentativasLoginFalhas = 0;
         usuario.BloqueadoAte = null;

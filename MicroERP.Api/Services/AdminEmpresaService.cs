@@ -140,6 +140,9 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
     {
         var usuario = await ObterUsuarioAsync(empresaId, usuarioId, cancellationToken);
         usuario.Ativo = ativo;
+        // Desativar encerra as sessões de vez: ao reativar, o token antigo não volta (SEG-01).
+        if (!ativo)
+            usuario.VersaoSessao++;
 
         AdminAuditoria.Registrar(_db, adminId, ativo ? "reativar-usuario" : "desativar-usuario", empresaId, usuarioId, usuario.Email, ip);
         await _db.SaveChangesAsync(cancellationToken);
@@ -151,6 +154,8 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         var senha = UsuarioService.GerarSenhaProvisoria();
         usuario.Senha = _hasher.HashPassword(usuario, senha);
         usuario.DeveTrocarSenha = true;
+        // Senha nova encerra as sessões abertas do usuário (SEG-01).
+        usuario.VersaoSessao++;
         // Senha nova também desbloqueia quem errou a senha demais.
         usuario.TentativasLoginFalhas = 0;
         usuario.BloqueadoAte = null;

@@ -23,10 +23,18 @@ function b64url(obj: unknown): string {
 }
 
 /** JWT "de mentira" com os mesmos claims do backend (perfil Agente). */
-function buildMockJwt(): string {
+function buildMockJwt(versaoSessao = 0): string {
   const now = Math.floor(Date.now() / 1000)
   const header = { alg: 'HS256', typ: 'JWT' }
-  const payload = { sub: '2', email: DEMO_EMAIL, empresaId: '1', perfil: 'Agente', iat: now, exp: now + 2 * 60 * 60 }
+  const payload = {
+    sub: '2',
+    email: DEMO_EMAIL,
+    empresaId: '1',
+    perfil: 'Agente',
+    sv: String(versaoSessao),
+    iat: now,
+    exp: now + 2 * 60 * 60,
+  }
   return `${b64url(header)}.${b64url(payload)}.mocksignature`
 }
 
@@ -69,7 +77,15 @@ export async function mockFetch<T>(method: string, path: string, body?: unknown)
     if (b.senhaAtual !== DEMO_SENHA_PROVISORIA && b.senhaAtual !== DEMO_SENHA) {
       throw new ApiError(400, 'Senha atual incorreta.')
     }
-    return null as T
+    // Como a API real (SEG-01): a troca devolve um token novo para este aparelho.
+    const res: AuthResponse = {
+      token: buildMockJwt(1),
+      expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      deveTrocarSenha: false,
+      deveAceitarTermos: false,
+      termos: null,
+    }
+    return res as T
   }
 
   if (method === 'GET' && path.startsWith('/api/sync/carga')) {
