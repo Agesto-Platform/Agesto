@@ -196,7 +196,7 @@
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
 | Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render e "Otimizar dia" (fase 2); `Servico.DuracaoMinutos` já existe (DEC-45, 11/11) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — | — |
-| **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | Davi Gomes | — |
+| ~~Agenda na Carga do sync~~ | 🟢 A Carga traz a agenda do mês, completa e incremental, com a regra de `GET /api/atendimento/agenda` (o Agente só a própria). O app grava direto e só busca a agenda à parte se a API ainda não a mandar (12/11/2026) | Média | — | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — | — |
 
 ---
@@ -387,19 +387,19 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | mob-01 | Scaffold Expo (prebuild) + RN + TypeScript + Expo Router; tokens do protótipo; tab bar (Início/Agenda/Atend./Clientes/Mais); estilo via theme + StyleSheet | — |
 | mob-02 | Camada de dados offline: interface `LocalDb` (`src/db/types.ts`) com dois adapters — `expo-sqlite` (`index.native.ts`, device) e memória (`index.ts`, web/testes); guarda dados de referência + entidades offline com `SyncedAt` | — |
 | mob-03 | Cliente de API (envelope + 401) com camada de mock em código (`config.useMocks`); login JWT com token via `expo-secure-store`/`localStorage`; guarda de rota; Carga popula o banco | — |
-| mob-04 | Home action-first (CTA Registrar + agenda do dia Próximo/Ainda hoje) | Delta de backend: Carga não inclui a agenda — contornado com passo `syncAgenda` (`GET /api/atendimento/agenda` cacheado). Ver pendências abaixo |
+| mob-04 | Home action-first (CTA Registrar + agenda do dia Próximo/Ainda hoje) | Delta de backend resolvido em 12/11/2026: a agenda vem na Carga (antes, passo `syncAgenda` à parte) |
 | mob-05 | Registrar atendimento (núcleo): cliente + itens de catálogo por quantidade (contrato enxuto) + status → salva offline (pendente) | — |
 | mob-06 | Clientes: lista referência + pendentes; cadastro rápido offline (`PendingCliente`) | Delta/limitação: atendimento offline não referencia cliente criado offline (sem id de servidor). Ver pendências abaixo |
 | mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
 | — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
 
-**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 119 testes Jest (11/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Ciclo offline verificado no último marco:** login → Carga (com a agenda) → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 123 testes Jest (12/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
-| Agenda na Carga do sync | Ver seção "Domínio Prestador de Serviço" acima — a Carga deveria idealmente incluir a agenda, eliminando o contorno `syncAgenda` | Média | Davi Gomes |
+| ~~Agenda na Carga do sync~~ | 🟢 Resolvido em 12/11/2026: a agenda vem na Carga | — | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43) | — | — |
 
 ### 🔴 Pendências do próprio Mobile
@@ -425,7 +425,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 ### Depois do lançamento
 2. Auditoria de `REQUIREMENTS.md` e remoção da documentação legada (Davi Gomes)
-3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile e histórico no app (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
+3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync e histórico no app (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
 
 ---
 

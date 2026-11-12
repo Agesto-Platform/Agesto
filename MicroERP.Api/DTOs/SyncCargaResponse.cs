@@ -10,6 +10,9 @@ public sealed class SyncCargaResponse
     public IReadOnlyList<OrcamentoResponse> Orcamentos { get; set; } = [];
     public IReadOnlyList<SyncSugeridoResponse> Sugeridos { get; set; } = [];
     public ConfiguracaoResponse? Configuracao { get; set; }
+    // Agenda do mês, a mesma de GET /api/atendimento/agenda (o Agente só a própria).
+    // Vem inteira nas duas Cargas, para o app não fazer uma segunda chamada.
+    public IReadOnlyList<AgendaItemResponse> Agenda { get; set; } = [];
     // PERF-01: na Carga incremental (com ultimaSincronizacao), ids excluídos desde
     // então, para o app apagar do SQLite. Nulo na Carga completa.
     public SyncRemovidosResponse? Removidos { get; set; }

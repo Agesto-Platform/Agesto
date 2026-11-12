@@ -305,7 +305,7 @@ POST /api/sync/descarga
 
 ### Consumo pelo app mobile (ver seção 11)
 O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois deltas de backend identificados durante a construção (DEC-26, ver TASKS.md):
-- A Carga não inclui a agenda — contornado no app com um passo `syncAgenda` separado (`GET /api/atendimento/agenda`).
+- ~~A Carga não inclui a agenda~~ — resolvido em 12/11/2026: a agenda vem em `SyncCargaResponse.Agenda`; o passo `syncAgenda` à parte só roda contra uma API anterior.
 - ~~Atendimento offline não referencia cliente criado offline~~ — resolvido pela DEC-33 (`ClienteUuid` + `ClientesMapeados`).
 
 ### Resolução de conflitos
@@ -428,7 +428,7 @@ mobile/src/
 │   ├── index.native.ts   → adapter expo-sqlite (device)
 │   └── index.ts          → adapter em memória (Expo Web / Jest)
 ├── sync/                 → Carga e Descarga (POST/GET contra /api/sync/*),
-│                           incluindo o passo syncAgenda (ver seção 7)
+│                           com a agenda vinda na Carga (ver seção 7)
 ├── lib/                  → cliente de API (envelope + 401), utilidades
 ├── auth/                 → login, guarda de rota, sessão (src/lib/session.ts)
 ├── app/                  → rotas do Expo Router
@@ -439,7 +439,7 @@ mobile/src/
 
 ### Ciclo offline Carga/Descarga
 1. **Login** — autenticação JWT contra `/api/auth/login`; token guardado via `expo-secure-store`/`localStorage`.
-2. **Carga** — sempre completa (DEC-33); popula o banco local com clientes, produtos, serviços e configuração (`GET /api/sync/carga`), mais orçamentos (`SyncCargaResponse.Orcamentos`), que o app ainda não armazena nem exibe. Um passo adicional `syncAgenda` busca e cacheia `GET /api/atendimento/agenda` separadamente, pois a Carga não inclui a agenda (delta de backend, ver seção 7 e DEC-17).
+2. **Carga** — sempre completa (DEC-33); popula o banco local com clientes, produtos, serviços e configuração (`GET /api/sync/carga`), mais orçamentos (`SyncCargaResponse.Orcamentos`), que o app ainda não armazena nem exibe. A agenda do mês vem na mesma Carga (`SyncCargaResponse.Agenda`, o Agente só a própria); o passo `syncAgenda` à parte só roda contra uma API que ainda não a manda.
 3. **Uso offline** — Home action-first (CTA Registrar + agenda do dia Próximo/Ainda hoje); registrar atendimento (cliente + itens de catálogo por quantidade + status) grava localmente como pendente; cadastro rápido de cliente offline grava como `PendingCliente`.
 4. **Descarga** — empurra clientes e atendimentos pendentes para `POST /api/sync/descarga`; marca como sincronizados só os uuids que o servidor confirmou (os rejeitados seguem pendentes) e religa atendimentos de clientes criados offline ao id do servidor (DEC-33). O botão Sincronizar faz Descarga seguida de Carga + agenda. O app também sincroniza sozinho ao abrir, ao voltar para ele e quando a internet volta (I5): com algo pendente envia logo, sem nada pendente só se a última foi há mais de 5 minutos, e nunca com a tela de registrar ou de cliente aberta, para não enviar uma correção pela metade. Uma sincronização por vez (`sincronizarUmaVez`), e as telas abertas recarregam ao terminar. Aba "Mais" mostra status de sync (pendentes, última sincronização, botão Sincronizar) e logout.
 

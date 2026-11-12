@@ -457,7 +457,7 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 
 ## DEC-26 — Stack e arquitetura do Mobile (App do Agente)
 
-**Status:** ✅ Resolvido — implementado (mob-01 a mob-07, integrado na `main` em 11/08/2026). Os dois deltas de backend abaixo: o mapeamento uuid→id foi resolvido pela DEC-33; a agenda na Carga segue pendente
+**Status:** ✅ Resolvido — implementado (mob-01 a mob-07, integrado na `main` em 11/08/2026). Os dois deltas de backend abaixo foram resolvidos: o mapeamento uuid→id pela DEC-33 e a agenda na Carga em 12/11/2026
 
 **Decisão:** O app mobile do agente de campo (`mobile/` no monorepo `Agesto-Platform/Agesto`) usa **React Native + TypeScript via Expo (prebuild)**, com **Expo Router** para navegação, tokens de design portados do protótipo aprovado (azul `#243FA6` + verde `#12B886`, tema claro), e uma tab bar (Início/Agenda/Atendimentos/Clientes/Mais). Estilização via **theme + StyleSheet** — não NativeWind. Persistência offline via **`expo-sqlite`** no device, atrás de uma interface própria (`LocalDb`), com adapter em memória para Web/testes. Cliente de API com envelope padrão + tratamento de 401, e uma **camada de mock em código** (`config.useMocks`), análoga ao `VITE_USE_MOCKS` do web (DEC-25). Login JWT com token guardado via `expo-secure-store` (device) ou `localStorage` (web), split por plataforma.
 
@@ -481,7 +481,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Descarga:** empurra clientes pendentes e atendimentos pendentes para o servidor, marca como sincronizado ao confirmar.
 
 **Deltas de backend identificados durante a construção (não resolvidos nesta decisão, registrados como pendência — ver TASKS.md):**
-1. A Carga (`GET /api/sync/carga`) deveria idealmente incluir a agenda, evitando o passo `syncAgenda` à parte no mobile.
+1. A Carga (`GET /api/sync/carga`) deveria idealmente incluir a agenda, evitando o passo `syncAgenda` à parte no mobile. Resolvido em 12/11/2026: `SyncCargaResponse.Agenda`.
 2. Um atendimento criado offline não pode referenciar um cliente também criado offline (`PendingCliente`), porque o atendimento local não tem o id de servidor do cliente antes da sincronização. Resolver exigiria mapear uuid→id do cliente durante a Descarga.
 
 **Verificação sem device Android:** todo o ciclo foi validado no **Expo Web** (login demo `agente@agesto.app` / `agesto123`) mais build/lint (`tsc`, `expo lint`) e 15 testes Jest (jest-expo) verdes. Teste de componente React Native (`@testing-library/react-native`) foi adiado — incompatibilidade de versão entre a lib v14, jest-expo e React 19 nesta janela de tempo.

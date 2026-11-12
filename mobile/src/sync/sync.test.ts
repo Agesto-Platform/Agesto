@@ -5,7 +5,7 @@ import type { SyncDescargaRequest } from '@/types/api'
 import { createMemoryDb } from '@/db/memoryDb'
 import { getConfig, DEFAULT_CONFIG } from '@/lib/appConfig'
 import { getSugeridos } from '@/lib/sugeridos'
-import { seedCarga } from '@/mocks/data'
+import { seedAgenda, seedCarga } from '@/mocks/data'
 
 describe('sync.carga (mock)', () => {
   it('popula o banco injetado com os dados de referência e marca lastSync', async () => {
@@ -115,17 +115,38 @@ describe('sync.carga (mock)', () => {
     expect(sugeridos[0]).toHaveProperty('produtoId')
   })
 
-  it('initialSync popula referência e agenda do dia', async () => {
+  it('initialSync popula referência e agenda do dia numa chamada só', async () => {
     const mem = createMemoryDb()
     await mem.init()
+    const get = jest.spyOn(api, 'get')
 
     const r = await initialSync(mem)
     expect(r.clientes).toBe(3)
     expect(r.agenda).toBe(3)
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(get).toHaveBeenCalledWith('/api/sync/carga')
 
     const agenda = await mem.getAgenda()
     expect(agenda).toHaveLength(3)
     expect(agenda[0].clienteNome).toBeTruthy()
+    get.mockRestore()
+  })
+
+  it('API sem a agenda na Carga (versão anterior): busca a agenda à parte', async () => {
+    const mem = createMemoryDb()
+    await mem.init()
+    const { agenda: _, ...semAgenda } = seedCarga()
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValueOnce(semAgenda)
+      .mockResolvedValueOnce(seedAgenda())
+
+    const r = await initialSync(mem)
+
+    expect(get).toHaveBeenNthCalledWith(2, '/api/atendimento/agenda')
+    expect(r.agenda).toBe(3)
+    expect(await mem.getAgenda()).toHaveLength(3)
+    get.mockRestore()
   })
 
   it('descarga empurra pendentes e marca como sincronizado', async () => {

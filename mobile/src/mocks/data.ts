@@ -29,6 +29,7 @@ export function seedCarga(): SyncCargaResponse {
       { servicoId: 1, produtoId: 3, quantidadePadrao: 1 },
     ],
     configuracao: { tipoOperacao: 'Servico', modoAgendaAgente: 'Flexivel', controlaEstoque: true, agenteCadastraServico: true },
+    agenda: seedAgenda(),
     sincronizadoEm: new Date().toISOString(),
   }
 }

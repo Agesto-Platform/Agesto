@@ -128,6 +128,8 @@ export interface SyncCargaResponse {
   configuracao?: Configuracao | null
   /** Na Carga incremental (PERF-01): ids excluídos desde `ultimaSincronizacao`. Ausente na completa. */
   removidos?: SyncRemovidos | null
+  /** Agenda do mês (o agente só a própria), inteira nas duas Cargas. Ausente numa API anterior a ela. */
+  agenda?: AgendaItem[]
   sincronizadoEm: string
 }
 

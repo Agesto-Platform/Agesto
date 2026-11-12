@@ -160,7 +160,7 @@ Dois fluxos distintos:
 - Envia: clientes atualizados, produtos, serviços, configuração da empresa
 - Critério: o backend aceita `ultimaSincronizacao`, mas o app sempre pede a Carga completa, para propagar exclusões (DEC-33)
 - **[Implementado na API]** `SyncCargaResponse.Orcamentos` — a Carga também envia os orçamentos da empresa (commit `5e82411`); o app ainda não os armazena nem exibe
-- **[Implementado, com contorno]** A Carga **não inclui a agenda**. O app mobile contorna isso com um passo extra `syncAgenda`, que busca e cacheia `GET /api/atendimento/agenda` separadamente. **[Delta de backend]** o ideal é a agenda entrar na Carga — ver TASKS.md.
+- **[Implementado]** A Carga inclui a agenda do mês (`SyncCargaResponse.Agenda`), com a regra de `GET /api/atendimento/agenda`: o Dono recebe a de todos e o Agente só a própria. Vem inteira na Carga completa e na incremental. O app só busca a agenda à parte se a API ainda não a mandar na Carga.
 
 **Descarga (Mobile → Servidor):**
 - Dispara quando o agente sincroniza
@@ -178,7 +178,7 @@ Dois fluxos distintos:
 - **[Implementado]** Registro de Atendimentos (cliente + itens de catálogo por quantidade + status), salvo offline como pendente
 - Consulta de histórico de atendimentos próprios — não implementado nesta fase (fora do escopo de mob-01 a mob-07)
 - **[Implementado]** Sincronização manual (aba "Mais": pendentes, última sync, botão Sincronizar) e automática ao abrir o app, ao voltar para ele e quando a internet volta (I5). Com o app fechado não sincroniza (sem tarefa em segundo plano)
-- **[Implementado]** Home action-first com CTA de registrar atendimento e agenda do dia (Próximo / Ainda hoje), consumindo o endpoint de Agenda (`GET /api/atendimento/agenda`, enriquecido com `AgendaItemResponse`) via o contorno `syncAgenda` descrito em 7.2. **[Implementado]** "Iniciar rota" abre o Google Maps com as visitas pendentes do dia, pela ordem dos horários (DEC-37). **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia", fase 2).
+- **[Implementado]** Home action-first com CTA de registrar atendimento e agenda do dia (Próximo / Ainda hoje), consumindo o endpoint de Agenda (`GET /api/atendimento/agenda`, enriquecido com `AgendaItemResponse`) que chega na Carga (7.2). **[Implementado]** "Iniciar rota" abre o Google Maps com as visitas pendentes do dia, pela ordem dos horários (DEC-37). **[Planejado / não implementado]** Otimização da rota por proximidade ("Otimizar dia", fase 2).
 - **[Implementado]** Telas dedicadas de **Agenda** (agenda completa agrupada por dia) e **Atendimentos** (lista com status e badge de pendência de envio).
 - **[Implementado]** **Agendamento em campo** quando `ModoAgendaAgente = Flexivel` (ver §2.2): no registrar, alternância "Registrar agora / Agendar" com seletor de dia + hora (agenda como `Pendente` com `DataAgendada`); a aba Agenda mostra o CTA "+ Agendar". No modo `Fixa` o app oculta o agendar (só registro imediato/walk-in), e o servidor reforça isso.
 - **[Implementado]** O hint de estoque nas telas do agente some quando `ControlaEstoque = false`.

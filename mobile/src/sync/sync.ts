@@ -14,6 +14,8 @@ export interface CargaResult {
   clientes: number
   produtos: number
   servicos: number
+  /** Visitas da agenda que vieram na Carga; null quando a API ainda não a manda. */
+  agenda: number | null
 }
 
 export interface SyncResult extends CargaResult {
@@ -57,10 +59,13 @@ export async function carga(database: LocalDb = db, agora = Date.now()): Promise
   return concluir(database, data)
 }
 
-/** Configuração e kits vêm inteiros nas duas Cargas (são pequenos). */
+/** Configuração, kits e agenda vêm inteiros nas duas Cargas (são pequenos). */
 async function concluir(database: LocalDb, data: SyncCargaResponse): Promise<CargaResult> {
   if (data.configuracao) {
     await saveConfig(database, data.configuracao)
+  }
+  if (data.agenda) {
+    await database.saveAgenda(data.agenda)
   }
   await saveSugeridos(database, data.sugeridos ?? [])
   await database.setMeta('lastSync', data.sincronizadoEm)
@@ -70,13 +75,13 @@ async function concluir(database: LocalDb, data: SyncCargaResponse): Promise<Car
     clientes: data.clientes.length,
     produtos: data.produtos.length,
     servicos: data.servicos.length,
+    agenda: data.agenda?.length ?? null,
   }
 }
 
 /**
- * Busca a agenda do dia (GET /api/atendimento/agenda) e cacheia local.
- * NB: a Carga não inclui a agenda hoje — este passo cobre isso (delta de
- * backend: idealmente a agenda entraria na Carga para ficar 100% offline).
+ * Busca a agenda à parte (GET /api/atendimento/agenda) e cacheia local. Só é
+ * usada quando a API ainda não manda a agenda na Carga (versão anterior).
  */
 export async function syncAgenda(database: LocalDb = db): Promise<number> {
   const items = await api.get<AgendaItem[]>('/api/atendimento/agenda')
@@ -87,7 +92,7 @@ export async function syncAgenda(database: LocalDb = db): Promise<number> {
 /** Sincronização inicial (login): dados de referência + agenda do dia. */
 export async function initialSync(database: LocalDb = db): Promise<SyncResult> {
   const c = await carga(database)
-  const agenda = await syncAgenda(database)
+  const agenda = c.agenda ?? (await syncAgenda(database))
   return { ...c, agenda }
 }
 
