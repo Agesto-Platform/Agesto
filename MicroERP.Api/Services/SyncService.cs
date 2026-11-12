@@ -444,7 +444,9 @@ public sealed class SyncService : ISyncService
                         : $"Cliente {atendimentoRequest.ClienteId} não encontrado.");
                 }
 
-                var itens = await ValidarItensAsync(empresaId, atendimentoRequest.ItensProduto, atendimentoRequest.ItensServico, servicoIdPorUuid, controlaEstoque, falhas, cancellationToken);
+                // Atendimento que ja chega cancelado nao consome estoque (E2E-04).
+                var baixarEstoque = controlaEstoque && atendimentoRequest.Status != StatusAtendimento.Cancelado;
+                var itens = await ValidarItensAsync(empresaId, atendimentoRequest.ItensProduto, atendimentoRequest.ItensServico, servicoIdPorUuid, baixarEstoque, falhas, cancellationToken);
 
                 if (falhas.Count > 0)
                 {
@@ -470,7 +472,7 @@ public sealed class SyncService : ISyncService
                     UpdatedAt = agora
                 };
 
-                AdicionarItens(atendimento, atendimentoRequest.ItensProduto, itens, controlaEstoque, agora);
+                AdicionarItens(atendimento, atendimentoRequest.ItensProduto, itens, baixarEstoque, agora);
 
                 atendimento.ValorTotal = atendimento.ItensProduto.Sum(i => i.Subtotal)
                     + atendimento.ItensServico.Sum(i => i.Subtotal);
@@ -548,8 +550,10 @@ public sealed class SyncService : ISyncService
                         falhas.Add("Item sem identificador.");
                 }
 
+                // Concluir como cancelado nao consome estoque (E2E-04).
+                var baixarEstoque = controlaEstoque && conclusao.Status != StatusAtendimento.Cancelado;
                 var itens = falhas.Count == 0
-                    ? await ValidarItensAsync(empresaId, conclusao.ItensProduto, conclusao.ItensServico, servicoIdPorUuid, controlaEstoque, falhas, cancellationToken)
+                    ? await ValidarItensAsync(empresaId, conclusao.ItensProduto, conclusao.ItensServico, servicoIdPorUuid, baixarEstoque, falhas, cancellationToken)
                     : null;
 
                 if (falhas.Count > 0)
@@ -561,7 +565,10 @@ public sealed class SyncService : ISyncService
                 }
 
                 var agora = DateTime.UtcNow;
-                AdicionarItens(atendimento!, conclusao.ItensProduto, itens!, controlaEstoque, agora);
+                // Cancelado no app: devolve o que os itens ja lancados (ex.: pelo Dono) baixaram.
+                if (conclusao.Status == StatusAtendimento.Cancelado)
+                    await EstoqueDosItens.DevolverAsync(atendimento!.ItensProduto, empresaId, _produtoRepository, cancellationToken);
+                AdicionarItens(atendimento!, conclusao.ItensProduto, itens!, baixarEstoque, agora);
                 atendimento!.Status = conclusao.Status;
                 atendimento.UpdatedAt = agora;
                 atendimento.ValorTotal = atendimento.ItensProduto.Where(i => i.DeletedAt == null).Sum(i => i.Subtotal)
@@ -734,13 +741,14 @@ public sealed class SyncService : ISyncService
         return new ItensValidados(produtos, itensValidos);
     }
 
-    // Grava os itens validados no atendimento e baixa o estoque dos produtos.
+    // Grava os itens validados no atendimento e, se baixarEstoque, baixa o estoque
+    // dos produtos e marca o item (EstoqueBaixado) para a devolucao saber o que voltar.
     // O valor vem do device quando informado (DEC-23); senao, do catalogo.
     private static void AdicionarItens(
         Atendimento atendimento,
         IReadOnlyList<ItemProdutoSyncRequest> itensProduto,
         ItensValidados itens,
-        bool controlaEstoque,
+        bool baixarEstoque,
         DateTime agora)
     {
         foreach (var itemProduto in itensProduto)
@@ -762,7 +770,7 @@ public sealed class SyncService : ISyncService
             }
 
             var produto = itens.Produtos[produtoId];
-            if (controlaEstoque)
+            if (baixarEstoque)
             {
                 produto.QuantidadeEstoque -= itemProduto.Quantidade;
                 produto.UpdatedAt = agora;
@@ -773,6 +781,7 @@ public sealed class SyncService : ISyncService
             {
                 Uuid = itemProduto.Uuid ?? Guid.NewGuid(),
                 ProdutoId = produto.Id,
+                EstoqueBaixado = baixarEstoque,
                 Quantidade = itemProduto.Quantidade,
                 PrecoUnitario = preco,
                 Subtotal = itemProduto.Quantidade * preco,

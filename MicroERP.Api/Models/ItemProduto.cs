@@ -11,6 +11,10 @@ public class ItemProduto
     public string? Descricao { get; set; }
     public long AtendimentoId { get; set; }
     public long? ProdutoId { get; set; }
+    // Se este item tirou unidades do estoque. A devolução (excluir ou cancelar)
+    // usa esta marca, não a chave ControlaEstoque do momento: lançado com a chave
+    // desligada não devolve nada ao religar.
+    public bool EstoqueBaixado { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? SyncedAt { get; set; }

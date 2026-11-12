@@ -153,7 +153,7 @@ public sealed class ItemProdutoServiceTests
     public async Task DeleteAsync_WhenFound_SetsDeletedAtAndRestoresStock()
     {
         var produto = new Produto { Id = 5, QuantidadeEstoque = 3 };
-        var item = new ItemProduto { Id = 1, AtendimentoId = 1, ProdutoId = 5, Quantidade = 2 };
+        var item = new ItemProduto { Id = 1, AtendimentoId = 1, ProdutoId = 5, Quantidade = 2, EstoqueBaixado = true };
 
         _itemProdutoRepoMock
             .Setup(r => r.GetByIdAsync(1, 1, true, It.IsAny<CancellationToken>()))
