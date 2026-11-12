@@ -18,21 +18,21 @@ public sealed class PaginacaoControllerTests
         svc.Setup(s => s.GetAllAsync(1, It.IsAny<CancellationToken>()))
            .ReturnsAsync(new List<ClienteResponse> { new() { Id = 1 } });
 
-        var result = await BuildController(svc).GetAll(new PaginacaoQuery(), CancellationToken.None);
+        var result = await BuildController(svc).GetAll(new PaginacaoQuery(), new ClienteFiltroQuery(), CancellationToken.None);
 
         var body = Assert.IsType<ApiResponse>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.IsAssignableFrom<IReadOnlyList<ClienteResponse>>(body.Data);
-        svc.Verify(s => s.GetPaginaAsync(It.IsAny<long>(), It.IsAny<PaginacaoQuery>(), It.IsAny<CancellationToken>()), Times.Never);
+        svc.Verify(s => s.GetPaginaAsync(It.IsAny<long>(), It.IsAny<PaginacaoQuery>(), It.IsAny<ClienteFiltroQuery?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task GetAll_ComPaginacao_DevolveAPagina()
     {
         var svc = new Mock<IClienteService>();
-        svc.Setup(s => s.GetPaginaAsync(1, It.IsAny<PaginacaoQuery>(), It.IsAny<CancellationToken>()))
+        svc.Setup(s => s.GetPaginaAsync(1, It.IsAny<PaginacaoQuery>(), It.IsAny<ClienteFiltroQuery?>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(new PaginaResponse<ClienteResponse> { Pagina = 2, Tamanho = 20, Total = 41 });
 
-        var result = await BuildController(svc).GetAll(new PaginacaoQuery { Pagina = 2 }, CancellationToken.None);
+        var result = await BuildController(svc).GetAll(new PaginacaoQuery { Pagina = 2 }, new ClienteFiltroQuery(), CancellationToken.None);
 
         var body = Assert.IsType<ApiResponse>(Assert.IsType<OkObjectResult>(result.Result).Value);
         var pagina = Assert.IsType<PaginaResponse<ClienteResponse>>(body.Data);

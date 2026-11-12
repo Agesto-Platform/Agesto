@@ -16,7 +16,7 @@ let nextId = 1
 let nextItemProdId = 1
 let nextItemServId = 1
 
-const atendimentos: Atendimento[] = []
+export const atendimentos: Atendimento[] = []
 const itemProdutos: ItemProdutoResp[] = []
 const itemServicos: ItemServicoResp[] = []
 
@@ -70,7 +70,7 @@ function seedItemServ(atId: number, servicoId: number, qtd: number, preco: numbe
 }
 
 /** Como a API (PAG-02): o primeiro serviço, senão o primeiro produto; null sem itens. */
-function resumo(atId: number): string | null {
+export function resumo(atId: number): string | null {
   const serv = itemServicos.find((i) => i.atendimentoId === atId)
   if (serv) return servicoStore.get(serv.servicoId)?.descricao ?? null
   const prod = itemProdutos.find((i) => i.atendimentoId === atId)

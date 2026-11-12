@@ -16,6 +16,10 @@ public sealed class AtendimentoResponse
     public long UsuarioId { get; set; }
     // Primeiro serviço, senão o primeiro produto; nulo sem itens. Vem preenchido na listagem.
     public string? Resumo { get; set; }
+    // Só na lista paginada (PAG-01): o web deixa de baixar todos os clientes para os nomes.
+    public string? ClienteNome { get; set; }
+    public string? ClienteTelefone { get; set; }
+    public string? EnderecoResumo { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

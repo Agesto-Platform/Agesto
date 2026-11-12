@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
+import { useListaPaginada } from '../../lib/paginacao'
 import type {
   Atendimento,
+  AtendimentoContagem,
   AtendimentoInput,
   AtendimentoUpdate,
   ItemProdutoResp,
   ItemProdutoInput,
   ItemServicoResp,
   ItemServicoInput,
+  StatusAtendimento,
 } from '../../types/api'
 
 const LIST = ['atendimento', 'list'] as const
@@ -15,6 +18,31 @@ const PATH = '/api/atendimento'
 
 export function useAtendimentos() {
   return useQuery({ queryKey: LIST, queryFn: () => api.get<Atendimento[]>(PATH) })
+}
+
+/** PAG-01: lista paginada no servidor, com aba (status), busca e cliente. */
+export function useAtendimentosPaginados(
+  filtros: { status?: StatusAtendimento; busca?: string; clienteId?: number },
+  enabled = true,
+) {
+  return useListaPaginada<Atendimento>(LIST, PATH, filtros, enabled)
+}
+
+/** Números das abas, sem baixar a lista inteira. Fica sob LIST: as mutações recarregam. */
+export function useAtendimentoContagem() {
+  return useQuery({
+    queryKey: [...LIST, 'contagem'],
+    queryFn: () => api.get<AtendimentoContagem>(`${PATH}/contagem`),
+  })
+}
+
+/** Um atendimento pelo id: para o detalhe de um que não está nas páginas carregadas. */
+export function useAtendimento(id: number | null) {
+  return useQuery({
+    queryKey: [...LIST, 'detalhe', id],
+    queryFn: () => api.get<Atendimento>(`${PATH}/${id}`),
+    enabled: id !== null,
+  })
 }
 
 export function useCreateAtendimento() {

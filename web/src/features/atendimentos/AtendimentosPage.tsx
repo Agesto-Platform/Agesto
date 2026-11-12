@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import {
-  useAtendimentos,
+  useAtendimento,
+  useAtendimentoContagem,
+  useAtendimentosPaginados,
   useCreateAtendimento,
   useUpdateAtendimento,
   useDeleteAtendimento,
@@ -21,6 +23,7 @@ import {
   PageHead,
   SearchBox,
   Tabs,
+  CarregarMais,
   brl,
   useToast,
   type Column,
@@ -28,56 +31,53 @@ import {
 import { Icon } from '../../components/Icon'
 import { ApiError } from '../../lib/api'
 import { dataCurta, iniciais, semanaHora } from '../../lib/format'
-import type { Atendimento, AtendimentoInput, Cliente, StatusAtendimento } from '../../types/api'
+import { useDebounced } from '../../lib/paginacao'
+import type { Atendimento, AtendimentoContagem, AtendimentoInput, StatusAtendimento } from '../../types/api'
 
 type Aba = 'todos' | StatusAtendimento
 
-const ABAS: { value: Aba; label: string }[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'Pendente', label: 'Pendentes' },
-  { value: 'Concluido', label: 'Concluídos' },
-  { value: 'Cancelado', label: 'Cancelados' },
+const ABAS: { value: Aba; label: string; conta: keyof AtendimentoContagem }[] = [
+  { value: 'todos', label: 'Todos', conta: 'todos' },
+  { value: 'Pendente', label: 'Pendentes', conta: 'pendente' },
+  { value: 'Concluido', label: 'Concluídos', conta: 'concluido' },
+  { value: 'Cancelado', label: 'Cancelados', conta: 'cancelado' },
 ]
 
-/** "R. das Acácias, 120 — Centro" a partir do cadastro do cliente. */
-function endereco(c: Cliente | undefined): string | null {
-  if (!c) return null
-  const rua = [c.logradouro, c.numero].filter(Boolean).join(', ')
-  return [rua, c.bairro].filter(Boolean).join(' — ') || null
-}
-
-/** Data que ordena e aparece na lista: a agendada, senão a de registro. */
+/** Data que aparece na lista (e a ordena, no servidor): a agendada, senão a de registro. */
 const dataRef = (a: Atendimento) => a.dataAgendada ?? a.dataRegistro
 
 export function AtendimentosPage() {
-  const list = useAtendimentos()
+  const [aba, setAba] = useState<Aba>('todos')
+  const [busca, setBusca] = useState('')
+  const buscaServidor = useDebounced(busca.trim())
+  // PAG-01: 50 por vez, com aba e busca no servidor; os números das abas vêm à parte.
+  const list = useAtendimentosPaginados({ status: aba === 'todos' ? undefined : aba, busca: buscaServidor || undefined })
+  const contagem = useAtendimentoContagem()
   const create = useCreateAtendimento()
   const update = useUpdateAtendimento()
   const remove = useDeleteAtendimento()
   const toast = useToast()
 
+  // Ainda a lista inteira: o campo de cliente do formulário (fase 2 do PAG-01).
   const clientes = clientesResource.useList()
   const produtos = produtosResource.useList()
   const servicos = servicosResource.useList()
   const usuarios = useUsuarios()
 
-  const [aba, setAba] = useState<Aba>('todos')
-  const [busca, setBusca] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [detailId, setDetailId] = useState<number | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const cliente = (id: number) => clientes.data?.find((c) => c.id === id)
-  const clienteNome = (id: number) => cliente(id)?.nome ?? `Cliente #${id}`
-  const detail = list.data?.find((a) => a.id === detailId) ?? null
+  const linhas = list.itens
+  // O detalhe vem das páginas carregadas; um recém-criado fora delas vem pelo id.
+  const daLista = linhas.find((a) => a.id === detailId) ?? null
+  const avulso = useAtendimento(detailId !== null && !daLista ? detailId : null)
+  const detail = daLista ?? (avulso.data?.id === detailId ? avulso.data : null)
 
-  const todos = list.data ?? []
-  const q = busca.trim().toLowerCase()
-  const linhas = todos
-    .filter((a) => aba === 'todos' || a.status === aba)
-    .filter((a) => !q || `${clienteNome(a.clienteId)} ${a.resumo ?? ''}`.toLowerCase().includes(q))
-    .sort((a, b) => dataRef(b).localeCompare(dataRef(a)))
+  const clienteNome = (a: Atendimento) =>
+    a.clienteNome ?? clientes.data?.find((c) => c.id === a.clienteId)?.nome ?? `Cliente #${a.clienteId}`
+  const nenhumAinda = contagem.data?.todos === 0
 
   function openCreate() {
     setServerError(null)
@@ -138,13 +138,13 @@ export function AtendimentosPage() {
     {
       header: 'Cliente',
       cell: (a) => {
-        const nome = clienteNome(a.clienteId)
+        const nome = clienteNome(a)
         return (
           <div className="cell">
             <span className="avatar sm">{iniciais(nome)}</span>
             <span>
               <span className="strong">{nome}</span>
-              <span className="sub">{cliente(a.clienteId)?.telefone || 'sem telefone'}</span>
+              <span className="sub">{a.clienteTelefone || 'sem telefone'}</span>
             </span>
           </div>
         )
@@ -165,7 +165,7 @@ export function AtendimentosPage() {
               </span>
             )}
             <span className="sub muted" style={{ display: 'block', fontSize: 12 }}>
-              {endereco(cliente(a.clienteId)) ?? 'sem endereço'}
+              {a.enderecoResumo ?? 'sem endereço'}
             </span>
           </>
         )
@@ -184,7 +184,7 @@ export function AtendimentosPage() {
       align: 'right',
       cell: (a) => (
         <IconButton
-          aria-label={`Ações de ${clienteNome(a.clienteId)}`}
+          aria-label={`Ações de ${clienteNome(a)}`}
           style={{ width: 28, height: 28 }}
           onClick={(e) => {
             e.stopPropagation()
@@ -217,10 +217,7 @@ export function AtendimentosPage() {
           label="Status do atendimento"
           value={aba}
           onChange={setAba}
-          tabs={ABAS.map((t) => ({
-            ...t,
-            count: todos.filter((a) => t.value === 'todos' || a.status === t.value).length,
-          }))}
+          tabs={ABAS.map((t) => ({ value: t.value, label: t.label, count: contagem.data?.[t.conta] }))}
         />
         <div className="toolbar">
           <SearchBox
@@ -233,7 +230,7 @@ export function AtendimentosPage() {
             Filtros
           </Button>
           <span className="hint" style={{ marginLeft: 'auto' }}>
-            {list.isLoading ? '' : `${linhas.length} ${linhas.length === 1 ? 'atendimento' : 'atendimentos'}`}
+            {list.isLoading ? '' : `${list.total} ${list.total === 1 ? 'atendimento' : 'atendimentos'}`}
           </span>
         </div>
         <DataTable
@@ -244,10 +241,18 @@ export function AtendimentosPage() {
           onRowClick={(a) => setDetailId(a.id)}
           isSelected={(a) => a.id === detailId}
           empty={
-            todos.length === 0
+            nenhumAinda
               ? { title: 'Nenhum atendimento ainda', text: 'Clique em Novo atendimento para registrar o primeiro.', icon: 'wrench' }
               : { title: 'Nenhum atendimento encontrado', text: 'Confira a grafia do nome ou troque a aba de status.' }
           }
+        />
+        <CarregarMais
+          carregados={linhas.length}
+          total={list.total}
+          temMais={list.hasNextPage}
+          carregando={list.isFetchingNextPage}
+          onClick={() => list.fetchNextPage()}
+          rotulo="atendimentos"
         />
       </section>
 
@@ -268,7 +273,7 @@ export function AtendimentosPage() {
         open={detail !== null}
         onClose={() => setDetailId(null)}
         title={detail ? `Atendimento #${detail.id}` : 'Atendimento'}
-        sub={detail ? clienteNome(detail.clienteId) : undefined}
+        sub={detail ? clienteNome(detail) : undefined}
       >
         {detail && (
           <AtendimentoDetail
@@ -287,7 +292,7 @@ export function AtendimentosPage() {
       <ConfirmDialog
         open={confirmDelete && detail !== null}
         title="Excluir atendimento"
-        message={`Remover o atendimento #${detail?.id} de ${detail ? clienteNome(detail.clienteId) : ''}? Esta ação não pode ser desfeita.`}
+        message={`Remover o atendimento #${detail?.id} de ${detail ? clienteNome(detail) : ''}? Esta ação não pode ser desfeita.`}
         loading={remove.isPending}
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(false)}

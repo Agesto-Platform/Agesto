@@ -11,11 +11,6 @@ const OPTIONS: { value: Period; label: string }[] = [
 /** Período da agenda: até dois meses (a API limita a 62 dias, PAG-02). */
 export type AgendaPeriod = Exclude<Period, 'ano'>
 
-/** Na agenda, "Ano" vira "Mês": a API não devolve o ano inteiro. */
-export function agendaPeriod(p: Period): AgendaPeriod {
-  return p === 'ano' ? 'mes' : p
-}
-
 /**
  * Seletor de período (7 dias / Mês / Ano). O estado vive no AppShell e vale para todas as telas.
  * `semAno` esconde "Ano" (agenda).
