@@ -1,11 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
-import type {
-  Usuario,
-  UsuarioCreateInput,
-  UsuarioSenhaProvisoria,
-  UsuarioUpdateInput,
-} from '../../types/api'
+import type { Usuario, UsuarioConvite, UsuarioCreateInput, UsuarioUpdateInput } from '../../types/api'
 
 const LIST = ['usuario', 'list'] as const
 const PATH = '/api/usuario'
@@ -22,7 +17,8 @@ function useInvalidate() {
 export function useCreateUsuario() {
   const onSuccess = useInvalidate()
   return useMutation({
-    mutationFn: (body: UsuarioCreateInput) => api.post<UsuarioSenhaProvisoria>(PATH, body),
+    // A pessoa recebe o convite por email e cria a senha (DEC-55).
+    mutationFn: (body: UsuarioCreateInput) => api.post<UsuarioConvite>(PATH, body),
     onSuccess,
   })
 }
@@ -45,12 +41,23 @@ export function useSetAtivoUsuario() {
   })
 }
 
-export function useRedefinirSenha() {
+/** Reenvia o convite a quem ainda não criou a senha (o link anterior deixa de valer). */
+export function useReenviarConvite() {
   const onSuccess = useInvalidate()
   return useMutation({
-    mutationFn: (id: number) => api.post<UsuarioSenhaProvisoria>(`${PATH}/${id}/redefinir-senha`, {}),
+    mutationFn: (id: number) => api.post<UsuarioConvite>(`${PATH}/${id}/reenviar-convite`, {}),
     onSuccess,
   })
+}
+
+/** Texto do aviso depois de criar o acesso ou reenviar o convite. */
+export function avisoDeConvite(r: UsuarioConvite): { ok: boolean; texto: string } {
+  return r.envioHabilitado
+    ? { ok: true, texto: `Convite enviado para ${r.usuario.email}. O link vale por 72 horas.` }
+    : {
+        ok: false,
+        texto: `Acesso de ${r.usuario.nome} criado, mas o envio de email ainda não está configurado. Fale com o suporte do Agesto.`,
+      }
 }
 
 /** Usuários que podem receber atendimentos (ativos), agentes primeiro. */

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   Badge,
@@ -10,26 +10,35 @@ import {
   DataTable,
   Drawer,
   PageHead,
+  SelectField,
   TextField,
   useToast,
   type Column,
 } from '../components/ui'
-import { SenhaProvisoriaDialog } from '../features/usuarios/SenhaProvisoriaDialog'
 import { ApiError } from '../lib/api'
 import { dataCurta, hora } from '../lib/format'
+import type { PerfilUsuario } from '../types/api'
 import { AuditoriaLista } from './AuditoriaLista'
 import {
+  avisoDeEnvio,
   useAtivoUsuarioAdmin,
   useBloquearEmpresa,
+  useCriarUsuarioAdmin,
   useDesbloquearEmpresa,
   useEmpresaAdmin,
-  useSenhaProvisoriaAdmin,
+  useEnviarLinkSenhaAdmin,
 } from './queries'
-import type { UsuarioAdminItem } from './types'
+import type { ConviteEnviado, UsuarioAdminCriarInput, UsuarioAdminItem } from './types'
 
 type Pendente =
   | { tipo: 'desbloquear' }
-  | { tipo: 'desativar' | 'reativar' | 'senha'; usuario: UsuarioAdminItem }
+  | { tipo: 'desativar' | 'reativar' | 'link'; usuario: UsuarioAdminItem }
+
+const NOVO_ACESSO: UsuarioAdminCriarInput = { nome: '', email: '', perfil: 'Agente' }
+const PERFIS: { value: PerfilUsuario; label: string }[] = [
+  { value: 'Agente', label: 'Agente (usa o app em campo)' },
+  { value: 'Dono', label: 'Dono (acessa o painel)' },
+]
 
 const quando = (iso: string | null) => (iso ? `${dataCurta(iso)} · ${hora(iso)}` : 'Nunca')
 
@@ -41,15 +50,41 @@ export function AdminEmpresaPage() {
   const bloquear = useBloquearEmpresa(id)
   const desbloquear = useDesbloquearEmpresa(id)
   const ativo = useAtivoUsuarioAdmin(id)
-  const senha = useSenhaProvisoriaAdmin(id)
+  const link = useEnviarLinkSenhaAdmin(id)
+  const criarAcesso = useCriarUsuarioAdmin(id)
 
   const [motivo, setMotivo] = useState('')
   const [bloqueando, setBloqueando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, setPendente] = useState<Pendente | null>(null)
-  const [senhaGerada, setSenhaGerada] = useState<{ usuario: { nome: string; email: string }; senhaProvisoria: string } | null>(null)
+  const [novoAberto, setNovoAberto] = useState(false)
+  const [novo, setNovo] = useState(NOVO_ACESSO)
+  const [erroNovo, setErroNovo] = useState<string | null>(null)
 
   const falhou = (e: unknown, padrao: string) => toast.error(e instanceof ApiError ? e.message : padrao)
+  const avisar = (r: ConviteEnviado, oQue: string) => {
+    const aviso = avisoDeEnvio(r, oQue)
+    if (aviso.ok) toast.success(aviso.texto)
+    else toast.error(aviso.texto)
+  }
+
+  // Acesso novo (Dono ou Agente): a pessoa recebe o convite por email (DEC-55).
+  const salvarNovo = async (ev: FormEvent) => {
+    ev.preventDefault()
+    if (!novo.nome.trim() || !novo.email.trim()) {
+      setErroNovo('Preencha o nome e o email.')
+      return
+    }
+    setErroNovo(null)
+    try {
+      const r = await criarAcesso.mutateAsync({ ...novo, nome: novo.nome.trim(), email: novo.email.trim() })
+      setNovoAberto(false)
+      setNovo(NOVO_ACESSO)
+      avisar(r, 'Acesso criado. Convite enviado')
+    } catch (err) {
+      setErroNovo(err instanceof ApiError ? [err.message, ...err.errors].join(' ') : 'Não foi possível criar o acesso.')
+    }
+  }
 
   const confirmarBloqueio = async () => {
     if (motivo.trim().length < 3) {
@@ -72,9 +107,9 @@ export function AdminEmpresaPage() {
       if (pendente.tipo === 'desbloquear') {
         await desbloquear.mutateAsync()
         toast.success('Empresa desbloqueada.')
-      } else if (pendente.tipo === 'senha') {
-        const r = await senha.mutateAsync(pendente.usuario.id)
-        setSenhaGerada({ usuario: { nome: pendente.usuario.nome, email: r.email }, senhaProvisoria: r.senhaProvisoria })
+      } else if (pendente.tipo === 'link') {
+        const r = await link.mutateAsync(pendente.usuario.id)
+        avisar(r, pendente.usuario.convitePendente ? 'Convite reenviado' : 'Link de senha enviado')
       } else {
         await ativo.mutateAsync({ usuarioId: pendente.usuario.id, ativo: pendente.tipo === 'reativar' })
         toast.success(pendente.tipo === 'reativar' ? 'Usuário reativado.' : 'Usuário desativado.')
@@ -118,6 +153,10 @@ export function AdminEmpresaPage() {
           <Badge tone="warn" dot>
             Bloqueado até {hora(u.bloqueadoAte)}
           </Badge>
+        ) : u.convitePendente ? (
+          <Badge tone="warn" dot>
+            Convite pendente
+          </Badge>
         ) : u.deveTrocarSenha ? (
           <Badge tone="warn" dot>
             Aguardando 1º acesso
@@ -133,9 +172,11 @@ export function AdminEmpresaPage() {
       align: 'right',
       cell: (u) => (
         <div className="adm-acoes">
-          <Button size="sm" onClick={() => setPendente({ tipo: 'senha', usuario: u })}>
-            Senha provisória
-          </Button>
+          {u.ativo && (
+            <Button size="sm" icon="mail" onClick={() => setPendente({ tipo: 'link', usuario: u })}>
+              {u.convitePendente ? 'Reenviar convite' : 'Enviar link de senha'}
+            </Button>
+          )}
           <Button size="sm" variant="ghost" onClick={() => setPendente({ tipo: u.ativo ? 'desativar' : 'reativar', usuario: u })}>
             {u.ativo ? 'Desativar' : 'Reativar'}
           </Button>
@@ -156,14 +197,21 @@ export function AdminEmpresaPage() {
       label: 'Desativar',
     },
     reativar: { title: 'Reativar usuário?', message: 'A pessoa volta a entrar com a senha atual.', label: 'Reativar' },
-    senha: {
-      title: 'Gerar senha provisória?',
-      message: 'A senha atual deixa de valer. A pessoa troca a provisória no próximo acesso.',
-      label: 'Gerar senha',
-    },
+    link:
+      pendente?.tipo === 'link' && pendente.usuario.convitePendente
+        ? {
+            title: 'Reenviar o convite?',
+            message: `${pendente.usuario.email} recebe um link novo, válido por 72 horas. O link anterior deixa de valer.`,
+            label: 'Reenviar',
+          }
+        : {
+            title: 'Enviar link de senha?',
+            message: `${pendente?.tipo === 'link' ? pendente.usuario.email : 'A pessoa'} recebe um link, válido por 72 horas, para criar uma senha nova. A senha atual continua valendo até o link ser usado.`,
+            label: 'Enviar',
+          },
   }
   const texto = pendente ? textoConfirmacao[pendente.tipo] : null
-  const ocupado = desbloquear.isPending || ativo.isPending || senha.isPending
+  const ocupado = desbloquear.isPending || ativo.isPending || link.isPending
 
   return (
     <>
@@ -223,7 +271,15 @@ export function AdminEmpresaPage() {
       </div>
 
       <Card className="adm-bloco">
-        <CardHead title="Usuários" subtitle="Acesso ao painel (Dono) e ao app (Agente)." />
+        <CardHead
+          title="Usuários"
+          subtitle="Acesso ao painel (Dono) e ao app (Agente). Cada pessoa cria a própria senha pelo convite."
+          action={
+            <Button size="sm" icon="plus" onClick={() => setNovoAberto(true)}>
+              Novo acesso
+            </Button>
+          }
+        />
         <CardBody>
           <DataTable columns={colunas} rows={e.usuarios} getKey={(u) => u.id} empty={{ title: 'Nenhum usuário' }} />
         </CardBody>
@@ -264,7 +320,45 @@ export function AdminEmpresaPage() {
         onConfirm={confirmarPendente}
         onCancel={() => setPendente(null)}
       />
-      <SenhaProvisoriaDialog dados={senhaGerada} onClose={() => setSenhaGerada(null)} />
+
+      <Drawer
+        open={novoAberto}
+        onClose={() => setNovoAberto(false)}
+        title={`Novo acesso em ${e.nome}`}
+        sub="A pessoa recebe um convite por email para criar a própria senha (o link vale por 72 horas)."
+      >
+        <form className="form" onSubmit={salvarNovo} noValidate>
+          {erroNovo && (
+            <p className="form-error" role="alert">
+              {erroNovo}
+            </p>
+          )}
+          <TextField label="Nome" value={novo.nome} onChange={(v) => setNovo((n) => ({ ...n, nome: v }))} maxLength={120} required />
+          <TextField
+            label="Email"
+            type="email"
+            value={novo.email}
+            onChange={(v) => setNovo((n) => ({ ...n, email: v }))}
+            maxLength={150}
+            required
+          />
+          <SelectField<PerfilUsuario>
+            label="Perfil"
+            value={novo.perfil}
+            onChange={(v) => setNovo((n) => ({ ...n, perfil: v }))}
+            options={PERFIS}
+            required
+          />
+          <div className="form-actions">
+            <Button type="button" onClick={() => setNovoAberto(false)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" disabled={criarAcesso.isPending}>
+              {criarAcesso.isPending ? 'Criando…' : 'Criar e enviar convite'}
+            </Button>
+          </div>
+        </form>
+      </Drawer>
     </>
   )
 }

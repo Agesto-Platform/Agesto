@@ -1,13 +1,13 @@
-import { useCallback, useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import {
+  avisoDeConvite,
   useCreateUsuario,
-  useRedefinirSenha,
+  useReenviarConvite,
   useSetAtivoUsuario,
   useUpdateUsuario,
   useUsuarios,
 } from './queries'
 import { UsuarioForm } from './UsuarioForm'
-import { SenhaProvisoriaDialog } from './SenhaProvisoriaDialog'
 import {
   Badge,
   Button,
@@ -23,10 +23,10 @@ import { Icon } from '../../components/Icon'
 import { ApiError } from '../../lib/api'
 import { dataCurta, hora, iniciais } from '../../lib/format'
 import { useAuth } from '../../auth/useAuth'
-import type { PerfilUsuario, Usuario, UsuarioCreateInput, UsuarioSenhaProvisoria } from '../../types/api'
+import type { PerfilUsuario, Usuario, UsuarioConvite, UsuarioCreateInput } from '../../types/api'
 import './usuarios.css'
 
-type Pendente = { tipo: 'desativar' | 'redefinir'; usuario: Usuario }
+type Pendente = { tipo: 'desativar'; usuario: Usuario }
 type Filtro = 'todos' | PerfilUsuario
 
 const PAPEL: Record<PerfilUsuario, string> = {
@@ -44,6 +44,12 @@ function Situacao({ u }: { u: Usuario }) {
     return (
       <Badge tone="neg" dot>
         Desativado
+      </Badge>
+    )
+  if (u.convitePendente)
+    return (
+      <Badge tone="warn" dot>
+        Convite pendente
       </Badge>
     )
   if (u.deveTrocarSenha)
@@ -64,7 +70,8 @@ function UsuarioDetalhe({
   u,
   eu,
   onEdit,
-  onNovaSenha,
+  onReenviar,
+  reenviando,
   onDesativar,
   onReativar,
   reativando,
@@ -72,7 +79,8 @@ function UsuarioDetalhe({
   u: Usuario
   eu: boolean
   onEdit: () => void
-  onNovaSenha: () => void
+  onReenviar: () => void
+  reenviando: boolean
   onDesativar: () => void
   onReativar: () => void
   reativando: boolean
@@ -90,9 +98,9 @@ function UsuarioDetalhe({
           <Button size="sm" variant="primary" icon="pencil" onClick={onEdit}>
             Editar
           </Button>
-          {u.ativo && (
-            <Button size="sm" icon="lock" onClick={onNovaSenha}>
-              Nova senha
+          {u.ativo && u.convitePendente && (
+            <Button size="sm" icon="mail" onClick={onReenviar} disabled={reenviando}>
+              {reenviando ? 'Reenviando…' : 'Reenviar convite'}
             </Button>
           )}
         </div>
@@ -131,9 +139,11 @@ function UsuarioDetalhe({
         <p className="hint" style={{ margin: '0 0 10px' }}>
           {!u.ativo
             ? 'Sem acesso. Os atendimentos dele continuam no sistema.'
-            : u.deveTrocarSenha
-              ? 'Entra com a senha provisória e troca no primeiro acesso.'
-              : 'Pode entrar normalmente.'}
+            : u.convitePendente
+              ? 'Recebeu o convite por email e ainda não criou a senha. O link vale por 72 horas.'
+              : u.deveTrocarSenha
+                ? 'Entra com a senha provisória e troca no primeiro acesso.'
+                : 'Pode entrar normalmente. Se esquecer a senha, usa "Esqueci a senha" na tela de entrada.'}
         </p>
         {eu ? (
           <p className="hint" style={{ margin: 0 }}>
@@ -158,7 +168,7 @@ export function UsuariosPage() {
   const create = useCreateUsuario()
   const update = useUpdateUsuario()
   const setAtivo = useSetAtivoUsuario()
-  const redefinir = useRedefinirSenha()
+  const reenviar = useReenviarConvite()
   const toast = useToast()
   const { user } = useAuth()
   const meuId = Number(user?.sub)
@@ -169,11 +179,15 @@ export function UsuariosPage() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editing, setEditing] = useState<Usuario | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
-  const [senha, setSenha] = useState<UsuarioSenhaProvisoria | null>(null)
   const [pendente, setPendente] = useState<Pendente | null>(null)
-  const fecharSenha = useCallback(() => setSenha(null), [])
 
   const erro = (e: unknown, padrao: string) => (e instanceof ApiError ? e.message : padrao)
+  // Depois de criar ou reenviar: confirma o envio ou avisa que o email está desligado.
+  const avisar = (r: UsuarioConvite) => {
+    const aviso = avisoDeConvite(r)
+    if (aviso.ok) toast.success(aviso.texto)
+    else toast.error(aviso.texto)
+  }
 
   const todos = list.data ?? []
   const termo = q.trim().toLowerCase()
@@ -216,7 +230,7 @@ export function UsuariosPage() {
         onSuccess: (criado) => {
           setDrawerOpen(false)
           setSelId(criado.usuario.id)
-          setSenha(criado)
+          avisar(criado)
         },
         onError,
       })
@@ -233,25 +247,24 @@ export function UsuariosPage() {
     )
   }
 
+  function reenviarConvite(u: Usuario) {
+    reenviar.mutate(u.id, {
+      onSuccess: avisar,
+      onError: (e) => toast.error(erro(e, 'Não foi possível reenviar o convite.')),
+    })
+  }
+
   function confirmar() {
     if (!pendente) return
-    const { tipo, usuario } = pendente
-    if (tipo === 'desativar') {
-      setAtivo.mutate(
-        { id: usuario.id, ativo: false },
-        {
-          onSuccess: () => toast.success(`${usuario.nome} desativado.`),
-          onError: (e) => toast.error(erro(e, 'Não foi possível desativar.')),
-          onSettled: () => setPendente(null),
-        },
-      )
-    } else {
-      redefinir.mutate(usuario.id, {
-        onSuccess: (r) => setSenha(r),
-        onError: (e) => toast.error(erro(e, 'Não foi possível gerar a senha.')),
+    const { usuario } = pendente
+    setAtivo.mutate(
+      { id: usuario.id, ativo: false },
+      {
+        onSuccess: () => toast.success(`${usuario.nome} desativado.`),
+        onError: (e) => toast.error(erro(e, 'Não foi possível desativar.')),
         onSettled: () => setPendente(null),
-      })
-    }
+      },
+    )
   }
 
   return (
@@ -259,7 +272,7 @@ export function UsuariosPage() {
       <PageHead
         title="Usuários"
         badge={list.data && <Badge>{ativos === 1 ? '1 ativo' : `${ativos} ativos`}</Badge>}
-        sub="Quem acessa o Agesto: agentes entram pelo app, donos por este painel."
+        sub="Quem acessa o Agesto: agentes entram pelo app, donos por este painel. Cada pessoa recebe um convite por email e cria a própria senha."
         actions={
           <Button variant="primary" icon="plus" onClick={openCreate}>
             Novo usuário
@@ -365,7 +378,8 @@ export function UsuariosPage() {
             u={sel}
             eu={sel.id === meuId}
             onEdit={() => openEdit(sel)}
-            onNovaSenha={() => setPendente({ tipo: 'redefinir', usuario: sel })}
+            onReenviar={() => reenviarConvite(sel)}
+            reenviando={reenviar.isPending}
             onDesativar={() => setPendente({ tipo: 'desativar', usuario: sel })}
             onReativar={() => reativar(sel)}
             reativando={setAtivo.isPending}
@@ -397,20 +411,14 @@ export function UsuariosPage() {
 
       <ConfirmDialog
         open={pendente !== null}
-        title={pendente?.tipo === 'desativar' ? 'Desativar usuário' : 'Gerar nova senha'}
-        message={
-          pendente?.tipo === 'desativar'
-            ? `${pendente.usuario.nome} perde o acesso na hora. Os atendimentos dele continuam no sistema e podem ser passados para outra pessoa.`
-            : `A senha atual de ${pendente?.usuario.nome ?? ''} deixa de valer e ele precisará trocar a nova no próximo acesso.`
-        }
-        confirmLabel={pendente?.tipo === 'desativar' ? 'Desativar' : 'Gerar senha'}
-        loadingLabel={pendente?.tipo === 'desativar' ? 'Desativando…' : 'Gerando…'}
-        loading={setAtivo.isPending || redefinir.isPending}
+        title="Desativar usuário"
+        message={`${pendente?.usuario.nome ?? ''} perde o acesso na hora. Os atendimentos dele continuam no sistema e podem ser passados para outra pessoa.`}
+        confirmLabel="Desativar"
+        loadingLabel="Desativando…"
+        loading={setAtivo.isPending}
         onConfirm={confirmar}
         onCancel={() => setPendente(null)}
       />
-
-      <SenhaProvisoriaDialog dados={senha} onClose={fecharSenha} />
     </>
   )
 }

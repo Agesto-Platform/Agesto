@@ -15,12 +15,49 @@ namespace MicroERP.Api.Controllers;
 public sealed class AuthController : ApiControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IRedefinicaoSenhaService _redefinicaoSenha;
     private readonly IConfiguration _configuration;
 
-    public AuthController(IAuthService authService, IConfiguration configuration)
+    public AuthController(IAuthService authService, IRedefinicaoSenhaService redefinicaoSenha, IConfiguration configuration)
     {
         _authService = authService;
+        _redefinicaoSenha = redefinicaoSenha;
         _configuration = configuration;
+    }
+
+    // "Esqueci a senha" do Dono e do Agente (DEC-54 e DEC-55). A resposta é sempre a
+    // mesma, exista o email ou não, para a rota não servir para descobrir quem tem conta.
+    [HttpPost("esqueci-senha")]
+    [EnableRateLimiting(RateLimits.Login)]
+    public async Task<ActionResult<ApiResponse>> EsqueciSenha([FromBody] EsqueciSenhaRequest request, CancellationToken cancellationToken)
+    {
+        await _redefinicaoSenha.SolicitarAsync(request, cancellationToken);
+        return Ok(new ApiResponse
+        {
+            Success = true,
+            Message = "Se este email tiver acesso ao Agesto, enviamos um link para criar uma senha nova. Confira também o spam."
+        });
+    }
+
+    [HttpPost("redefinir-senha")]
+    [EnableRateLimiting(RateLimits.Login)]
+    public async Task<ActionResult<ApiResponse>> RedefinirSenha([FromBody] RedefinirSenhaRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Também cria a primeira senha de quem recebeu convite (DEC-55).
+            var perfil = await _redefinicaoSenha.RedefinirAsync(request, cancellationToken);
+            return Ok(new ApiResponse
+            {
+                Success = true,
+                Message = "Senha criada. Entre com a senha nova.",
+                Data = new RedefinirSenhaResponse { Perfil = perfil }
+            });
+        }
+        catch (TokenRedefinicaoInvalidoException ex)
+        {
+            return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
+        }
     }
 
     // Cadastro fechado: só funciona com Auth:RegistrationKey configurada e enviada

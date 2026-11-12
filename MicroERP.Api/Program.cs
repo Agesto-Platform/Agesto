@@ -11,6 +11,7 @@ using MicroERP.Api.DTOs;
 using MicroERP.Api.Repositories;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services;
+using MicroERP.Api.Services.Email;
 using MicroERP.Api.Services.Geocodificacao;
 using MicroERP.Api.Services.Insights;
 using MicroERP.Api.Services.Interfaces;
@@ -94,6 +95,18 @@ builder.Services.PostConfigure<InsightsOptions>(options =>
 builder.Services.AddSingleton<IInsightsGerador, ClaudeInsightsGerador>();
 builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAgenteService, AgenteService>();
+
+// Email transacional pelo Brevo e "Esqueci a senha" do Dono (DEC-54). Sem chave,
+// o envio fica desligado. A fila é única (singleton) e o worker a esvazia.
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.Secao));
+builder.Services.PostConfigure<EmailOptions>(options => options.BrevoApiKey = options.BrevoApiKey?.Trim());
+builder.Services.AddHttpClient<IEmailEnviador, BrevoEmailEnviador>(client => client.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddSingleton<FilaDeEmails>();
+builder.Services.AddSingleton<IFilaDeEmails>(sp => sp.GetRequiredService<FilaDeEmails>());
+builder.Services.AddHostedService<EnvioDeEmailWorker>();
+builder.Services.AddScoped<IRedefinicaoSenhaService, RedefinicaoSenhaService>();
+// Convites por email da equipe do Agesto (DEC-55).
+builder.Services.AddScoped<IConviteService, ConviteService>();
 
 // Área de superadmin (equipe do Agesto).
 builder.Services.AddScoped<IAdminAuthService, AdminAuthService>();

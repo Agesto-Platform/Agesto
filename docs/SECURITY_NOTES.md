@@ -104,6 +104,8 @@ Quando alguém abrir PR que toca em logging:
 
 **Quando ler isto:** quando criar o endpoint `POST /api/auth/forgot-password` ou similar.
 
+✅ Implementado (DEC-54, 12/11/2026): `POST /api/auth/esqueci-senha` e `POST /api/auth/redefinir-senha`, só para Dono. Segue as três regras abaixo: a resposta é a mesma exista o email ou não, o token tem 32 bytes com só o hash SHA-256 no banco (`TokensRedefinicaoSenha`), vale 15 minutos e uma vez só. Além delas: o envio pelo Brevo sai da requisição (a resposta leva o mesmo tempo), o token vai depois do `#` no link (fora dos logs do servidor) e cada conta recebe no máximo um email a cada 2 minutos.
+
 ### Armadilhas comuns
 
 #### 1. Não confirmar se o email existe na resposta
@@ -252,7 +254,7 @@ Desenho original: 5 tentativas por minuto por IP. Em produção ficou 10 a cada 
 
 ### Lockout adicional
 
-✅ Implementado (DEC-43): após 5 falhas consecutivas em **um email específico** (não IP), a conta fica bloqueada por 15 minutos. Colunas `Usuarios.TentativasLoginFalhas` e `Usuarios.BloqueadoAte`. A senha provisória (do Dono ou da equipe do Agesto) desbloqueia. O login da área de superadmin ainda não tem esse bloqueio (DEC-52).
+✅ Implementado (DEC-43): após 5 falhas consecutivas em **um email específico** (não IP), a conta fica bloqueada por 15 minutos. Colunas `Usuarios.TentativasLoginFalhas` e `Usuarios.BloqueadoAte`. Criar a senha pelo link do email (convite ou "Esqueci a senha", DEC-54 e DEC-55) desbloqueia. O login da área de superadmin ainda não tem esse bloqueio (DEC-52).
 
 ---
 
@@ -314,3 +316,5 @@ A migration **InitialCreate** ainda não foi gerada. Será criada quando provisi
 | 2026-05-12 | Diego Mendes (Depowo) | Criação inicial — coletânea pós security review do PR #1 |
 | 2026-10-10 | Equipe Agesto | Auditoria completa e endurecimento validado em produção (DEC-34): rate limiting, perfis, revogação de token, LGPD de clientes, RLS, role `agesto_api` e TLS verificado |
 | 2026-11-11 | Equipe Agesto | Estado atualizado: lockout por conta (DEC-43), exclusão de usuário com anonimização (DEC-44), armazenamento atual do token no web e no app, `InitialCreate` aplicada; risco do token em `localStorage` aceito no MVP (DEC-53) |
+| 2026-11-12 | Equipe Agesto | "Esqueci a senha" do Dono implementado conforme a seção 3, com envio pelo Brevo (DEC-54) |
+| 2026-11-12 | Equipe Agesto | Fim da senha provisória: acessos novos recebem convite por email (72 horas, uso único) e a pessoa cria a própria senha; "Esqueci a senha" também para o Agente (DEC-55) |

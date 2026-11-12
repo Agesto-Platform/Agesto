@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { useRouter } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
@@ -9,6 +10,7 @@ import { config } from '@/lib/config'
 
 export default function Login() {
   const { login } = useAuth()
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -80,6 +82,14 @@ export default function Login() {
           )}
         </Pressable>
 
+        <Pressable
+          onPress={() => router.push({ pathname: '/esqueci-senha', params: { email: email.trim() } })}
+          disabled={busy}
+          style={styles.esqueci}
+        >
+          <Text style={styles.esqueciText}>Esqueci a senha</Text>
+        </Pressable>
+
         {config.useMocks && (
           <Text style={styles.demo}>
             Demo: {DEMO_EMAIL} / {DEMO_SENHA}
@@ -119,5 +129,7 @@ const styles = StyleSheet.create({
     marginTop: space(1),
   },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  esqueci: { alignItems: 'center', paddingVertical: space(2) },
+  esqueciText: { color: colors.brandInk, fontWeight: '600', fontSize: 13.5 },
   demo: { textAlign: 'center', fontSize: 12, color: colors.ink4 },
 })

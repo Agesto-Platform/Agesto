@@ -76,7 +76,7 @@ export function UsuarioForm({
 
         {!initial && (
           <p className="hint" style={{ margin: 0 }}>
-            Ao salvar, o sistema gera uma senha provisória. A pessoa entra com ela e troca no primeiro acesso.
+            Ao salvar, a pessoa recebe um convite neste email para criar a própria senha. O link vale por 72 horas.
           </p>
         )}
       </div>

@@ -17,4 +17,9 @@ describe('api (mock)', () => {
       api.post('/api/auth/login', { email: 'x@x.com', senha: 'errada' }),
     ).rejects.toMatchObject({ status: 401 })
   })
+
+  it('esqueci a senha responde igual exista o email ou não', async () => {
+    await expect(api.post('/api/auth/esqueci-senha', { email: 'agente@agesto.app' })).resolves.toBeNull()
+    await expect(api.post('/api/auth/esqueci-senha', { email: 'ninguem@x.com' })).resolves.toBeNull()
+  })
 })

@@ -16,13 +16,15 @@ function Guard() {
     const onLogin = segments[0] === 'login'
     const onTroca = segments[0] === 'trocar-senha'
     const onTermos = segments[0] === 'aceitar-termos'
+    // "Esqueci a senha" é pública como o login: abre sem token.
+    const onEsqueci = segments[0] === 'esqueci-senha'
     const pendente = termos !== null || deveTrocarSenha
-    if (!token && !onLogin) router.replace('/login')
+    if (!token && !onLogin && !onEsqueci) router.replace('/login')
     // Termos primeiro (B6): nada do app antes do aceite.
     else if (token && termos && !onTermos) router.replace('/aceitar-termos')
     // Senha provisória: só sai da troca depois de concluir.
     else if (token && !termos && deveTrocarSenha && !onTroca) router.replace('/trocar-senha')
-    else if (token && !pendente && (onLogin || onTroca || onTermos)) router.replace('/')
+    else if (token && !pendente && (onLogin || onTroca || onTermos || onEsqueci)) router.replace('/')
   }, [token, ready, deveTrocarSenha, termos, segments, router])
 
   return <Stack screenOptions={{ headerShown: false }} />

@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button, DataTable, Drawer, PageHead, SearchBox, TextField, type Column } from '../components/ui'
-import { SenhaProvisoriaDialog } from '../features/usuarios/SenhaProvisoriaDialog'
+import { Badge, Button, DataTable, Drawer, PageHead, SearchBox, TextField, useToast, type Column } from '../components/ui'
 import { ApiError } from '../lib/api'
 import { dataCurta } from '../lib/format'
-import { useCriarEmpresa, useEmpresasAdmin } from './queries'
+import { avisoDeEnvio, useCriarEmpresa, useEmpresasAdmin } from './queries'
 import type { EmpresaAdminCriarInput, EmpresaAdminResumo } from './types'
 
 const VAZIO: EmpresaAdminCriarInput = { nomeEmpresa: '', documento: '', nomeDono: '', emailDono: '' }
@@ -55,7 +54,7 @@ export function AdminEmpresasPage() {
   const [aberto, setAberto] = useState(false)
   const [form, setForm] = useState(VAZIO)
   const [erro, setErro] = useState<string | null>(null)
-  const [senha, setSenha] = useState<{ usuario: { nome: string; email: string }; senhaProvisoria: string } | null>(null)
+  const toast = useToast()
 
   const salvar = async (e: FormEvent) => {
     e.preventDefault()
@@ -68,7 +67,11 @@ export function AdminEmpresasPage() {
       const r = await criar.mutateAsync(form)
       setAberto(false)
       setForm(VAZIO)
-      setSenha({ usuario: { nome: form.nomeDono.trim(), email: r.emailDono }, senhaProvisoria: r.senhaProvisoria })
+      // O Dono recebe o convite por email para criar a senha (DEC-55).
+      const aviso = avisoDeEnvio({ email: r.emailDono, envioHabilitado: r.envioHabilitado }, 'Empresa criada. Convite enviado')
+      if (aviso.ok) toast.success(aviso.texto)
+      else toast.error(aviso.texto)
+      navigate(`/admin/empresas/${r.empresaId}`)
     } catch (err) {
       setErro(err instanceof ApiError ? [err.message, ...err.errors].join(' ') : 'Não foi possível criar a empresa.')
     }
@@ -104,7 +107,7 @@ export function AdminEmpresasPage() {
         onRowClick={(e) => navigate(`/admin/empresas/${e.id}`)}
       />
 
-      <Drawer open={aberto} onClose={() => setAberto(false)} title="Nova empresa" sub="O dono recebe uma senha provisória e troca no primeiro acesso.">
+      <Drawer open={aberto} onClose={() => setAberto(false)} title="Nova empresa" sub="O dono recebe um convite por email para criar a própria senha (o link vale por 72 horas).">
         <form className="form" onSubmit={salvar} noValidate>
           {erro && (
             <p className="form-error" role="alert">
@@ -125,8 +128,6 @@ export function AdminEmpresasPage() {
           </div>
         </form>
       </Drawer>
-
-      <SenhaProvisoriaDialog dados={senha} onClose={() => setSenha(null)} />
     </>
   )
 }

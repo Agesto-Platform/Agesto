@@ -25,7 +25,7 @@ Antes de qualquer implementação, entender a distinção entre esses termos é 
 - Email deve ser único no sistema
 - Senha mínima de 8 caracteres, armazenada com hash (ASP.NET Identity PasswordHasher)
 - **[Implementado]** Cadastro fechado: `POST /api/auth/register` exige `X-Registration-Key`; sem a chave responde 404. Reabrir depende de verificação de email, ainda não implementada (DEC-34)
-- **[Implementado]** A equipe do Agesto também cria empresa com Dono pela área de superadmin; o Dono recebe senha provisória e troca no primeiro acesso (DEC-52)
+- **[Implementado]** A equipe do Agesto também cria empresa com Dono pela área de superadmin; o Dono recebe um convite por email e cria a própria senha (DEC-52, DEC-55)
 - **[Implementado]** Exclusão da própria conta (`DELETE /api/usuario`, LGPD): o usuário é anonimizado com `DeletedAt` em vez de apagado; a empresa não fica sem Dono ativo (DEC-44)
 
 ### 1.2 Perfis de Acesso
@@ -195,7 +195,7 @@ Dois fluxos distintos:
 - **[Implementado]** Agenda (timeline agrupada por dia), Orçamentos (editor de itens, status, conversão em atendimento) e Atendimentos (itens/estoque/margem)
 - **[Implementado]** Relatórios — abas Rentabilidade/Serviços/Produtos/Estoque
 - Visualização de atendimentos de todos os agentes — implementado
-- **[Implementado]** Gestão de usuários da empresa: o Dono cadastra agentes com senha provisória, edita, desativa/reativa e redefine senha; atribui atendimentos a um agente (DEC-35)
+- **[Implementado]** Gestão de usuários da empresa: o Dono cadastra agentes (a pessoa recebe convite por email e cria a própria senha), edita, desativa/reativa e reenvia o convite; a equipe do Agesto também cria acessos pelo superadmin (DEC-55); atribui atendimentos a um agente (DEC-35)
 - **[Implementado]** Mapa da agenda (aba "Mapa", Leaflet + OpenStreetMap) com os clientes geocodificados (DEC-38)
 - **[Implementado]** Duração estimada no cadastro de serviço e R$/h por serviço nos Relatórios (DEC-45)
 - **[Implementado]** Painel do Agente com chat de IA sobre os números do período e a agenda (DEC-21), ainda com o selo "Prévia"
@@ -267,7 +267,7 @@ Dois fluxos distintos:
 - HTTPS obrigatório em produção
 - Senha nunca armazenada em texto puro
 - Chave da API de IA fica só no servidor — nunca no front/mobile, nunca em `Configuracao` do tenant (DEC-21)
-- **[Implementado]** Bloqueio da conta por 15 minutos após 5 senhas erradas seguidas, além do limite por IP; a senha provisória desbloqueia (DEC-43)
+- **[Implementado]** Bloqueio da conta por 15 minutos após 5 senhas erradas seguidas, além do limite por IP; criar a senha pelo link do email desbloqueia (DEC-43, DEC-55)
 - **[Implementado]** Área de superadmin com contas e JWT próprios (audiência separada): o token de cliente não abre o `/admin` e vice-versa; toda ação de admin vai para a auditoria (DEC-52)
 - **[Implementado]** Empresa bloqueada pela equipe do Agesto perde o login e os tokens já emitidos (DEC-52)
 

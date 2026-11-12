@@ -16,6 +16,9 @@ public sealed class PolicyCoverageTests
     [
         "AuthController.Register",
         "AuthController.Login",
+        // Sem login: "Esqueci a senha" (DEC-54). O serviço só atende Dono.
+        "AuthController.EsqueciSenha",
+        "AuthController.RedefinirSenha",
         "AuthController.TrocarSenha",
         "AuthController.AceitarTermos",
         "SyncController.Carga",
@@ -29,6 +32,8 @@ public sealed class PolicyCoverageTests
     [
         "AdminAuthController.Login",
         "AdminAuthController.Setup",
+        // Senha do convite de admin, pelo link do email (DEC-55).
+        "AdminAuthController.CriarSenha",
     ];
 
     public static TheoryData<string> Actions()

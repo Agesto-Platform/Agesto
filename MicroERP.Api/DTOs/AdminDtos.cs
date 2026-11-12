@@ -17,7 +17,21 @@ public sealed class AdminLoginRequest
     public string Senha { get; set; } = string.Empty;
 }
 
-// Primeiro admin (setup) e novos admins da equipe.
+// Convite de alguém para a equipe do Agesto (DEC-55): a pessoa cria a senha pelo link.
+public sealed class AdminConvidarRequest
+{
+    [Required(ErrorMessage = "Nome obrigatório.")]
+    [MinLength(2, ErrorMessage = "Nome deve ter no mínimo 2 caracteres.")]
+    [MaxLength(120, ErrorMessage = "Nome deve ter no máximo 120 caracteres.")]
+    public string Nome { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Email obrigatório.")]
+    [EmailAddress(ErrorMessage = "Email inválido.")]
+    [MaxLength(150, ErrorMessage = "Email deve ter no máximo 150 caracteres.")]
+    public string Email { get; set; } = string.Empty;
+}
+
+// Só o primeiro admin (setup), que ainda não tem quem o convide.
 public sealed class AdminCriarRequest
 {
     [Required(ErrorMessage = "Nome obrigatório.")]
@@ -49,8 +63,18 @@ public sealed class AdminResponse
     public string Nome { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public bool Ativo { get; set; }
+    // Ainda não criou a senha pelo link do convite (DEC-55).
+    public bool ConvitePendente { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+// Resposta de quem recebeu um convite ou link de senha. EnvioHabilitado = false
+// quando o Brevo não está configurado: o link foi criado, mas o email não sai.
+public sealed class ConviteEnviadoResponse
+{
+    public string Email { get; set; } = string.Empty;
+    public bool EnvioHabilitado { get; set; }
 }
 
 // ---------- empresas clientes ----------
@@ -92,7 +116,9 @@ public sealed class UsuarioAdminItem
     public PerfilUsuario Perfil { get; set; }
     public bool Ativo { get; set; }
     public bool DeveTrocarSenha { get; set; }
-    // Bloqueio temporário por senhas erradas; a senha provisória desbloqueia.
+    // Ainda não criou a senha pelo link do convite (DEC-55).
+    public bool ConvitePendente { get; set; }
+    // Bloqueio temporário por senhas erradas; criar a senha pelo link desbloqueia.
     public DateTime? BloqueadoAte { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -119,12 +145,12 @@ public sealed class EmpresaAdminCriarRequest
     public string EmailDono { get; set; } = string.Empty;
 }
 
-// A senha provisória aparece uma vez só, para a equipe repassar ao cliente.
+// O Dono recebe o convite por email para criar a senha (DEC-55).
 public sealed class EmpresaAdminCriadaResponse
 {
     public long EmpresaId { get; set; }
     public string EmailDono { get; set; } = string.Empty;
-    public string SenhaProvisoria { get; set; } = string.Empty;
+    public bool EnvioHabilitado { get; set; }
 }
 
 public sealed class EmpresaBloquearRequest
@@ -135,11 +161,6 @@ public sealed class EmpresaBloquearRequest
     public string Motivo { get; set; } = string.Empty;
 }
 
-public sealed class SenhaProvisoriaAdminResponse
-{
-    public string Email { get; set; } = string.Empty;
-    public string SenhaProvisoria { get; set; } = string.Empty;
-}
 
 // ---------- auditoria ----------
 

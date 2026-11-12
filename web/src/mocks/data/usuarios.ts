@@ -2,8 +2,8 @@ import { http, HttpResponse } from 'msw'
 import type {
   PerfilUsuario,
   Usuario,
+  UsuarioConvite,
   UsuarioCreateInput,
-  UsuarioSenhaProvisoria,
   UsuarioUpdateInput,
 } from '../../types/api'
 import { ok, fail } from '../lib/http'
@@ -16,12 +16,9 @@ const agora = new Date().toISOString()
 const usuarios: Usuario[] = [
   { id: 1, nome: 'Fernando', email: DEMO_EMAIL, perfil: 'Dono', ativo: true, deveTrocarSenha: false, ultimoAcessoEm: agora, createdAt: agora },
   { id: 2, nome: 'Carlos', email: 'carlos@agesto.app', perfil: 'Agente', ativo: true, deveTrocarSenha: false, ultimoAcessoEm: agora, createdAt: agora },
-  { id: 3, nome: 'Bruna', email: 'bruna@agesto.app', perfil: 'Agente', ativo: true, deveTrocarSenha: true, ultimoAcessoEm: null, createdAt: agora },
+  // Recebeu o convite por email e ainda não criou a senha (DEC-55).
+  { id: 3, nome: 'Bruna', email: 'bruna@agesto.app', perfil: 'Agente', ativo: true, deveTrocarSenha: false, convitePendente: true, ultimoAcessoEm: null, createdAt: agora },
 ]
-
-function senhaFake(): string {
-  return Math.random().toString(36).slice(2, 12)
-}
 
 function donosAtivos(): number {
   return usuarios.filter((u) => u.perfil === 'Dono' && u.ativo).length
@@ -46,12 +43,13 @@ export const usuarioHandlers = [
     return HttpResponse.json(ok(u, 'Usuario reativado.'))
   }),
 
-  http.post('*/api/usuario/:id/redefinir-senha', ({ params }) => {
+  http.post('*/api/usuario/:id/reenviar-convite', ({ params }) => {
     const u = usuarios.find((x) => x.id === Number(params.id))
-    if (!u) return fail(404, 'Usuario nao encontrado.')
-    u.deveTrocarSenha = true
-    const data: UsuarioSenhaProvisoria = { usuario: u, senhaProvisoria: senhaFake() }
-    return HttpResponse.json(ok(data, 'Senha provisoria gerada.'))
+    if (!u) return fail(404, 'Usuário não encontrado.')
+    if (!u.convitePendente) return fail(409, 'Esta pessoa já criou a senha. Se esqueceu, ela pode usar "Esqueci a senha".')
+    if (!u.ativo) return fail(409, 'Reative o acesso antes de reenviar o convite.')
+    const data: UsuarioConvite = { usuario: u, envioHabilitado: true }
+    return HttpResponse.json(ok(data, 'Convite reenviado.'))
   }),
 
   http.post('*/api/usuario', async ({ request }) => {
@@ -64,13 +62,14 @@ export const usuarioHandlers = [
       email,
       perfil: (b.perfil ?? 'Agente') as PerfilUsuario,
       ativo: true,
-      deveTrocarSenha: true,
+      deveTrocarSenha: false,
+      convitePendente: true,
       ultimoAcessoEm: null,
       createdAt: new Date().toISOString(),
     }
     usuarios.push(u)
-    const data: UsuarioSenhaProvisoria = { usuario: u, senhaProvisoria: senhaFake() }
-    return HttpResponse.json(ok(data, 'Usuario criado com sucesso.'), { status: 201 })
+    const data: UsuarioConvite = { usuario: u, envioHabilitado: true }
+    return HttpResponse.json(ok(data, 'Acesso criado. Enviamos o convite por email.'), { status: 201 })
   }),
 
   http.put('*/api/usuario/:id', async ({ request, params }) => {

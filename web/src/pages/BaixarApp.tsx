@@ -63,7 +63,10 @@ export function BaixarApp() {
               Abra o arquivo baixado e toque em <b>Instalar</b>. Se aparecer um aviso do Play Protect, toque em{' '}
               <b>Mais detalhes</b> e em <b>Instalar mesmo assim</b>.
             </li>
-            <li>Abra o Agesto e entre com o email e a senha provisória que o responsável pela empresa enviou.</li>
+            <li>
+              Abra o Agesto e entre com o seu email e a senha que você criou pelo link do convite. Ainda não criou?
+              Procure o email do Agesto na sua caixa de entrada (e no spam).
+            </li>
           </ol>
 
           <h2 className="passos-titulo">Atualizações</h2>

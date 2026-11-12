@@ -20,16 +20,18 @@ public sealed class AdminAuthService : IAdminAuthService
 {
     private readonly AppDbContext _db;
     private readonly IConfiguration _configuration;
+    private readonly IConviteService _convites;
     private readonly PasswordHasher<AdminPlataforma> _hasher = new();
 
     // Mesmo truque do AuthService: email inexistente custa o mesmo tempo que senha errada.
     private static readonly string HashFicticio = new PasswordHasher<AdminPlataforma>()
         .HashPassword(new AdminPlataforma(), Guid.NewGuid().ToString());
 
-    public AdminAuthService(AppDbContext db, IConfiguration configuration)
+    public AdminAuthService(AppDbContext db, IConfiguration configuration, IConviteService convites)
     {
         _db = db;
         _configuration = configuration;
+        _convites = convites;
     }
 
     public async Task<AdminAuthResponse?> LoginAsync(AdminLoginRequest request, string? ip, CancellationToken cancellationToken)
@@ -76,7 +78,7 @@ public sealed class AdminAuthService : IAdminAuthService
         if (await _db.AdminsPlataforma.AnyAsync(cancellationToken))
             throw new AdminSetupException(StatusCodes.Status409Conflict, "O primeiro administrador já foi criado.");
 
-        var admin = await CriarContaAsync(request, cancellationToken);
+        var admin = await CriarContaAsync(request.Nome, request.Email, request.Senha, cancellationToken);
         AdminAuditoria.Registrar(_db, admin.Id, "setup", detalhes: $"Primeiro admin: {admin.Email}", ip: ip);
         await _db.SaveChangesAsync(cancellationToken);
         return Map(admin);
@@ -95,12 +97,29 @@ public sealed class AdminAuthService : IAdminAuthService
         return admins.Select(Map).ToList();
     }
 
-    public async Task<AdminResponse> CriarAsync(long adminId, AdminCriarRequest request, string? ip, CancellationToken cancellationToken)
+    // Novo admin nasce com o convite pendente e cria a senha pelo link (DEC-55).
+    public async Task<ConviteEnviadoResponse> ConvidarAsync(long adminId, AdminConvidarRequest request, string? ip, CancellationToken cancellationToken)
     {
-        var admin = await CriarContaAsync(request, cancellationToken);
-        AdminAuditoria.Registrar(_db, adminId, "criar-admin", detalhes: $"Novo admin: {admin.Email}", ip: ip);
+        var admin = await CriarContaAsync(request.Nome, request.Email, senha: null, cancellationToken);
+        AdminAuditoria.Registrar(_db, adminId, "convidar-admin", detalhes: $"Novo admin: {admin.Email}", ip: ip);
         await _db.SaveChangesAsync(cancellationToken);
-        return Map(admin);
+        await _convites.EnviarParaAdminAsync(admin, cancellationToken);
+        return new ConviteEnviadoResponse { Email = admin.Email, EnvioHabilitado = _convites.EnvioHabilitado };
+    }
+
+    public async Task<ConviteEnviadoResponse> ReenviarConviteAsync(long adminId, long alvoId, string? ip, CancellationToken cancellationToken)
+    {
+        var alvo = await _db.AdminsPlataforma.FirstOrDefaultAsync(a => a.Id == alvoId, cancellationToken)
+            ?? throw new NotFoundException("Administrador não encontrado.");
+        if (alvo.EmailConfirmadoEm is not null)
+            throw new InvalidOperationException("Este administrador já criou a senha.");
+        if (!alvo.Ativo)
+            throw new InvalidOperationException("Reative o acesso antes de reenviar o convite.");
+
+        AdminAuditoria.Registrar(_db, adminId, "reenviar-convite-admin", detalhes: alvo.Email, ip: ip);
+        await _db.SaveChangesAsync(cancellationToken);
+        await _convites.EnviarParaAdminAsync(alvo, cancellationToken);
+        return new ConviteEnviadoResponse { Email = alvo.Email, EnvioHabilitado = _convites.EnvioHabilitado };
     }
 
     // Tirar ou devolver o acesso de alguém da equipe. Desativar derruba a sessão
@@ -119,14 +138,20 @@ public sealed class AdminAuthService : IAdminAuthService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<AdminPlataforma> CriarContaAsync(AdminCriarRequest request, CancellationToken cancellationToken)
+    // Com senha: o primeiro admin (setup). Sem senha: convite pendente (DEC-55).
+    private async Task<AdminPlataforma> CriarContaAsync(string nome, string emailInformado, string? senha, CancellationToken cancellationToken)
     {
-        var email = AuthService.NormalizeEmail(request.Email);
+        var email = AuthService.NormalizeEmail(emailInformado);
         if (await _db.AdminsPlataforma.AnyAsync(a => a.Email == email, cancellationToken))
             throw new EmailAlreadyExistsException("Email já cadastrado como administrador.");
 
-        var admin = new AdminPlataforma { Nome = request.Nome.Trim(), Email = email };
-        admin.Senha = _hasher.HashPassword(admin, request.Senha);
+        var admin = new AdminPlataforma
+        {
+            Nome = nome.Trim(),
+            Email = email,
+            EmailConfirmadoEm = senha is null ? null : DateTime.UtcNow,
+        };
+        admin.Senha = _hasher.HashPassword(admin, senha ?? AuthService.SenhaDesconhecida());
         _db.AdminsPlataforma.Add(admin);
         // Salva já para o registro de auditoria ter o Id do admin criado.
         await _db.SaveChangesAsync(cancellationToken);
@@ -168,6 +193,7 @@ public sealed class AdminAuthService : IAdminAuthService
         Nome = a.Nome,
         Email = a.Email,
         Ativo = a.Ativo,
+        ConvitePendente = a.EmailConfirmadoEm == null,
         UltimoAcessoEm = a.UltimoAcessoEm,
         CreatedAt = a.CreatedAt,
     };

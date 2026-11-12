@@ -67,6 +67,7 @@ SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER B
    - `App__VersaoMinimaAndroid` e `App__UrlDownload` (opcionais): versão mínima do APK e link para baixá-lo. Ver "APK" no passo 5.
    - `Insights__AnthropicApiKey` (opcional): chave da Anthropic para a IA (DEC-21). Sem ela, `/api/insights` e `/api/agente/perguntar` respondem 503 e o resto da API segue normal. `Insights__Modelo` troca o modelo (padrão `claude-haiku-5-5`).
    - `Admin__SetupKey` (temporária): libera a criação do primeiro admin da área de superadmin. Ver a seção 10.
+   - `Email__BrevoApiKey`, `Email__RemetenteEmail`, `Email__RemetenteNome` e `Email__UrlWeb` (opcionais): envio do "Esqueci a senha" e dos convites de acesso pelo Brevo (DEC-54 e DEC-55). Ver a seção 11. Sem a chave e o remetente, o envio fica desligado e a tela responde igual.
 4. O serviço publica a branch `main` (DEC-41), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`). A `develop` não vai para a nuvem: é testada localmente (ver "Ambiente local" abaixo).
 5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
 
@@ -204,7 +205,7 @@ Para criar a primeira empresa local, defina `Auth__RegistrationKey` no `appsetti
 
 ## 10. Área de superadmin (equipe do Agesto)
 
-A equipe gerencia as empresas clientes em `https://<web>/admin`: listar, ver detalhes, criar empresa com dono, bloquear e desbloquear, desativar usuários e gerar senha provisória. Toda ação fica na auditoria. As contas de admin são separadas das contas de cliente e o token delas tem outra audiência, então um não abre a área do outro.
+A equipe gerencia as empresas clientes em `https://<web>/admin`: listar, ver detalhes, criar empresa com dono, bloquear e desbloquear, criar acessos e desativar usuários, e enviar o link de senha por email (DEC-55). Toda ação fica na auditoria. As contas de admin são separadas das contas de cliente e o token delas tem outra audiência, então um não abre a área do outro.
 
 Para criar o **primeiro** admin:
 
@@ -216,12 +217,26 @@ Para criar o **primeiro** admin:
      -H "X-Admin-Setup-Key: <a chave>" \
      -d '{"nome":"...","email":"...","senha":"..."}'
    ```
-3. Apague `Admin__SetupKey` no Render. O setup só funciona enquanto não existe nenhum admin; os próximos são cadastrados pela tela **Equipe**.
+3. Apague `Admin__SetupKey` no Render. O setup só funciona enquanto não existe nenhum admin; os próximos são convidados pela tela **Equipe** e criam a própria senha pelo link do email (DEC-55).
 
 Opcional: `Admin__ExpiresMinutes` define quanto tempo o login de admin vale (padrão 43200, 30 dias).
+
+## 11. Email pelo Brevo ("Esqueci a senha" e convites, DEC-54 e DEC-55)
+
+1. Crie a conta em brevo.com (o plano gratuito envia até 300 emails por dia).
+2. Em *Senders, domains & dedicated IPs → Senders*, cadastre e confirme o remetente (ex.: `nao-responda@seudominio`). Com domínio próprio, autentique o domínio (SPF e DKIM) para os emails não caírem no spam.
+3. Em *SMTP & API → API keys*, gere uma chave.
+4. No Render, defina:
+   - `Email__BrevoApiKey`: a chave do passo 3;
+   - `Email__RemetenteEmail`: o remetente confirmado no passo 2;
+   - `Email__RemetenteNome` (opcional, padrão `Agesto`);
+   - `Email__UrlWeb`: o endereço do web, base do link enviado (ex.: `https://agesto.pages.dev`).
+5. Teste: em `/esqueci-senha`, peça o link para o email de um Dono e confira a caixa de entrada. Falhas de envio aparecem no log do Render como "Falha ao enviar email", sem o destinatário nem o link.
+
+O link vale 15 minutos e uma vez só. Em desenvolvimento (`ASPNETCORE_ENVIRONMENT=Development`), o link também sai no log da API, para testar sem o Brevo; em produção, nunca.
 
 ## Pendências
 
 - Backup periódico com `pg_dump` (o Supabase Free não tem backup automático).
-- Verificação de email antes de reabrir o cadastro (DEC-34).
+- Verificação de email antes de reabrir o cadastro (DEC-34). O envio de email já existe (Brevo, seção 11).
 - ~~Migração para .NET 10 (o .NET 8 perde suporte em 10/11/2026).~~ Feita na DEC-40.
