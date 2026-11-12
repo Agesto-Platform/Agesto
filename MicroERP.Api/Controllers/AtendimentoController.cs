@@ -136,5 +136,9 @@ public sealed class AtendimentoController : ApiControllerBase
         {
             return NotFound(new ApiResponse { Success = false, Message = ex.Message });
         }
+        catch (EstoqueAlteradoException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
+        }
     }
 }

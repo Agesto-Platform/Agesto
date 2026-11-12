@@ -131,6 +131,10 @@ public sealed class OrcamentoController : ApiControllerBase
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
         }
+        catch (EstoqueAlteradoException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });

@@ -70,6 +70,10 @@ public sealed class ItemProdutoController : ApiControllerBase
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
         }
+        catch (EstoqueAlteradoException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
@@ -95,6 +99,10 @@ public sealed class ItemProdutoController : ApiControllerBase
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
         }
+        catch (EstoqueAlteradoException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
@@ -115,6 +123,10 @@ public sealed class ItemProdutoController : ApiControllerBase
         catch (NotFoundException ex)
         {
             return NotFound(new ApiResponse { Success = false, Message = ex.Message });
+        }
+        catch (EstoqueAlteradoException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
         }
     }
 }

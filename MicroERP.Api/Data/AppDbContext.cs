@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MicroERP.Api.Models;
+using MicroERP.Api.Services.Exceptions;
 
 namespace MicroERP.Api.Data;
 
@@ -33,7 +34,19 @@ public class AppDbContext : DbContext
             if (entry.Properties.Any(p => p.Metadata.Name == "UpdatedAt"))
                 entry.Property("UpdatedAt").CurrentValue = now;
         }
-        return base.SaveChangesAsync(cancellationToken);
+        return SalvarAsync(cancellationToken);
+    }
+
+    private async Task<int> SalvarAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex) when (ex.Entries.Any(e => e.Entity is Produto))
+        {
+            throw new EstoqueAlteradoException(ex);
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -151,7 +164,10 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Uuid).IsRequired();
             entity.Property(e => e.Nome).HasMaxLength(120).IsRequired();
             entity.Property(e => e.Preco).HasColumnType("decimal(12,2)").IsRequired();
-            entity.Property(e => e.QuantidadeEstoque).IsRequired();
+            // Token de concorrência: o UPDATE só vale se o saldo no banco ainda for o
+            // lido. Duas vendas simultâneas do mesmo produto não se sobrescrevem; a
+            // segunda falha com EstoqueAlteradoException (ver SaveChangesAsync).
+            entity.Property(e => e.QuantidadeEstoque).IsRequired().IsConcurrencyToken();
             entity.HasIndex(e => e.Uuid).IsUnique();
             entity.HasIndex(e => e.EmpresaId);
         });
