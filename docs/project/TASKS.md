@@ -393,7 +393,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
 | — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
 
-**Ciclo offline verificado no último marco:** login → Carga (com a agenda) → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 128 testes Jest (12/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Ciclo offline verificado no último marco:** login → Carga (com a agenda) → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 133 testes Jest, já com testes de componente (12/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
 
 ### 🔴 Pendências de backend geradas pelo Mobile
 
@@ -409,7 +409,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | ~~APK e atualização OTA~~ | ✅ `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão em `develop` (DEC-47, PR #108). Falta o primeiro `eas build` (Diego, ver Lançamento do MVP) | Alta | — |
 | ~~Histórico de atendimentos próprios~~ | 🟢 Resolvido em 12/11/2026: a aba Atendimentos mostra o histórico do servidor (`GET /api/atendimento/historico`, paginado, o Agente só os próprios), com os não enviados no topo; sem internet, só o que está no aparelho | — | — |
 | Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2, depois do lançamento) | Baixa | Davi Gomes |
-| Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa | Davi Gomes |
+| ~~Teste de componente RN~~ | 🟢 Destravado em 12/11/2026: com as versões atuais o `@testing-library/react-native` v14 roda no jest-expo (`render` e eventos com `await`). Primeiros testes: `src/ui/componentes.test.tsx` (Stepper, ValorEditavel) e `src/features/atendimentos/AtendimentosTela.test.tsx` (aba Atendimentos) | — | — |
 | ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta | — |
 | ~~Sincronização automática~~ | ✅ em `develop` (I5, PR #113): sincroniza ao abrir o app, ao voltar para ele e quando a internet volta, nunca com uma tela de cadastro aberta | Média | — |
 | Redesign do app | Mesmo visual do web, depois do lançamento (DEC-46) | Baixa | Diego |

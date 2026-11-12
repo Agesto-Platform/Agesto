@@ -446,7 +446,7 @@ mobile/src/
 ### Limitações conhecidas (ver DEC-26 e TASKS.md)
 - O histórico de atendimentos (aba Atendimentos, `GET /api/atendimento/historico`) precisa de internet e não fica guardado no aparelho; offline a aba mostra só o que foi registrado ali.
 - Rota do dia pelo endereço já existe (DEC-37); a otimização por proximidade ("Otimizar dia") ainda não.
-- Teste de componente React Native (`@testing-library/react-native`) foi adiado por incompatibilidade de versão (lib v14 + jest-expo + React 19).
+- Testes de componente React Native (`@testing-library/react-native` v14) rodam desde 12/11/2026, mas cobrem poucas telas por enquanto: Stepper, ValorEditavel e a aba Atendimentos.
 
 ### Verificação
 O ciclo foi validado no **Expo Web**, sem device Android/iOS físico nesta fase. O `LocalDb` atrás de interface permite usar adapter em memória no Web/testes. No CI da `develop` (11/11/2026): typecheck, lint e 119 testes Jest verdes. A validação em dispositivo físico permanece pendente.

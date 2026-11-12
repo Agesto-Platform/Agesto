@@ -484,7 +484,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 1. A Carga (`GET /api/sync/carga`) deveria idealmente incluir a agenda, evitando o passo `syncAgenda` à parte no mobile. Resolvido em 12/11/2026: `SyncCargaResponse.Agenda`.
 2. Um atendimento criado offline não pode referenciar um cliente também criado offline (`PendingCliente`), porque o atendimento local não tem o id de servidor do cliente antes da sincronização. Resolver exigiria mapear uuid→id do cliente durante a Descarga.
 
-**Verificação sem device Android:** todo o ciclo foi validado no **Expo Web** (login demo `agente@agesto.app` / `agesto123`) mais build/lint (`tsc`, `expo lint`) e 15 testes Jest (jest-expo) verdes. Teste de componente React Native (`@testing-library/react-native`) foi adiado — incompatibilidade de versão entre a lib v14, jest-expo e React 19 nesta janela de tempo.
+**Verificação sem device Android:** todo o ciclo foi validado no **Expo Web** (login demo `agente@agesto.app` / `agesto123`) mais build/lint (`tsc`, `expo lint`) e 15 testes Jest (jest-expo) verdes. Teste de componente React Native (`@testing-library/react-native`) foi adiado — incompatibilidade de versão entre a lib v14, jest-expo e React 19 nesta janela de tempo. *(Destravado em 12/11/2026: com as versões atuais, a lib v14 roda no jest-expo com `render` e eventos assíncronos; ver TASKS.md.)*
 
 **Alternativas descartadas:**
 - Flutter → descartado por fragmentar a stack (Dart vs TypeScript), sem reúso de tipos/lógica com o web, pior para manutenção solo.

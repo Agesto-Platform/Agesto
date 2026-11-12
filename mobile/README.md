@@ -32,6 +32,8 @@ npm run typecheck   # tsc --noEmit
 npm test            # jest
 ```
 
+Testes de componente usam `@testing-library/react-native` v14: `render`, `fireEvent` e `userEvent` são assíncronos, então sempre com `await`. Exemplos em `src/ui/componentes.test.tsx` e `src/features/atendimentos/AtendimentosTela.test.tsx`.
+
 ## Estrutura
 
 ```
