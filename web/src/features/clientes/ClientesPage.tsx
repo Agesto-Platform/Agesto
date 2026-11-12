@@ -3,6 +3,7 @@ import { clientesResource, useClientesPaginados } from './resource'
 import { ClienteForm } from './ClienteForm'
 import {
   Button,
+  ButtonExterno,
   ButtonLink,
   CarregarMais,
   ConfirmDialog,
@@ -18,6 +19,7 @@ import { useAtendimentosPaginados } from '../atendimentos/queries'
 import { ApiError } from '../../lib/api'
 import { dataCurta, iniciais } from '../../lib/format'
 import { onlyDigits } from '../../lib/masks'
+import { linkWhatsApp } from '../../lib/whatsapp'
 import { useDebounced } from '../../lib/paginacao'
 import type { Atendimento, Cliente, ClienteInput } from '../../types/api'
 import './clientes.css'
@@ -221,6 +223,11 @@ export function ClientesPage() {
                   <ButtonLink to="/orcamentos" size="sm" variant="primary" icon="file" viewTransition>
                     Novo orçamento
                   </ButtonLink>
+                  {linkWhatsApp(sel.telefone) && (
+                    <ButtonExterno size="sm" icon="whats" href={linkWhatsApp(sel.telefone)!}>
+                      WhatsApp
+                    </ButtonExterno>
+                  )}
                   <Button size="sm" icon="pencil" onClick={() => openEdit(sel)}>
                     Editar
                   </Button>

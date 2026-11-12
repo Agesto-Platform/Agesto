@@ -263,6 +263,8 @@ export interface Orcamento {
   clienteId: number
   /** PAG-01: o cliente vem junto, sem baixar todos os clientes. */
   clienteNome?: string | null
+  /** Para o envio por WhatsApp (DEC-56). */
+  clienteTelefone?: string | null
   status: StatusOrcamento
   valorTotal: number
   dataRegistro: string

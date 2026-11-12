@@ -9,6 +9,7 @@ import { useAgenda } from '../../lib/queries'
 import { agendaPeriod, agendaRange } from '../../lib/period'
 import { ApiError } from '../../lib/api'
 import { hora, mesNome, MES_LONGO, SEMANA_CURTA } from '../../lib/format'
+import { linkWhatsApp } from '../../lib/whatsapp'
 import { useUsuarios, nomeUsuario, responsaveis } from '../usuarios/queries'
 import { useConfiguracao } from '../parametrizacao/queries'
 import { useCreateAtendimento } from '../atendimentos/queries'
@@ -399,6 +400,14 @@ export function AgendaPage() {
           <p>
             <Icon name="phone" className="sm" />
             {a.clienteTelefone}
+            {linkWhatsApp(a.clienteTelefone) && (
+              <>
+                {' · '}
+                <a href={linkWhatsApp(a.clienteTelefone)!} target="_blank" rel="noopener noreferrer">
+                  WhatsApp
+                </a>
+              </>
+            )}
           </p>
         )}
         {variasPessoas && (

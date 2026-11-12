@@ -2,6 +2,7 @@ import { View, Text, Pressable, StyleSheet, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, radius, space } from './theme'
 import { urlNavegacao } from '@/features/rota/montarRota'
+import { linkWhatsApp } from '@/lib/whatsapp'
 import type { AgendaItem } from '@/types/api'
 
 function hora(iso: string | null): string {
@@ -13,7 +14,8 @@ function hora(iso: string | null): string {
 /**
  * Linha grande de agenda. `highlight` = próximo atendimento. Tocar no cartão
  * abre a conclusão (`onPress`); o botão da direita abre a navegação até o
- * cliente quando há endereço completo.
+ * cliente quando há endereço completo, e o do WhatsApp abre a conversa com o
+ * cliente quando o telefone serve (DEC-56).
  */
 export function JobCard({
   item,
@@ -26,6 +28,7 @@ export function JobCard({
   onPress?: () => void
   etiqueta?: string | null
 }) {
+  const whatsapp = linkWhatsApp(item.clienteTelefone)
   return (
     <View style={[styles.job, highlight && styles.next]}>
       <Pressable
@@ -64,6 +67,16 @@ export function JobCard({
         )}
       </View>
       </Pressable>
+      {whatsapp && (
+        <Pressable
+          onPress={() => Linking.openURL(whatsapp)}
+          accessibilityRole="button"
+          accessibilityLabel={`WhatsApp de ${item.clienteNome}`}
+          style={({ pressed }) => [styles.go, pressed && { opacity: 0.8 }]}
+        >
+          <Ionicons name="logo-whatsapp" size={19} color={colors.brandInk} />
+        </Pressable>
+      )}
       {item.enderecoCompleto ? (
         <Pressable
           onPress={() => Linking.openURL(urlNavegacao(item.enderecoCompleto!))}

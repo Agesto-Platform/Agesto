@@ -1,7 +1,8 @@
 import { Fragment, useState } from 'react'
-import { Badge, Button, CardHead, SelectField, brl } from '../../components/ui'
+import { Badge, Button, ButtonExterno, CardHead, SelectField, brl } from '../../components/ui'
 import { Icon, type IconName } from '../../components/Icon'
 import { MES_LONGO, iniciais } from '../../lib/format'
+import { linkWhatsApp, mensagemOrcamento } from '../../lib/whatsapp'
 import { itemLabel, numero } from './labels'
 import { StatusOrcamentoPill } from './status'
 import type { ItemOrcamento, Orcamento, StatusOrcamento } from '../../types/api'
@@ -45,6 +46,17 @@ export function OrcamentoDetail({
   // Custo é por linha e opcional: só calcula a margem quando algum item tem custo.
   const temCusto = o.itens.some((i) => i.custo != null)
   const custo = o.itens.reduce((s, i) => s + (i.custo ?? 0), 0)
+
+  // DEC-56: abre o WhatsApp de quem usa o Agesto com o orçamento já escrito para o cliente.
+  const whatsapp = linkWhatsApp(
+    o.clienteTelefone,
+    mensagemOrcamento({
+      clienteNome,
+      numero: numero(o.id),
+      linhas: o.itens.map((it) => ({ descricao: itemLabel(it), quantidade: it.quantidade, subtotal: it.subtotal })),
+      total: o.valorTotal,
+    }),
+  )
 
   return (
     <>
@@ -176,10 +188,20 @@ export function OrcamentoDetail({
             Convertido no atendimento #{o.atendimentoConvertidoId}
           </Badge>
         )}
-        <Button variant="ghost" icon="whats" disabled title="Ainda não existe no sistema">
-          Enviar por WhatsApp
-        </Button>
-        <Badge tone="future">Futuro</Badge>
+        {whatsapp ? (
+          <ButtonExterno variant="ghost" icon="whats" href={whatsapp}>
+            Enviar por WhatsApp
+          </ButtonExterno>
+        ) : (
+          <Button
+            variant="ghost"
+            icon="whats"
+            disabled
+            title={o.clienteTelefone ? 'O telefone do cliente não é um número válido' : 'O cliente não tem telefone cadastrado'}
+          >
+            Enviar por WhatsApp
+          </Button>
+        )}
       </div>
     </>
   )
