@@ -26,6 +26,9 @@ public class Usuario
     // Senhas erradas seguidas no login; ao chegar no limite a conta fica bloqueada até BloqueadoAte.
     public int TentativasLoginFalhas { get; set; }
     public DateTime? BloqueadoAte { get; set; }
+    // Quando a pessoa criou a senha pelo link do email (DEC-55). Nulo = convite
+    // pendente: o acesso existe, mas ainda não tem senha que alguém saiba.
+    public DateTime? EmailConfirmadoEm { get; set; }
     // Exclusão da própria conta (LGPD): a linha fica anonimizada, o histórico continua apontando para ela.
     public DateTime? DeletedAt { get; set; }
     public Empresa? Empresa { get; set; }

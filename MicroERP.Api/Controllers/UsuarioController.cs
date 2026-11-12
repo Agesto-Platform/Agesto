@@ -30,6 +30,7 @@ public sealed class UsuarioController : ApiControllerBase
         return Ok(new ApiResponse { Success = true, Message = "Usuários encontrados.", Data = usuarios });
     }
 
+    // O Dono cria o acesso; a pessoa recebe o convite por email e cria a senha (DEC-55).
     [HttpPost]
     [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> Create([FromBody] UsuarioCreateRequest request, CancellationToken cancellationToken)
@@ -43,7 +44,7 @@ public sealed class UsuarioController : ApiControllerBase
             return StatusCode(StatusCodes.Status201Created, new ApiResponse
             {
                 Success = true,
-                Message = "Usuário criado com sucesso.",
+                Message = "Acesso criado. Enviamos o convite por email.",
                 Data = criado
             });
         }
@@ -55,6 +56,18 @@ public sealed class UsuarioController : ApiControllerBase
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
         }
+    }
+
+    [HttpPost("{id:long}/reenviar-convite")]
+    [Authorize(Policy = Policies.Dono)]
+    public async Task<ActionResult<ApiResponse>> ReenviarConvite(long id, CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        return await Executar(
+            () => _usuarioService.ReenviarConviteAsync(empresaId, id, cancellationToken),
+            "Convite reenviado.");
     }
 
     [HttpPut("{id:long}")]
@@ -91,18 +104,6 @@ public sealed class UsuarioController : ApiControllerBase
         return await Executar(
             () => _usuarioService.SetAtivoAsync(empresaId, donoId, id, true, cancellationToken),
             "Usuário reativado.");
-    }
-
-    [HttpPost("{id:long}/redefinir-senha")]
-    [Authorize(Policy = Policies.Dono)]
-    public async Task<ActionResult<ApiResponse>> RedefinirSenha(long id, CancellationToken cancellationToken)
-    {
-        if (!TryGetEmpresaId(out var empresaId))
-            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
-
-        return await Executar(
-            () => _usuarioService.RedefinirSenhaAsync(empresaId, id, cancellationToken),
-            "Senha provisoria gerada.");
     }
 
     // Exclusão da própria conta (LGPD). Liberada para qualquer perfil.

@@ -35,11 +35,13 @@ public sealed class AuthService : IAuthService
     }
 
     public Task RegisterAsync(AuthRegisterRequest request, CancellationToken cancellationToken) =>
-        CriarEmpresaComDonoAsync(request.NomeEmpresa, null, request.Nome, request.Email, request.Senha, false, cancellationToken);
+        CriarEmpresaComDonoAsync(request.NomeEmpresa, null, request.Nome, request.Email, request.Senha, cancellationToken);
 
-    // Usado pelo cadastro com X-Registration-Key e pela área de superadmin.
+    // Usado pelo cadastro com X-Registration-Key (com senha) e pela área de
+    // superadmin (sem senha: o Dono nasce com convite pendente e cria a senha pelo
+    // link do email, DEC-55).
     public async Task<Usuario> CriarEmpresaComDonoAsync(
-        string nomeEmpresa, string? documento, string nomeDono, string emailDono, string senha, bool deveTrocarSenha,
+        string nomeEmpresa, string? documento, string nomeDono, string emailDono, string? senha,
         CancellationToken cancellationToken)
     {
 
@@ -76,11 +78,12 @@ public sealed class AuthService : IAuthService
             Senha = string.Empty, // A senha será definida após o hash
             EmpresaId = empresa.Id,
             Perfil = Enums.PerfilUsuario.Dono,
-            DeveTrocarSenha = deveTrocarSenha,
+            EmailConfirmadoEm = senha is null ? null : DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
-        usuario.Senha = _passwordHasher.HashPassword(usuario, senha);
+        // Sem senha: um valor aleatório que ninguém conhece, até o link do convite.
+        usuario.Senha = _passwordHasher.HashPassword(usuario, senha ?? SenhaDesconhecida());
         _dbContext.Usuarios.Add(usuario);
 
         var configuracao = new Configuracao
@@ -208,6 +211,11 @@ public sealed class AuthService : IAuthService
 
     internal static string NormalizeEmail(string email)
         => email.Trim().ToLowerInvariant();
+
+    // Senha de quem ainda está com o convite pendente (DEC-55): 32 bytes aleatórios,
+    // descartados na hora. Ninguém consegue entrar até criar a senha pelo link.
+    internal static string SenhaDesconhecida()
+        => Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
 
     private static string MensagemBloqueio(TimeSpan restante)
     {

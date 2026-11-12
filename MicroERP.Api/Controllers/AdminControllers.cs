@@ -33,10 +33,28 @@ public abstract class AdminControllerBase : ControllerBase
 public sealed class AdminAuthController : AdminControllerBase
 {
     private readonly IAdminAuthService _service;
+    private readonly IRedefinicaoSenhaService _senhas;
 
-    public AdminAuthController(IAdminAuthService service)
+    public AdminAuthController(IAdminAuthService service, IRedefinicaoSenhaService senhas)
     {
         _service = service;
+        _senhas = senhas;
+    }
+
+    // Senha de quem foi convidado para a equipe, pelo link do email (DEC-55).
+    [HttpPost("criar-senha")]
+    [EnableRateLimiting(RateLimits.Login)]
+    public async Task<ActionResult<ApiResponse>> CriarSenha([FromBody] AdminCriarSenhaRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _senhas.CriarSenhaAdminAsync(request, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Senha criada. Entre na área de administração." });
+        }
+        catch (TokenRedefinicaoInvalidoException ex)
+        {
+            return Erro(StatusCodes.Status400BadRequest, ex.Message);
+        }
     }
 
     [HttpPost("login")]
@@ -99,16 +117,36 @@ public sealed class AdminEquipeController : AdminControllerBase
         return Ok(new ApiResponse { Success = true, Message = "Equipe.", Data = admins });
     }
 
+    // Convida alguém para a equipe: o email leva o link para criar a senha (DEC-55).
     [HttpPost]
-    public async Task<ActionResult<ApiResponse>> Criar([FromBody] AdminCriarRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse>> Convidar([FromBody] AdminConvidarRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
         try
         {
-            var admin = await _service.CriarAsync(adminId, request, Ip, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Administrador criado.", Data = admin });
+            var convite = await _service.ConvidarAsync(adminId, request, Ip, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Convite enviado.", Data = convite });
         }
         catch (EmailAlreadyExistsException ex)
+        {
+            return Erro(StatusCodes.Status409Conflict, ex.Message);
+        }
+    }
+
+    [HttpPost("{id:long}/reenviar-convite")]
+    public async Task<ActionResult<ApiResponse>> ReenviarConvite(long id, CancellationToken cancellationToken)
+    {
+        if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
+        try
+        {
+            var convite = await _service.ReenviarConviteAsync(adminId, id, Ip, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Convite reenviado.", Data = convite });
+        }
+        catch (NotFoundException ex)
+        {
+            return Erro(StatusCodes.Status404NotFound, ex.Message);
+        }
+        catch (InvalidOperationException ex)
         {
             return Erro(StatusCodes.Status409Conflict, ex.Message);
         }
@@ -206,18 +244,47 @@ public sealed class AdminEmpresasController : AdminControllerBase
     public Task<ActionResult<ApiResponse>> ReativarUsuario(long id, long usuarioId, CancellationToken cancellationToken) =>
         Executar(adminId => _service.DefinirUsuarioAtivoAsync(adminId, id, usuarioId, true, Ip, cancellationToken), "Usuário reativado.");
 
-    [HttpPost("{id:long}/usuarios/{usuarioId:long}/senha-provisoria")]
-    public async Task<ActionResult<ApiResponse>> RedefinirSenha(long id, long usuarioId, CancellationToken cancellationToken)
+    // Acesso novo (Dono ou Agente) com convite por email: só a equipe cria usuários (DEC-55).
+    [HttpPost("{id:long}/usuarios")]
+    public async Task<ActionResult<ApiResponse>> CriarUsuario(long id, [FromBody] UsuarioCreateRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
         try
         {
-            var senha = await _service.RedefinirSenhaAsync(adminId, id, usuarioId, Ip, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Senha provisória gerada.", Data = senha });
+            var convite = await _service.CriarUsuarioAsync(adminId, id, request, Ip, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Acesso criado. Convite enviado.", Data = convite });
         }
         catch (NotFoundException ex)
         {
             return Erro(StatusCodes.Status404NotFound, ex.Message);
+        }
+        catch (EmailAlreadyExistsException ex)
+        {
+            return Erro(StatusCodes.Status409Conflict, ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return Erro(StatusCodes.Status400BadRequest, ex.Message);
+        }
+    }
+
+    // Reenvia o convite ou manda um link de senha nova, no lugar da senha provisória (DEC-55).
+    [HttpPost("{id:long}/usuarios/{usuarioId:long}/enviar-link-senha")]
+    public async Task<ActionResult<ApiResponse>> EnviarLinkSenha(long id, long usuarioId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
+        try
+        {
+            var envio = await _service.EnviarLinkSenhaAsync(adminId, id, usuarioId, Ip, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Link de senha enviado.", Data = envio });
+        }
+        catch (NotFoundException ex)
+        {
+            return Erro(StatusCodes.Status404NotFound, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Erro(StatusCodes.Status409Conflict, ex.Message);
         }
     }
 

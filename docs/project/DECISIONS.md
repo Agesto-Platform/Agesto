@@ -715,7 +715,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Decisão:**
 1. **Aba Usuários no web (só Dono).** `GET/POST/PUT /api/usuario`, `POST /api/usuario/{id}/desativar`, `/reativar` e `/redefinir-senha`, todos com a policy `Dono`.
-2. **Sem convite por email.** O servidor gera uma senha provisória (10 caracteres, alfabeto sem ambíguos), mostrada uma única vez ao Dono, que repassa ao agente. O usuário nasce com `DeveTrocarSenha = true` e web e app levam para a tela de troca no primeiro acesso (`POST /api/auth/trocar-senha`). Email continua pendente da DEC-34.
+2. **Sem convite por email.** O servidor gera uma senha provisória (10 caracteres, alfabeto sem ambíguos), mostrada uma única vez ao Dono, que repassa ao agente. O usuário nasce com `DeveTrocarSenha = true` e web e app levam para a tela de troca no primeiro acesso (`POST /api/auth/trocar-senha`). Email continua pendente da DEC-34. *Substituído pela DEC-55 (12/11/2026): o acesso novo recebe convite por email e a pessoa cria a própria senha; a senha provisória saiu.*
 3. **Desativar em vez de excluir.** `Usuario.Ativo` (default `true` para quem já existe). Inativo não loga (403) e o `TokenRevalidator` derruba o token na hora. Histórico de atendimentos fica preservado.
 4. **Regras:** o Dono não desativa nem rebaixa a si mesmo; a empresa precisa de ao menos um Dono ativo.
 5. **Responsável do atendimento.** `ResponsavelId` opcional no create/update do atendimento; ausente = o próprio Dono (create) ou mantém (update). Validado contra a empresa e só usuário ativo. A agenda do agente passa a mostrar o que o Dono atribuiu; no web, filtro "Toda a equipe" e "Com {nome}".
@@ -970,8 +970,8 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Decisão:** a equipe do Agesto gerencia as empresas clientes em `/admin`, no web atual:
 - contas de admin separadas dos usuários das empresas (tabela `AdminsPlataforma`); o token de admin tem audiência própria e a claim `escopo=plataforma`, então o token de um cliente não abre o `/admin` e o de admin não abre o painel do cliente;
-- listar e ver empresas, criar empresa com Dono (senha provisória), bloquear e desbloquear empresa com motivo, e desativar, reativar ou gerar senha provisória para usuários de qualquer empresa;
-- equipe de admins (cadastrar, desativar e reativar; ninguém desativa a si mesmo);
+- listar e ver empresas, criar empresa com Dono (senha provisória), bloquear e desbloquear empresa com motivo, e desativar, reativar ou gerar senha provisória para usuários de qualquer empresa (*desde a DEC-55, a senha provisória virou convite e "enviar link de senha" por email, e a equipe também cria acessos numa empresa*);
+- equipe de admins (cadastrar, desativar e reativar; ninguém desativa a si mesmo; *desde a DEC-55, cadastrar é convidar por email*);
 - auditoria de toda ação de admin, inclusive logins e tentativas recusadas (tabela `AuditoriasAdmin`).
 
 **Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
@@ -1019,3 +1019,22 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Por quê:** o Dono sem acesso dependia da equipe do Agesto para uma senha provisória (DEC-52). O Brevo foi escolhido por Davi Oliveira; o plano gratuito envia até 300 emails por dia.
 
 **Impacto:** migration `AddTokenRedefinicaoSenha` (tabela nova com RLS e a policy do `agesto_api`). Variáveis novas no Render (`deploy/README.md`, seção 3). Enquanto o SEG-01 não entrar (PR #155), redefinir a senha não derruba as sessões já abertas.
+
+**Atualização (DEC-55, 12/11/2026):** o "Esqueci a senha" passou a valer também para o Agente (no app e no web), e a mesma tabela guarda os links de convite.
+
+---
+
+## DEC-55 — Acessos novos por convite no email; fim da senha provisória
+
+**Status:** 🟡 Implementado na branch `feature/convites-por-email` (12/11/2026), decidido por Davi Oliveira. Depende do Brevo configurado no Render (DEC-54).
+
+**Decisão:** ninguém mais recebe senha de outra pessoa. Todo acesso novo nasce com o **convite pendente** e a pessoa cria a própria senha pelo link do email:
+- **Quem cria acesso:** o Dono, na tela Usuários (funcionário Agente ou outro Dono da empresa), e a equipe do Agesto, no superadmin (Dono da empresa nova e qualquer acesso de uma empresa). Novo administrador da equipe também é convidado assim; só o primeiro admin continua pelo setup com `Admin__SetupKey`.
+- **Convite:** link `{Email:UrlWeb}/criar-senha#token=...` (admin: `/admin/criar-senha`), válido por **72 horas** e uma vez só; um convite novo invalida o anterior. Ao usar, a senha é criada e o email fica confirmado (`Usuario.EmailConfirmadoEm`, `AdminPlataforma.EmailConfirmadoEm`). O email do agente aponta para o app e para `/baixar`.
+- **Senha provisória:** sai do Dono e do superadmin. O Dono só **reenvia o convite** de quem ainda não criou a senha. No superadmin, "senha provisória" virou **"Enviar link de senha"** (reenvia o convite, ou manda um link de 72 horas a quem já tem acesso; a senha atual vale até o link ser usado).
+- **Esqueci a senha:** Dono e Agente (link de 15 minutos, DEC-54).
+- **Acessos que já existiam:** não mudam. A migration marca o email deles como confirmado pela data de criação; ninguém perde a senha nem recebe email.
+
+**Por quê:** pedido de Davi Oliveira em 12/11/2026. A senha provisória passava por terceiros (Dono, equipe, WhatsApp); com o convite, só a própria pessoa conhece a senha e o email fica confirmado.
+
+**Impacto:** migration `AddConvitesPorEmail` (colunas `EmailConfirmadoEm`, e `AdminId` e `Tipo` na tabela de links). Rotas novas: `POST /api/usuario/{id}/reenviar-convite`, `POST /api/admin/empresas/{id}/usuarios`, `POST /api/admin/empresas/{id}/usuarios/{usuarioId}/enviar-link-senha`, `POST /api/admin/equipe/{id}/reenviar-convite` e `POST /api/admin/auth/criar-senha`. Saem `POST /api/usuario/{id}/redefinir-senha` e `.../senha-provisoria`. Telas novas no web: `/criar-senha` e `/admin/criar-senha`; o app ganha "Esqueci a senha". Revê o item 2 da DEC-35 e a senha provisória da DEC-52.

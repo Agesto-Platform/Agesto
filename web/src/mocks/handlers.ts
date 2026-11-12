@@ -51,7 +51,7 @@ export const handlers = [
   http.post('*/api/auth/redefinir-senha', async ({ request }) => {
     const body = (await request.json()) as { token?: string }
     if (body.token !== 'demo') return fail(400, 'Link inválido ou expirado. Peça um novo em "Esqueci a senha".')
-    return HttpResponse.json(ok(null, 'Senha alterada. Entre com a senha nova.'))
+    return HttpResponse.json(ok({ perfil: 'Dono' }, 'Senha criada. Entre com a senha nova.'))
   }),
 
   http.get('*/api/app/versao', () =>

@@ -7,6 +7,8 @@ export interface AdminConta {
   nome: string
   email: string
   ativo: boolean
+  /** Ainda não criou a senha pelo link do convite (DEC-55). */
+  convitePendente?: boolean
   ultimoAcessoEm: string | null
   createdAt: string
 }
@@ -17,10 +19,16 @@ export interface AdminAuthResponse {
   admin: AdminConta
 }
 
-export interface AdminCriarInput {
+/** Convite para a equipe: a pessoa cria a senha pelo link do email (DEC-55). */
+export interface AdminConvidarInput {
   nome: string
   email: string
-  senha: string
+}
+
+/** Convite ou link de senha enviado. envioHabilitado = false sem o Brevo configurado. */
+export interface ConviteEnviado {
+  email: string
+  envioHabilitado: boolean
 }
 
 export interface EmpresaAdminResumo {
@@ -43,7 +51,9 @@ export interface UsuarioAdminItem {
   perfil: PerfilUsuario
   ativo: boolean
   deveTrocarSenha: boolean
-  /** Bloqueio temporário por senhas erradas; a senha provisória desbloqueia. */
+  /** Ainda não criou a senha pelo link do convite (DEC-55). */
+  convitePendente?: boolean
+  /** Bloqueio temporário por senhas erradas; criar a senha pelo link desbloqueia. */
   bloqueadoAte: string | null
   ultimoAcessoEm: string | null
   createdAt: string
@@ -70,15 +80,18 @@ export interface EmpresaAdminCriarInput {
   emailDono: string
 }
 
+/** O Dono recebe o convite por email (DEC-55). */
 export interface EmpresaAdminCriada {
   empresaId: number
   emailDono: string
-  senhaProvisoria: string
+  envioHabilitado: boolean
 }
 
-export interface SenhaProvisoriaAdmin {
+/** Acesso novo numa empresa, criado pela equipe (DEC-55). */
+export interface UsuarioAdminCriarInput {
+  nome: string
   email: string
-  senhaProvisoria: string
+  perfil: PerfilUsuario
 }
 
 export interface AuditoriaAdminItem {

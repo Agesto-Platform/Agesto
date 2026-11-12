@@ -19,12 +19,14 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
 
     private readonly AppDbContext _db;
     private readonly IAuthService _authService;
+    private readonly IConviteService _convites;
     private readonly PasswordHasher<Usuario> _hasher = new();
 
-    public AdminEmpresaService(AppDbContext db, IAuthService authService)
+    public AdminEmpresaService(AppDbContext db, IAuthService authService, IConviteService convites)
     {
         _db = db;
         _authService = authService;
+        _convites = convites;
     }
 
     public async Task<IReadOnlyList<EmpresaAdminResumo>> ListarAsync(string? busca, CancellationToken cancellationToken)
@@ -92,6 +94,7 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
                 Perfil = u.Perfil,
                 Ativo = u.Ativo,
                 DeveTrocarSenha = u.DeveTrocarSenha,
+                ConvitePendente = u.EmailConfirmadoEm == null,
                 BloqueadoAte = u.BloqueadoAte,
                 UltimoAcessoEm = u.UltimoAcessoEm,
                 CreatedAt = u.CreatedAt,
@@ -101,17 +104,58 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         return empresa;
     }
 
+    // O Dono nasce com o convite pendente e recebe o link por email para criar a senha (DEC-55).
     public async Task<EmpresaAdminCriadaResponse> CriarAsync(long adminId, EmpresaAdminCriarRequest request, string? ip, CancellationToken cancellationToken)
     {
-        var senha = UsuarioService.GerarSenhaProvisoria();
         var dono = await _authService.CriarEmpresaComDonoAsync(
-            request.NomeEmpresa, request.Documento, request.NomeDono, request.EmailDono, senha, deveTrocarSenha: true, cancellationToken);
+            request.NomeEmpresa, request.Documento, request.NomeDono, request.EmailDono, senha: null, cancellationToken);
 
         AdminAuditoria.Registrar(_db, adminId, "criar-empresa", dono.EmpresaId, dono.Id,
             $"Empresa \"{request.NomeEmpresa.Trim()}\" com dono {dono.Email}", ip);
         await _db.SaveChangesAsync(cancellationToken);
+        await _convites.EnviarParaUsuarioAsync(dono, cancellationToken);
 
-        return new EmpresaAdminCriadaResponse { EmpresaId = dono.EmpresaId, EmailDono = dono.Email, SenhaProvisoria = senha };
+        return new EmpresaAdminCriadaResponse
+        {
+            EmpresaId = dono.EmpresaId,
+            EmailDono = dono.Email,
+            EnvioHabilitado = _convites.EnvioHabilitado,
+        };
+    }
+
+    // Acesso novo numa empresa (Dono ou Agente), só pela equipe do Agesto (DEC-55).
+    public async Task<ConviteEnviadoResponse> CriarUsuarioAsync(
+        long adminId, long empresaId, UsuarioCreateRequest request, string? ip, CancellationToken cancellationToken)
+    {
+        if (request.Perfil is not (PerfilUsuario.Dono or PerfilUsuario.Agente))
+            throw new ArgumentException("Perfil inválido.");
+
+        _ = await ObterEmpresaAsync(empresaId, cancellationToken);
+        var email = AuthService.NormalizeEmail(request.Email);
+        if (await _db.Usuarios.AnyAsync(u => u.Email == email, cancellationToken))
+            throw new EmailAlreadyExistsException("Email já cadastrado.");
+
+        var agora = DateTime.UtcNow;
+        var usuario = new Usuario
+        {
+            Nome = request.Nome.Trim(),
+            Email = email,
+            EmpresaId = empresaId,
+            Perfil = request.Perfil,
+            Ativo = true,
+            CreatedAt = agora,
+            UpdatedAt = agora,
+        };
+        usuario.Senha = _hasher.HashPassword(usuario, AuthService.SenhaDesconhecida());
+        _db.Usuarios.Add(usuario);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        AdminAuditoria.Registrar(_db, adminId, "criar-usuario", empresaId, usuario.Id,
+            $"{usuario.Email} ({usuario.Perfil})", ip);
+        await _db.SaveChangesAsync(cancellationToken);
+        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
+
+        return new ConviteEnviadoResponse { Email = usuario.Email, EnvioHabilitado = _convites.EnvioHabilitado };
     }
 
     public async Task BloquearAsync(long adminId, long empresaId, string motivo, string? ip, CancellationToken cancellationToken)
@@ -145,21 +189,22 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<SenhaProvisoriaAdminResponse> RedefinirSenhaAsync(long adminId, long empresaId, long usuarioId, string? ip, CancellationToken cancellationToken)
+    // Reenvia o convite (pendente) ou manda um link de senha nova (quem já tem
+    // acesso). A senha atual continua valendo até a pessoa usar o link; ao usar,
+    // o bloqueio por senhas erradas também sai (DEC-55, no lugar da senha provisória).
+    public async Task<ConviteEnviadoResponse> EnviarLinkSenhaAsync(long adminId, long empresaId, long usuarioId, string? ip, CancellationToken cancellationToken)
     {
         var usuario = await ObterUsuarioAsync(empresaId, usuarioId, cancellationToken);
-        var senha = UsuarioService.GerarSenhaProvisoria();
-        usuario.Senha = _hasher.HashPassword(usuario, senha);
-        usuario.DeveTrocarSenha = true;
-        // Senha nova também desbloqueia quem errou a senha demais.
-        usuario.TentativasLoginFalhas = 0;
-        usuario.BloqueadoAte = null;
+        if (!usuario.Ativo)
+            throw new InvalidOperationException("Reative o acesso antes de enviar o link de senha.");
+        _ = await ObterEmpresaAsync(empresaId, cancellationToken);
 
-        // A senha em si nunca vai para a auditoria.
-        AdminAuditoria.Registrar(_db, adminId, "redefinir-senha", empresaId, usuarioId, usuario.Email, ip);
+        AdminAuditoria.Registrar(_db, adminId,
+            usuario.EmailConfirmadoEm is null ? "reenviar-convite" : "enviar-link-senha", empresaId, usuarioId, usuario.Email, ip);
         await _db.SaveChangesAsync(cancellationToken);
+        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
 
-        return new SenhaProvisoriaAdminResponse { Email = usuario.Email, SenhaProvisoria = senha };
+        return new ConviteEnviadoResponse { Email = usuario.Email, EnvioHabilitado = _convites.EnvioHabilitado };
     }
 
     public async Task<IReadOnlyList<AuditoriaAdminItem>> ListarAuditoriaAsync(long? empresaId, CancellationToken cancellationToken)

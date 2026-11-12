@@ -25,8 +25,8 @@ public sealed class AuthController : ApiControllerBase
         _configuration = configuration;
     }
 
-    // "Esqueci a senha" do Dono (DEC-54). A resposta é sempre a mesma, exista o
-    // email ou não, para a rota não servir para descobrir quem tem conta.
+    // "Esqueci a senha" do Dono e do Agente (DEC-54 e DEC-55). A resposta é sempre a
+    // mesma, exista o email ou não, para a rota não servir para descobrir quem tem conta.
     [HttpPost("esqueci-senha")]
     [EnableRateLimiting(RateLimits.Login)]
     public async Task<ActionResult<ApiResponse>> EsqueciSenha([FromBody] EsqueciSenhaRequest request, CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public sealed class AuthController : ApiControllerBase
         return Ok(new ApiResponse
         {
             Success = true,
-            Message = "Se o email for de um Dono cadastrado, enviamos um link para criar uma senha nova. Confira também o spam."
+            Message = "Se este email tiver acesso ao Agesto, enviamos um link para criar uma senha nova. Confira também o spam."
         });
     }
 
@@ -45,8 +45,14 @@ public sealed class AuthController : ApiControllerBase
     {
         try
         {
-            await _redefinicaoSenha.RedefinirAsync(request, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Senha alterada. Entre com a senha nova." });
+            // Também cria a primeira senha de quem recebeu convite (DEC-55).
+            var perfil = await _redefinicaoSenha.RedefinirAsync(request, cancellationToken);
+            return Ok(new ApiResponse
+            {
+                Success = true,
+                Message = "Senha criada. Entre com a senha nova.",
+                Data = new RedefinirSenhaResponse { Perfil = perfil }
+            });
         }
         catch (TokenRedefinicaoInvalidoException ex)
         {

@@ -11,6 +11,8 @@ public class AdminPlataforma
     public string Senha { get; set; } = string.Empty;
     public bool Ativo { get; set; } = true;
     public DateTime? UltimoAcessoEm { get; set; }
+    // Quando criou a senha pelo link do convite (DEC-55). Nulo = convite pendente.
+    public DateTime? EmailConfirmadoEm { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
