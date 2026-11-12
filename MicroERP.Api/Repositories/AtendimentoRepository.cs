@@ -24,6 +24,39 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
         return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
     }
 
+    // PAG-02: resumo da linha (primeiro serviço vivo, senão o primeiro produto) em uma
+    // consulta só, com subconsultas escalares; as listas do web não precisam mais pedir
+    // a agenda do ano inteiro só por ele.
+    public async Task<Dictionary<long, string?>> GetResumosAsync(long empresaId, IReadOnlyCollection<long> ids, CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0) return [];
+
+        var linhas = await _dbContext.Atendimentos
+            .AsNoTracking()
+            .Where(a => a.EmpresaId == empresaId && ids.Contains(a.Id))
+            .Select(a => new
+            {
+                a.Id,
+                Servico = a.ItensServico
+                    .Where(i => i.DeletedAt == null)
+                    .OrderBy(i => i.Id)
+                    .Select(i => i.Servico!.Descricao)
+                    .FirstOrDefault(),
+                Produto = a.ItensProduto
+                    .Where(i => i.DeletedAt == null)
+                    .OrderBy(i => i.Id)
+                    .Select(i => i.Descricao ?? i.Produto!.Nome)
+                    .FirstOrDefault()
+            })
+            .ToListAsync(cancellationToken);
+
+        return linhas.ToDictionary(
+            l => l.Id,
+            l => !string.IsNullOrWhiteSpace(l.Servico) ? l.Servico
+               : !string.IsNullOrWhiteSpace(l.Produto) ? l.Produto
+               : null);
+    }
+
     private IQueryable<Atendimento> Listagem(long empresaId)
     {
         return _dbContext.Atendimentos

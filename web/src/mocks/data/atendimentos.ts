@@ -69,6 +69,15 @@ function seedItemServ(atId: number, servicoId: number, qtd: number, preco: numbe
   itemServicos.push({ id: nextItemServId++, uuid: crypto.randomUUID(), quantidade: qtd, precoUnitario: preco, subtotal: qtd * preco, atendimentoId: atId, servicoId, createdAt: now, updatedAt: now })
 }
 
+/** Como a API (PAG-02): o primeiro serviço, senão o primeiro produto; null sem itens. */
+function resumo(atId: number): string | null {
+  const serv = itemServicos.find((i) => i.atendimentoId === atId)
+  if (serv) return servicoStore.get(serv.servicoId)?.descricao ?? null
+  const prod = itemProdutos.find((i) => i.atendimentoId === atId)
+  if (!prod) return null
+  return prod.descricao ?? (prod.produtoId ? produtoStore.get(prod.produtoId)?.nome : null) ?? null
+}
+
 function d(offsetDays: number, hour = 10): string {
   const n = new Date()
   return new Date(n.getFullYear(), n.getMonth(), n.getDate() + offsetDays, hour).toISOString()
@@ -84,7 +93,7 @@ seedItemProd(a3.id, null, 'Cabo especial', 1, 30, 12)
 ;[a1, a2, a3].forEach((a) => recalc(a.id))
 
 export const atendimentoHandlers = [
-  http.get('*/api/atendimento', () => HttpResponse.json(ok(atendimentos))),
+  http.get('*/api/atendimento', () => HttpResponse.json(ok(atendimentos.map((a) => ({ ...a, resumo: resumo(a.id) }))))),
 
   http.post('*/api/atendimento', async ({ request }) => {
     const b = (await request.json()) as AtendimentoInput

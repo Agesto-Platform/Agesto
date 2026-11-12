@@ -14,7 +14,6 @@ import {
 } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { useAtendimentos } from '../atendimentos/queries'
-import { useAgenda } from '../../lib/queries'
 import { ApiError } from '../../lib/api'
 import { dataCurta, iniciais } from '../../lib/format'
 import { onlyDigits } from '../../lib/masks'
@@ -44,8 +43,6 @@ export function ClientesPage() {
   const update = clientesResource.useUpdate()
   const remove = clientesResource.useRemove()
   const atend = useAtendimentos()
-  // O resumo do serviço só vem na agenda; o histórico usa a do ano corrente.
-  const agenda = useAgenda('ano')
   const toast = useToast()
 
   const [q, setQ] = useState('')
@@ -76,7 +73,6 @@ export function ClientesPage() {
     for (const lista of m.values()) lista.sort((a, b) => dataDo(b).localeCompare(dataDo(a)))
     return m
   }, [atend.data])
-  const resumoDe = (id: number) => agenda.data?.find((i) => i.id === id)?.resumo ?? null
 
   function openCreate() {
     setEditing(null)
@@ -269,14 +265,14 @@ export function ClientesPage() {
                   </p>
                 ) : h.length ? (
                   h.map((a) => {
-                    const resumo = resumoDe(a.id)
+                    const resumo = a.resumo
                     return (
                       <div key={a.id} className="hist-row">
                         <span className="d">{dataCurta(dataDo(a))}</span>
                         {resumo ? (
                           <span>{resumo}</span>
                         ) : (
-                          <span title="O resumo do serviço aparece para os atendimentos agendados neste ano">—</span>
+                          <span title="Atendimento sem itens">—</span>
                         )}
                         <span className="v">{brl(a.valorTotal)}</span>
                       </div>

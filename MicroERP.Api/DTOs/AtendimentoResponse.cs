@@ -14,6 +14,8 @@ public sealed class AtendimentoResponse
     public decimal Margem { get; set; }
     public long ClienteId { get; set; }
     public long UsuarioId { get; set; }
+    // Primeiro serviço, senão o primeiro produto; nulo sem itens. Vem preenchido na listagem.
+    public string? Resumo { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

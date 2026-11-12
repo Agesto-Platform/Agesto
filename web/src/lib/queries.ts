@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
 import { periodRange, agendaRange } from './period'
-import type { Period } from '../layout/PeriodSwitch'
+import type { AgendaPeriod, Period } from '../layout/PeriodSwitch'
 import type { DashboardResponse, AgendaItem } from '../types/api'
 
 /** Dashboard consolidado do período selecionado. */
@@ -17,7 +17,7 @@ export function useDashboard(period: Period) {
 }
 
 /** Agenda de atendimentos agendados no período (enriquecida). */
-export function useAgenda(period: Period) {
+export function useAgenda(period: AgendaPeriod) {
   const { de, ate } = agendaRange(period)
   return useQuery({
     queryKey: ['agenda', period],
