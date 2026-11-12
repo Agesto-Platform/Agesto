@@ -211,6 +211,9 @@ export function Login() {
               {loading ? 'Entrando…' : 'Entrar'}
             </button>
           </form>
+          <p className="legal">
+            Ainda não usa o Agesto? <Link to="/">Conheça e fale com a gente</Link>
+          </p>
           {USING_MOCKS && <p className="legal fade-out">Ambiente de demonstração com dados de exemplo.</p>}
         </section>
       </main>
