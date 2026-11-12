@@ -13,6 +13,7 @@ import { configuracaoHandlers } from './data/configuracao'
 import { usuarioHandlers } from './data/usuarios'
 import { agenteHandlers } from './data/agente'
 import { adminHandlers } from './data/admin'
+import { listasHandlers } from './data/listas'
 
 /**
  * Handlers do MSW. O `*` casa com qualquer origem, então funciona
@@ -54,6 +55,8 @@ export const handlers = [
 
   // Agenda (path mais específico antes do genérico de atendimento)
   ...agendaHandlers,
+  // Listas paginadas, contagem e detalhe (PAG-01): sem paginação, seguem para os de baixo
+  ...listasHandlers,
   ...atendimentoHandlers,
 
   // Cadastros (CRUD stateful)

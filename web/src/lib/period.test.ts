@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { agendaPeriod } from '../layout/PeriodSwitch'
-import { periodRange, agendaRange } from './period'
+import { agendaPeriod, periodRange, agendaRange } from './period'
 
 // 15 de agosto de 2026, meio-dia (local)
 const now = new Date(2026, 7, 15, 12, 0, 0)

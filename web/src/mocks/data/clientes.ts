@@ -22,7 +22,7 @@ const seed: Cliente[] = [
   },
 ]
 
-const store: Store<Cliente> = makeStore(seed)
+export const clienteStore: Store<Cliente> = makeStore(seed)
 
 /** Rejeita CPF já cadastrado (409), espelhando CpfAlreadyExistsException. */
 function validateCpf(body: Record<string, unknown>, s: Store<Cliente>): string | null {
@@ -31,4 +31,4 @@ function validateCpf(body: Record<string, unknown>, s: Store<Cliente>): string |
   return dup ? 'CPF já cadastrado para outro cliente.' : null
 }
 
-export const clienteHandlers = crudHandlers('/api/cliente', store, validateCpf)
+export const clienteHandlers = crudHandlers('/api/cliente', clienteStore, validateCpf)

@@ -1,5 +1,10 @@
 import type { AgendaPeriod, Period } from '../layout/PeriodSwitch'
 
+/** Na agenda, "Ano" vira "Mês": a API não devolve o ano inteiro (PAG-02). */
+export function agendaPeriod(p: Period): AgendaPeriod {
+  return p === 'ano' ? 'mes' : p
+}
+
 /** Converte o período da topbar numa janela [de, ate] em ISO (UTC). */
 export function periodRange(
   period: Period,

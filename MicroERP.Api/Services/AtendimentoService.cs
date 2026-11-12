@@ -59,10 +59,11 @@ public sealed class AtendimentoService : IAtendimentoService
         return atendimentos.Select(a => MapResponse(a, resumos.GetValueOrDefault(a.Id))).ToList();
     }
 
-    public async Task<PaginaResponse<AtendimentoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    public async Task<PaginaResponse<AtendimentoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, AtendimentoFiltroQuery? filtro, CancellationToken cancellationToken)
     {
         var (itens, total) = await _atendimentoRepository.GetPaginaAsync(
-            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao,
+            filtro?.Busca, filtro?.Status, filtro?.ClienteId, cancellationToken);
         var resumos = await _atendimentoRepository.GetResumosAsync(empresaId, itens.Select(a => a.Id).ToList(), cancellationToken);
         return new PaginaResponse<AtendimentoResponse>
         {
@@ -70,6 +71,18 @@ public sealed class AtendimentoService : IAtendimentoService
             Pagina = paginacao.PaginaOuPadrao,
             Tamanho = paginacao.TamanhoOuPadrao,
             Total = total
+        };
+    }
+
+    public async Task<AtendimentoContagemResponse> ContarPorStatusAsync(long empresaId, CancellationToken cancellationToken)
+    {
+        var porStatus = await _atendimentoRepository.ContarPorStatusAsync(empresaId, cancellationToken);
+        return new AtendimentoContagemResponse
+        {
+            Todos = porStatus.Values.Sum(),
+            Pendente = porStatus.GetValueOrDefault(StatusAtendimento.Pendente),
+            Concluido = porStatus.GetValueOrDefault(StatusAtendimento.Concluido),
+            Cancelado = porStatus.GetValueOrDefault(StatusAtendimento.Cancelado)
         };
     }
 
@@ -246,6 +259,7 @@ public sealed class AtendimentoService : IAtendimentoService
 
     private static AtendimentoResponse MapResponse(Atendimento atendimento, string? resumo)
     {
+        var cliente = atendimento.Cliente is { DeletedAt: null } c ? c : null;
         return new AtendimentoResponse
         {
             Id = atendimento.Id,
@@ -259,6 +273,10 @@ public sealed class AtendimentoService : IAtendimentoService
             ClienteId = atendimento.ClienteId,
             UsuarioId = atendimento.UsuarioId,
             Resumo = resumo,
+            // Só quando a consulta trouxe o cliente (lista paginada); excluído = ausente.
+            ClienteNome = cliente?.Nome,
+            ClienteTelefone = cliente?.Telefone,
+            EnderecoResumo = cliente is null ? null : Enderecos.Resumo(cliente),
             CreatedAt = atendimento.CreatedAt,
             UpdatedAt = atendimento.UpdatedAt
         };
