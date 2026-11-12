@@ -10,5 +10,15 @@ public sealed class SyncCargaResponse
     public IReadOnlyList<OrcamentoResponse> Orcamentos { get; set; } = [];
     public IReadOnlyList<SyncSugeridoResponse> Sugeridos { get; set; } = [];
     public ConfiguracaoResponse? Configuracao { get; set; }
+    // PERF-01: na Carga incremental (com ultimaSincronizacao), ids excluídos desde
+    // então, para o app apagar do SQLite. Nulo na Carga completa.
+    public SyncRemovidosResponse? Removidos { get; set; }
     public DateTime SincronizadoEm { get; set; }
+}
+
+public sealed class SyncRemovidosResponse
+{
+    public IReadOnlyList<long> Clientes { get; set; } = [];
+    public IReadOnlyList<long> Produtos { get; set; } = [];
+    public IReadOnlyList<long> Servicos { get; set; } = [];
 }

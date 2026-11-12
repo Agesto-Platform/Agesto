@@ -20,26 +20,51 @@ export interface SyncResult extends CargaResult {
   agenda: number
 }
 
+/** Quando a última Carga foi feita (sincronizadoEm do servidor); base da incremental. */
+const META_CARGA = 'cargaEm'
+/** Rede de segurança: depois disso a Carga volta a ser completa. */
+export const CARGA_COMPLETA_A_CADA_MS = 7 * 24 * 60 * 60 * 1000
+
 /**
  * Carga: puxa dados de referência do servidor e grava no banco local.
  * `database` é injetável (default = singleton por plataforma) — testes passam
  * o adapter de memória diretamente.
  *
- * Sempre completa (sem `ultimaSincronizacao`): os saves locais substituem a
- * tabela inteira, então um delta apagaria o que não mudou. A Carga completa
- * também propaga exclusões (soft delete) do servidor para o device.
+ * Incremental (PERF-01): com uma Carga recente, pede só o que mudou desde ela
+ * (`ultimaSincronizacao`) e aplica linha a linha, apagando os ids que o servidor
+ * diz que foram excluídos. Sem Carga anterior, depois de 7 dias ou se a API não
+ * mandar a lista de excluídos (versão anterior), refaz a completa, que substitui
+ * as tabelas inteiras. Os contadores são do que veio nesta Carga.
  */
-export async function carga(database: LocalDb = db): Promise<CargaResult> {
-  const data = await api.get<SyncCargaResponse>('/api/sync/carga')
+export async function carga(database: LocalDb = db, agora = Date.now()): Promise<CargaResult> {
+  const cargaEm = await database.getMeta(META_CARGA)
+  if (cargaEm !== null && agora - (Date.parse(cargaEm) || 0) < CARGA_COMPLETA_A_CADA_MS) {
+    const delta = await api.get<SyncCargaResponse>(
+      `/api/sync/carga?ultimaSincronizacao=${encodeURIComponent(cargaEm)}`,
+    )
+    if (delta.removidos) {
+      await database.mergeClientes(delta.clientes, delta.removidos.clientes)
+      await database.mergeProdutos(delta.produtos, delta.removidos.produtos)
+      await database.mergeServicos(delta.servicos, delta.removidos.servicos)
+      return concluir(database, delta)
+    }
+  }
 
+  const data = await api.get<SyncCargaResponse>('/api/sync/carga')
   await database.saveClientes(data.clientes)
   await database.saveProdutos(data.produtos)
   await database.saveServicos(data.servicos)
+  return concluir(database, data)
+}
+
+/** Configuração e kits vêm inteiros nas duas Cargas (são pequenos). */
+async function concluir(database: LocalDb, data: SyncCargaResponse): Promise<CargaResult> {
   if (data.configuracao) {
     await saveConfig(database, data.configuracao)
   }
   await saveSugeridos(database, data.sugeridos ?? [])
   await database.setMeta('lastSync', data.sincronizadoEm)
+  await database.setMeta(META_CARGA, data.sincronizadoEm)
 
   return {
     clientes: data.clientes.length,

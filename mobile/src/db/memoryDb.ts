@@ -4,6 +4,14 @@ import { remapItensServico } from './remap'
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x)) as T
 
+/** Carga incremental (PERF-01): troca pelo id, apaga os removidos, ordena por id como o SQLite. */
+function merge<T extends { id: number }>(atual: T[], items: T[], removidos: number[]): T[] {
+  const porId = new Map(atual.map((x) => [x.id, x]))
+  for (const id of removidos) porId.delete(id)
+  for (const it of items) porId.set(it.id, clone(it))
+  return [...porId.values()].sort((a, b) => a.id - b.id)
+}
+
 /** Adapter em memória — usado no web (preview) e nos testes. Reseta ao recarregar. */
 export function createMemoryDb(): LocalDb {
   let clientes: Cliente[] = []
@@ -29,6 +37,15 @@ export function createMemoryDb(): LocalDb {
     },
     async saveAgenda(items) {
       agenda = clone(items)
+    },
+    async mergeClientes(items, removidos) {
+      clientes = merge(clientes, items, removidos)
+    },
+    async mergeProdutos(items, removidos) {
+      produtos = merge(produtos, items, removidos)
+    },
+    async mergeServicos(items, removidos) {
+      servicos = merge(servicos, items, removidos)
     },
     async getClientes() {
       return clone(clientes)

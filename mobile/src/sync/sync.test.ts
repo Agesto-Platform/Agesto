@@ -1,10 +1,11 @@
 import { describe, it, expect, jest } from '@jest/globals'
-import { carga, initialSync, descarga, sincronizar, resumoSincronizacao, getRecusas, motivoDaRecusa } from './sync'
+import { CARGA_COMPLETA_A_CADA_MS, carga, initialSync, descarga, sincronizar, resumoSincronizacao, getRecusas, motivoDaRecusa } from './sync'
 import { api } from '@/lib/api'
 import type { SyncDescargaRequest } from '@/types/api'
 import { createMemoryDb } from '@/db/memoryDb'
 import { getConfig, DEFAULT_CONFIG } from '@/lib/appConfig'
 import { getSugeridos } from '@/lib/sugeridos'
+import { seedCarga } from '@/mocks/data'
 
 describe('sync.carga (mock)', () => {
   it('popula o banco injetado com os dados de referência e marca lastSync', async () => {
@@ -19,6 +20,69 @@ describe('sync.carga (mock)', () => {
     const clientes = await mem.getClientes()
     expect(clientes[0].nome).toBe('Vó Joana')
     expect(await mem.getMeta('lastSync')).not.toBeNull()
+  })
+
+  // PERF-01: com uma Carga recente, pede só o que mudou e aplica linha a linha.
+  it('segunda carga é incremental: atualiza, apaga os removidos e mantém o resto', async () => {
+    const mem = createMemoryDb()
+    await mem.init()
+    await carga(mem)
+    const cargaEm = await mem.getMeta('cargaEm')
+    expect(cargaEm).not.toBeNull()
+
+    const base = seedCarga()
+    const get = jest.spyOn(api, 'get').mockResolvedValueOnce({
+      ...base,
+      clientes: [{ ...base.clientes[0], nome: 'Vó Joana Silva' }],
+      produtos: [],
+      servicos: [],
+      removidos: { clientes: [2], produtos: [3], servicos: [] },
+      sincronizadoEm: '2026-11-11T12:00:00Z',
+    })
+
+    await carga(mem, Date.parse(cargaEm!) + 60_000)
+
+    expect(get).toHaveBeenCalledWith(`/api/sync/carga?ultimaSincronizacao=${encodeURIComponent(cargaEm!)}`)
+    expect((await mem.getClientes()).map((c) => [c.id, c.nome])).toEqual([
+      [1, 'Vó Joana Silva'],
+      [3, 'Renata Vieira'],
+    ])
+    expect((await mem.getProdutos()).map((p) => p.id)).toEqual([1, 2])
+    expect((await mem.getServicos()).map((s) => s.id)).toEqual([1, 2, 3])
+    expect(await mem.getMeta('cargaEm')).toBe('2026-11-11T12:00:00Z')
+    get.mockRestore()
+  })
+
+  it('API sem a lista de excluídos (versão anterior): refaz a carga completa', async () => {
+    const mem = createMemoryDb()
+    await mem.init()
+    await carga(mem)
+    const cargaEm = await mem.getMeta('cargaEm')
+    const base = seedCarga()
+    const get = jest
+      .spyOn(api, 'get')
+      .mockResolvedValueOnce({ ...base, clientes: [], produtos: [], servicos: [] }) // delta sem `removidos`
+      .mockResolvedValueOnce({ ...base, clientes: [base.clientes[0]] }) // completa
+
+    await carga(mem, Date.parse(cargaEm!) + 60_000)
+
+    expect(get).toHaveBeenNthCalledWith(2, '/api/sync/carga')
+    expect((await mem.getClientes()).map((c) => c.id)).toEqual([1])
+    get.mockRestore()
+  })
+
+  it('depois de 7 dias a carga volta a ser completa', async () => {
+    const mem = createMemoryDb()
+    await mem.init()
+    await carga(mem)
+    const cargaEm = await mem.getMeta('cargaEm')
+    const get = jest.spyOn(api, 'get')
+
+    await carga(mem, Date.parse(cargaEm!) + CARGA_COMPLETA_A_CADA_MS + 1)
+
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(get).toHaveBeenCalledWith('/api/sync/carga')
+    get.mockRestore()
   })
 
   it('carga salva a configuração da empresa vinda do servidor', async () => {
