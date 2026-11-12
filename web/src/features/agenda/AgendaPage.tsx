@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ShellContext } from '../../layout/AppShell'
-import { PeriodSwitch, type Period } from '../../layout/PeriodSwitch'
+import { PeriodSwitch, agendaPeriod, type AgendaPeriod } from '../../layout/PeriodSwitch'
 import { Button, CardHead, Drawer, Empty, IconButton, PageHead, Seg, brl, useToast } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { useAgenda } from '../../lib/queries'
@@ -42,10 +42,9 @@ const MODO: Record<ModoAgendaAgente, string> = {
   Fixa: 'Modo Fixo: a equipe segue a agenda montada por você.',
 }
 
-/** "em outubro" / "nos próximos 7 dias" / "em 2026". */
-function noPeriodo(period: Period, hoje = new Date()): string {
+/** "em outubro" / "nos próximos 7 dias". */
+function noPeriodo(period: AgendaPeriod, hoje = new Date()): string {
   if (period === '7d') return 'nos próximos 7 dias'
-  if (period === 'ano') return `em ${hoje.getFullYear()}`
   return `em ${MES_LONGO[hoje.getMonth()]}`
 }
 
@@ -72,7 +71,10 @@ function tituloDia(k: string, hojeK: string): string {
 const porHorario = (a: AgendaItem, b: AgendaItem) => a.dataAgendada!.localeCompare(b.dataAgendada!)
 
 export function AgendaPage() {
-  const { period, setPeriod } = useOutletContext<ShellContext>()
+  const shell = useOutletContext<ShellContext>()
+  // A agenda vai até o mês (a API limita a 62 dias, PAG-02); "Ano" no topo vira "Mês" aqui.
+  const period = agendaPeriod(shell.period)
+  const setPeriod = shell.setPeriod
   const { data, isLoading, isError, error } = useAgenda(period)
   const usuarios = useUsuarios()
   const config = useConfiguracao()
@@ -436,7 +438,7 @@ export function AgendaPage() {
         actions={
           <>
             <Seg label="Visualização" options={VISOES} value={visao} onChange={trocarVisao} />
-            <PeriodSwitch value={period} onChange={setPeriod} />
+            <PeriodSwitch value={period} onChange={setPeriod} semAno />
             <Button variant="primary" icon="plus" onClick={abrirAgendar}>
               Agendar
             </Button>
