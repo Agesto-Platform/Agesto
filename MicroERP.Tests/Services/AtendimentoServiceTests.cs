@@ -301,4 +301,42 @@ public sealed class AtendimentoServiceTests
 
         Assert.Equal(["Instalação de AC", "Filtro", null], result.Select(a => a.Resumo).ToArray());
     }
+
+    // PAG-01: a página traz nome, telefone e endereço do cliente (o web não baixa mais
+    // todos os clientes) e repassa os filtros ao repositório.
+    [Fact]
+    public async Task GetPaginaAsync_TrazOClienteERepassaOsFiltros()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.GetPaginaAsync(1, 2, 50, "joao", StatusAtendimento.Pendente, 7L, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Atendimento>
+            {
+                new() { Id = 1, Cliente = new Cliente { Nome = "João", Telefone = "(34) 9999", Logradouro = "R. A", Numero = "1", Bairro = "Centro" } },
+                new() { Id = 2, Cliente = new Cliente { Nome = "Removido", DeletedAt = DateTime.UtcNow } }
+            }, 51));
+        _atendimentoRepoMock
+            .Setup(r => r.GetResumosAsync(1, It.IsAny<IReadOnlyCollection<long>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<long, string?>());
+
+        var pagina = await _service.GetPaginaAsync(1, new PaginacaoQuery { Pagina = 2, Tamanho = 50 },
+            new AtendimentoFiltroQuery { Busca = "joao", Status = StatusAtendimento.Pendente, ClienteId = 7 }, CancellationToken.None);
+
+        Assert.Equal(51, pagina.Total);
+        Assert.Equal("João", pagina.Itens[0].ClienteNome);
+        Assert.Equal("(34) 9999", pagina.Itens[0].ClienteTelefone);
+        Assert.Equal("R. A, 1 — Centro", pagina.Itens[0].EnderecoResumo);
+        Assert.Null(pagina.Itens[1].ClienteNome); // cliente excluído = ausente
+    }
+
+    [Fact]
+    public async Task ContarPorStatusAsync_SomaAsAbas()
+    {
+        _atendimentoRepoMock
+            .Setup(r => r.ContarPorStatusAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<StatusAtendimento, int> { [StatusAtendimento.Pendente] = 3, [StatusAtendimento.Concluido] = 5 });
+
+        var contagem = await _service.ContarPorStatusAsync(1, CancellationToken.None);
+
+        Assert.Equal((8, 3, 5, 0), (contagem.Todos, contagem.Pendente, contagem.Concluido, contagem.Cancelado));
+    }
 }

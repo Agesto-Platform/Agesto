@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MicroERP.Api.Data;
+using MicroERP.Api.Enums;
 using MicroERP.Api.Models;
 using MicroERP.Api.Repositories.Interfaces;
 
@@ -19,9 +20,45 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
         return await Listagem(empresaId).ToListAsync(cancellationToken);
     }
 
-    public Task<(List<Atendimento> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, CancellationToken cancellationToken)
+    // PAG-01: a lista do web, paginada, com os filtros da tela e o cliente junto. Ordem
+    // da tela: a data agendada, senão a de registro, da mais recente para a mais antiga.
+    public Task<(List<Atendimento> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho,
+        string? busca, StatusAtendimento? status, long? clienteId, CancellationToken cancellationToken)
     {
-        return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
+        var query = _dbContext.Atendimentos
+            .AsNoTracking()
+            .Where(a => a.EmpresaId == empresaId && a.DeletedAt == null);
+
+        if (status.HasValue) query = query.Where(a => a.Status == status.Value);
+        if (clienteId.HasValue) query = query.Where(a => a.ClienteId == clienteId.Value);
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = FuncoesSql.NormalizarTermo(busca);
+            query = query.Where(a =>
+                FuncoesSql.Translate(a.Cliente!.Nome.ToLower(), FuncoesSql.ComAcento, FuncoesSql.SemAcento).Contains(termo)
+                || a.ItensServico.Any(i => i.DeletedAt == null
+                    && FuncoesSql.Translate(i.Servico!.Descricao.ToLower(), FuncoesSql.ComAcento, FuncoesSql.SemAcento).Contains(termo))
+                || a.ItensProduto.Any(i => i.DeletedAt == null
+                    && FuncoesSql.Translate((i.Descricao ?? i.Produto!.Nome).ToLower(), FuncoesSql.ComAcento, FuncoesSql.SemAcento).Contains(termo)));
+        }
+
+        return query
+            .Include(a => a.Cliente)
+            .OrderByDescending(a => a.DataAgendada ?? a.DataRegistro)
+            .ThenByDescending(a => a.Id)
+            .ToPaginaAsync(pagina, tamanho, cancellationToken);
+    }
+
+    // PAG-01: os números das abas da tela de Atendimentos.
+    public async Task<Dictionary<StatusAtendimento, int>> ContarPorStatusAsync(long empresaId, CancellationToken cancellationToken)
+    {
+        var linhas = await _dbContext.Atendimentos
+            .AsNoTracking()
+            .Where(a => a.EmpresaId == empresaId && a.DeletedAt == null)
+            .GroupBy(a => a.Status)
+            .Select(g => new { Status = g.Key, Total = g.Count() })
+            .ToListAsync(cancellationToken);
+        return linhas.ToDictionary(l => l.Status, l => l.Total);
     }
 
     // PAG-02: resumo da linha (primeiro serviço vivo, senão o primeiro produto) em uma
