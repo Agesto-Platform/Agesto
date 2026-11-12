@@ -66,6 +66,7 @@
 | 12/11 | Convites por email: acesso novo (pelo Dono ou pela equipe do Agesto) e convite de admin, com a pessoa criando a própria senha; fim da senha provisória (DEC-55) | Extra | Feito (PR #162, release #163, 12/11); migrations aplicadas no Supabase e envio testado em produção |
 | — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | A fazer |
 | 12/11 | RLS nas tabelas do superadmin (`AdminsPlataforma`, `AuditoriasAdmin`), que ficaram de fora do `EnableRlsLockdown` (DEC-34, DEC-52) | Extra | Feito no código (12/11): migration `EnableRlsSuperadmin`, com a policy do `agesto_api`. Não havia exposição (`anon` e `authenticated` sem privilégio, Data API desligada) |
+| 12/11 | WhatsApp por link `wa.me`: enviar o orçamento pelo WhatsApp e abrir a conversa com o cliente no web e no app (DEC-56) | Extra | Feito no código (12/11), branch `feature/whatsapp-wame`. Conversa dentro do Agesto fica para depois, pela API oficial (DEC-56) |
 
 ### Diego — infra e redesign
 

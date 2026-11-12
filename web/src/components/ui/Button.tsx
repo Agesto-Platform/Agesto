@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router-dom'
 import { Icon, type IconName } from '../Icon'
 
@@ -31,6 +31,29 @@ export function Button({
       {icon && <Icon name={icon} />}
       {children}
     </button>
+  )
+}
+
+/** Mesmo visual do botão, para um link externo aberto em outra aba (ex.: WhatsApp). */
+export function ButtonExterno({
+  variant = 'default',
+  size = 'md',
+  icon,
+  className = '',
+  children,
+  ...props
+}: AnchorHTMLAttributes<HTMLAnchorElement> & {
+  href: string
+  variant?: Variant
+  size?: Size
+  icon?: IconName
+  children: ReactNode
+}) {
+  return (
+    <a target="_blank" rel="noopener noreferrer" className={btnClass(variant, size, className)} {...props}>
+      {icon && <Icon name={icon} />}
+      {children}
+    </a>
   )
 }
 

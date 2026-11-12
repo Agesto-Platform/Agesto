@@ -71,12 +71,16 @@ public sealed class PaginacaoControllerTests
     public async Task Orcamentos_SemParametros_DevolveAPrimeiraPaginaCom20()
     {
         await using var db = await SeedAsync();
+        // DEC-56: o telefone do cliente vem junto, para o envio por WhatsApp.
+        foreach (var cliente in db.Clientes) cliente.Telefone = "(34) 99999-0000";
+        await db.SaveChangesAsync();
         var controller = Autenticado(new OrcamentoController(BuildOrcamentoService(db)));
 
         var pagina = Pagina<OrcamentoResponse>(await controller.GetAll(new PaginacaoQuery(), new OrcamentoFiltroQuery(), CancellationToken.None));
 
         AssertPrimeiraPagina(pagina);
         Assert.All(pagina.Itens, o => Assert.False(string.IsNullOrEmpty(o.ClienteNome)));
+        Assert.All(pagina.Itens, o => Assert.Equal("(34) 99999-0000", o.ClienteTelefone));
     }
 
     [Fact]

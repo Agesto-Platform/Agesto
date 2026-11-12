@@ -16,6 +16,7 @@ function comNomes(o: Orcamento): Orcamento {
   return {
     ...o,
     clienteNome: clienteStore.get(o.clienteId)?.nome ?? null,
+    clienteTelefone: clienteStore.get(o.clienteId)?.telefone ?? null,
     itens: o.itens.map((i) => {
       const s = i.servicoId != null ? servicoStore.get(i.servicoId) : undefined
       return {
