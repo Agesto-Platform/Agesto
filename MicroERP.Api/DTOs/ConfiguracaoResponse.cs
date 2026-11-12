@@ -9,6 +9,9 @@ public sealed class ConfiguracaoResponse
     public bool ControlaEstoque { get; set; }
     public bool AgenteCadastraServico { get; set; }
     public long EmpresaId { get; set; }
+    // Cabeçalho do PDF do orçamento e nome na conta (DEC-56).
+    public string? EmpresaNome { get; set; }
+    public string? EmpresaDocumento { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

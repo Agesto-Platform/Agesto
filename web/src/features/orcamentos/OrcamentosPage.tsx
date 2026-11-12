@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   useOrcamento,
   useOrcamentoResumo,
@@ -12,6 +12,8 @@ import { OrcamentoForm } from './OrcamentoForm'
 import { OrcamentoDetail, OrcamentoEditForm } from './OrcamentoDetail'
 import { StatusOrcamentoPill } from './status'
 import { numero } from './labels'
+import { carregarJsPdf, dadosDoPdf, gerarPdfOrcamento, nomeArquivoPdf } from './pdf'
+import { useConfiguracao } from '../parametrizacao/queries'
 import {
   Button,
   Card,
@@ -27,6 +29,7 @@ import {
 import { ApiError } from '../../lib/api'
 import { dataCurta } from '../../lib/format'
 import { useDebounced } from '../../lib/paginacao'
+import { baixarArquivo, enviarPdfPorWhatsApp, mensagemPdfOrcamento } from '../../lib/whatsapp'
 import type { Orcamento, OrcamentoInput, StatusOrcamento } from '../../types/api'
 import './orcamentos.css'
 
@@ -43,6 +46,8 @@ export function OrcamentosPage() {
   const remove = useDeleteOrcamento()
   const converter = useConverterOrcamento()
   const toast = useToast()
+  const configuracao = useConfiguracao()
+  const [gerandoPdf, setGerandoPdf] = useState(false)
 
   const [createOpen, setCreateOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -90,6 +95,40 @@ export function OrcamentosPage() {
         onError: () => toast.error('Não foi possível atualizar o status.'),
       },
     )
+  }
+
+  // Carrega o gerador de PDF antes do clique: no celular, o compartilhar só abre
+  // logo depois do toque, e esperar o download do jsPDF passaria do tempo.
+  useEffect(() => {
+    if (sel) void carregarJsPdf()
+  }, [sel])
+
+  /** DEC-56: gera o PDF (sem custo nem margem) e envia ou baixa. */
+  async function handlePdf(modo: 'whatsapp' | 'baixar') {
+    if (!sel) return
+    setGerandoPdf(true)
+    try {
+      const empresa = configuracao.data && { nome: configuracao.data.empresaNome, documento: configuracao.data.empresaDocumento }
+      const dados = dadosDoPdf(sel, clienteNome(sel), empresa)
+      const pdf = await gerarPdfOrcamento(dados)
+      const nome = nomeArquivoPdf(dados.numero)
+      if (modo === 'baixar') {
+        baixarArquivo(pdf, nome)
+        return
+      }
+      const r = await enviarPdfPorWhatsApp({
+        pdf,
+        nomeArquivo: nome,
+        telefone: sel.clienteTelefone,
+        texto: mensagemPdfOrcamento(clienteNome(sel), dados.numero),
+      })
+      if (r === 'baixado-com-conversa') toast.success('PDF baixado. Anexe o arquivo na conversa que abriu no WhatsApp.')
+      else if (r === 'baixado') toast.success('PDF baixado. O cliente não tem telefone válido para abrir a conversa no WhatsApp.')
+    } catch {
+      toast.error('Não foi possível gerar o PDF.')
+    } finally {
+      setGerandoPdf(false)
+    }
   }
 
   function handleConvert() {
@@ -211,7 +250,9 @@ export function OrcamentosPage() {
               onChangeStatus={(s) => handleChangeStatus(s)}
               onConvert={handleConvert}
               onEdit={() => setEditOpen(true)}
-              busy={{ status: updateStatus.isPending, convert: converter.isPending }}
+              onEnviarPdf={() => void handlePdf('whatsapp')}
+              onBaixarPdf={() => void handlePdf('baixar')}
+              busy={{ status: updateStatus.isPending, convert: converter.isPending, pdf: gerandoPdf }}
             />
           ) : (
             !list.isLoading && (
