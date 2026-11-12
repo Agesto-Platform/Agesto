@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { ApiError } from '../lib/api'
 import { getDeveTrocarSenha, getTermosPendentes } from '../lib/token'
@@ -193,9 +193,9 @@ export function Login() {
                 <input type="checkbox" checked={manter} onChange={(e) => setManter(e.target.checked)} />
                 Manter conectado
               </label>
-              <a href="#" onClick={(e) => e.preventDefault()}>
+              <Link to="/esqueci-senha" state={{ email: email.trim() }}>
                 Esqueci a senha
-              </a>
+              </Link>
             </div>
             {erro && (
               <p className="login-error" role="alert">

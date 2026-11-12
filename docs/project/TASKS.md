@@ -49,7 +49,7 @@
 | 24/10 | CPF com dígito verificador no web | B5 | Feito (PR #117, 28/10) |
 | 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
 | 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
-| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | A fazer |
+| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Falta aplicar a migration `AddTokenRedefinicaoSenha` e configurar o Brevo no Render (`deploy/README.md`, seção 11) |
 | 17/11 | Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48) | D11 | A fazer |
 | 28/11 | Cadastro aberto no ar com verificação de email e período de teste | L1 | A fazer |
 | 01/12 | Canal de suporte: WhatsApp Business e email | D14 | A fazer |
@@ -78,7 +78,7 @@
 | 31/10 | Primeiro `eas build` antes do ensaio | B1, B8 | A fazer. A promoção `develop → main` que fazia parte desta tarefa já acontece a cada release (a última foi a #158, em 12/11), e a migration `AddUsuarioAceiteTermos` está no Supabase desde 28/10 |
 | 03/11 | Ensaio geral com os dois Davis | Portão | A fazer |
 | 10/11 | Domínio próprio na web e na API, com CORS e CSP ajustados | L2, D12 | A fazer |
-| 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | A fazer |
+| 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | A fazer. Provedor escolhido: Brevo (DEC-54, 12/11); o passo a passo está em `deploy/README.md`, seção 11 |
 | 17/11 | Fechar o design system | D13 | A fazer |
 | 05/12 | Cópia da chave de assinatura do APK guardada fora do repositório e do Expo | B1 | A fazer |
 | 12/12 | Redesign do web (DEC-51): em `main` desde 25/10; falta o acabamento final | L6 | Em andamento |

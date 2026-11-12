@@ -1001,3 +1001,21 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - pendências que reduzem o risco sem migrar: encurtar a validade do token de admin (`Admin__ExpiresMinutes`) e fazer a troca de senha derrubar as sessões abertas (versão do token, também em aberto nas DEC-50 e DEC-52).
 
 **Impacto:** nenhum agora. A migração futura mexe na emissão do token, na autenticação da API, no CORS e no cliente HTTP do web.
+
+---
+
+## DEC-54 — "Esqueci a senha" do Dono por email, com o Brevo
+
+**Status:** 🟡 Implementado na branch `feature/esqueci-senha-brevo` (12/11/2026), escolhido por Davi Oliveira. Falta aplicar a migration `AddTokenRedefinicaoSenha` no Supabase e configurar o Brevo no Render.
+
+**Decisão:** o Dono pede, na tela de login, um link para criar uma senha nova:
+- `POST /api/auth/esqueci-senha` responde sempre a mesma mensagem, exista o email ou não. Só gera link para Dono ativo de empresa ativa; o agente continua recebendo senha provisória do Dono (DEC-35).
+- O token tem 32 bytes aleatórios e vale 15 minutos, uma vez só. No banco fica só o hash SHA-256 (tabela `TokensRedefinicaoSenha`). Um pedido novo invalida o anterior, e cada conta recebe no máximo um email a cada 2 minutos.
+- O link é `{Email:UrlWeb}/redefinir-senha#token=...`: depois do `#`, o token não vai ao servidor do web nem aparece em logs.
+- `POST /api/auth/redefinir-senha` troca a senha, tira o bloqueio por senhas erradas (DEC-43) e invalida todos os links abertos da conta.
+- O envio é pelo Brevo (API HTTP; o Render Free bloqueia SMTP), numa fila em memória fora da requisição: a resposta leva o mesmo tempo exista o email ou não, e uma lentidão do Brevo não segura a tela.
+- Sem `Email__BrevoApiKey` e `Email__RemetenteEmail`, o envio fica desligado e a rota continua respondendo igual.
+
+**Por quê:** o Dono sem acesso dependia da equipe do Agesto para uma senha provisória (DEC-52). O Brevo foi escolhido por Davi Oliveira; o plano gratuito envia até 300 emails por dia.
+
+**Impacto:** migration `AddTokenRedefinicaoSenha` (tabela nova com RLS e a policy do `agesto_api`). Variáveis novas no Render (`deploy/README.md`, seção 3). Enquanto o SEG-01 não entrar (PR #155), redefinir a senha não derruba as sessões já abertas.

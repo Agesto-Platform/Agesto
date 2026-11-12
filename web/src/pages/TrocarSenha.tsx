@@ -5,51 +5,7 @@ import { Icon } from '../components/Icon'
 import { ApiError } from '../lib/api'
 import './login.css'
 import { Logo } from '../components/Logo'
-
-/** Campo de senha no padrão do login (`.lfield` + `.ibox` com cadeado). */
-function SenhaField({
-  id,
-  label,
-  value,
-  onChange,
-  autoComplete,
-  autoFocus = false,
-  hint,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (v: string) => void
-  autoComplete: string
-  autoFocus?: boolean
-  hint?: string
-}) {
-  return (
-    <div className="lfield">
-      <label htmlFor={id}>{label}</label>
-      <div className="ibox">
-        <span>
-          <Icon name="lock" />
-        </span>
-        <input
-          className="input"
-          id={id}
-          type="password"
-          autoComplete={autoComplete}
-          autoFocus={autoFocus}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          aria-describedby={hint ? id + '-hint' : undefined}
-        />
-      </div>
-      {hint && (
-        <span className="hint" id={id + '-hint'}>
-          {hint}
-        </span>
-      )}
-    </div>
-  )
-}
+import { SenhaField } from './SenhaField'
 
 /** Troca de senha: obrigatória no primeiro acesso com senha provisória. Mesmo cartão do login. */
 export function TrocarSenha() {

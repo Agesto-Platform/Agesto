@@ -714,6 +714,41 @@ namespace MicroERP.Api.Migrations
                     b.ToTable("ServicoItemSugeridos");
                 });
 
+            modelBuilder.Entity("MicroERP.Api.Models.TokenRedefinicaoSenha", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UsuarioId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("TokensRedefinicaoSenha", (string)null);
+                });
+
             modelBuilder.Entity("MicroERP.Api.Models.Usuario", b =>
                 {
                     b.Property<long>("Id")
@@ -943,6 +978,17 @@ namespace MicroERP.Api.Migrations
                     b.Navigation("Produto");
 
                     b.Navigation("Servico");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.TokenRedefinicaoSenha", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Usuario", b =>

@@ -43,6 +43,17 @@ export const handlers = [
     return HttpResponse.json(ok(null, 'Termos aceitos.'))
   }),
 
+  // "Esqueci a senha" (DEC-54): sempre a mesma resposta; o link de demonstração é
+  // /redefinir-senha#token=demo.
+  http.post('*/api/auth/esqueci-senha', () =>
+    HttpResponse.json(ok(null, 'Se o email for de um Dono cadastrado, enviamos um link para criar uma senha nova.')),
+  ),
+  http.post('*/api/auth/redefinir-senha', async ({ request }) => {
+    const body = (await request.json()) as { token?: string }
+    if (body.token !== 'demo') return fail(400, 'Link inválido ou expirado. Peça um novo em "Esqueci a senha".')
+    return HttpResponse.json(ok(null, 'Senha alterada. Entre com a senha nova.'))
+  }),
+
   http.get('*/api/app/versao', () =>
     HttpResponse.json(
       ok({ versaoMinimaAndroid: '1.0.0', urlDownload: 'https://expo.dev/artifacts/eas/agesto-demo.apk' }, 'Versão do app.'),
