@@ -1,4 +1,5 @@
 using MicroERP.Api.DTOs;
+using MicroERP.Api.Enums;
 using MicroERP.Api.Models;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services.Exceptions;
@@ -41,7 +42,7 @@ public sealed class AtendimentoService : IAtendimentoService
         if (usuario is null || !usuario.Ativo) throw new NotFoundException("Agente não encontrado.");
     }
 
-    // Default seguro: controla. Quando false, o cancelamento nao devolve estoque.
+    // Default seguro: controla. Quando false, os itens novos nao baixam estoque.
     private async Task<bool> ControlaEstoqueAsync(long empresaId, CancellationToken cancellationToken)
     {
         var config = await _configuracaoRepository.GetByEmpresaAsync(empresaId, false, cancellationToken);
@@ -123,6 +124,19 @@ public sealed class AtendimentoService : IAtendimentoService
             atendimento.UsuarioId = responsavelId;
         }
 
+        // Cancelar devolve o estoque dos itens; sair de Cancelado baixa de novo,
+        // conferindo o saldo (E2E-04). As metricas ja tratam cancelado como nao consumido.
+        var cancelando = request.Status == StatusAtendimento.Cancelado && atendimento.Status != StatusAtendimento.Cancelado;
+        var reativando = request.Status != StatusAtendimento.Cancelado && atendimento.Status == StatusAtendimento.Cancelado;
+        if (cancelando || reativando)
+        {
+            var itens = await _itemProdutoRepository.GetAllByAtendimentoTrackedAsync(atendimento.Id, cancellationToken);
+            if (cancelando)
+                await EstoqueDosItens.DevolverAsync(itens, empresaId, _produtoRepository, cancellationToken);
+            else if (await ControlaEstoqueAsync(empresaId, cancellationToken))
+                await EstoqueDosItens.BaixarAsync(itens, empresaId, _produtoRepository, cancellationToken);
+        }
+
         atendimento.Status = request.Status;
         atendimento.DataAgendada = request.DataAgendada;
         atendimento.UpdatedAt = DateTime.UtcNow;
@@ -139,23 +153,12 @@ public sealed class AtendimentoService : IAtendimentoService
 
         var now = DateTime.UtcNow;
 
-        // Soft delete e reversão de estoque dos itens de produto
-        var controlaEstoque = await ControlaEstoqueAsync(empresaId, cancellationToken);
+        // Soft delete e reversao do estoque que cada item baixou (E2E-03): avulso,
+        // lancado com a chave desligada ou ja devolvido no cancelamento nao volta.
         var itensProduto = await _itemProdutoRepository.GetAllByAtendimentoTrackedAsync(atendimento.Id, cancellationToken);
+        await EstoqueDosItens.DevolverAsync(itensProduto, empresaId, _produtoRepository, cancellationToken);
         foreach (var item in itensProduto)
-        {
-            // Devolve estoque só para item de catalogo (avulso nao movimentou) e
-            // apenas quando a empresa controla estoque.
-            if (item.ProdutoId.HasValue && controlaEstoque)
-            {
-                var produto = await _produtoRepository.GetByIdAsync(empresaId, item.ProdutoId.Value, true, cancellationToken);
-                if (produto is not null)
-                {
-                    produto.QuantidadeEstoque += item.Quantidade;
-                }
-            }
             item.DeletedAt = now;
-        }
 
         // Soft delete dos itens de serviço
         var itensServico = await _itemServicoRepository.GetAllByAtendimentoTrackedAsync(atendimento.Id, cancellationToken);

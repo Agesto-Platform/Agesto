@@ -157,7 +157,7 @@ public sealed class AtendimentoServiceTests
     {
         var atendimento = new Atendimento { Id = 1, Uuid = Guid.NewGuid(), EmpresaId = 1, ClienteId = 1, Status = StatusAtendimento.Pendente };
         var produto = new Produto { Id = 10, QuantidadeEstoque = 3 };
-        var itemProduto = new ItemProduto { Id = 1, AtendimentoId = 1, ProdutoId = 10, Quantidade = 2 };
+        var itemProduto = new ItemProduto { Id = 1, AtendimentoId = 1, ProdutoId = 10, Quantidade = 2, EstoqueBaixado = true };
         var itemServico = new ItemServico { Id = 1, AtendimentoId = 1, ServicoId = 5 };
 
         _atendimentoRepoMock

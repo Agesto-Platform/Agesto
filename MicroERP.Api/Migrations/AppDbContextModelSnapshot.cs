@@ -419,6 +419,9 @@ namespace MicroERP.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("EstoqueBaixado")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal>("PrecoUnitario")
                         .HasColumnType("decimal(12,2)");
 
@@ -588,6 +591,7 @@ namespace MicroERP.Api.Migrations
                         .HasColumnType("decimal(12,2)");
 
                     b.Property<int>("QuantidadeEstoque")
+                        .IsConcurrencyToken()
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("SyncedAt")
