@@ -53,7 +53,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const trocarSenha = useCallback(async (senhaAtual: string, novaSenha: string) => {
     const body: TrocarSenhaInput = { senhaAtual, novaSenha }
-    await api.post<null>('/api/auth/trocar-senha', body)
+    // A troca encerra as outras sessões (SEG-01); a API devolve um token novo para esta.
+    const res = await api.post<AuthResponse | null>('/api/auth/trocar-senha', body)
+    if (res?.token) {
+      const claims = decodeJwt(res.token)
+      if (claims) {
+        setToken(res.token)
+        setUser(claims)
+      }
+    }
     setDeveTrocarSenha(false)
     setDeve(false)
   }, [])

@@ -936,7 +936,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-50 — Sessão de 30 dias
 
-**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` e `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
+**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` e `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão. Trocar ou redefinir a senha passou a derrubar as sessões abertas com a versão de sessão do SEG-01 (`Usuario.VersaoSessao`, PR do SEG-01, 12/11/2026); quem troca a própria senha recebe um token novo.
 
 **Decisão:** o login vale 30 dias na API e no app (hoje o JWT expira em 120 minutos, `Jwt:ExpiresMinutes`). A revogação da DEC-34 continua: desativar o usuário ou trocar a senha derruba a sessão na próxima requisição.
 
@@ -974,7 +974,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
 
-**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira. Pendências: bloqueio por conta no login de admin, verificação em duas etapas, e a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
+**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira. Pendências: bloqueio por conta no login de admin e verificação em duas etapas. A senha provisória gerada pela equipe passou a derrubar as sessões abertas do usuário (SEG-01, 12/11/2026).
 
 ---
 
@@ -989,13 +989,13 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - O app usa token Bearer; a API teria de aceitar os dois modos.
 - O risco hoje é contido: a CSP de `web/public/_headers` só roda script do próprio site (`script-src 'self'`) e só conecta no próprio site e na API; o React escapa o texto exibido; o único `dangerouslySetInnerHTML` (`Icon.tsx`) usa desenhos fixos do código; o `TokenRevalidator` derruba na hora o token de usuário desativado ou de empresa bloqueada; e só há contas de teste.
 
-**Risco aceito:** um XSS que passe pela CSP leva um token válido por até 30 dias (DEC-50 e DEC-52), e trocar a senha ainda não derruba as sessões abertas.
+**Risco aceito:** um XSS que passe pela CSP leva um token válido por até 30 dias (DEC-50 e DEC-52). Desde o SEG-01 (12/11/2026), trocar ou redefinir a senha do usuário derruba esse token; o de admin ainda não tem esse recurso.
 
 **Revisar quando acontecer o primeiro destes:** domínio próprio do Agesto, primeiro cliente pagante ou fim da fase de contas de teste. Nesse ponto, migrar o web para cookie httpOnly.
 
 **Até lá:**
 - não remover nem afrouxar a CSP de `web/public/_headers`;
 - não usar `dangerouslySetInnerHTML` com dado de usuário ou da API;
-- pendências que reduzem o risco sem migrar: encurtar a validade do token de admin (`Admin__ExpiresMinutes`) e fazer a troca de senha derrubar as sessões abertas (versão do token, também em aberto nas DEC-50 e DEC-52).
+- pendência que reduz o risco sem migrar: encurtar a validade do token de admin (`Admin__ExpiresMinutes`). A troca de senha derrubar as sessões abertas foi feita no SEG-01 (12/11/2026).
 
 **Impacto:** nenhum agora. A migração futura mexe na emissão do token, na autenticação da API, no CORS e no cliente HTTP do web.

@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MicroERP.Api.Authorization;
 using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Models;
@@ -156,7 +157,9 @@ public sealed class AuthService : IAuthService
         return GenerateToken(usuario);
     }
 
-    public async Task TrocarSenhaAsync(long usuarioId, TrocarSenhaRequest request, CancellationToken cancellationToken)
+    // Troca a senha e encerra as outras sessões (SEG-01): a versão de sessão sobe e
+    // quem trocou recebe um token novo para continuar logado neste aparelho.
+    public async Task<AuthResponse> TrocarSenhaAsync(long usuarioId, TrocarSenhaRequest request, CancellationToken cancellationToken)
     {
         var usuario = await _dbContext.Usuarios
             .FirstOrDefaultAsync(u => u.Id == usuarioId, cancellationToken)
@@ -175,8 +178,10 @@ public sealed class AuthService : IAuthService
 
         usuario.Senha = _passwordHasher.HashPassword(usuario, request.NovaSenha);
         usuario.DeveTrocarSenha = false;
+        usuario.VersaoSessao++;
         usuario.UpdatedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync(cancellationToken);
+        return GenerateToken(usuario);
     }
 
     // Registra o aceite da versão vigente dos termos (B6). Só aceita a versão que
@@ -231,7 +236,8 @@ public sealed class AuthService : IAuthService
             new(JwtRegisteredClaimNames.Email, usuario.Email),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("empresaId", usuario.EmpresaId.ToString()),
-            new("perfil", usuario.Perfil.ToString())
+            new("perfil", usuario.Perfil.ToString()),
+            new(TokenRevalidator.ClaimVersaoSessao, usuario.VersaoSessao.ToString())
         };
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret));

@@ -61,12 +61,17 @@ describe('AuthProvider (mock)', () => {
     expect(result.current.token).toBeTruthy()
     expect(result.current.deveTrocarSenha).toBe(true)
     expect(await db.getMeta('deveTrocarSenha')).toBe('1')
+    const tokenAntes = result.current.token
 
     await act(async () => {
       await result.current.trocarSenha(DEMO_SENHA_PROVISORIA, 'MinhaSenha9')
     })
     expect(result.current.deveTrocarSenha).toBe(false)
     expect(await db.getMeta('deveTrocarSenha')).toBe('0')
+    // SEG-01: a troca derruba o token antigo; o app passa a usar o novo, sem apagar os dados.
+    expect(result.current.token).toBeTruthy()
+    expect(result.current.token).not.toBe(tokenAntes)
+    expect((await db.getClientes()).length).toBeGreaterThan(0)
 
     await act(async () => {
       await result.current.logout()

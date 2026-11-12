@@ -122,8 +122,9 @@ public sealed class AuthController : ApiControllerBase
 
         try
         {
-            await _authService.TrocarSenhaAsync(usuarioId, request, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Senha alterada com sucesso." });
+            // As outras sessões caem (SEG-01); este aparelho segue com o token novo.
+            var response = await _authService.TrocarSenhaAsync(usuarioId, request, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Senha alterada com sucesso.", Data = response });
         }
         catch (SenhaAtualInvalidaException ex)
         {

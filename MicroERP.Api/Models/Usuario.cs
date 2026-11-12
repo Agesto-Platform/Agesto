@@ -26,6 +26,10 @@ public class Usuario
     // Senhas erradas seguidas no login; ao chegar no limite a conta fica bloqueada até BloqueadoAte.
     public int TentativasLoginFalhas { get; set; }
     public DateTime? BloqueadoAte { get; set; }
+    // Versão de sessão (SEG-01): vai no token e sobe quando a senha muda ou o acesso é
+    // desativado; o TokenRevalidator recusa token com versão antiga, então trocar a senha
+    // encerra as outras sessões e reativar não faz o token antigo voltar a valer.
+    public int VersaoSessao { get; set; }
     // Exclusão da própria conta (LGPD): a linha fica anonimizada, o histórico continua apontando para ela.
     public DateTime? DeletedAt { get; set; }
     public Empresa? Empresa { get; set; }

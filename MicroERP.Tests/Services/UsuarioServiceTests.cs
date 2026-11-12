@@ -81,6 +81,9 @@ public sealed class UsuarioServiceTests
 
         var reativado = await service.SetAtivoAsync(Empresa, DonoId, 101, true, CancellationToken.None);
         Assert.True(reativado.Ativo);
+
+        // SEG-01: desativar sobe a versão de sessão; reativar não volta o token antigo.
+        Assert.Equal(1, (await db.Usuarios.SingleAsync(u => u.Id == 101)).VersaoSessao);
     }
 
     [Fact]
@@ -151,6 +154,7 @@ public sealed class UsuarioServiceTests
         var redefinida = await service.RedefinirSenhaAsync(Empresa, 101, CancellationToken.None);
 
         Assert.True(redefinida.Usuario.DeveTrocarSenha);
+        Assert.Equal(1, (await db.Usuarios.SingleAsync(u => u.Id == 101)).VersaoSessao); // SEG-01
         var login = await new AuthService(db, Configuracao())
             .LoginAsync(new AuthLoginRequest { Email = "carla@teste.com", Senha = redefinida.SenhaProvisoria }, CancellationToken.None);
         Assert.NotNull(login);
