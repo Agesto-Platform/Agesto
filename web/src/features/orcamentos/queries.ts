@@ -1,12 +1,31 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
-import type { Orcamento, OrcamentoInput, StatusOrcamento } from '../../types/api'
+import { useListaPaginada } from '../../lib/paginacao'
+import type { Orcamento, OrcamentoInput, OrcamentoResumo, StatusOrcamento } from '../../types/api'
 
 const KEY = ['orcamento', 'list'] as const
 const PATH = '/api/orcamento'
 
-export function useOrcamentos() {
-  return useQuery({ queryKey: KEY, queryFn: () => api.get<Orcamento[]>(PATH) })
+/** PAG-01 fase 3: 50 por vez, os mais recentes primeiro, com busca pelo cliente. */
+export function useOrcamentosPaginados(filtros: { busca?: string; status?: StatusOrcamento }) {
+  return useListaPaginada<Orcamento>(KEY, PATH, filtros)
+}
+
+/** Quantidade e valor por status, para o cartão do topo, sem baixar a lista. */
+export function useOrcamentoResumo() {
+  return useQuery({
+    queryKey: [...KEY, 'resumo'],
+    queryFn: () => api.get<OrcamentoResumo[]>(`${PATH}/resumo`),
+  })
+}
+
+/** Um orçamento pelo id: para o recém-criado que ainda não está nas páginas carregadas. */
+export function useOrcamento(id: number | null) {
+  return useQuery({
+    queryKey: [...KEY, 'detalhe', id],
+    queryFn: () => api.get<Orcamento>(`${PATH}/${id}`),
+    enabled: id !== null,
+  })
 }
 
 export function useCreateOrcamento() {

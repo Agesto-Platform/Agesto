@@ -14,24 +14,25 @@ public sealed class ServicoRepository : IServicoRepository
         _dbContext = dbContext;
     }
 
-    public async Task<List<Servico>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
+    public Task<(List<Servico> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho,
+        string? busca, bool? revisado, CancellationToken cancellationToken)
     {
-        return await Listagem(empresaId).ToListAsync(cancellationToken);
-    }
-
-    public Task<(List<Servico> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, CancellationToken cancellationToken)
-    {
-        return Listagem(empresaId).ToPaginaAsync(pagina, tamanho, cancellationToken);
-    }
-
-    private IQueryable<Servico> Listagem(long empresaId)
-    {
-        return _dbContext.Servicos
+        var query = _dbContext.Servicos
             .AsNoTracking()
+            .Where(s => s.EmpresaId == empresaId && s.DeletedAt == null);
+        // PAG-01: revisado=false traz só os criados pelo agente que o Dono ainda não revisou.
+        if (revisado.HasValue) query = query.Where(s => s.Revisado == revisado.Value);
+        if (!string.IsNullOrWhiteSpace(busca))
+        {
+            var termo = FuncoesSql.NormalizarTermo(busca);
+            query = query.Where(s =>
+                FuncoesSql.Translate(s.Descricao.ToLower(), FuncoesSql.ComAcento, FuncoesSql.SemAcento).Contains(termo));
+        }
+        return query
             .Include(s => s.CriadoPor)
-            .Where(s => s.EmpresaId == empresaId && s.DeletedAt == null)
             .OrderBy(s => s.Descricao)
-            .ThenBy(s => s.Id);
+            .ThenBy(s => s.Id)
+            .ToPaginaAsync(pagina, tamanho, cancellationToken);
     }
 
     public async Task<Servico?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)

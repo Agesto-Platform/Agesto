@@ -22,6 +22,7 @@ import { ApiError } from '../../lib/api'
 import { dataCurta, hora } from '../../lib/format'
 import { useConfiguracao } from '../parametrizacao/queries'
 import { useServicoSugeridos, useUpdateServicoSugeridos } from '../servicos/sugeridosQueries'
+import { ProdutoField, ServicoField } from '../../components/CamposDeEscolha'
 import type { Atendimento, Produto, Servico, StatusAtendimento, Usuario } from '../../types/api'
 
 type Tipo = 'produto' | 'servico' | 'avulso'
@@ -48,16 +49,12 @@ function toLocalInput(iso: string | null): string {
 export function AtendimentoDetail({
   atendimento,
   responsaveis,
-  produtos,
-  servicos,
   onUpdate,
   onDelete,
   busy,
 }: {
   atendimento: Atendimento
   responsaveis: Usuario[]
-  produtos: Produto[]
-  servicos: Servico[]
   onUpdate: (status: StatusAtendimento, dataAgendada: string | null, responsavelId: number) => void
   onDelete: () => void
   busy: { update: boolean; delete: boolean }
@@ -82,7 +79,9 @@ export function AtendimentoDetail({
   const responsavelAtual = responsaveis.find((u) => u.id === at.usuarioId)?.nome ?? '—'
 
   const [tipo, setTipo] = useState<Tipo>('produto')
-  const [refId, setRefId] = useState('')
+  // PAG-01 fase 2: produto e serviço vêm da busca no servidor, inteiros.
+  const [produtoSel, setProdutoSel] = useState<Produto | null>(null)
+  const [servicoSel, setServicoSel] = useState<Servico | null>(null)
   const [descricao, setDescricao] = useState('')
   const [qtd, setQtd] = useState<number | undefined>(1)
   const [preco, setPreco] = useState<number | undefined>(undefined)
@@ -90,7 +89,7 @@ export function AtendimentoDetail({
   const [draftError, setDraftError] = useState<string | null>(null)
 
   // Materiais sugeridos do serviço selecionado no formulário de adicionar item.
-  const servicoSelId = tipo === 'servico' && refId ? Number(refId) : 0
+  const servicoSelId = tipo === 'servico' && servicoSel ? servicoSel.id : 0
   const sugeridos = useServicoSugeridos(servicoSelId)
 
   // kit-04: salvar os materiais deste atendimento como sugeridos de um serviço.
@@ -99,6 +98,8 @@ export function AtendimentoDetail({
     .filter((p) => p.produtoId != null)
     .map((p) => ({ produtoId: p.produtoId as number, quantidadePadrao: p.quantidade }))
   const servicosDoAtendimento = [...new Set((servs.data ?? []).map((s) => s.servicoId))]
+  const nomeServico = (sid: number) =>
+    servs.data?.find((s) => s.servicoId === sid)?.servicoDescricao ?? `Serviço #${sid}`
   const alvo = alvoServicoId || servicosDoAtendimento[0] || 0
   const salvarSugeridos = useUpdateServicoSugeridos(alvo)
 
@@ -110,24 +111,25 @@ export function AtendimentoDetail({
 
   function changeTipo(t: Tipo) {
     setTipo(t)
-    setRefId('')
+    setProdutoSel(null)
+    setServicoSel(null)
     setDescricao('')
     setPreco(undefined)
     setCusto(undefined)
     setDraftError(null)
   }
-  function pickProduto(id: string) {
-    setRefId(id)
-    setPreco(produtos.find((p) => p.id === Number(id))?.preco)
+  function pickProduto(p: Produto | null) {
+    setProdutoSel(p)
+    setPreco(p?.preco)
   }
-  function pickServico(id: string) {
-    setRefId(id)
-    const s = servicos.find((x) => x.id === Number(id))
+  function pickServico(s: Servico | null) {
+    setServicoSel(s)
     setPreco(s?.valorHora ?? s?.valorEmpreitada ?? undefined)
   }
 
   function resetDraft() {
-    setRefId('')
+    setProdutoSel(null)
+    setServicoSel(null)
     setDescricao('')
     setQtd(1)
     setPreco(undefined)
@@ -141,12 +143,12 @@ export function AtendimentoDetail({
       setDraftError(e instanceof ApiError ? e.message : 'Não foi possível adicionar.')
 
     if (tipo === 'servico') {
-      if (!refId) return setDraftError('Escolha um serviço.')
+      if (!servicoSel) return setDraftError('Escolha um serviço.')
       // Empreitada não multiplica pela quantidade (DEC-04): cada unidade vira uma linha.
-      const empreitada = servicos.find((s) => s.id === Number(refId))?.tipoCobranca === 'Empreitada'
+      const empreitada = servicoSel.tipoCobranca === 'Empreitada'
       if (empreitada && qtd > 20) return setDraftError('Na empreitada, adicione até 20 unidades por vez.')
       const linhas = empreitada ? qtd : 1
-      const body = { atendimentoId: at.id, servicoId: Number(refId), precoUnitario: preco ?? null, quantidade: empreitada ? 1 : qtd }
+      const body = { atendimentoId: at.id, servicoId: servicoSel.id, precoUnitario: preco ?? null, quantidade: empreitada ? 1 : qtd }
       // Uma de cada vez: cada inclusão recalcula o total do atendimento no servidor.
       void (async () => {
         try {
@@ -164,8 +166,8 @@ export function AtendimentoDetail({
     let produtoId: number | null = null
     let desc: string | null = null
     if (tipo === 'produto') {
-      if (!refId) return setDraftError('Escolha um produto.')
-      produtoId = Number(refId)
+      if (!produtoSel) return setDraftError('Escolha um produto.')
+      produtoId = produtoSel.id
     } else {
       if (!descricao.trim()) return setDraftError('Descreva o item avulso.')
       desc = descricao.trim()
@@ -179,12 +181,11 @@ export function AtendimentoDetail({
   function addSugeridos() {
     const list = sugeridos.data ?? []
     for (const s of list) {
-      const p = produtos.find((x) => x.id === s.produtoId)
       addProd.mutate({
         atendimentoId: at.id,
         produtoId: s.produtoId,
         descricao: null,
-        precoUnitario: p?.preco ?? 0,
+        precoUnitario: s.produtoPreco ?? 0,
         custo: null,
         quantidade: s.quantidadePadrao,
       })
@@ -206,7 +207,7 @@ export function AtendimentoDetail({
     ...(servs.data ?? []).map((it) => ({
       key: `s${it.id}`,
       tipo: 'servico' as const,
-      label: servicos.find((s) => s.id === it.servicoId)?.descricao ?? 'Serviço',
+      label: it.servicoDescricao ?? 'Serviço',
       qtd: it.quantidade,
       preco: it.precoUnitario,
       subtotal: it.subtotal,
@@ -217,9 +218,7 @@ export function AtendimentoDetail({
       key: `p${it.id}`,
       tipo: (it.produtoId != null ? 'produto' : 'avulso') as Tipo,
       label:
-        it.produtoId != null
-          ? produtos.find((p) => p.id === it.produtoId)?.nome ?? 'Produto'
-          : it.descricao ?? 'Item avulso',
+        it.produtoId != null ? it.produtoNome ?? it.descricao ?? 'Produto' : it.descricao ?? 'Item avulso',
       qtd: it.quantidade,
       preco: it.precoUnitario,
       subtotal: it.subtotal,
@@ -309,30 +308,9 @@ export function AtendimentoDetail({
           ]}
         />
         {tipo === 'produto' && (
-          <SelectField
-            label="Produto"
-            value={refId}
-            onChange={pickProduto}
-            options={[
-              { value: '', label: 'Escolha o produto…' },
-              ...produtos.map((p) => ({
-                value: String(p.id),
-                label: p.nome + (controlaEstoque ? ` (${p.quantidadeEstoque} em estoque)` : ''),
-              })),
-            ]}
-          />
+          <ProdutoField value={produtoSel} onChange={pickProduto} mostrarEstoque={controlaEstoque} />
         )}
-        {tipo === 'servico' && (
-          <SelectField
-            label="Serviço"
-            value={refId}
-            onChange={pickServico}
-            options={[
-              { value: '', label: 'Escolha o serviço…' },
-              ...servicos.map((s) => ({ value: String(s.id), label: s.descricao })),
-            ]}
-          />
-        )}
+        {tipo === 'servico' && <ServicoField value={servicoSel} onChange={pickServico} />}
         {tipo === 'servico' && servicoSelId > 0 && (sugeridos.data?.length ?? 0) > 0 && (
           <div className="field">
             <span className="label">Materiais sugeridos ({sugeridos.data!.length})</span>
@@ -379,10 +357,7 @@ export function AtendimentoDetail({
               label="Serviço"
               value={String(alvo)}
               onChange={(v) => setAlvoServicoId(Number(v))}
-              options={servicosDoAtendimento.map((sid) => ({
-                value: String(sid),
-                label: servicos.find((s) => s.id === sid)?.descricao ?? `Serviço #${sid}`,
-              }))}
+              options={servicosDoAtendimento.map((sid) => ({ value: String(sid), label: nomeServico(sid) }))}
             />
             <div>
               <Button onClick={salvarComoSugeridos} disabled={salvarSugeridos.isPending}>

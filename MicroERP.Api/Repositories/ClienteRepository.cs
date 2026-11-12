@@ -14,11 +14,6 @@ public sealed class ClienteRepository : IClienteRepository
         _dbContext = dbContext;
     }
 
-    public async Task<List<Cliente>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
-    {
-        return await Listagem(empresaId).ToListAsync(cancellationToken);
-    }
-
     public Task<(List<Cliente> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho, string? busca, CancellationToken cancellationToken)
     {
         var query = Listagem(empresaId);

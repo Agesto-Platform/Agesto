@@ -4,6 +4,7 @@ using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Enums;
 using MicroERP.Api.Models;
+using MicroERP.Api.Repositories;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services.Exceptions;
 using MicroERP.Api.Services.Interfaces;
@@ -114,37 +115,16 @@ public sealed class SyncService : ISyncService
         var orcamentosDb = await _dbContext.Orcamentos
             .AsNoTracking()
             .Where(o => o.EmpresaId == empresaId && o.DeletedAt == null && o.UpdatedAt > desde)
+            .Include(o => o.Cliente)
             .Include(o => o.Itens)
             .OrderBy(o => o.DataRegistro)
             .ToListAsync(cancellationToken);
+        // PAG-01: nome do cliente e rótulos dos itens, em lote (o mesmo mapeamento do web).
+        var rotulos = await OrcamentoRepository.CarregarRotulosAsync(
+            _dbContext, empresaId, orcamentosDb.SelectMany(o => o.Itens).Where(i => i.DeletedAt == null), cancellationToken);
 
         var orcamentos = orcamentosDb
-            .Select(o => new OrcamentoResponse
-            {
-                Id = o.Id,
-                Uuid = o.Uuid.ToString(),
-                ClienteId = o.ClienteId,
-                Status = o.Status,
-                ValorTotal = o.ValorTotal,
-                DataRegistro = o.DataRegistro,
-                AtendimentoConvertidoId = o.AtendimentoConvertidoId,
-                CreatedAt = o.CreatedAt,
-                UpdatedAt = o.UpdatedAt,
-                Itens = o.Itens
-                    .Where(i => i.DeletedAt == null)
-                    .Select(i => new ItemOrcamentoResponse
-                    {
-                        Id = i.Id,
-                        ProdutoId = i.ProdutoId,
-                        ServicoId = i.ServicoId,
-                        Descricao = i.Descricao,
-                        Quantidade = i.Quantidade,
-                        PrecoUnitario = i.PrecoUnitario,
-                        Subtotal = i.Subtotal,
-                        Custo = restringirDadosSensiveis ? null : i.Custo
-                    })
-                    .ToList()
-            })
+            .Select(o => OrcamentoService.MapResponse(o, rotulos, ocultarCusto: restringirDadosSensiveis))
             .ToList();
 
         // Materiais sugeridos (kit) de todos os serviços da empresa — o agente

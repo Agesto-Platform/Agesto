@@ -44,6 +44,7 @@ function resolveSugeridos(servicoId: number): ServicoSugerido[] {
   return (sugeridosPorServico.get(servicoId) ?? []).map((i) => ({
     produtoId: i.produtoId,
     produtoNome: produtoStore.get(i.produtoId)?.nome ?? '',
+    produtoPreco: produtoStore.get(i.produtoId)?.preco ?? 0,
     quantidadePadrao: i.quantidadePadrao,
   }))
 }

@@ -20,19 +20,25 @@ public sealed class OrcamentoController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse>> GetAll([FromQuery] PaginacaoQuery paginacao, [FromQuery] OrcamentoFiltroQuery filtro, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
 
-        if (paginacao.Informada)
-        {
-            var pagina = await _orcamentoService.GetPaginaAsync(empresaId, paginacao, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Orçamentos encontrados.", Data = pagina });
-        }
+        // PAG-01 fase 3: a lista é sempre paginada (sem parâmetros, página 1 com 20).
+        var pagina = await _orcamentoService.GetPaginaAsync(empresaId, paginacao, filtro, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Orçamentos encontrados.", Data = pagina });
+    }
 
-        var orcamentos = await _orcamentoService.GetAllAsync(empresaId, cancellationToken);
-        return Ok(new ApiResponse { Success = true, Message = "Orçamentos encontrados.", Data = orcamentos });
+    // PAG-01: card de funil da tela de Orçamentos (quantidade e valor por status).
+    [HttpGet("resumo")]
+    public async Task<ActionResult<ApiResponse>> Resumo(CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        var resumo = await _orcamentoService.ResumirPorStatusAsync(empresaId, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Resumo encontrado.", Data = resumo });
     }
 
     [HttpGet("{id:long}")]

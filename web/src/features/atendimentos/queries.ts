@@ -10,14 +10,22 @@ import type {
   ItemProdutoInput,
   ItemServicoResp,
   ItemServicoInput,
+  Pagina,
   StatusAtendimento,
 } from '../../types/api'
 
 const LIST = ['atendimento', 'list'] as const
 const PATH = '/api/atendimento'
 
-export function useAtendimentos() {
-  return useQuery({ queryKey: LIST, queryFn: () => api.get<Atendimento[]>(PATH) })
+/**
+ * PAG-01 fase 2: os últimos atendimentos registrados, para o Dashboard, sem baixar
+ * a lista inteira. Fica sob LIST: as mutações recarregam.
+ */
+export function useUltimosAtendimentos(quantidade = 6) {
+  return useQuery({
+    queryKey: [...LIST, 'ultimos', quantidade],
+    queryFn: () => api.get<Pagina<Atendimento>>(`${PATH}?pagina=1&tamanho=${quantidade}&ordem=registro`),
+  })
 }
 
 /** PAG-01: lista paginada no servidor, com aba (status), busca e cliente. */

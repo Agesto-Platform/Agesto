@@ -1,17 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from './api'
 
 /**
- * Fábrica de hooks de CRUD para um recurso REST no padrão do backend
- * (GET lista, POST, PUT/{id}, DELETE/{id}). Reusa o cliente de API e
- * invalida a lista após cada mutação.
+ * Fábrica de hooks de mutação para um recurso REST no padrão do backend
+ * (POST, PUT/{id}, DELETE/{id}). Invalida a chave da lista após cada mutação.
+ * A lista em si é sempre paginada (PAG-01 fase 3): `useListaPaginada` e
+ * `useBuscaRapida`, em lib/paginacao, ficam sob a mesma chave.
  */
 export function createResource<TResp, TInput>(path: string, key: string) {
   const listKey = [key, 'list'] as const
-
-  function useList() {
-    return useQuery({ queryKey: listKey, queryFn: () => api.get<TResp[]>(path) })
-  }
 
   function useCreate() {
     const qc = useQueryClient()
@@ -38,5 +35,5 @@ export function createResource<TResp, TInput>(path: string, key: string) {
     })
   }
 
-  return { useList, useCreate, useUpdate, useRemove }
+  return { useCreate, useUpdate, useRemove }
 }

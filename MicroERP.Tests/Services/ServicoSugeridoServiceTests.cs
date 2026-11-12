@@ -40,11 +40,13 @@ public sealed class ServicoSugeridoServiceTests
         ], CancellationToken.None);
 
         Assert.Equal(2, res.Count);
+        Assert.Equal(3m, res.Single(r => r.ProdutoId == 10).ProdutoPreco); // PAG-01: preço para lançar o kit
 
         var got = await svc.GetByServicoAsync(1, 1, CancellationToken.None);
         Assert.Equal(2, got.Count);
         var t = got.Single(g => g.ProdutoId == 10);
         Assert.Equal("T 25mm", t.ProdutoNome);
+        Assert.Equal(3m, t.ProdutoPreco);
         Assert.Equal(2, t.QuantidadePadrao);
     }
 

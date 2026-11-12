@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { Cliente, AtendimentoInput, StatusAtendimento, Usuario } from '../../types/api'
 import { Button, SelectField, TextField } from '../../components/ui'
+import { ClienteField } from '../../components/CamposDeEscolha'
 
 const STATUS_OPCOES: { value: StatusAtendimento; label: string }[] = [
   { value: 'Pendente', label: 'Pendente' },
@@ -9,21 +10,20 @@ const STATUS_OPCOES: { value: StatusAtendimento; label: string }[] = [
 ]
 
 export function AtendimentoForm({
-  clientes,
   responsaveis,
   onSubmit,
   submitting,
   serverError,
   onCancel,
 }: {
-  clientes: Cliente[]
   responsaveis: Usuario[]
   onSubmit: (input: AtendimentoInput) => void
   submitting: boolean
   serverError?: string | null
   onCancel: () => void
 }) {
-  const [clienteId, setClienteId] = useState('')
+  // PAG-01 fase 2: o cliente vem da busca no servidor, não de uma lista inteira.
+  const [cliente, setCliente] = useState<Cliente | null>(null)
   const [status, setStatus] = useState<StatusAtendimento>('Pendente')
   const [agenda, setAgenda] = useState('')
   const [responsavel, setResponsavel] = useState('')
@@ -31,13 +31,13 @@ export function AtendimentoForm({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!clienteId) {
+    if (!cliente) {
       setError('Selecione um cliente.')
       return
     }
     setError(null)
     onSubmit({
-      clienteId: Number(clienteId),
+      clienteId: cliente.id,
       status,
       dataAgendada: agenda ? new Date(agenda).toISOString() : null,
       responsavelId: responsavel ? Number(responsavel) : null,
@@ -53,17 +53,7 @@ export function AtendimentoForm({
           </p>
         )}
 
-        <SelectField
-          label="Cliente"
-          required
-          value={clienteId}
-          onChange={setClienteId}
-          error={error ?? undefined}
-          options={[
-            { value: '', label: 'Selecione…' },
-            ...clientes.map((c) => ({ value: String(c.id), label: c.nome })),
-          ]}
-        />
+        <ClienteField required value={cliente} onChange={setCliente} error={error ?? undefined} />
 
         <SelectField label="Status" value={status} onChange={setStatus} options={STATUS_OPCOES} />
 

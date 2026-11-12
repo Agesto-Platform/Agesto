@@ -57,6 +57,7 @@ public sealed class ItemProdutoService : IItemProdutoService
 
         decimal precoUnitario;
         string? descricao;
+        string? produtoNome = null;
         var baixouEstoque = false;
 
         if (request.ProdutoId.HasValue)
@@ -80,6 +81,7 @@ public sealed class ItemProdutoService : IItemProdutoService
 
             precoUnitario = request.PrecoUnitario ?? produto.Preco;
             descricao = string.IsNullOrWhiteSpace(request.Descricao) ? produto.Nome : request.Descricao;
+            produtoNome = produto.Nome;
         }
         else
         {
@@ -111,7 +113,7 @@ public sealed class ItemProdutoService : IItemProdutoService
 
         await RecalculateTotalAsync(atendimento, cancellationToken);
 
-        return MapResponse(item);
+        return MapResponse(item, produtoNome);
     }
 
     public async Task<ItemProdutoResponse> UpdateAsync(long empresaId, long id, ItemProdutoUpdateRequest request, CancellationToken cancellationToken)
@@ -200,7 +202,10 @@ public sealed class ItemProdutoService : IItemProdutoService
         await _atendimentoRepository.SaveChangesAsync(cancellationToken);
     }
 
-    private static ItemProdutoResponse MapResponse(ItemProduto item)
+    // produtoNome: o já carregado pela operação; senão o que veio junto na consulta do item.
+    private static ItemProdutoResponse MapResponse(ItemProduto item) => MapResponse(item, item.Produto?.Nome);
+
+    private static ItemProdutoResponse MapResponse(ItemProduto item, string? produtoNome)
     {
         return new ItemProdutoResponse
         {
@@ -213,6 +218,7 @@ public sealed class ItemProdutoService : IItemProdutoService
             Descricao = item.Descricao,
             AtendimentoId = item.AtendimentoId,
             ProdutoId = item.ProdutoId,
+            ProdutoNome = item.ProdutoId.HasValue ? produtoNome : null,
             CreatedAt = item.CreatedAt,
             UpdatedAt = item.UpdatedAt
         };

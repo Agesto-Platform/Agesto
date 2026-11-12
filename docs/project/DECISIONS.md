@@ -837,6 +837,8 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Impacto:** sem migration. A paginação é feita no banco e a ordenação ganhou desempate por `Id`.
 
+**Atualização (PAG-01, 12/11/2026):** a paginação ficou obrigatória. Sem `?pagina=&tamanho=`, as cinco listas devolvem a página 1 com 20; o teto continua 100. O web deixou de baixar listas inteiras: as telas carregam de 50 em 50, os campos de escolha de cliente, produto e serviço buscam no servidor, e os nomes de cliente e itens vêm nas respostas. Novos: busca em produtos, serviços e orçamentos, `ids` em produtos, `revisado` em serviços, `ordem=registro` em atendimentos e `GET /api/orcamento/resumo`. Usuários continua sem paginação.
+
 ---
 
 ## DEC-43 — Bloqueio da conta após senhas erradas

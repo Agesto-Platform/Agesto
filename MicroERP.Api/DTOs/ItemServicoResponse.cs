@@ -1,3 +1,5 @@
+using MicroERP.Api.Enums;
+
 namespace MicroERP.Api.DTOs;
 
 public sealed class ItemServicoResponse
@@ -9,6 +11,9 @@ public sealed class ItemServicoResponse
     public decimal Subtotal { get; set; }
     public long AtendimentoId { get; set; }
     public long ServicoId { get; set; }
+    // PAG-01: descrição e cobrança do serviço, mesmo já excluído do catálogo.
+    public string? ServicoDescricao { get; set; }
+    public TipoCobranca? TipoCobranca { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

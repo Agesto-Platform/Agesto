@@ -25,7 +25,7 @@ function orcamento(status: StatusOrcamento, extra: Partial<Orcamento> = {}): Orc
 function setup(o: Orcamento) {
   const props = { onChangeStatus: vi.fn(), onConvert: vi.fn(), onEdit: vi.fn() }
   render(
-    <OrcamentoDetail orcamento={o} clienteNome="Vó Joana" produtos={[]} servicos={[]} busy={{ status: false, convert: false }} {...props} />,
+    <OrcamentoDetail orcamento={o} clienteNome="Vó Joana" busy={{ status: false, convert: false }} {...props} />,
   )
   return props
 }
@@ -49,6 +49,20 @@ describe('OrcamentoDetail', () => {
     await userEvent.click(screen.getByRole('button', { name: /Converter em atendimento/i }))
     expect(p.onConvert).toHaveBeenCalled()
     expect(screen.getByText('preencha o custo')).toBeInTheDocument()
+  })
+
+  it('nomeia os itens de catálogo pelo que vem no item, sem baixar o catálogo (PAG-01)', () => {
+    setup(
+      orcamento('Rascunho', {
+        itens: [
+          { id: 2, produtoId: 5, servicoId: null, descricao: null, produtoNome: 'Cano de cobre', quantidade: 2, precoUnitario: 40, subtotal: 80, custo: null },
+          { id: 3, produtoId: null, servicoId: 8, descricao: null, servicoDescricao: 'Instalação split', tipoCobranca: 'Empreitada', quantidade: 1, precoUnitario: 350, subtotal: 350, custo: null },
+        ],
+      }),
+    )
+    expect(screen.getByText('Cano de cobre')).toBeInTheDocument()
+    expect(screen.getByText('Instalação split')).toBeInTheDocument()
+    expect(screen.getByText(/Serviço · Empreitada/)).toBeInTheDocument()
   })
 
   it('convertido: não oferece converter de novo', () => {

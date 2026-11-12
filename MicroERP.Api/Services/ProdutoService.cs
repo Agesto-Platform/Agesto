@@ -15,16 +15,10 @@ public sealed class ProdutoService : IProdutoService
         _produtoRepository = produtoRepository;
     }
 
-    public async Task<IReadOnlyList<ProdutoResponse>> GetAllAsync(long empresaId, CancellationToken cancellationToken)
-    {
-        var produtos = await _produtoRepository.GetAllAsync(empresaId, cancellationToken);
-        return produtos.Select(MapResponse).ToList();
-    }
-
-    public async Task<PaginaResponse<ProdutoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, CancellationToken cancellationToken)
+    public async Task<PaginaResponse<ProdutoResponse>> GetPaginaAsync(long empresaId, PaginacaoQuery paginacao, ProdutoFiltroQuery? filtro, CancellationToken cancellationToken)
     {
         var (itens, total) = await _produtoRepository.GetPaginaAsync(
-            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, cancellationToken);
+            empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao, filtro?.Busca, filtro?.LerIds(), cancellationToken);
         return new PaginaResponse<ProdutoResponse>
         {
             Itens = itens.Select(MapResponse).ToList(),

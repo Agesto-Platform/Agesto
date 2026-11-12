@@ -143,7 +143,7 @@ public sealed class OrcamentoServiceTests
     }
 
     [Fact]
-    public async Task GetAllAsync_IsolaPorEmpresa()
+    public async Task GetPaginaAsync_IsolaPorEmpresa()
     {
         await using var db = CreateContext();
         SeedCliente(db, id: 1, empresaId: 1);
@@ -154,10 +154,10 @@ public sealed class OrcamentoServiceTests
         await db.SaveChangesAsync();
 
         var service = BuildService(db);
-        var daEmpresa1 = await service.GetAllAsync(1, CancellationToken.None);
+        var daEmpresa1 = await service.GetPaginaAsync(1, new PaginacaoQuery(), null, CancellationToken.None);
 
-        Assert.Single(daEmpresa1);
-        Assert.Equal(1, daEmpresa1[0].Id);
+        Assert.Equal(1, daEmpresa1.Total);
+        Assert.Equal(1, Assert.Single(daEmpresa1.Itens).Id);
     }
 
     [Fact]
