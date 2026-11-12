@@ -22,7 +22,7 @@ public sealed class AuthControllerTests
     public async Task Register_SemChaveConfigurada_RetornaNotFound()
     {
         var auth = new Mock<IAuthService>();
-        var controller = new AuthController(auth.Object, Config(null));
+        var controller = new AuthController(auth.Object, Mock.Of<IRedefinicaoSenhaService>(), Config(null));
 
         var result = await controller.Register(Request, "qualquer", CancellationToken.None);
 
@@ -37,7 +37,7 @@ public sealed class AuthControllerTests
     public async Task Register_ChaveAusenteOuErrada_RetornaForbidden(string? enviada)
     {
         var auth = new Mock<IAuthService>();
-        var controller = new AuthController(auth.Object, Config("chave-certa"));
+        var controller = new AuthController(auth.Object, Mock.Of<IRedefinicaoSenhaService>(), Config("chave-certa"));
 
         var result = await controller.Register(Request, enviada, CancellationToken.None);
 
@@ -49,7 +49,7 @@ public sealed class AuthControllerTests
     public async Task Register_ChaveCorreta_Cadastra()
     {
         var auth = new Mock<IAuthService>();
-        var controller = new AuthController(auth.Object, Config("chave-certa"));
+        var controller = new AuthController(auth.Object, Mock.Of<IRedefinicaoSenhaService>(), Config("chave-certa"));
 
         var result = await controller.Register(Request, "chave-certa", CancellationToken.None);
 
@@ -63,7 +63,7 @@ public sealed class AuthControllerTests
         var auth = new Mock<IAuthService>();
         auth.Setup(a => a.LoginAsync(It.IsAny<AuthLoginRequest>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ContaBloqueadaException("Conta bloqueada por excesso de tentativas. Tente de novo em 15 min."));
-        var controller = new AuthController(auth.Object, Config(null));
+        var controller = new AuthController(auth.Object, Mock.Of<IRedefinicaoSenhaService>(), Config(null));
 
         var result = await controller.Login(new AuthLoginRequest { Email = "a@b.com", Senha = "x" }, CancellationToken.None);
 

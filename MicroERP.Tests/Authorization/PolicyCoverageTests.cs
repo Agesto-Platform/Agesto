@@ -16,6 +16,9 @@ public sealed class PolicyCoverageTests
     [
         "AuthController.Register",
         "AuthController.Login",
+        // Sem login: "Esqueci a senha" (DEC-54). O serviço só atende Dono.
+        "AuthController.EsqueciSenha",
+        "AuthController.RedefinirSenha",
         "AuthController.TrocarSenha",
         "AuthController.AceitarTermos",
         "SyncController.Carga",

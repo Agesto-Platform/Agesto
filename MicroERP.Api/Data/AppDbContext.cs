@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<ServicoItemSugerido> ServicoItemSugeridos => Set<ServicoItemSugerido>();
     public DbSet<AdminPlataforma> AdminsPlataforma => Set<AdminPlataforma>();
     public DbSet<AuditoriaAdmin> AuditoriasAdmin => Set<AuditoriaAdmin>();
+    public DbSet<TokenRedefinicaoSenha> TokensRedefinicaoSenha => Set<TokenRedefinicaoSenha>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -75,6 +76,18 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Email).HasMaxLength(150).IsRequired();
             entity.Property(e => e.Senha).HasMaxLength(255).IsRequired();
             entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        modelBuilder.Entity<TokenRedefinicaoSenha>(entity =>
+        {
+            entity.ToTable("TokensRedefinicaoSenha");
+            entity.Property(e => e.TokenHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.HasIndex(e => e.UsuarioId);
+            entity.HasOne(e => e.Usuario)
+                .WithMany()
+                .HasForeignKey(e => e.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<AuditoriaAdmin>(entity =>
