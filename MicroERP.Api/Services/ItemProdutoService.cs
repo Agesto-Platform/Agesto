@@ -1,4 +1,5 @@
 using MicroERP.Api.DTOs;
+using MicroERP.Api.Enums;
 using MicroERP.Api.Models;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services.Interfaces;
@@ -56,14 +57,16 @@ public sealed class ItemProdutoService : IItemProdutoService
 
         decimal precoUnitario;
         string? descricao;
+        var baixouEstoque = false;
 
         if (request.ProdutoId.HasValue)
         {
             // Item de catalogo: baixa estoque; catalogo sugere o valor (editavel).
+            // Atendimento cancelado nao consome estoque (E2E-04).
             var produto = await _produtoRepository.GetByIdAsync(empresaId, request.ProdutoId.Value, true, cancellationToken);
             if (produto is null) throw new NotFoundException("Produto não encontrado.");
 
-            if (await ControlaEstoqueAsync(empresaId, cancellationToken))
+            if (atendimento.Status != StatusAtendimento.Cancelado && await ControlaEstoqueAsync(empresaId, cancellationToken))
             {
                 if (produto.QuantidadeEstoque < request.Quantidade)
                 {
@@ -72,6 +75,7 @@ public sealed class ItemProdutoService : IItemProdutoService
 
                 produto.QuantidadeEstoque -= request.Quantidade;
                 produto.UpdatedAt = DateTime.UtcNow;
+                baixouEstoque = true;
             }
 
             precoUnitario = request.PrecoUnitario ?? produto.Preco;
@@ -92,6 +96,7 @@ public sealed class ItemProdutoService : IItemProdutoService
             Uuid = Guid.NewGuid(),
             AtendimentoId = request.AtendimentoId,
             ProdutoId = request.ProdutoId,
+            EstoqueBaixado = baixouEstoque,
             Descricao = descricao,
             Custo = request.Custo,
             Quantidade = request.Quantidade,
@@ -114,8 +119,9 @@ public sealed class ItemProdutoService : IItemProdutoService
         var item = await _itemProdutoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
         if (item is null) throw new NotFoundException("Item de produto não encontrado.");
 
-        // Ajuste de estoque apenas para itens de catalogo (com ProdutoId) quando a empresa controla estoque.
-        if (item.ProdutoId.HasValue && await ControlaEstoqueAsync(empresaId, cancellationToken))
+        // Ajusta o estoque so de quem baixou ao ser lancado (E2E-03): a chave de
+        // estoque do momento nao decide, para nao criar nem sumir unidades.
+        if (item.EstoqueBaixado && item.ProdutoId.HasValue)
         {
             var produto = await _produtoRepository.GetByIdAsync(empresaId, item.ProdutoId.Value, true, cancellationToken);
             if (produto is null) throw new NotFoundException("Produto não encontrado.");
@@ -156,9 +162,9 @@ public sealed class ItemProdutoService : IItemProdutoService
         var item = await _itemProdutoRepository.GetByIdAsync(empresaId, id, true, cancellationToken);
         if (item is null) throw new NotFoundException("Item de produto não encontrado.");
 
-        // Devolve estoque apenas para itens de catalogo (avulso nao movimentou
-        // estoque) e apenas quando a empresa controla estoque.
-        if (item.ProdutoId.HasValue && await ControlaEstoqueAsync(empresaId, cancellationToken))
+        // Devolve so o que este item baixou (E2E-03): avulso, lancado com a chave
+        // desligada ou em atendimento cancelado nao movimentou estoque.
+        if (item.EstoqueBaixado && item.ProdutoId.HasValue)
         {
             var produto = await _produtoRepository.GetByIdAsync(empresaId, item.ProdutoId.Value, true, cancellationToken);
             if (produto is not null)
@@ -166,6 +172,7 @@ public sealed class ItemProdutoService : IItemProdutoService
                 produto.QuantidadeEstoque += item.Quantidade;
                 produto.UpdatedAt = DateTime.UtcNow;
             }
+            item.EstoqueBaixado = false;
         }
 
         item.DeletedAt = DateTime.UtcNow;
