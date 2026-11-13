@@ -19,12 +19,14 @@ public sealed class InsightsService : IInsightsService
 
     private readonly IMetricasService _metricasService;
     private readonly IInsightsGerador _gerador;
+    private readonly IUsoIaService _usoIa;
     private readonly ILogger<InsightsService> _logger;
 
-    public InsightsService(IMetricasService metricasService, IInsightsGerador gerador, ILogger<InsightsService> logger)
+    public InsightsService(IMetricasService metricasService, IInsightsGerador gerador, IUsoIaService usoIa, ILogger<InsightsService> logger)
     {
         _metricasService = metricasService;
         _gerador = gerador;
+        _usoIa = usoIa;
         _logger = logger;
     }
 
@@ -38,7 +40,9 @@ public sealed class InsightsService : IInsightsService
 
         var gerados = await _gerador.GerarAsync(metricasJson, cancellationToken);
 
-        // Rastreio de consumo por empresa (DEC-21), até existir o TenantUsage.
+        // Consumo por empresa e dia (DEC-21). Relatórios não têm limite diário;
+        // continuam limitados por hora no rate limiter.
+        await _usoIa.RegistrarRelatorioAsync(empresaId, gerados.TokensEntrada, gerados.TokensSaida, CancellationToken.None);
         _logger.LogInformation(
             "Insights IA gerados: empresa {EmpresaId}, modelo {Modelo}, tokens de entrada {TokensEntrada}, tokens de saída {TokensSaida}",
             empresaId, gerados.Modelo, gerados.TokensEntrada, gerados.TokensSaida);

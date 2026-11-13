@@ -21,7 +21,8 @@ public sealed class InsightsServiceTests
         var gerador = new Mock<IInsightsGerador>();
         gerador.SetupGet(g => g.Habilitado).Returns(false);
 
-        var service = new InsightsService(metricas.Object, gerador.Object, NullLogger<InsightsService>.Instance);
+        var usoIa = new Mock<IUsoIaService>();
+        var service = new InsightsService(metricas.Object, gerador.Object, usoIa.Object, NullLogger<InsightsService>.Instance);
 
         await Assert.ThrowsAsync<InsightsIndisponivelException>(
             () => service.GerarAsync(1, De, Ate, CancellationToken.None));
@@ -54,10 +55,12 @@ public sealed class InsightsServiceTests
                 Modelo = "claude-opus-5-5",
             });
 
-        var service = new InsightsService(metricas.Object, gerador.Object, NullLogger<InsightsService>.Instance);
+        var usoIa = new Mock<IUsoIaService>();
+        var service = new InsightsService(metricas.Object, gerador.Object, usoIa.Object, NullLogger<InsightsService>.Instance);
         var insights = await service.GerarAsync(7, De, Ate, CancellationToken.None);
 
         metricas.Verify(m => m.GetDashboardAsync(7, De, Ate, It.IsAny<CancellationToken>()), Times.Once);
+        usoIa.Verify(u => u.RegistrarRelatorioAsync(7, It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.NotNull(enviado);
         using var json = JsonDocument.Parse(enviado!);
         Assert.Equal(1500m, json.RootElement.GetProperty("rentabilidade").GetProperty("faturamento").GetDecimal());

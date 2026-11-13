@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<AdminPlataforma> AdminsPlataforma => Set<AdminPlataforma>();
     public DbSet<AuditoriaAdmin> AuditoriasAdmin => Set<AuditoriaAdmin>();
     public DbSet<TokenRedefinicaoSenha> TokensRedefinicaoSenha => Set<TokenRedefinicaoSenha>();
+    public DbSet<UsoIa> UsosIa => Set<UsoIa>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -76,6 +77,17 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Email).HasMaxLength(150).IsRequired();
             entity.Property(e => e.Senha).HasMaxLength(255).IsRequired();
             entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        // Consumo da IA por empresa e dia (DEC-21): uma linha por empresa e dia.
+        modelBuilder.Entity<UsoIa>(entity =>
+        {
+            entity.ToTable("UsosIa");
+            entity.HasIndex(e => new { e.EmpresaId, e.Dia }).IsUnique();
+            entity.HasOne(e => e.Empresa)
+                .WithMany()
+                .HasForeignKey(e => e.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TokenRedefinicaoSenha>(entity =>

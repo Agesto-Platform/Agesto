@@ -3,7 +3,7 @@ import { Icon, type IconName } from '../components/Icon'
 import { Mascote, type MascoteApi } from '../components/Mascote'
 import { api, ApiError } from '../lib/api'
 import { periodRange } from '../lib/period'
-import type { AgenteMensagem, AgentePerguntaRequest, AgenteResposta } from '../types/api'
+import type { AgenteMensagem, AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../types/api'
 import type { Period } from './PeriodSwitch'
 import { saudacao, useConta } from './useConta'
 
@@ -21,7 +21,8 @@ const HISTORICO_MAX = 10
 /**
  * Painel do Agente: conversa com a IA (POST /api/agente/perguntar) sobre os
  * números do período escolhido no topo e a agenda dos próximos dias. A
- * conversa vive só aqui no navegador; a API não guarda histórico.
+ * conversa vive só aqui no navegador; a API não guarda histórico. Cada
+ * empresa tem um limite de perguntas por dia (DEC-21), mostrado no rodapé.
  */
 export function AgentPanel({
   period,
@@ -38,6 +39,7 @@ export function AgentPanel({
   const [mensagens, setMensagens] = useState<AgenteMensagem[]>([])
   const [pensando, setPensando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const [uso, setUso] = useState<{ limite: number; restantes: number } | null>(null)
   const askRef = useRef<HTMLTextAreaElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const local = useRef<MascoteApi | null>(null)
@@ -48,6 +50,19 @@ export function AgentPanel({
     onMascote?.(api)
   }
 
+  // quantas perguntas ainda restam hoje (se a API não responder, o painel segue sem o contador)
+  useEffect(() => {
+    let vivo = true
+    api
+      .get<AgenteUso>('/api/agente/uso')
+      .then((u) => vivo && setUso({ limite: u.limite, restantes: u.restantes }))
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [])
+  const esgotado = uso?.restantes === 0
+
   // a conversa rola até a fala mais nova
   useEffect(() => {
     const el = bodyRef.current
@@ -56,7 +71,7 @@ export function AgentPanel({
 
   const perguntar = async (bruta: string) => {
     const pergunta = bruta.trim()
-    if (!pergunta || pensando) return
+    if (!pergunta || pensando || esgotado) return
 
     const historico = mensagens.slice(-HISTORICO_MAX)
     setMensagens([...mensagens, { papel: 'usuario', texto: pergunta }])
@@ -70,8 +85,10 @@ export function AgentPanel({
       const corpo: AgentePerguntaRequest = { pergunta, historico, de, ate }
       const r = await api.post<AgenteResposta>('/api/agente/perguntar', corpo)
       setMensagens((atual) => [...atual, { papel: 'agente', texto: r.resposta }])
+      if (r.limiteDiario) setUso({ limite: r.limiteDiario, restantes: r.perguntasRestantes ?? 0 })
       local.current?.face('happy', 1200)
     } catch (e) {
+      if (e instanceof ApiError && e.status === 429) setUso((u) => ({ limite: u?.limite ?? 0, restantes: 0 }))
       setErro(e instanceof ApiError ? e.message : 'Não consegui falar com o Agente. Tente de novo.')
       local.current?.face('surprised', 900)
     } finally {
@@ -133,7 +150,7 @@ export function AgentPanel({
                     key={txt}
                     className="chip"
                     type="button"
-                    disabled={pensando}
+                    disabled={pensando || esgotado}
                     onMouseEnter={() => local.current?.face('happy', 900)}
                     onClick={() => void perguntar(txt)}
                   >
@@ -177,7 +194,8 @@ export function AgentPanel({
             ref={askRef}
             rows={2}
             maxLength={500}
-            placeholder="Como posso ajudar hoje?"
+            placeholder={esgotado ? 'As perguntas de hoje acabaram. Volte amanhã.' : 'Como posso ajudar hoje?'}
+            disabled={esgotado}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={teclar}
@@ -188,8 +206,14 @@ export function AgentPanel({
             onBlur={() => local.current?.free()}
           />
           <div className="row">
-            <span>Enter para enviar</span>
-            <button className="send" type="submit" aria-label="Enviar" disabled={pensando || !texto.trim()}>
+            <span aria-live="polite">
+              {esgotado
+                ? 'Perguntas de hoje esgotadas'
+                : uso
+                  ? `Enter para enviar · ${uso.restantes} de ${uso.limite} perguntas hoje`
+                  : 'Enter para enviar'}
+            </span>
+            <button className="send" type="submit" aria-label="Enviar" disabled={pensando || esgotado || !texto.trim()}>
               <Icon name="arrowUp" />
             </button>
           </div>

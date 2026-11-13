@@ -365,6 +365,7 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 - O modelo recebe só as métricas já calculadas do período (DEC-20). No chat, recebe também a agenda dos próximos 7 dias sem nome, telefone nem endereço do cliente.
 - Só leitura: a IA não cria, altera nem apaga nada.
 - Controles de custo entregues: limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`. Pendentes: a tabela de consumo (`TenantUsage`) e o limite por plano.
+- **Limite diário e consumo (13/11/2026, pedido do Davi):** cada empresa tem até **20 perguntas por dia** ao Agente (dia de Brasília; `Insights__PerguntasPorDia` muda o número sem mexer no código). A tabela `UsosIa` é o `TenantUsage`: uma linha por empresa e dia, com perguntas, relatórios e tokens de entrada e saída. A pergunta é reservada antes de chamar o modelo, num único `INSERT ... ON CONFLICT` com a condição do limite, então perguntas simultâneas não passam de 20. Se o modelo falhar, a pergunta é devolvida. Acima do limite, a API responde 429 e o painel do Agente trava a caixa até o dia seguinte. `GET /api/agente/uso` mostra quantas restam, e o painel exibe o contador. Os relatórios de insights são registrados, mas não entram no limite de 20 (seguem com o limite por hora). O limite por plano continua em aberto: hoje todas as empresas têm 20.
 - Testes manuais de segurança em produção (vazamento de dados, isolamento entre empresas, injeção por nome de produto, pedidos de escrita) passaram em 10/11/2026.
 
 ---

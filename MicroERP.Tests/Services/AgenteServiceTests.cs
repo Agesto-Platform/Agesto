@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Enums;
 using MicroERP.Api.Services;
+using MicroERP.Api.Services.Exceptions;
 using MicroERP.Api.Services.Insights;
 using MicroERP.Api.Services.Interfaces;
 using Moq;
@@ -21,7 +22,8 @@ public sealed class AgenteServiceTests
         var gerador = new Mock<IInsightsGerador>();
         gerador.SetupGet(g => g.Habilitado).Returns(false);
 
-        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, NullLogger<AgenteService>.Instance);
+        var usoIa = UsoIaLiberado();
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
 
         await Assert.ThrowsAsync<InsightsIndisponivelException>(
             () => service.PerguntarAsync(1, new AgentePerguntaRequest { Pergunta = "Quanto sobrou?" }, CancellationToken.None));
@@ -63,7 +65,8 @@ public sealed class AgenteServiceTests
             .Callback<IReadOnlyList<MensagemIA>, CancellationToken>((c, _) => conversa = c)
             .ReturnsAsync(new RespostaIA("Sobraram R$ 1.100,00.", "claude-haiku-5-5", 900, 40));
 
-        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, NullLogger<AgenteService>.Instance);
+        var usoIa = UsoIaLiberado();
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
         var resposta = await service.PerguntarAsync(7,
             new AgentePerguntaRequest { Pergunta = "Quanto sobrou este mês?", De = De, Ate = Ate },
             CancellationToken.None);
@@ -110,5 +113,76 @@ public sealed class AgenteServiceTests
 
         var unica = Assert.Single(conversa);
         Assert.Equal("Oi\n\nQuanto sobrou?", unica.Texto);
+    }
+
+    private static Mock<IUsoIaService> UsoIaLiberado(int restantes = 19)
+    {
+        var uso = new Mock<IUsoIaService>();
+        uso.SetupGet(u => u.PerguntasPorDia).Returns(20);
+        uso.Setup(u => u.ReservarPerguntaAsync(It.IsAny<long>(), It.IsAny<CancellationToken>())).ReturnsAsync(restantes);
+        return uso;
+    }
+
+    private static (Mock<IMetricasService>, Mock<IAtendimentoService>) DadosVazios(long empresaId)
+    {
+        var metricas = new Mock<IMetricasService>();
+        metricas.Setup(m => m.GetDashboardAsync(empresaId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DashboardResponse { De = De, Ate = Ate });
+        var atendimentos = new Mock<IAtendimentoService>();
+        atendimentos.Setup(a => a.GetAgendaAsync(empresaId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        return (metricas, atendimentos);
+    }
+
+    [Fact]
+    public async Task PerguntarAsync_NoLimiteDoDia_NaoChamaOModelo()
+    {
+        var (metricas, atendimentos) = DadosVazios(3);
+        var gerador = new Mock<IInsightsGerador>();
+        gerador.SetupGet(g => g.Habilitado).Returns(true);
+        var usoIa = new Mock<IUsoIaService>();
+        usoIa.Setup(u => u.ReservarPerguntaAsync(3, It.IsAny<CancellationToken>())).ThrowsAsync(new LimiteIaExcedidoException(20));
+
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+
+        await Assert.ThrowsAsync<LimiteIaExcedidoException>(
+            () => service.PerguntarAsync(3, new AgentePerguntaRequest { Pergunta = "Oi" }, CancellationToken.None));
+        gerador.Verify(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PerguntarAsync_SeOModeloFalha_DevolveAPergunta()
+    {
+        var (metricas, atendimentos) = DadosVazios(3);
+        var gerador = new Mock<IInsightsGerador>();
+        gerador.SetupGet(g => g.Habilitado).Returns(true);
+        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("falhou"));
+        var usoIa = UsoIaLiberado();
+
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+
+        await Assert.ThrowsAsync<HttpRequestException>(
+            () => service.PerguntarAsync(3, new AgentePerguntaRequest { Pergunta = "Oi" }, CancellationToken.None));
+        usoIa.Verify(u => u.DevolverPerguntaAsync(3, It.IsAny<CancellationToken>()), Times.Once);
+        usoIa.Verify(u => u.RegistrarTokensDaPerguntaAsync(It.IsAny<long>(), It.IsAny<long>(), It.IsAny<long>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PerguntarAsync_RegistraTokensEDevolveQuantasRestam()
+    {
+        var (metricas, atendimentos) = DadosVazios(3);
+        var gerador = new Mock<IInsightsGerador>();
+        gerador.SetupGet(g => g.Habilitado).Returns(true);
+        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RespostaIA("Ok.", "claude-haiku-5-5", 500, 30));
+        var usoIa = UsoIaLiberado(restantes: 4);
+
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+        var resposta = await service.PerguntarAsync(3, new AgentePerguntaRequest { Pergunta = "Oi" }, CancellationToken.None);
+
+        Assert.Equal(4, resposta.PerguntasRestantes);
+        Assert.Equal(20, resposta.LimiteDiario);
+        usoIa.Verify(u => u.RegistrarTokensDaPerguntaAsync(3, 500, 30, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

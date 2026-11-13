@@ -95,6 +95,8 @@ builder.Services.PostConfigure<InsightsOptions>(options =>
 builder.Services.AddSingleton<IInsightsGerador, ClaudeInsightsGerador>();
 builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAgenteService, AgenteService>();
+builder.Services.AddScoped<IUsoIaService, UsoIaService>();
+builder.Services.AddSingleton(TimeProvider.System);
 
 // Email transacional pelo Brevo e "Esqueci a senha" do Dono (DEC-54). Sem chave,
 // o envio fica desligado. A fila é única (singleton) e o worker a esvazia.
