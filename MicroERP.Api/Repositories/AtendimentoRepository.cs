@@ -117,6 +117,29 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<Atendimento>> GetHistoricoAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, int limite, CancellationToken cancellationToken)
+    {
+        var query = _dbContext.Atendimentos
+            .AsNoTracking()
+            .Where(a => a.EmpresaId == empresaId
+                        && a.DeletedAt == null
+                        && (a.DataAgendada ?? a.DataRegistro) >= de
+                        && (a.DataAgendada ?? a.DataRegistro) <= ate);
+
+        if (usuarioId.HasValue)
+        {
+            query = query.Where(a => a.UsuarioId == usuarioId.Value);
+        }
+
+        return await query
+            .OrderByDescending(a => a.DataAgendada ?? a.DataRegistro)
+            .Take(limite)
+            .Include(a => a.Cliente)
+            .Include(a => a.ItensServico).ThenInclude(i => i.Servico)
+            .Include(a => a.ItensProduto).ThenInclude(i => i.Produto)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Atendimento?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken)
     {
         var query = _dbContext.Atendimentos

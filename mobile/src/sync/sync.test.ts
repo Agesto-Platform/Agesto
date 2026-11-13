@@ -115,9 +115,10 @@ describe('sync.carga (mock)', () => {
     expect(sugeridos[0]).toHaveProperty('produtoId')
   })
 
-  it('initialSync popula referência e agenda do dia', async () => {
+  it('initialSync popula referência, agenda e histórico com um pedido só', async () => {
     const mem = createMemoryDb()
     await mem.init()
+    const get = jest.spyOn(api, 'get')
 
     const r = await initialSync(mem)
     expect(r.clientes).toBe(3)
@@ -126,6 +127,24 @@ describe('sync.carga (mock)', () => {
     const agenda = await mem.getAgenda()
     expect(agenda).toHaveLength(3)
     expect(agenda[0].clienteNome).toBeTruthy()
+    expect(await mem.getHistorico()).toHaveLength(3)
+    expect(get.mock.calls.map(([path]) => path).filter((p) => String(p).startsWith('/api/atendimento/agenda'))).toHaveLength(0)
+    get.mockRestore()
+  })
+
+  it('com API antiga (sem agenda na Carga), busca a agenda à parte', async () => {
+    const mem = createMemoryDb()
+    await mem.init()
+    const { agenda: _a, historico: _h, ...antiga } = seedCarga()
+    const real = api.get.bind(api)
+    const get = jest.spyOn(api, 'get').mockImplementation(((path: string) =>
+      path.startsWith('/api/sync/carga') ? Promise.resolve(antiga) : real(path)) as typeof api.get)
+
+    const r = await initialSync(mem)
+    expect(r.agenda).toBe(3)
+    expect(await mem.getAgenda()).toHaveLength(3)
+    expect(get.mock.calls.some(([path]) => String(path).startsWith('/api/atendimento/agenda'))).toBe(true)
+    get.mockRestore()
   })
 
   it('descarga empurra pendentes e marca como sincronizado', async () => {

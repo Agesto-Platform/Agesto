@@ -48,6 +48,8 @@ export interface LocalDb {
   saveProdutos(items: Produto[]): Promise<void>
   saveServicos(items: Servico[]): Promise<void>
   saveAgenda(items: AgendaItem[]): Promise<void>
+  /** Atendimentos do servidor dos últimos 30 dias (aba Atend.), substituídos a cada Carga. */
+  saveHistorico(items: AgendaItem[]): Promise<void>
   /** Carga incremental (PERF-01): grava ou atualiza pelo id e apaga os excluídos no servidor. */
   mergeClientes(items: Cliente[], removidos: number[]): Promise<void>
   mergeProdutos(items: Produto[], removidos: number[]): Promise<void>
@@ -56,6 +58,7 @@ export interface LocalDb {
   getProdutos(): Promise<Produto[]>
   getServicos(): Promise<Servico[]>
   getAgenda(): Promise<AgendaItem[]>
+  getHistorico(): Promise<AgendaItem[]>
 
   // clientes criados offline
   /** Grava ou substitui (mesmo uuid) o cliente local; corrige um ainda não enviado. */

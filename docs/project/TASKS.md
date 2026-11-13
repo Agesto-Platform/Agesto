@@ -199,7 +199,7 @@
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
 | Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render e "Otimizar dia" (fase 2); `Servico.DuracaoMinutos` já existe (DEC-45, 11/11) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
 | ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — | — |
-| **Agenda na Carga do sync** | A Carga (`GET /api/sync/carga`) não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado como contorno (delta identificado em mob-04, ver DEC-26). Idealmente a agenda entraria na Carga | Média | Davi Gomes | — |
+| ~~**Agenda na Carga do sync**~~ | Feito no código (13/11), branch `feature/app-agenda-e-historico`: a Carga traz a agenda de hoje até 14 dias à frente (do Agente, só a dele) e o histórico dos últimos 30 dias. O `syncAgenda` só roda com API antiga | Média | Davi Gomes | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — | — |
 
 ---
@@ -402,7 +402,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
-| Agenda na Carga do sync | Ver seção "Domínio Prestador de Serviço" acima — a Carga deveria idealmente incluir a agenda, eliminando o contorno `syncAgenda` | Média | Davi Gomes |
+| ~~Agenda na Carga do sync~~ | Feito no código (13/11), branch `feature/app-agenda-e-historico`. A tela Início passou a mostrar só o dia de hoje (antes mostrava a agenda inteira guardada) | Média | — |
 | ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43) | — | — |
 
 ### 🔴 Pendências do próprio Mobile
@@ -410,7 +410,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
 | ~~APK e atualização OTA~~ | ✅ `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão em `develop` (DEC-47, PR #108). Falta o primeiro `eas build` (Diego, ver Lançamento do MVP) | Alta | — |
-| Histórico de atendimentos próprios | Não implementado nesta fase (fora do escopo mob-01 a mob-07) | Baixa | Davi Gomes |
+| ~~Histórico de atendimentos próprios~~ | Feito no código (13/11), branch `feature/app-agenda-e-historico`: a aba Atend. junta o que está no aparelho com os atendimentos do servidor dos últimos 30 dias, sem repetir | Baixa | — |
 | Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2, depois do lançamento) | Baixa | Davi Gomes |
 | Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa | Davi Gomes |
 | ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta | — |
@@ -428,7 +428,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 ### Depois do lançamento
 2. Auditoria de `REQUIREMENTS.md` e remoção da documentação legada (Davi Gomes)
-3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync, agenda na Carga do sync mobile e histórico no app (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
+3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
 
 ---
 
