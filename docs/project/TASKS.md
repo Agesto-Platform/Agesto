@@ -419,6 +419,25 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 ---
 
+## Planos futuros — ideias de 13/11/2026
+
+> Ideias do Davi Oliveira, avaliadas contra o código em 13/11/2026. São **planos futuros, sem prazo e fora do escopo do lançamento**: nenhuma vira requisito antes de o Davi decidir quando e como. Esforço: P = pequeno, M = médio, G = grande.
+
+| Ideia | O que envolve | Esforço | Depende de / atenção |
+|---|---|---|---|
+| Pix no fim do atendimento | QR Code Pix estático com a chave do Dono (chave, nome e cidade na Parametrização); código "copia e cola" gerado no navegador; QR no detalhe do atendimento e no PDF. Completa a cobrança do atendimento (PR #188) | P | O Pix estático não confirma o pagamento: o Dono continua marcando "Pago". No app, o QR precisa de módulo nativo (novo `eas build`) |
+| Garantia do serviço | Prazo padrão no serviço; "na garantia até…" gravado ao concluir o atendimento e mostrado no histórico do cliente | P | Campo novo também na sincronização do app |
+| Lembrete de manutenção recorrente | "Repetir a cada X meses" no serviço; lista "Manutenções a vencer" no painel do Dono, com a mensagem de WhatsApp pronta pelo `wa.me` (DEC-56) | P a M | Não precisa da API do WhatsApp: o Dono clica para enviar |
+| Aceite do orçamento por link | Página pública, sem login, com código aleatório no link; "Aprovar" muda o orçamento para `Aprovado`, gera o atendimento (`ConverterAsync`) e avisa o Dono. Aproveita o PDF do orçamento (DEC-56) | M | Primeira rota pública que mexe em dados: código que expira, limite de tentativas e mínimo de dados do cliente na página. Sem domínio próprio, o link sai como `agesto.pages.dev` |
+| Resumo diário para o Dono | Rotina de manhã com os números do dia (atendimentos, valor, orçamentos parados), montados por consulta, sem gastar IA | P por email (Brevo, DEC-54); M a G pelo WhatsApp | Pelo WhatsApp não dá com `wa.me`: precisa da API oficial da Meta (verificação da empresa, modelo de mensagem aprovado e custo por mensagem), já adiada na DEC-56 |
+| Produtividade e comissão por técnico | Agrupar receita, margem e horas por técnico (`UsuarioId`) e uma tela de fechamento do mês. Hoje a receita por hora é por serviço, em `MetricasRepository` | M | As horas são estimadas pela duração do serviço, não cronometradas. A regra da comissão (% do valor, da margem ou da mão de obra) depende do Davi |
+| Avaliação depois do serviço | Link curto com nota de 1 a 5, guardada no Agesto, e link para a avaliação no Google | P a M | A política do Google proíbe pedir avaliação só a quem deu nota alta: oferecer o link do Google a todos e usar a nota interna só para o Dono acompanhar |
+| Comprovante do serviço | Fotos de antes e depois e assinatura do cliente no app, mesmo offline; fila de envio de fotos separada da sincronização atual; Supabase Storage com bucket privado e envio autorizado pela API; PDF no app enviado pelo WhatsApp | G | Depende do primeiro `eas build` (câmera, arquivos, assinatura e PDF são módulos nativos), do Supabase Pro (o Free tem pouco espaço e tráfego para fotos) e da política de privacidade revisada (fotos e assinatura são dados pessoais) |
+
+Ordem sugerida, se o Davi aprovar: Pix e garantia; lembrete de manutenção; aceite do orçamento por link; resumo diário por email; produtividade por técnico; avaliação; comprovante com fotos e assinatura por último.
+
+---
+
 ## Ordem de execução recomendada (próximas sprints)
 
 > O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados.
@@ -429,6 +448,7 @@ Tracking local (Jira offline); numeração `mob-0x`.
 ### Depois do lançamento
 2. Auditoria de `REQUIREMENTS.md` e remoção da documentação legada (Davi Gomes)
 3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
+4. Planos futuros de 13/11/2026 (seção acima), quando o Davi decidir quais entram e em que ordem
 
 ---
 
