@@ -41,6 +41,15 @@ export default function App() {
       <Route path="/admin/criar-senha" element={<AdminCriarSenha />} />
       {/* Pública: o agente abre no celular para instalar o APK (DEC-47). */}
       <Route path="/baixar" element={<BaixarApp />} />
+      {/* DEC-57: link para divulgar; mostra a página de venda mesmo para quem está logado. */}
+      <Route
+        path="/conheca"
+        element={
+          <Suspense fallback={null}>
+            <PaginaDeVenda />
+          </Suspense>
+        }
+      />
       {/* Públicas: links de Termos__UrlTermos e Termos__UrlPrivacidade na tela de aceite (B6). */}
       <Route path="/termos" element={<Termos />} />
       <Route path="/privacidade" element={<Privacidade />} />

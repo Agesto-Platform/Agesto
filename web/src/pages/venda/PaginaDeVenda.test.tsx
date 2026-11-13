@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { PaginaDeVenda } from './PaginaDeVenda'
+import { AuthContext, type AuthContextValue } from '../../auth/context'
 import { totalMensal } from './oferta'
 
 function renderizar() {
@@ -23,6 +24,28 @@ describe('totalMensal', () => {
 })
 
 describe('PaginaDeVenda', () => {
+  it('em /conheca, quem está logado vê o caminho de volta ao painel', () => {
+    const valor = {
+      user: { sub: '1', perfil: 'Dono' },
+      isAuthenticated: true,
+      deveTrocarSenha: false,
+      termos: null,
+      login: vi.fn(),
+      trocarSenha: vi.fn(),
+      aceitarTermos: vi.fn(),
+      logout: vi.fn(),
+    } as unknown as AuthContextValue
+    render(
+      <AuthContext.Provider value={valor}>
+        <MemoryRouter>
+          <PaginaDeVenda />
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+    expect(screen.getAllByRole('link', { name: 'Ir para o painel' })[0]).toHaveAttribute('href', '/')
+    expect(screen.queryByRole('link', { name: 'Entrar' })).not.toBeInTheDocument()
+  })
+
   it('mostra a promessa, os preços e o caminho para entrar', () => {
     renderizar()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Sua empresa inteira em um lugar só.')
