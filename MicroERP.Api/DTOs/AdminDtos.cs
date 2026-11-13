@@ -55,6 +55,23 @@ public sealed class AdminAuthResponse
     public string Token { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
     public AdminResponse Admin { get; set; } = new();
+
+    // Verificação em duas etapas (DEC-52): a senha confere, mas falta o código
+    // enviado por email. Sem token; o web pede o código e manda junto o desafio.
+    public bool ExigeCodigo { get; set; }
+    public string? Desafio { get; set; }
+    public string? EmailMascarado { get; set; }
+}
+
+public sealed class AdminCodigoRequest
+{
+    [Required(ErrorMessage = "Desafio obrigatório.")]
+    [MaxLength(100, ErrorMessage = "Desafio inválido.")]
+    public string Desafio { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Código obrigatório.")]
+    [MaxLength(12, ErrorMessage = "Código inválido.")]
+    public string Codigo { get; set; } = string.Empty;
 }
 
 public sealed class AdminResponse

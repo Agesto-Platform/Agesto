@@ -55,11 +55,11 @@
 | 01/12 | Canal de suporte: WhatsApp Business e email | D14 | A fazer |
 | 08/12 | Cobrança mínima no web: atendimento pago ou em aberto, forma e data do pagamento | L5 | A fazer |
 | 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | A fazer |
-| 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | A fazer |
+| 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | A fazer. Desenho definido na DEC-58 (13/11): pagamento registrado no superadmin, bloqueio manual e automático após 10 dias de carência, aviso ao Dono e trava de licenças |
 | 12/11 | Página de apresentação com preço, termos, download e contato | L4 | Feito (PR #172, release #173, 12/11; `/conheca` no PR #174, release #175, 13/11; testado pelo Davi): página de venda na raiz do web, com assinatura de R$ 49,90 (Dono e 1 funcionário) e R$ 19,90 por funcionário a mais; pagamento por cartão, boleto ou Pix, combinado no contato (DEC-57) |
 | 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render |
 | 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
-| — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | A fazer |
+| — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | Feito no código (13/11), branch `feature/superadmin-2fa-e-expo-web`: 5 senhas erradas bloqueiam 15 min; código de 6 dígitos por email no login. Falta aplicar a migration `AddAdminLoginSeguro` |
 | — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52, DEC-53) | Extra | Pronto no PR #155 (SEG-01), em espera: fora da `develop` por decisão do Davi (12/11) |
 | — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | A fazer |
 | — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |

@@ -1,4 +1,4 @@
-import { useId, type HTMLInputTypeAttribute } from 'react'
+import { useId, type HTMLAttributes, type HTMLInputTypeAttribute } from 'react'
 
 export function TextField({
   label,
@@ -11,6 +11,7 @@ export function TextField({
   required = false,
   maxLength,
   autoComplete,
+  inputMode,
 }: {
   label: string
   value: string
@@ -22,6 +23,7 @@ export function TextField({
   required?: boolean
   maxLength?: number
   autoComplete?: string
+  inputMode?: HTMLAttributes<HTMLInputElement>['inputMode']
 }) {
   const id = useId()
   return (
@@ -39,6 +41,7 @@ export function TextField({
         placeholder={placeholder}
         maxLength={maxLength}
         autoComplete={autoComplete}
+        inputMode={inputMode}
         aria-invalid={error ? true : undefined}
         aria-describedby={error || hint ? id + '-msg' : undefined}
       />

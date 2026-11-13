@@ -977,7 +977,11 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
 
-**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira. Pendências: bloqueio por conta no login de admin, verificação em duas etapas, e a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
+**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira. Pendências: a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
+
+**Login de admin mais forte (13/11/2026, branch `feature/superadmin-2fa-e-expo-web`):**
+- **Bloqueio por conta:** 5 senhas erradas seguidas bloqueiam o login do admin por 15 minutos, igual ao dos usuários (DEC-43). Fica na auditoria ("conta-bloqueada").
+- **Verificação em duas etapas por email** (escolha do Davi, no lugar do app autenticador): depois da senha, o Agesto manda um código de 6 dígitos pelo Brevo, que vale 10 minutos e uma vez só, preso àquela tentativa de login por um desafio. Cinco códigos errados invalidam o desafio, e um login novo invalida o código anterior. O banco guarda só os hashes. A tela pede o código, mostra o email mascarado e permite reenviar. `Admin__DoisFatores=false` desliga a segunda etapa só em emergência (ex.: Brevo fora do ar).
 
 ---
 
@@ -1069,3 +1073,18 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Por quê:** pedido de Davi Oliveira em 12/11/2026. A venda é feita pela equipe, com assinatura e licenças combinadas no contato. A DEC-48 previa cadastro aberto com verificação de email e período de teste; isso deixa de ser necessário. No mesmo projeto não há infra nova nem dependência do domínio próprio, que ainda não existe.
 
 **Impacto:** sem mudança na API nem migration. `ProtectedRoute` ganha `raizPublica`; a página fica em `web/src/pages/venda/`. As tarefas de cadastro aberto saem do TASKS, e a página de apresentação passa a ser feita agora. O controle de assinatura (quem pagou e quem está em atraso) continua em aberto.
+
+## DEC-58 — Controle de assinatura e licenças no superadmin
+
+**Status:** 🟡 Definido por Davi Oliveira em 13/11/2026. A fazer (TASKS, 12/12).
+
+**Decisão:** a assinatura de cada empresa é controlada no superadmin, sem gateway de pagamento no MVP (cartão, boleto ou Pix são combinados no contato, DEC-57):
+- **Registro manual de pagamento:** a equipe registra cada pagamento (data, valor, forma e a que mês se refere), com histórico por empresa. Cada pagamento leva o "pago até" para o fim do período pago.
+- **Situação:** em dia, vence em breve ou em atraso (com os dias de atraso), e a lista de empresas do superadmin pode filtrar por ela.
+- **Atraso:** bloqueio **manual** (o botão que já existe, DEC-52) e **automático**: depois de **10 dias de carência** sem pagamento, a empresa é bloqueada sozinha até a equipe registrar o pagamento e desbloquear. O desbloqueio também pode ser manual.
+- **Aviso ao Dono:** um aviso no topo do painel quando a assinatura estiver perto de vencer, vencida ou na carência (com quantos dias faltam para o bloqueio), e um bloco "Assinatura" na Parametrização com plano, licenças e vencimento.
+- **Licenças:** a assinatura (R$ 49,90/mês) inclui o Dono e **1 funcionário**; cada funcionário a mais é uma licença de R$ 19,90/mês (DEC-57). O número de licenças fica na empresa e só a equipe muda. O Dono **não passa do contratado**: ao tentar convidar um funcionário além das licenças, o Agesto pede para falar com a equipe.
+
+**Por quê:** a venda é por contato e o pagamento é combinado fora do sistema; o controle precisa mostrar quem pagou, quem atrasou e travar o uso sem pagamento, com uma carência para não cortar um cliente por um atraso de dias.
+
+**Impacto previsto:** migration com o "pago até", as licenças e o histórico de pagamentos; rotina diária na API para o bloqueio automático; telas no superadmin (assinatura da empresa e filtro) e no web do Dono (aviso e bloco na Parametrização); trava de licenças no convite de funcionário (Dono e superadmin).

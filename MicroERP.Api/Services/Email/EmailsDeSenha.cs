@@ -38,6 +38,28 @@ public static class EmailsDeSenha
             "Criar a minha senha", link, LinksDeSenha.ValidadeConvite,
             "Se não esperava este convite, ignore este email.");
 
+    // Código da verificação em duas etapas do superadmin (DEC-52).
+    public static EmailMensagem CodigoAdmin(string email, string nome, string codigo)
+    {
+        static string h(string texto) => WebUtility.HtmlEncode(texto);
+        var html = $"""
+            <p>Olá, {h(nome)}.</p>
+            <p>Seu código para entrar na área de administração do Agesto:</p>
+            <p style="font-size:24px;font-weight:bold;letter-spacing:4px">{h(codigo)}</p>
+            <p>O código vale por 10 minutos e funciona uma vez só.</p>
+            <p>Se não foi você que tentou entrar, troque a sua senha e avise a equipe.</p>
+            """;
+        var texto = $"""
+            Olá, {nome}.
+
+            Seu código para entrar na área de administração do Agesto: {codigo}
+
+            O código vale por 10 minutos e funciona uma vez só.
+            Se não foi você que tentou entrar, troque a sua senha e avise a equipe.
+            """;
+        return new EmailMensagem(email, nome, $"Código de acesso do Agesto: {codigo}", html, texto);
+    }
+
     private static string Base(string? urlWeb) => (urlWeb ?? string.Empty).TrimEnd('/');
 
     private static EmailMensagem Montar(
