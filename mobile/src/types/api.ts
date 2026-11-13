@@ -98,6 +98,8 @@ export interface AgendaItem {
   /** Uuid do atendimento no servidor; é a chave para concluí-lo no app. */
   uuid: string
   dataAgendada: string | null
+  /** Quando foi registrado; no histórico vale quando não há data agendada. Ausente em API antiga. */
+  dataRegistro?: string
   status: StatusAtendimento
   valorTotal: number
   clienteId: number
@@ -128,6 +130,10 @@ export interface SyncCargaResponse {
   configuracao?: Configuracao | null
   /** Na Carga incremental (PERF-01): ids excluídos desde `ultimaSincronizacao`. Ausente na completa. */
   removidos?: SyncRemovidos | null
+  /** Agenda de hoje até 14 dias à frente; ausente em API antiga (aí o app busca à parte). */
+  agenda?: AgendaItem[]
+  /** Atendimentos dos últimos 30 dias, para a aba Atend.; ausente em API antiga. */
+  historico?: AgendaItem[]
   sincronizadoEm: string
 }
 

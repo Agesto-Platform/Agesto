@@ -31,7 +31,11 @@ public sealed class SyncController : ApiControllerBase
 
         // Sem perfil identificável, trata como Agente (o mais restrito).
         var restringir = !TryGetPerfil(out var perfil) || perfil != PerfilUsuario.Dono;
-        var resultado = await _syncService.CargaAsync(empresaId, ultimaSincronizacao, cancellationToken, restringir);
+        // Agenda e histórico: o Agente vê só os dele (igual a GET /api/atendimento/agenda);
+        // sem usuário no token, não vê nenhum.
+        long? agenteId = null;
+        if (restringir) agenteId = TryGetUsuarioId(out var usuarioId) ? usuarioId : -1;
+        var resultado = await _syncService.CargaAsync(empresaId, ultimaSincronizacao, cancellationToken, restringir, agenteId);
         return Ok(new ApiResponse
         {
             Success = true,

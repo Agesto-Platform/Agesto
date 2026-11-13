@@ -6,19 +6,9 @@ import { Screen } from '@/ui/Screen'
 import { useAoSincronizar } from '@/sync/automatica'
 import { colors, radius, space } from '@/ui/theme'
 import { db } from '@/db/instance'
-import { getRecusas, motivoDaRecusa } from '@/sync/sync'
+import { getRecusas } from '@/sync/sync'
+import { montarLinhas, type Row } from '@/features/atendimentos/historico'
 import type { StatusAtendimento } from '@/types/api'
-
-interface Row {
-  key: string
-  cliente: string
-  data: string
-  itens: number
-  status: StatusAtendimento
-  pending: boolean
-  /** Por que o servidor não aceitou no último envio (I2); null se não recusou. */
-  motivo: string | null
-}
 
 const STATUS: Record<StatusAtendimento, { label: string; fg: string; bg: string }> = {
   Concluido: { label: 'Concluído', fg: colors.good, bg: colors.goodSoft },
@@ -26,42 +16,20 @@ const STATUS: Record<StatusAtendimento, { label: string; fg: string; bg: string 
   Cancelado: { label: 'Cancelado', fg: colors.bad, bg: colors.surface2 },
 }
 
-function dataCurta(iso: string): string {
-  const d = new Date(iso)
-  const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  const hora = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  return `${dia} · ${hora}`
-}
-
 export default function Atendimentos() {
   const router = useRouter()
   const [rows, setRows] = useState<Row[]>([])
 
   const carregar = useCallback(async (ativo: () => boolean = () => true) => {
-    const [atends, clientes, pend, recusas] = await Promise.all([
+    const [atends, historico, clientes, pend, recusas] = await Promise.all([
       db.getAtendimentos(),
+      db.getHistorico(),
       db.getClientes(),
       db.getPendingClientes(),
       getRecusas(db),
     ])
     if (!ativo()) return
-    const nomePorId = new Map(clientes.map((c) => [c.id, c.nome]))
-    const nomePorUuid = new Map(pend.map((c) => [c.uuid, c.nome]))
-    const list = [...atends]
-      .sort((a, b) => b.dataRegistro.localeCompare(a.dataRegistro))
-      .map((a) => ({
-        key: a.uuid,
-        cliente:
-          (a.clienteId !== null ? nomePorId.get(a.clienteId) : undefined) ??
-          (a.clienteUuid ? nomePorUuid.get(a.clienteUuid) : undefined) ??
-          `Cliente #${a.clienteId ?? 'novo'}`,
-        data: dataCurta(a.dataRegistro),
-        itens: a.itensProduto.length + a.itensServico.length,
-        status: a.status,
-        pending: a.syncedAt === null,
-        motivo: a.syncedAt === null ? motivoDaRecusa(a, recusas) : null,
-      }))
-    setRows(list)
+    setRows(montarLinhas({ locais: atends, historico, clientes, clientesPendentes: pend, recusas }))
   }, [])
 
   useAoSincronizar(carregar)
@@ -78,7 +46,10 @@ export default function Atendimentos() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={styles.title}>Atendimentos</Text>
+        <View>
+          <Text style={styles.title}>Atendimentos</Text>
+          <Text style={styles.sub}>Seus últimos 30 dias</Text>
+        </View>
         <Pressable
           onPress={() => router.push('/registrar')}
           style={({ pressed }) => [styles.novo, pressed && { opacity: 0.9 }]}
@@ -131,7 +102,7 @@ export default function Atendimentos() {
           )
         })}
         {rows.length === 0 && (
-          <Text style={styles.empty}>Nenhum atendimento registrado ainda.</Text>
+          <Text style={styles.empty}>Nenhum atendimento nos últimos 30 dias.</Text>
         )}
       </ScrollView>
     </Screen>
@@ -149,6 +120,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.line2,
   },
   title: { fontSize: 18, fontWeight: '700', color: colors.ink },
+  sub: { fontSize: 12, color: colors.ink3, marginTop: 1 },
   novo: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), backgroundColor: colors.brand, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2) },
   novoText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
 

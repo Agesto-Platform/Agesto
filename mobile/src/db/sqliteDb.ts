@@ -49,6 +49,7 @@ export function createSqliteDb(): LocalDb {
         CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS servicos (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS agenda (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS historico (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS pending_clientes (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
         CREATE TABLE IF NOT EXISTS pending_servicos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
         CREATE TABLE IF NOT EXISTS atendimentos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
@@ -60,6 +61,7 @@ export function createSqliteDb(): LocalDb {
     saveProdutos: (items) => saveRef('produtos', items),
     saveServicos: (items) => saveRef('servicos', items),
     saveAgenda: (items) => saveRef('agenda', items),
+    saveHistorico: (items) => saveRef('historico', items),
     mergeClientes: (items, removidos) => mergeRef('clientes', items, removidos),
     mergeProdutos: (items, removidos) => mergeRef('produtos', items, removidos),
     mergeServicos: (items, removidos) => mergeRef('servicos', items, removidos),
@@ -67,6 +69,7 @@ export function createSqliteDb(): LocalDb {
     getProdutos: () => getRef<Produto>('produtos'),
     getServicos: () => getRef<Servico>('servicos'),
     getAgenda: () => getRef<AgendaItem>('agenda'),
+    getHistorico: () => getRef<AgendaItem>('historico'),
 
     async addCliente(c) {
       const d = await conn()

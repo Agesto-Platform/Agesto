@@ -13,6 +13,10 @@ public sealed class SyncCargaResponse
     // PERF-01: na Carga incremental (com ultimaSincronizacao), ids excluídos desde
     // então, para o app apagar do SQLite. Nulo na Carga completa.
     public SyncRemovidosResponse? Removidos { get; set; }
+    // Vêm inteiros em toda Carga (completa ou incremental): de hoje até 14 dias à
+    // frente e o histórico dos últimos 30 dias. Do Agente, só os dele.
+    public IReadOnlyList<AgendaItemResponse> Agenda { get; set; } = [];
+    public IReadOnlyList<AgendaItemResponse> Historico { get; set; } = [];
     public DateTime SincronizadoEm { get; set; }
 }
 

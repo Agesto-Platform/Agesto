@@ -9,6 +9,8 @@ public sealed class AgendaItemResponse
     public long Id { get; set; }
     public string Uuid { get; set; } = string.Empty;
     public DateTime? DataAgendada { get; set; }
+    // Quando foi registrado; no histórico do app vale quando não há data agendada.
+    public DateTime DataRegistro { get; set; }
     public StatusAtendimento Status { get; set; }
     public decimal ValorTotal { get; set; }
     public long UsuarioId { get; set; }

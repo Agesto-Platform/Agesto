@@ -14,6 +14,8 @@ export interface CargaResult {
   clientes: number
   produtos: number
   servicos: number
+  /** Itens de agenda que vieram na Carga; null se a API não mandou (versão anterior). */
+  agenda: number | null
 }
 
 export interface SyncResult extends CargaResult {
@@ -57,12 +59,14 @@ export async function carga(database: LocalDb = db, agora = Date.now()): Promise
   return concluir(database, data)
 }
 
-/** Configuração e kits vêm inteiros nas duas Cargas (são pequenos). */
+/** Configuração, kits, agenda e histórico vêm inteiros nas duas Cargas (são pequenos). */
 async function concluir(database: LocalDb, data: SyncCargaResponse): Promise<CargaResult> {
   if (data.configuracao) {
     await saveConfig(database, data.configuracao)
   }
   await saveSugeridos(database, data.sugeridos ?? [])
+  if (data.agenda) await database.saveAgenda(data.agenda)
+  if (data.historico) await database.saveHistorico(data.historico)
   await database.setMeta('lastSync', data.sincronizadoEm)
   await database.setMeta(META_CARGA, data.sincronizadoEm)
 
@@ -70,13 +74,13 @@ async function concluir(database: LocalDb, data: SyncCargaResponse): Promise<Car
     clientes: data.clientes.length,
     produtos: data.produtos.length,
     servicos: data.servicos.length,
+    agenda: data.agenda ? data.agenda.length : null,
   }
 }
 
 /**
- * Busca a agenda do dia (GET /api/atendimento/agenda) e cacheia local.
- * NB: a Carga não inclui a agenda hoje — este passo cobre isso (delta de
- * backend: idealmente a agenda entraria na Carga para ficar 100% offline).
+ * Busca a agenda (GET /api/atendimento/agenda) e cacheia local. Só para API
+ * antiga: a Carga atual já traz a agenda (e o histórico) no mesmo pedido.
  */
 export async function syncAgenda(database: LocalDb = db): Promise<number> {
   const items = await api.get<AgendaItem[]>('/api/atendimento/agenda')
@@ -84,10 +88,10 @@ export async function syncAgenda(database: LocalDb = db): Promise<number> {
   return items.length
 }
 
-/** Sincronização inicial (login): dados de referência + agenda do dia. */
+/** Sincronização inicial (login): dados de referência, agenda e histórico num pedido só. */
 export async function initialSync(database: LocalDb = db): Promise<SyncResult> {
   const c = await carga(database)
-  const agenda = await syncAgenda(database)
+  const agenda = c.agenda ?? (await syncAgenda(database))
   return { ...c, agenda }
 }
 

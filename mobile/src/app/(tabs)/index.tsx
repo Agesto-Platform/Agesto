@@ -10,6 +10,7 @@ import { db } from '@/db/instance'
 import { montarRota } from '@/features/rota/montarRota'
 import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
 import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
+import { agendaDoDia } from '@/features/agenda/doDia'
 import { precisaAtualizar } from '@/features/versao/precisaAtualizar'
 import { api } from '@/lib/api'
 import type { LocalAtendimento } from '@/db/types'
@@ -49,8 +50,8 @@ export default function Inicio() {
   const carregar = useCallback(async (ativo: () => boolean = () => true) => {
     const [items, pend] = await Promise.all([db.getAgenda(), db.getPendingAtendimentos()])
     if (!ativo()) return
-    items.sort((a, b) => String(a.dataAgendada).localeCompare(String(b.dataAgendada)))
-    setAgenda(items)
+    // A agenda guardada cobre vários dias; o Início mostra só o de hoje.
+    setAgenda(agendaDoDia(items))
     setPendentes(pend)
   }, [])
 
