@@ -52,6 +52,10 @@ public sealed class UsuarioController : ApiControllerBase
         {
             return Conflict(new ApiResponse { Success = false, Message = ex.Message });
         }
+        catch (RegraUsuarioException ex)
+        {
+            return Conflict(new ApiResponse { Success = false, Message = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });

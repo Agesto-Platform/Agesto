@@ -322,7 +322,7 @@ public sealed class AdminAuthService : IAdminAuthService
 internal static class AdminAuditoria
 {
     public static void Registrar(
-        AppDbContext db, long adminId, string acao,
+        AppDbContext db, long? adminId, string acao,
         long? empresaId = null, long? usuarioId = null, string? detalhes = null, string? ip = null)
     {
         db.AuditoriasAdmin.Add(new AuditoriaAdmin

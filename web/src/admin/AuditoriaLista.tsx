@@ -24,6 +24,14 @@ const ACAO: Record<string, string> = {
   'criar-usuario': 'Criou acesso e enviou convite',
   'reenviar-convite': 'Reenviou convite',
   'enviar-link-senha': 'Enviou link de senha',
+  // Login de admin (DEC-52) e assinatura (DEC-58).
+  'conta-bloqueada': 'Conta de admin bloqueada por senhas erradas',
+  'login-codigo-enviado': 'Recebeu o código de acesso',
+  'login-codigo-falhou': 'Código de acesso recusado',
+  'registrar-pagamento': 'Registrou pagamento',
+  'atualizar-assinatura': 'Ajustou a assinatura',
+  'bloqueio-automatico': 'Bloqueio automático por atraso',
+  'desbloqueio-automatico': 'Desbloqueio automático (pagamento em dia)',
 }
 
 /** Registro das ações da equipe (todas, ou só as de uma empresa). */

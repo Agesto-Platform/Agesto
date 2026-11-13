@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<AuditoriaAdmin> AuditoriasAdmin => Set<AuditoriaAdmin>();
     public DbSet<TokenRedefinicaoSenha> TokensRedefinicaoSenha => Set<TokenRedefinicaoSenha>();
     public DbSet<UsoIa> UsosIa => Set<UsoIa>();
+    public DbSet<PagamentoAssinatura> PagamentosAssinatura => Set<PagamentoAssinatura>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -68,6 +69,21 @@ public class AppDbContext : DbContext
             // Sentinela true: uma empresa inserida já suspensa (false) não cai no default.
             entity.Property(e => e.Ativa).HasDefaultValue(true).HasSentinel(true);
             entity.Property(e => e.MotivoBloqueio).HasMaxLength(300);
+            // DEC-58: a assinatura inclui 1 funcionário; a migration ajusta as empresas existentes.
+            entity.Property(e => e.LicencasFuncionarios).HasDefaultValue(1).HasSentinel(0);
+        });
+
+        modelBuilder.Entity<PagamentoAssinatura>(entity =>
+        {
+            entity.ToTable("PagamentosAssinatura");
+            entity.Property(e => e.Valor).HasPrecision(10, 2);
+            entity.Property(e => e.Forma).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Observacao).HasMaxLength(300);
+            entity.HasIndex(e => e.EmpresaId);
+            entity.HasOne(e => e.Empresa)
+                .WithMany()
+                .HasForeignKey(e => e.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<AdminPlataforma>(entity =>

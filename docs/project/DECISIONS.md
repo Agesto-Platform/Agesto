@@ -1076,7 +1076,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-58 — Controle de assinatura e licenças no superadmin
 
-**Status:** 🟡 Definido por Davi Oliveira em 13/11/2026. A fazer (TASKS, 12/12).
+**Status:** 🟡 Definido por Davi Oliveira em 13/11/2026; implementado na branch `feature/controle-assinatura` (13/11/2026). Falta aplicar a migration `AddAssinatura`.
 
 **Decisão:** a assinatura de cada empresa é controlada no superadmin, sem gateway de pagamento no MVP (cartão, boleto ou Pix são combinados no contato, DEC-57):
 - **Registro manual de pagamento:** a equipe registra cada pagamento (data, valor, forma e a que mês se refere), com histórico por empresa. Cada pagamento leva o "pago até" para o fim do período pago.
@@ -1087,4 +1087,14 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Por quê:** a venda é por contato e o pagamento é combinado fora do sistema; o controle precisa mostrar quem pagou, quem atrasou e travar o uso sem pagamento, com uma carência para não cortar um cliente por um atraso de dias.
 
-**Impacto previsto:** migration com o "pago até", as licenças e o histórico de pagamentos; rotina diária na API para o bloqueio automático; telas no superadmin (assinatura da empresa e filtro) e no web do Dono (aviso e bloco na Parametrização); trava de licenças no convite de funcionário (Dono e superadmin).
+**Como ficou (13/11/2026):**
+- **Empresa:** `PagoAte`, `LicencasFuncionarios` (padrão 1), `BloqueioAutomatico` e `BloqueioAutomaticoReferencia`. Tabela `PagamentosAssinatura` com o histórico, com RLS.
+- **Empresas que já existiam:** ficam **sem cobrança** (`PagoAte` vazio), sem aviso e sem bloqueio automático, até a equipe registrar o primeiro pagamento ou ajustar o "pago até". A migration põe nas licenças os acessos ativos de hoje, para ninguém ficar travado.
+- **Situação, pelo dia de Brasília:** em dia; vence em breve (até 5 dias); em carência (venceu há até 10 dias, com aviso ao Dono e a contagem até o bloqueio); atrasada (mais de 10 dias).
+- **Pagamento:** o período começa no dia seguinte ao último pago (sem histórico, hoje) e cobre de 1 a 12 meses.
+- **Bloqueio automático:** uma rotina na API roda de hora em hora e bloqueia as atrasadas, com registro na auditoria como "Sistema". O pagamento tira esse bloqueio sozinho; o bloqueio manual só sai pela equipe. Se a equipe desbloquear na mão uma empresa atrasada, a rotina não bloqueia de novo até o "pago até" mudar.
+- **Licenças:** contam os acessos ativos, inclusive convites pendentes. O Dono e a equipe não criam nem reativam acesso além do contratado (409, com a mensagem pedindo para falar com a equipe); desativar sempre pode.
+- **Telas:**
+  - no superadmin, o bloco **Assinatura** (situação, valor, licenças, acessos em uso, histórico, "Registrar pagamento" e "Ajustar"), a coluna e o filtro de assinatura na lista de empresas;
+  - para o Dono, o aviso no topo do painel (vence em breve ou carência, com o link do WhatsApp do Agesto) e o bloco **Assinatura** na Parametrização (`GET /api/assinatura`).
+- **Fora do MVP:** desfazer um pagamento registrado por engano. Por enquanto, corrige-se pelo "Ajustar" (pago até) e o registro fica no histórico.

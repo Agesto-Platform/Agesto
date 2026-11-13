@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { ok, fail } from '../lib/http'
+import type { Assinatura, PagamentoAssinatura } from '../../types/api'
 import type {
   AdminConta,
   AuditoriaAdminItem,
@@ -31,8 +32,49 @@ const admins: AdminConta[] = [
   { id: 1, nome: 'Equipe Agesto', email: ADMIN_DEMO_EMAIL, ativo: true, ultimoAcessoEm: agora(), createdAt: diasAtras(60) },
 ]
 
-interface EmpresaMock extends Omit<EmpresaAdminDetalhe, 'usuarios'> {
+interface EmpresaMock extends Omit<EmpresaAdminDetalhe, 'usuarios' | 'assinatura'> {
   usuarios: UsuarioAdminItem[]
+  // Assinatura (DEC-58): o mock guarda o essencial e calcula o resto.
+  pagoAte: string | null
+  licencas: number
+  bloqueioAutomatico: boolean
+  pagamentos: PagamentoAssinatura[]
+}
+
+const isoDia = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const diaRelativo = (dias: number) => isoDia(new Date(Date.now() + dias * 86_400_000))
+const diffDias = (iso: string) => {
+  const [a, m, d] = iso.split('-').map(Number)
+  const hoje = new Date()
+  return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())) / 86_400_000)
+}
+
+/** Mesma regra da API (AssinaturaService.Calcular): 5 dias de aviso, 10 de carência. */
+export function calcularAssinatura(pagoAte: string | null): Pick<Assinatura, 'situacao' | 'diasParaVencer' | 'diasDeAtraso' | 'diasParaBloqueio'> {
+  if (!pagoAte) return { situacao: 'SemCobranca', diasParaVencer: null, diasDeAtraso: null, diasParaBloqueio: null }
+  const restam = diffDias(pagoAte)
+  if (restam >= 0) return { situacao: restam <= 5 ? 'VenceEmBreve' : 'EmDia', diasParaVencer: restam, diasDeAtraso: null, diasParaBloqueio: null }
+  const atraso = -restam
+  return atraso <= 10
+    ? { situacao: 'EmCarencia', diasParaVencer: null, diasDeAtraso: atraso, diasParaBloqueio: 10 - atraso + 1 }
+    : { situacao: 'Atrasada', diasParaVencer: null, diasDeAtraso: atraso, diasParaBloqueio: null }
+}
+
+const assinaturaDe = (e: EmpresaMock): Assinatura => ({
+  ...calcularAssinatura(e.pagoAte),
+  pagoAte: e.pagoAte,
+  licencasFuncionarios: e.licencas,
+  acessosEmUso: e.usuarios.filter((u) => u.ativo).length,
+  acessosPermitidos: 1 + e.licencas,
+  valorMensal: Math.round((49.9 + Math.max(0, e.licencas - 1) * 19.9) * 100) / 100,
+  ativa: e.ativa,
+  bloqueioAutomatico: e.bloqueioAutomatico,
+  pagamentos: e.pagamentos,
+})
+
+const detalhe = (e: EmpresaMock): EmpresaAdminDetalhe => {
+  const { pagoAte: _p, licencas: _l, bloqueioAutomatico: _b, pagamentos: _g, ...resto } = e
+  return { ...resto, assinatura: assinaturaDe(e) }
 }
 
 const usuario = (id: number, nome: string, email: string, perfil: 'Dono' | 'Agente', acesso: number | null): UsuarioAdminItem => ({
@@ -52,16 +94,20 @@ let empresas: EmpresaMock[] = [
     id: 1, nome: 'AC Fernando Climatização', documento: '12.345.678/0001-90', ativa: true, bloqueadaEm: null, motivoBloqueio: null,
     createdAt: diasAtras(45), totalClientes: 86, totalAtendimentos: 412, ultimoAcessoEm: diasAtras(0),
     usuarios: [usuario(1, 'Fernando Lima', 'dono@agesto.app', 'Dono', 0), { ...usuario(2, 'Carlos Souza', 'carlos@acfernando.com', 'Agente', 1), bloqueadoAte: new Date(Date.now() + 12 * 60_000).toISOString() }],
+    pagoAte: diaRelativo(3), licencas: 1, bloqueioAutomatico: false,
+    pagamentos: [{ id: 1, valor: 49.9, pagoEm: diaRelativo(-27), forma: 'Pix', meses: 1, periodoInicio: diaRelativo(-27), periodoFim: diaRelativo(3), observacao: null, adminNome: 'Equipe Agesto', createdAt: diasAtras(27) }],
   },
   {
     id: 2, nome: 'Elétrica Boa Luz', documento: null, ativa: true, bloqueadaEm: null, motivoBloqueio: null,
     createdAt: diasAtras(12), totalClientes: 14, totalAtendimentos: 23, ultimoAcessoEm: diasAtras(3),
     usuarios: [usuario(3, 'Joana Prado', 'joana@boaluz.com', 'Dono', 3)],
+    pagoAte: diaRelativo(-4), licencas: 2, bloqueioAutomatico: false, pagamentos: [],
   },
   {
     id: 3, nome: 'Hidráulica Rápida', documento: '98.765.432/0001-10', ativa: false, bloqueadaEm: diasAtras(2), motivoBloqueio: 'Mensalidade atrasada',
     createdAt: diasAtras(90), totalClientes: 40, totalAtendimentos: 150, ultimoAcessoEm: diasAtras(5),
     usuarios: [usuario(4, 'Marcos Reis', 'marcos@hrapida.com', 'Dono', 5)],
+    pagoAte: diaRelativo(-15), licencas: 1, bloqueioAutomatico: true, pagamentos: [],
   },
 ]
 
@@ -83,6 +129,10 @@ const resumo = (e: EmpresaMock): EmpresaAdminResumo => {
     id: e.id, nome: e.nome, documento: e.documento, ativa: e.ativa, createdAt: e.createdAt,
     totalUsuarios: e.usuarios.length, usuariosAtivos: e.usuarios.filter((u) => u.ativo).length,
     donoNome: dono?.nome ?? null, donoEmail: dono?.email ?? null, ultimoAcessoEm: e.ultimoAcessoEm,
+    pagoAte: e.pagoAte, licencasFuncionarios: e.licencas,
+    situacaoAssinatura: calcularAssinatura(e.pagoAte).situacao,
+    diasParaVencer: calcularAssinatura(e.pagoAte).diasParaVencer,
+    diasDeAtraso: calcularAssinatura(e.pagoAte).diasDeAtraso,
   }
 }
 
@@ -116,7 +166,38 @@ export const adminHandlers = [
 
   http.get('*/api/admin/empresas/:id', ({ params }) => {
     const e = empresas.find((x) => x.id === Number(params.id))
-    return e ? HttpResponse.json(ok(e, 'Empresa.')) : fail(404, 'Empresa não encontrada.')
+    return e ? HttpResponse.json(ok(detalhe(e), 'Empresa.')) : fail(404, 'Empresa não encontrada.')
+  }),
+
+  // Assinatura (DEC-58): pagamento estende o "pago até" e tira o bloqueio automático.
+  http.post('*/api/admin/empresas/:id/pagamentos', async ({ params, request }) => {
+    const e = empresas.find((x) => x.id === Number(params.id))
+    if (!e) return fail(404, 'Empresa não encontrada.')
+    const body = (await request.json()) as { valor: number; pagoEm: string; forma: PagamentoAssinatura['forma']; meses: number; observacao: string | null }
+    const inicio = e.pagoAte ? diaRelativo(diffDias(e.pagoAte) + 1) : diaRelativo(0)
+    const [a, m, d] = inicio.split('-').map(Number)
+    const fimData = new Date(a, m - 1 + body.meses, d - 1)
+    const fim = isoDia(fimData)
+    e.pagamentos = [{ id: Date.now(), valor: body.valor, pagoEm: body.pagoEm, forma: body.forma, meses: body.meses, periodoInicio: inicio, periodoFim: fim, observacao: body.observacao, adminNome: 'Equipe Agesto', createdAt: agora() }, ...e.pagamentos]
+    e.pagoAte = fim
+    if (!e.ativa && e.bloqueioAutomatico && calcularAssinatura(fim).situacao !== 'Atrasada') {
+      e.ativa = true
+      e.bloqueadaEm = null
+      e.motivoBloqueio = null
+      e.bloqueioAutomatico = false
+    }
+    auditar('registrar-pagamento', e.id, `R$ ${body.valor.toFixed(2)} (${body.forma}), pago até ${fim}`)
+    return HttpResponse.json(ok(assinaturaDe(e), 'Pagamento registrado.'))
+  }),
+
+  http.put('*/api/admin/empresas/:id/assinatura', async ({ params, request }) => {
+    const e = empresas.find((x) => x.id === Number(params.id))
+    if (!e) return fail(404, 'Empresa não encontrada.')
+    const body = (await request.json()) as { licencasFuncionarios: number; pagoAte: string | null }
+    e.licencas = Math.max(1, body.licencasFuncionarios)
+    e.pagoAte = body.pagoAte
+    auditar('atualizar-assinatura', e.id, `${e.licencas} licença(s), pago até ${e.pagoAte ?? 'sem cobrança'}`)
+    return HttpResponse.json(ok(assinaturaDe(e), 'Assinatura atualizada.'))
   }),
 
   http.post('*/api/admin/empresas', async ({ request }) => {
@@ -127,7 +208,7 @@ export const adminHandlers = [
     // O Dono recebe o convite por email para criar a senha (DEC-55).
     const dono = { ...usuario(id * 10, body.nomeDono, email, 'Dono', null), convitePendente: true }
     empresas = [
-      { id, nome: body.nomeEmpresa, documento: body.documento, ativa: true, bloqueadaEm: null, motivoBloqueio: null, createdAt: agora(), totalClientes: 0, totalAtendimentos: 0, ultimoAcessoEm: null, usuarios: [dono] },
+      { id, nome: body.nomeEmpresa, documento: body.documento, ativa: true, bloqueadaEm: null, motivoBloqueio: null, createdAt: agora(), totalClientes: 0, totalAtendimentos: 0, ultimoAcessoEm: null, usuarios: [dono], pagoAte: null, licencas: 1, bloqueioAutomatico: false, pagamentos: [] },
       ...empresas,
     ]
     auditar('criar-empresa', id, `Empresa "${body.nomeEmpresa}" com dono ${email}`, dono.id)
@@ -141,6 +222,8 @@ export const adminHandlers = [
     const body = (await request.json()) as { nome: string; email: string; perfil: 'Dono' | 'Agente' }
     const email = body.email.trim().toLowerCase()
     if (empresas.some((x) => x.usuarios.some((u) => u.email === email))) return fail(409, 'Email já cadastrado.')
+    if (e.usuarios.filter((u) => u.ativo).length >= 1 + e.licencas)
+      return fail(409, 'A assinatura não tem licença livre. Aumente as licenças na assinatura antes de criar o acesso.')
     const id = Math.max(0, ...empresas.flatMap((x) => x.usuarios.map((u) => u.id))) + 1
     e.usuarios.push({ ...usuario(id, body.nome.trim(), email, body.perfil, null), convitePendente: true, createdAt: agora() })
     auditar('criar-usuario', e.id, `${email} (${body.perfil})`, id)

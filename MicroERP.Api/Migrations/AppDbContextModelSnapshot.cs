@@ -162,7 +162,7 @@ namespace MicroERP.Api.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
 
-                    b.Property<long>("AdminId")
+                    b.Property<long?>("AdminId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
@@ -334,12 +334,23 @@ namespace MicroERP.Api.Migrations
                     b.Property<DateTime?>("BloqueadaEm")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("BloqueioAutomatico")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateOnly?>("BloqueioAutomaticoReferencia")
+                        .HasColumnType("date");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Documento")
                         .HasMaxLength(18)
                         .HasColumnType("character varying(18)");
+
+                    b.Property<int>("LicencasFuncionarios")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<string>("MotivoBloqueio")
                         .HasMaxLength(300)
@@ -349,6 +360,9 @@ namespace MicroERP.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
+
+                    b.Property<DateOnly?>("PagoAte")
+                        .HasColumnType("date");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -584,6 +598,55 @@ namespace MicroERP.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Orcamentos");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.PagamentoAssinatura", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("AdminId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Forma")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("Meses")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateOnly>("PagoEm")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodoFim")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodoInicio")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.ToTable("PagamentosAssinatura", (string)null);
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Produto", b =>
@@ -922,8 +985,7 @@ namespace MicroERP.Api.Migrations
                     b.HasOne("MicroERP.Api.Models.AdminPlataforma", "Admin")
                         .WithMany()
                         .HasForeignKey("AdminId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Admin");
                 });
@@ -1007,6 +1069,17 @@ namespace MicroERP.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Cliente");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.PagamentoAssinatura", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Produto", b =>

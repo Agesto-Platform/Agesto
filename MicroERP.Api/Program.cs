@@ -97,6 +97,9 @@ builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAgenteService, AgenteService>();
 builder.Services.AddScoped<IUsoIaService, UsoIaService>();
 builder.Services.AddScoped<IEnvioCodigoAdmin, EnvioCodigoAdmin>();
+builder.Services.AddScoped<IAssinaturaService, AssinaturaService>();
+// Bloqueio automático por atraso da assinatura (DEC-58), de hora em hora.
+builder.Services.AddHostedService<AssinaturaWorker>();
 builder.Services.AddSingleton(TimeProvider.System);
 
 // Email transacional pelo Brevo e "Esqueci a senha" do Dono (DEC-54). Sem chave,
