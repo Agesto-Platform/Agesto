@@ -27,17 +27,20 @@ public sealed class AgenteService : IAgenteService
     private readonly IMetricasService _metricasService;
     private readonly IAtendimentoService _atendimentoService;
     private readonly IInsightsGerador _gerador;
+    private readonly IUsoIaService _usoIa;
     private readonly ILogger<AgenteService> _logger;
 
     public AgenteService(
         IMetricasService metricasService,
         IAtendimentoService atendimentoService,
         IInsightsGerador gerador,
+        IUsoIaService usoIa,
         ILogger<AgenteService> logger)
     {
         _metricasService = metricasService;
         _atendimentoService = atendimentoService;
         _gerador = gerador;
+        _usoIa = usoIa;
         _logger = logger;
     }
 
@@ -86,14 +89,32 @@ public sealed class AgenteService : IAgenteService
         var ultimaMensagem = $"<dados>\n{JsonSerializer.Serialize(dados, JsonEnvio)}\n</dados>\n\n{pergunta}";
         var conversa = MontarConversa(request.Historico, ultimaMensagem);
 
-        var resposta = await _gerador.ResponderAsync(conversa, cancellationToken);
+        // Limite diário por empresa (DEC-21): reserva a pergunta antes de chamar
+        // o modelo e devolve se ele falhar, para a empresa não pagar pela falha.
+        var restantes = await _usoIa.ReservarPerguntaAsync(empresaId, cancellationToken);
+        RespostaIA resposta;
+        try
+        {
+            resposta = await _gerador.ResponderAsync(conversa, cancellationToken);
+        }
+        catch
+        {
+            await _usoIa.DevolverPerguntaAsync(empresaId, CancellationToken.None);
+            throw;
+        }
 
-        // Rastreio de consumo por empresa (DEC-21), até existir o TenantUsage.
+        await _usoIa.RegistrarTokensDaPerguntaAsync(empresaId, resposta.TokensEntrada, resposta.TokensSaida, CancellationToken.None);
         _logger.LogInformation(
             "Agente IA respondeu: empresa {EmpresaId}, modelo {Modelo}, tokens de entrada {TokensEntrada}, tokens de saída {TokensSaida}",
             empresaId, resposta.Modelo, resposta.TokensEntrada, resposta.TokensSaida);
 
-        return new AgenteRespostaResponse { Resposta = resposta.Texto, Modelo = resposta.Modelo };
+        return new AgenteRespostaResponse
+        {
+            Resposta = resposta.Texto,
+            Modelo = resposta.Modelo,
+            PerguntasRestantes = restantes,
+            LimiteDiario = _usoIa.PerguntasPorDia,
+        };
     }
 
     // A API da Anthropic exige que a conversa comece com o usuário e alterne

@@ -6,7 +6,7 @@ import { api, ApiError } from '../lib/api'
 
 vi.mock('../lib/api', async (importOriginal) => {
   const real = await importOriginal<typeof import('../lib/api')>()
-  return { ...real, api: { post: vi.fn() } }
+  return { ...real, api: { post: vi.fn(), get: vi.fn() } }
 })
 vi.mock('./useConta', () => ({
   useConta: () => ({ nome: 'Davi', email: 'davi@exemplo.com', inicial: 'D', empresa: null }),
@@ -15,10 +15,44 @@ vi.mock('./useConta', () => ({
 vi.mock('../components/Mascote', () => ({ Mascote: () => null }))
 
 const post = vi.mocked(api.post)
+const get = vi.mocked(api.get)
 
 describe('AgentPanel', () => {
   beforeEach(() => {
     post.mockReset()
+    get.mockReset()
+    get.mockResolvedValue({ limite: 20, usadas: 3, restantes: 17 })
+  })
+
+  it('mostra quantas perguntas restam hoje e atualiza depois da resposta', async () => {
+    post.mockResolvedValue({ resposta: 'Ok.', modelo: 'm', perguntasRestantes: 16, limiteDiario: 20 })
+    const user = userEvent.setup()
+    render(<AgentPanel period="mes" onClose={() => {}} />)
+
+    expect(await screen.findByText(/17 de 20 perguntas hoje/)).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Pergunta para o Agente'), 'Oi{Enter}')
+    expect(await screen.findByText(/16 de 20 perguntas hoje/)).toBeInTheDocument()
+  })
+
+  it('no limite do dia, avisa e trava a caixa de pergunta', async () => {
+    post.mockRejectedValue(new ApiError(429, 'Sua empresa já fez as 20 perguntas de hoje ao Agente. O limite recomeça amanhã.'))
+    const user = userEvent.setup()
+    render(<AgentPanel period="mes" onClose={() => {}} />)
+
+    await user.type(screen.getByLabelText('Pergunta para o Agente'), 'Oi{Enter}')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('20 perguntas de hoje')
+    expect(screen.getByText('Perguntas de hoje esgotadas')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pergunta para o Agente')).toBeDisabled()
+  })
+
+  it('com as perguntas do dia já esgotadas, abre travado', async () => {
+    get.mockResolvedValue({ limite: 20, usadas: 20, restantes: 0 })
+    render(<AgentPanel period="mes" onClose={() => {}} />)
+
+    expect(await screen.findByText('Perguntas de hoje esgotadas')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pergunta para o Agente')).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Quanto sobrou este mês\?/ })).toBeDisabled()
   })
 
   it('envia a pergunta com o período e mostra a resposta do Agente', async () => {

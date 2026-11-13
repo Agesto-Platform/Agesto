@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { AgentePerguntaRequest, AgenteResposta } from '../../types/api'
+import type { AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../../types/api'
 import { ok, fail } from '../lib/http'
 
 /** Respostas de exemplo do Agente (mock): sem IA, só para navegar o painel. */
@@ -13,11 +13,26 @@ function responder(pergunta: string): string {
   return 'Esta é uma resposta de exemplo do modo de demonstração. Com a API real, o Agente responde com os números da sua empresa.'
 }
 
+/** Limite diário por empresa (DEC-21), contado só nesta aba no modo de demonstração. */
+const LIMITE = 20
+let usadas = 0
+
 export const agenteHandlers = [
+  http.get('*/api/agente/uso', () => {
+    const data: AgenteUso = { limite: LIMITE, usadas, restantes: LIMITE - usadas }
+    return HttpResponse.json(ok(data, 'Uso do Agente hoje.'))
+  }),
   http.post('*/api/agente/perguntar', async ({ request }) => {
     const body = (await request.json()) as AgentePerguntaRequest
     if (!body.pergunta?.trim()) return fail(400, 'Pergunta obrigatória.')
-    const data: AgenteResposta = { resposta: responder(body.pergunta), modelo: 'mock' }
+    if (usadas >= LIMITE) return fail(429, `Sua empresa já fez as ${LIMITE} perguntas de hoje ao Agente. O limite recomeça amanhã.`)
+    usadas++
+    const data: AgenteResposta = {
+      resposta: responder(body.pergunta),
+      modelo: 'mock',
+      perguntasRestantes: LIMITE - usadas,
+      limiteDiario: LIMITE,
+    }
     return HttpResponse.json(ok(data, 'Resposta do Agente.'))
   }),
 ]

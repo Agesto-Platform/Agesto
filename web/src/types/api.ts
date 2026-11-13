@@ -485,6 +485,16 @@ export interface AgentePerguntaRequest {
 export interface AgenteResposta {
   resposta: string
   modelo: string
+  /** Limite diário por empresa (DEC-21): quantas perguntas ainda restam hoje. */
+  perguntasRestantes?: number
+  limiteDiario?: number
+}
+
+/** GET /api/agente/uso: perguntas ao Agente usadas hoje pela empresa (DEC-21). */
+export interface AgenteUso {
+  limite: number
+  usadas: number
+  restantes: number
 }
 
 /* ---------- App do agente ---------- */
