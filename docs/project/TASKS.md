@@ -56,7 +56,7 @@
 | 08/12 | Cobrança mínima no web: atendimento pago ou em aberto, forma e data do pagamento | L5 | A fazer |
 | 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | A fazer |
 | 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | A fazer |
-| 12/11 | Página de apresentação com preço, termos, download e contato | L4 | Feito no código (12/11), branch `feature/pagina-de-venda`: página de venda na raiz do web, com assinatura de R$ 49,90 (Dono e 1 funcionário) e R$ 19,90 por funcionário a mais; pagamento por cartão, boleto ou Pix, combinado no contato (DEC-57) |
+| 12/11 | Página de apresentação com preço, termos, download e contato | L4 | Feito (PR #172, release #173, 12/11; `/conheca` no PR #174, release #175, 13/11; testado pelo Davi): página de venda na raiz do web, com assinatura de R$ 49,90 (Dono e 1 funcionário) e R$ 19,90 por funcionário a mais; pagamento por cartão, boleto ou Pix, combinado no contato (DEC-57) |
 | 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render |
 | 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
 | — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | A fazer |
@@ -64,7 +64,7 @@
 | — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | A fazer |
 | — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |
 | 12/11 | Convites por email: acesso novo (pelo Dono ou pela equipe do Agesto) e convite de admin, com a pessoa criando a própria senha; fim da senha provisória (DEC-55) | Extra | Feito (PR #162, release #163, 12/11); migrations aplicadas no Supabase e envio testado em produção |
-| — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | Consumo e limite diário feitos no código (13/11), branch `feature/limite-ia-diario`: tabela `UsosIa` e 20 perguntas por empresa por dia. Falta aplicar a migration `AddUsoIa`. Limite por plano em aberto |
+| — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | Feito (PR #176, release #177, 13/11; testado pelo Davi): tabela `UsosIa` (migration aplicada no Supabase) e 20 perguntas por empresa por dia. Limite por plano: não se aplica enquanto houver um plano só (decisão do Davi, 13/11) |
 | 12/11 | RLS nas tabelas do superadmin (`AdminsPlataforma`, `AuditoriasAdmin`), que ficaram de fora do `EnableRlsLockdown` (DEC-34, DEC-52) | Extra | Feito no código (12/11): migration `EnableRlsSuperadmin`, com a policy do `agesto_api`. Não havia exposição (`anon` e `authenticated` sem privilégio, Data API desligada) |
 | 12/11 | WhatsApp por link `wa.me`: enviar o orçamento pelo WhatsApp e abrir a conversa com o cliente no web e no app (DEC-56) | Extra | Links feitos (PR #168, release #169, 12/11). Orçamento em PDF no lugar da mensagem: feito no código (12/11), branch `feature/orcamento-pdf`. Conversa dentro do Agesto fica para depois, pela API oficial (DEC-56) |
 

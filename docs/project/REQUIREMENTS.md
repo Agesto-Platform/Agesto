@@ -254,7 +254,7 @@ Dois fluxos distintos:
 - **[Implementado]** O chat recebe as métricas do período e a agenda dos próximos 7 dias sem nome, telefone nem endereço do cliente
 - **[Implementado]** Limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`
 - **[Implementado]** Registro do consumo da IA por empresa e dia (tabela `UsosIa`, o `TenantUsage` da DEC-21) e limite de 20 perguntas por dia ao Agente
-- **[Planejado / não implementado]** Limite por plano (DEC-21)
+- **[Não se aplica por enquanto]** Limite por plano (DEC-21): há um plano só (DEC-57), e todas as empresas têm 20 perguntas por dia
 
 ---
 
