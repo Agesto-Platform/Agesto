@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { TAMANHO_BUSCA, useBuscaRapida, useDebounced, type Filtros } from '../../../lib/paginacao'
 
 /**
@@ -42,6 +42,14 @@ export function BuscaField<T extends { id: number }>({
   const [aberto, setAberto] = useState(false)
   const [ativo, setAtivo] = useState(0)
   const fecharRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // O fechamento atrasado do onBlur não pode rodar depois que o campo saiu da
+  // tela (em teste, isso acontecia depois do fim e quebrava o CI de vez em quando).
+  useEffect(
+    () => () => {
+      if (fecharRef.current) clearTimeout(fecharRef.current)
+    },
+    [],
+  )
 
   const termo = useDebounced(texto, 250)
   const busca = useBuscaRapida<T>(queryKey, path, termo, aberto, filtros)
