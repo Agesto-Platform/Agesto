@@ -60,6 +60,11 @@ export function calcularAssinatura(pagoAte: string | null): Pick<Assinatura, 'si
     : { situacao: 'Atrasada', diasParaVencer: null, diasDeAtraso: atraso, diasParaBloqueio: null }
 }
 
+const comDesfazer = (e: EmpresaMock) => {
+  const ultimo = e.pagamentos.find((p) => !p.desfeitoEm)
+  return e.pagamentos.map((p) => ({ ...p, podeDesfazer: ultimo?.id === p.id && e.pagoAte === p.periodoFim }))
+}
+
 const assinaturaDe = (e: EmpresaMock): Assinatura => ({
   ...calcularAssinatura(e.pagoAte),
   pagoAte: e.pagoAte,
@@ -69,7 +74,7 @@ const assinaturaDe = (e: EmpresaMock): Assinatura => ({
   valorMensal: Math.round((49.9 + Math.max(0, e.licencas - 1) * 19.9) * 100) / 100,
   ativa: e.ativa,
   bloqueioAutomatico: e.bloqueioAutomatico,
-  pagamentos: e.pagamentos,
+  pagamentos: comDesfazer(e),
 })
 
 const detalhe = (e: EmpresaMock): EmpresaAdminDetalhe => {
@@ -188,6 +193,21 @@ export const adminHandlers = [
     }
     auditar('registrar-pagamento', e.id, `R$ ${body.valor.toFixed(2)} (${body.forma}), pago até ${fim}`)
     return HttpResponse.json(ok(assinaturaDe(e), 'Pagamento registrado.'))
+  }),
+
+  http.post('*/api/admin/empresas/:id/pagamentos/:pagamentoId/desfazer', ({ params }) => {
+    const e = empresas.find((x) => x.id === Number(params.id))
+    const p = e?.pagamentos.find((x) => x.id === Number(params.pagamentoId))
+    if (!e || !p) return fail(404, 'Pagamento não encontrado.')
+    const ativos = e.pagamentos.filter((x) => !x.desfeitoEm)
+    if (p.desfeitoEm || ativos[0]?.id !== p.id || e.pagoAte !== p.periodoFim)
+      return fail(409, 'Só dá para desfazer o último pagamento, e só enquanto o "pago até" não foi ajustado depois dele.')
+    p.desfeitoEm = agora()
+    p.desfeitoPor = 'Equipe Agesto'
+    const [a, m, d] = p.periodoInicio.split('-').map(Number)
+    e.pagoAte = ativos.length > 1 ? isoDia(new Date(a, m - 1, d - 1)) : null
+    auditar('desfazer-pagamento', e.id, `R$ ${p.valor.toFixed(2)}`)
+    return HttpResponse.json(ok(assinaturaDe(e), 'Pagamento desfeito.'))
   }),
 
   http.put('*/api/admin/empresas/:id/assinatura', async ({ params, request }) => {

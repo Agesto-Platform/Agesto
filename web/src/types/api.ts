@@ -363,6 +363,9 @@ export interface Atendimento {
   dataAgendada: string | null
   status: StatusAtendimento
   valorTotal: number
+  /** Cobrança: quando o cliente pagou ("2026-11-13"); null/ausente = a receber. */
+  pagoEm?: string | null
+  formaPagamento?: FormaRecebimento | null
   custoTotal: number
   margem: number
   clienteId: number
@@ -384,7 +387,13 @@ export interface AtendimentoContagem {
   pendente: number
   concluido: number
   cancelado: number
+  /** Concluídos sem pagamento registrado, e quanto somam. */
+  aReceber?: number
+  valorAReceber?: number
 }
+
+/** Como o cliente pagou o atendimento (cobrança mínima). */
+export type FormaRecebimento = 'Dinheiro' | 'Pix' | 'CartaoDebito' | 'CartaoCredito' | 'Boleto' | 'Transferencia' | 'Outro'
 
 export interface AtendimentoInput {
   clienteId: number
@@ -521,6 +530,11 @@ export interface PagamentoAssinatura {
   observacao: string | null
   adminNome: string | null
   createdAt: string
+  /** Pagamento desfeito (registrado por engano); fica no histórico. */
+  desfeitoEm?: string | null
+  desfeitoPor?: string | null
+  /** Só o último pagamento ativo pode ser desfeito. */
+  podeDesfazer?: boolean
 }
 
 /** GET /api/assinatura (Dono) e o bloco Assinatura do superadmin. */

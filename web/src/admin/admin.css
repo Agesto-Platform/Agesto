@@ -34,6 +34,8 @@
   .adm-assinatura b { font-size: 18px; font-weight: 600; }
   .adm-assinatura b.neg { color: var(--neg-ink); }
   .adm-pagamentos td .sub { display: block; font-size: 12px; color: var(--ink-3); white-space: normal; }
+  .adm-pagamentos tr.desfeito td { color: var(--ink-3); text-decoration: line-through; }
+  .adm-pagamentos tr.desfeito td .sub { text-decoration: none; }
   .adm-sem-pagamentos { margin: 0; font-size: 13px; }
   .adm-filtro { margin-left: auto; }
   @media (max-width: 720px) { .adm-assinatura { grid-template-columns: 1fr; } }

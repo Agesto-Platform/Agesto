@@ -56,7 +56,8 @@ public sealed class AtendimentoService : IAtendimentoService
     {
         var (itens, total) = await _atendimentoRepository.GetPaginaAsync(
             empresaId, paginacao.PaginaOuPadrao, paginacao.TamanhoOuPadrao,
-            filtro?.Busca, filtro?.Status, filtro?.ClienteId, filtro?.Ordem == AtendimentoFiltroQuery.OrdemRegistro, cancellationToken);
+            filtro?.Busca, filtro?.Status, filtro?.ClienteId, filtro?.Ordem == AtendimentoFiltroQuery.OrdemRegistro, cancellationToken,
+            filtro?.Recebimento);
         var resumos = await _atendimentoRepository.GetResumosAsync(empresaId, itens.Select(a => a.Id).ToList(), cancellationToken);
         return new PaginaResponse<AtendimentoResponse>
         {
@@ -70,13 +71,43 @@ public sealed class AtendimentoService : IAtendimentoService
     public async Task<AtendimentoContagemResponse> ContarPorStatusAsync(long empresaId, CancellationToken cancellationToken)
     {
         var porStatus = await _atendimentoRepository.ContarPorStatusAsync(empresaId, cancellationToken);
+        var (aReceber, valorAReceber) = await _atendimentoRepository.ContarAReceberAsync(empresaId, cancellationToken);
         return new AtendimentoContagemResponse
         {
             Todos = porStatus.Values.Sum(),
             Pendente = porStatus.GetValueOrDefault(StatusAtendimento.Pendente),
             Concluido = porStatus.GetValueOrDefault(StatusAtendimento.Concluido),
-            Cancelado = porStatus.GetValueOrDefault(StatusAtendimento.Cancelado)
+            Cancelado = porStatus.GetValueOrDefault(StatusAtendimento.Cancelado),
+            AReceber = aReceber,
+            ValorAReceber = valorAReceber
         };
+    }
+
+    // Cobrança mínima (TASKS L5): registra quando e como o cliente pagou, ou volta para "a receber".
+    public async Task<AtendimentoResponse> RegistrarRecebimentoAsync(long empresaId, long id, AtendimentoRecebimentoRequest request, CancellationToken cancellationToken)
+    {
+        var atendimento = await _atendimentoRepository.GetByIdAsync(empresaId, id, true, cancellationToken)
+            ?? throw new NotFoundException("Atendimento não encontrado.");
+
+        if (request.PagoEm is null)
+        {
+            atendimento.PagoEm = null;
+            atendimento.FormaPagamento = null;
+        }
+        else
+        {
+            if (atendimento.Status == StatusAtendimento.Cancelado)
+                throw new ArgumentException("Atendimento cancelado não recebe pagamento.");
+            if (request.Forma is null)
+                throw new ArgumentException("Informe a forma de pagamento.");
+            atendimento.PagoEm = request.PagoEm;
+            atendimento.FormaPagamento = request.Forma;
+        }
+        atendimento.UpdatedAt = DateTime.UtcNow;
+        await _atendimentoRepository.SaveChangesAsync(cancellationToken);
+
+        var cliente = await _clienteRepository.GetByIdAsync(empresaId, atendimento.ClienteId, false, cancellationToken);
+        return MapResponse(atendimento, null, cliente);
     }
 
     public async Task<IReadOnlyList<AgendaItemResponse>> GetAgendaAsync(long empresaId, DateTime? de, DateTime? ate, long? agenteId, CancellationToken cancellationToken)
@@ -268,6 +299,8 @@ public sealed class AtendimentoService : IAtendimentoService
             ValorTotal = atendimento.ValorTotal,
             CustoTotal = atendimento.CustoTotal,
             Margem = atendimento.ValorTotal - atendimento.CustoTotal,
+            PagoEm = atendimento.PagoEm,
+            FormaPagamento = atendimento.FormaPagamento,
             ClienteId = atendimento.ClienteId,
             UsuarioId = atendimento.UsuarioId,
             Resumo = resumo,

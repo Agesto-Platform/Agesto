@@ -75,4 +75,34 @@ describe('AssinaturaAdminCard (DEC-58)', () => {
 
     expect(put).toHaveBeenCalledWith('/api/admin/empresas/7/assinatura', { licencasFuncionarios: 3, pagoAte: '2026-11-10' })
   })
+
+  it('desfaz o último pagamento após confirmar e mostra o histórico riscado', async () => {
+    const pago = assinatura.pagamentos[0]
+    post.mockResolvedValue({
+      ...assinatura,
+      pagoAte: '2026-10-10',
+      pagamentos: [{ ...pago, desfeitoEm: '2026-11-13T12:00:00Z', desfeitoPor: 'Equipe Agesto', podeDesfazer: false }],
+    })
+    const user = userEvent.setup()
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <ToastProvider>
+          <AssinaturaAdminCard empresaId={7} assinatura={{ ...assinatura, pagamentos: [{ ...pago, podeDesfazer: true }] }} />
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Desfazer' }))
+    expect(screen.getByText('Desfazer este pagamento?')).toBeInTheDocument()
+    const botoes = screen.getAllByRole('button', { name: 'Desfazer' })
+    await user.click(botoes[botoes.length - 1])
+
+    expect(post).toHaveBeenCalledWith('/api/admin/empresas/7/pagamentos/1/desfazer', expect.anything())
+  })
+
+  it('não oferece desfazer quando o pagamento não é o último', () => {
+    renderizar()
+    expect(screen.queryByRole('button', { name: 'Desfazer' })).toBeNull()
+  })
 })

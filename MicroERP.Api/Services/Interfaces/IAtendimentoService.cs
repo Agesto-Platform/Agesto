@@ -10,5 +10,7 @@ public interface IAtendimentoService
     Task<AtendimentoResponse> GetByIdAsync(long empresaId, long id, CancellationToken cancellationToken);
     Task<AtendimentoResponse> CreateAsync(long empresaId, long usuarioId, AtendimentoCreateRequest request, CancellationToken cancellationToken);
     Task<AtendimentoResponse> UpdateAsync(long empresaId, long id, AtendimentoUpdateRequest request, CancellationToken cancellationToken);
+    // Cobrança mínima: data e forma do pagamento, ou null para voltar para "a receber".
+    Task<AtendimentoResponse> RegistrarRecebimentoAsync(long empresaId, long id, AtendimentoRecebimentoRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(long empresaId, long id, CancellationToken cancellationToken);
 }

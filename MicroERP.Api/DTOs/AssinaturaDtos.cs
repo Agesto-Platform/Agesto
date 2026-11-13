@@ -38,6 +38,10 @@ public sealed class PagamentoAssinaturaItem
     public string? Observacao { get; set; }
     public string? AdminNome { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? DesfeitoEm { get; set; }
+    public string? DesfeitoPor { get; set; }
+    /// <summary>Só o último pagamento ativo pode ser desfeito.</summary>
+    public bool PodeDesfazer { get; set; }
 }
 
 public sealed class PagamentoAssinaturaRequest

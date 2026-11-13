@@ -36,6 +36,8 @@ export const listasHandlers = [
       pendente: conta('Pendente'),
       concluido: conta('Concluido'),
       cancelado: conta('Cancelado'),
+      aReceber: atendimentos.filter((a) => a.status === 'Concluido' && !a.pagoEm).length,
+      valorAReceber: atendimentos.filter((a) => a.status === 'Concluido' && !a.pagoEm).reduce((s, a) => s + a.valorTotal, 0),
     }
     return HttpResponse.json(ok(data))
   }),
@@ -51,6 +53,7 @@ export const listasHandlers = [
     const url = new URL(request.url)
     const termo = sem(url.searchParams.get('busca') ?? '')
     const status = url.searchParams.get('status')
+    const recebimento = url.searchParams.get('recebimento')
     const clienteId = url.searchParams.get('clienteId')
     // ordem=registro: os últimos registrados primeiro (Dashboard).
     const porRegistro = url.searchParams.get('ordem') === 'registro'
@@ -66,6 +69,8 @@ export const listasHandlers = [
         }
       })
       .filter((a) => !status || a.status === status)
+      .filter((a) => recebimento !== 'areceber' || (a.status === 'Concluido' && !a.pagoEm))
+      .filter((a) => recebimento !== 'pago' || !!a.pagoEm)
       .filter((a) => !clienteId || a.clienteId === Number(clienteId))
       .filter((a) => !termo || sem(`${a.clienteNome ?? ''} ${a.resumo ?? ''}`).includes(termo))
       .sort((a, b) =>

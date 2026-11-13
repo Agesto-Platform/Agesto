@@ -219,7 +219,7 @@ Para criar o **primeiro** admin:
    ```
 3. Apague `Admin__SetupKey` no Render. O setup só funciona enquanto não existe nenhum admin; os próximos são convidados pela tela **Equipe** e criam a própria senha pelo link do email (DEC-55).
 
-Opcional: `Admin__ExpiresMinutes` define quanto tempo o login de admin vale (padrão 43200, 30 dias).
+Opcional: `Admin__ExpiresMinutes` define quanto tempo o login de admin vale (padrão 1440, 24 horas, DEC-53). Se essa variável estiver no Render com 43200, apague-a para valer o padrão.
 
 O login de admin tem duas etapas (DEC-52): depois da senha, chega um código de 6 dígitos no email do admin pelo Brevo (seção 11). Só em emergência, como o Brevo fora do ar, `Admin__DoisFatores=false` desliga a segunda etapa; volte a apagar a variável assim que o envio voltar.
 

@@ -235,6 +235,7 @@ public class AppDbContext : DbContext
                 .IsRequired();
             entity.Property(e => e.ValorTotal).HasColumnType("decimal(12,2)").IsRequired();
             entity.Property(e => e.CustoTotal).HasColumnType("decimal(12,2)").IsRequired();
+            entity.Property(e => e.FormaPagamento).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.DataRegistro).IsRequired();
             entity.HasIndex(e => e.Uuid).IsUnique();
             entity.HasIndex(e => e.EmpresaId);

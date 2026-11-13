@@ -10,6 +10,7 @@ import {
 import { AtendimentoForm } from './AtendimentoForm'
 import { AtendimentoDetail } from './AtendimentoDetail'
 import { StatusAtendimentoPill } from './status'
+import { Recebimento, SeloRecebimento } from './Recebimento'
 import { useUsuarios, responsaveis } from '../usuarios/queries'
 import {
   Button,
@@ -31,12 +32,14 @@ import { dataCurta, iniciais, semanaHora } from '../../lib/format'
 import { useDebounced } from '../../lib/paginacao'
 import type { Atendimento, AtendimentoContagem, AtendimentoInput, StatusAtendimento } from '../../types/api'
 
-type Aba = 'todos' | StatusAtendimento
+type Aba = 'todos' | StatusAtendimento | 'areceber'
 
 const ABAS: { value: Aba; label: string; conta: keyof AtendimentoContagem }[] = [
   { value: 'todos', label: 'Todos', conta: 'todos' },
   { value: 'Pendente', label: 'Pendentes', conta: 'pendente' },
   { value: 'Concluido', label: 'Concluídos', conta: 'concluido' },
+  // Cobrança: concluídos sem pagamento registrado.
+  { value: 'areceber', label: 'A receber', conta: 'aReceber' },
   { value: 'Cancelado', label: 'Cancelados', conta: 'cancelado' },
 ]
 
@@ -48,7 +51,11 @@ export function AtendimentosPage() {
   const [busca, setBusca] = useState('')
   const buscaServidor = useDebounced(busca.trim())
   // PAG-01: 50 por vez, com aba e busca no servidor; os números das abas vêm à parte.
-  const list = useAtendimentosPaginados({ status: aba === 'todos' ? undefined : aba, busca: buscaServidor || undefined })
+  const list = useAtendimentosPaginados({
+    status: aba === 'todos' || aba === 'areceber' ? undefined : aba,
+    recebimento: aba === 'areceber' ? 'areceber' : undefined,
+    busca: buscaServidor || undefined,
+  })
   const contagem = useAtendimentoContagem()
   const create = useCreateAtendimento()
   const update = useUpdateAtendimento()
@@ -164,7 +171,15 @@ export function AtendimentosPage() {
         )
       },
     },
-    { header: 'Status', cell: (a) => <StatusAtendimentoPill status={a.status} /> },
+    {
+      header: 'Status',
+      cell: (a) => (
+        <span className="status-recebimento">
+          <StatusAtendimentoPill status={a.status} />
+          <SeloRecebimento atendimento={a} />
+        </span>
+      ),
+    },
     { header: 'Total', align: 'right', className: 'strong', cell: (a) => brl(a.valorTotal) },
     {
       header: 'Margem',
@@ -224,6 +239,7 @@ export function AtendimentosPage() {
           </Button>
           <span className="hint" style={{ marginLeft: 'auto' }}>
             {list.isLoading ? '' : `${list.total} ${list.total === 1 ? 'atendimento' : 'atendimentos'}`}
+            {aba === 'areceber' && contagem.data?.valorAReceber != null && ` · ${brl(contagem.data.valorAReceber)} a receber`}
           </span>
         </div>
         <DataTable
@@ -267,6 +283,7 @@ export function AtendimentosPage() {
         title={detail ? `Atendimento #${detail.id}` : 'Atendimento'}
         sub={detail ? clienteNome(detail) : undefined}
       >
+        {detail && <Recebimento key={`r${detail.id}`} atendimento={detail} />}
         {detail && (
           <AtendimentoDetail
             key={detail.id}
