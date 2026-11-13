@@ -10,6 +10,9 @@ public class Atendimento
     public StatusAtendimento Status { get; set; } = StatusAtendimento.Pendente;
     public decimal ValorTotal { get; set; }
     public decimal CustoTotal { get; set; }
+    // Cobrança mínima (TASKS L5): quando e como o cliente pagou. Null = a receber.
+    public DateOnly? PagoEm { get; set; }
+    public FormaRecebimento? FormaPagamento { get; set; }
     public long EmpresaId { get; set; } // Empresa
     public long UsuarioId { get; set; } // Usuario que registrou o atendimento
     public Empresa? Empresa { get; set; }

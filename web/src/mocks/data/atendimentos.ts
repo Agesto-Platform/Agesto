@@ -91,6 +91,9 @@ seedItemServ(a2.id, 2, 1, 140)
 const a3 = seedAtendimento(3, 'Concluido', d(-1, 11))
 seedItemProd(a3.id, null, 'Cabo especial', 1, 30, 12)
 ;[a1, a2, a3].forEach((a) => recalc(a.id))
+// Cobrança: o primeiro concluído já foi pago no Pix; o outro está a receber.
+a1.pagoEm = d(-3, 9).slice(0, 10)
+a1.formaPagamento = 'Pix'
 
 export const atendimentoHandlers = [
 
@@ -124,6 +127,19 @@ export const atendimentoHandlers = [
     if (b.responsavelId != null) at.usuarioId = b.responsavelId
     at.updatedAt = new Date().toISOString()
     return HttpResponse.json(ok(at, 'Atendimento atualizado.'))
+  }),
+
+  // Cobrança: pago (data e forma) ou de volta para "a receber".
+  http.put('*/api/atendimento/:id/recebimento', async ({ request, params }) => {
+    const b = (await request.json()) as { pagoEm: string | null; forma: Atendimento['formaPagamento'] }
+    const at = atendimentos.find((a) => a.id === Number(params.id))
+    if (!at) return fail(404, 'Atendimento não encontrado.')
+    if (b.pagoEm && at.status === 'Cancelado') return fail(400, 'Atendimento cancelado não recebe pagamento.')
+    if (b.pagoEm && !b.forma) return fail(400, 'Informe a forma de pagamento.')
+    at.pagoEm = b.pagoEm
+    at.formaPagamento = b.pagoEm ? b.forma : null
+    at.updatedAt = new Date().toISOString()
+    return HttpResponse.json(ok(at, b.pagoEm ? 'Recebimento registrado.' : 'Atendimento de volta para a receber.'))
   }),
 
   http.delete('*/api/atendimento/:id', ({ params }) => {

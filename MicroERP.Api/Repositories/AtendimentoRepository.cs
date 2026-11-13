@@ -19,13 +19,18 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
     // da tela: a data agendada, senão a de registro, da mais recente para a mais antiga.
     // porRegistro: só a data de registro (os "últimos atendimentos" do Dashboard).
     public Task<(List<Atendimento> Itens, int Total)> GetPaginaAsync(long empresaId, int pagina, int tamanho,
-        string? busca, StatusAtendimento? status, long? clienteId, bool porRegistro, CancellationToken cancellationToken)
+        string? busca, StatusAtendimento? status, long? clienteId, bool porRegistro, CancellationToken cancellationToken, string? recebimento = null)
     {
         var query = _dbContext.Atendimentos
             .AsNoTracking()
             .Where(a => a.EmpresaId == empresaId && a.DeletedAt == null);
 
         if (status.HasValue) query = query.Where(a => a.Status == status.Value);
+        // Cobrança: "a receber" = concluído sem pagamento; "pago" = com pagamento registrado.
+        if (recebimento == MicroERP.Api.DTOs.AtendimentoFiltroQuery.RecebimentoAReceber)
+            query = query.Where(a => a.Status == StatusAtendimento.Concluido && a.PagoEm == null);
+        else if (recebimento == MicroERP.Api.DTOs.AtendimentoFiltroQuery.RecebimentoPago)
+            query = query.Where(a => a.PagoEm != null);
         if (clienteId.HasValue) query = query.Where(a => a.ClienteId == clienteId.Value);
         if (!string.IsNullOrWhiteSpace(busca))
         {
@@ -48,6 +53,13 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
     }
 
     // PAG-01: os números das abas da tela de Atendimentos.
+    public async Task<(int Quantidade, decimal Valor)> ContarAReceberAsync(long empresaId, CancellationToken cancellationToken)
+    {
+        var aReceber = _dbContext.Atendimentos.AsNoTracking()
+            .Where(a => a.EmpresaId == empresaId && a.DeletedAt == null && a.Status == StatusAtendimento.Concluido && a.PagoEm == null);
+        return (await aReceber.CountAsync(cancellationToken), await aReceber.SumAsync(a => a.ValorTotal, cancellationToken));
+    }
+
     public async Task<Dictionary<StatusAtendimento, int>> ContarPorStatusAsync(long empresaId, CancellationToken cancellationToken)
     {
         var linhas = await _dbContext.Atendimentos

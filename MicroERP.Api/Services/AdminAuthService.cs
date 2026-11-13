@@ -282,7 +282,8 @@ public sealed class AdminAuthService : IAdminAuthService
         var jwt = _configuration.GetSection("Jwt");
         var segredo = jwt["Secret"] ?? throw new InvalidOperationException("JWT secret not configured.");
         var audiencia = AdminAuth.Audiencia(jwt["Audience"] ?? string.Empty);
-        var minutos = _configuration.GetValue("Admin:ExpiresMinutes", 43200);
+        // DEC-53: o token de admin fica no localStorage do web, então vale só 24 horas por padrão.
+        var minutos = _configuration.GetValue("Admin:ExpiresMinutes", 1440);
         var expiraEm = DateTime.UtcNow.AddMinutes(minutos);
 
         var claims = new List<Claim>

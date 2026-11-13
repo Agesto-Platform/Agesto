@@ -75,6 +75,9 @@ public sealed class AdminServicesTests
         Assert.DoesNotContain("MicroERP.Api", jwt.Audiences);
         Assert.Equal("plataforma", jwt.Claims.Single(c => c.Type == "escopo").Value);
         Assert.DoesNotContain(jwt.Claims, c => c.Type is "empresaId" or "perfil");
+
+        // DEC-53: sem Admin:ExpiresMinutes, o login de admin vale 24 horas.
+        Assert.InRange(ok.ExpiresAt - DateTime.UtcNow, TimeSpan.FromHours(23.9), TimeSpan.FromHours(24));
     }
 
     [Fact]

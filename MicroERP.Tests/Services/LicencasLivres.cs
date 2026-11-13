@@ -17,6 +17,9 @@ public sealed class LicencasLivres(bool esgotada = false) : IAssinaturaService
     public Task<AssinaturaResponse> RegistrarPagamentoAsync(long adminId, long empresaId, PagamentoAssinaturaRequest request, string? ip, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
 
+    public Task<AssinaturaResponse> DesfazerPagamentoAsync(long adminId, long empresaId, long pagamentoId, string? ip, CancellationToken cancellationToken) =>
+        throw new NotSupportedException();
+
     public Task<AssinaturaResponse> AtualizarAsync(long adminId, long empresaId, AssinaturaAtualizarRequest request, string? ip, CancellationToken cancellationToken) =>
         throw new NotSupportedException();
 

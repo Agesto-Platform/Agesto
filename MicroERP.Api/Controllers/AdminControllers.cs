@@ -317,6 +317,26 @@ public sealed class AdminEmpresasController : AdminControllerBase
         }
     }
 
+    // Assinatura (DEC-58): desfaz o último pagamento, registrado por engano.
+    [HttpPost("{id:long}/pagamentos/{pagamentoId:long}/desfazer")]
+    public async Task<ActionResult<ApiResponse>> DesfazerPagamento(long id, long pagamentoId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
+        try
+        {
+            var assinatura = await _assinaturas.DesfazerPagamentoAsync(adminId, id, pagamentoId, Ip, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Pagamento desfeito.", Data = assinatura });
+        }
+        catch (NotFoundException ex)
+        {
+            return Erro(StatusCodes.Status404NotFound, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Erro(StatusCodes.Status409Conflict, ex.Message);
+        }
+    }
+
     // Assinatura (DEC-58): licenças de funcionário e ajuste manual do "pago até".
     [HttpPut("{id:long}/assinatura")]
     public async Task<ActionResult<ApiResponse>> AtualizarAssinatura(long id, [FromBody] AssinaturaAtualizarRequest request, CancellationToken cancellationToken)

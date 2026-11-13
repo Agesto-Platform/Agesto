@@ -21,5 +21,11 @@ public class PagamentoAssinatura
     public DateOnly PeriodoFim { get; set; }
     public string? Observacao { get; set; }
 
+    // Desfazer (DEC-58): o "pago até" de antes deste pagamento volta para a
+    // empresa. O registro fica no histórico, marcado como desfeito.
+    public DateOnly? PagoAteAnterior { get; set; }
+    public DateTime? DesfeitoEm { get; set; }
+    public long? DesfeitoPorAdminId { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

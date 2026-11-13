@@ -142,6 +142,30 @@ public sealed class AtendimentoController : ApiControllerBase
         }
     }
 
+    // Cobrança mínima (TASKS L5): quando e como o cliente pagou o atendimento.
+    [HttpPut("{id:long}/recebimento")]
+    [Authorize(Policy = Policies.Dono)]
+    public async Task<ActionResult<ApiResponse>> Recebimento(long id, [FromBody] AtendimentoRecebimentoRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        try
+        {
+            var atendimento = await _atendimentoService.RegistrarRecebimentoAsync(empresaId, id, request, cancellationToken);
+            var mensagem = atendimento.PagoEm is null ? "Atendimento de volta para a receber." : "Recebimento registrado.";
+            return Ok(new ApiResponse { Success = true, Message = mensagem, Data = atendimento });
+        }
+        catch (NotFoundException ex)
+        {
+            return NotFound(new ApiResponse { Success = false, Message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
+        }
+    }
+
     [HttpDelete("{id:long}")]
     [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> Delete(long id, CancellationToken cancellationToken)

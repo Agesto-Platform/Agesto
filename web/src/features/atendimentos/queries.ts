@@ -10,6 +10,7 @@ import type {
   ItemProdutoInput,
   ItemServicoResp,
   ItemServicoInput,
+  FormaRecebimento,
   Pagina,
   StatusAtendimento,
 } from '../../types/api'
@@ -28,9 +29,9 @@ export function useUltimosAtendimentos(quantidade = 6) {
   })
 }
 
-/** PAG-01: lista paginada no servidor, com aba (status), busca e cliente. */
+/** PAG-01: lista paginada no servidor, com aba (status ou "a receber"), busca e cliente. */
 export function useAtendimentosPaginados(
-  filtros: { status?: StatusAtendimento; busca?: string; clienteId?: number },
+  filtros: { status?: StatusAtendimento; busca?: string; clienteId?: number; recebimento?: 'areceber' | 'pago' },
   enabled = true,
 ) {
   return useListaPaginada<Atendimento>(LIST, PATH, filtros, enabled)
@@ -66,6 +67,16 @@ export function useUpdateAtendimento() {
   return useMutation({
     mutationFn: ({ id, body }: { id: number; body: AtendimentoUpdate }) =>
       api.put<Atendimento>(`${PATH}/${id}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: LIST }),
+  })
+}
+
+/** Cobrança: registra quando e como o cliente pagou, ou volta para "a receber" (pagoEm null). */
+export function useRegistrarRecebimento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, pagoEm, forma }: { id: number; pagoEm: string | null; forma: FormaRecebimento | null }) =>
+      api.put<Atendimento>(`${PATH}/${id}/recebimento`, { pagoEm, forma }),
     onSuccess: () => qc.invalidateQueries({ queryKey: LIST }),
   })
 }

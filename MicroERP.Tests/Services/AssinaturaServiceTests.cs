@@ -123,6 +123,62 @@ public sealed class AssinaturaServiceTests
     }
 
     [Fact]
+    public async Task DesfazerPagamento_VoltaOPagoAteDeAntes_ESoOUltimo()
+    {
+        await using var db = await Contexto();
+        var servico = Servico(db);
+        await servico.RegistrarPagamentoAsync(9, 1, Pagamento(), null, CancellationToken.None);
+        var depois = await servico.RegistrarPagamentoAsync(9, 1, Pagamento(), null, CancellationToken.None);
+        var primeiro = depois.Pagamentos.Single(p => p.PeriodoFim == new DateOnly(2026, 12, 12));
+        var segundo = depois.Pagamentos.Single(p => p.PeriodoFim == new DateOnly(2027, 1, 12));
+        Assert.True(segundo.PodeDesfazer);
+        Assert.False(primeiro.PodeDesfazer);
+
+        // O primeiro não é o último: não dá.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => servico.DesfazerPagamentoAsync(9, 1, primeiro.Id, null, CancellationToken.None));
+
+        var desfeito = await servico.DesfazerPagamentoAsync(9, 1, segundo.Id, null, CancellationToken.None);
+        Assert.Equal(new DateOnly(2026, 12, 12), desfeito.PagoAte);
+        Assert.NotNull(desfeito.Pagamentos.Single(p => p.Id == segundo.Id).DesfeitoEm);
+        Assert.True(desfeito.Pagamentos.Single(p => p.Id == primeiro.Id).PodeDesfazer);
+        Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "desfazer-pagamento");
+
+        // Desfazer também o primeiro volta para "sem cobrança".
+        var vazio = await servico.DesfazerPagamentoAsync(9, 1, primeiro.Id, null, CancellationToken.None);
+        Assert.Null(vazio.PagoAte);
+        Assert.Equal(SituacaoAssinatura.SemCobranca, vazio.Situacao);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => servico.DesfazerPagamentoAsync(9, 1, primeiro.Id, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DesfazerPagamento_DepoisDeAjustarOPagoAte_NaoDeixa()
+    {
+        await using var db = await Contexto();
+        var servico = Servico(db);
+        var r = await servico.RegistrarPagamentoAsync(9, 1, Pagamento(), null, CancellationToken.None);
+        await servico.AtualizarAsync(9, 1, new AssinaturaAtualizarRequest { LicencasFuncionarios = 1, PagoAte = new DateOnly(2027, 3, 1) }, null, CancellationToken.None);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            servico.DesfazerPagamentoAsync(9, 1, r.Pagamentos.Single().Id, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DesfazerPagamento_QueTinhaTiradoOBloqueio_ARotinaBloqueiaDeNovo()
+    {
+        await using var db = await Contexto();
+        db.Empresas.Add(new Empresa { Id = 3, Nome = "Atrasada", PagoAte = Hoje.AddDays(-20) });
+        await db.SaveChangesAsync();
+        var servico = Servico(db);
+        await servico.BloquearAtrasadasAsync(CancellationToken.None);
+        var pago = await servico.RegistrarPagamentoAsync(9, 3, Pagamento(), null, CancellationToken.None);
+        Assert.True(pago.Ativa);
+
+        await servico.DesfazerPagamentoAsync(9, 3, pago.Pagamentos.Single().Id, null, CancellationToken.None);
+
+        Assert.Equal(1, await servico.BloquearAtrasadasAsync(CancellationToken.None));
+    }
+
+    [Fact]
     public async Task GarantirLicenca_DonoMaisLicencas_ContaAtivosEConvitesPendentes()
     {
         await using var db = await Contexto();

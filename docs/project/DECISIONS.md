@@ -977,7 +977,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 **Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
 
-**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira. Pendências: a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
+**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira; desde 13/11/2026 vale 24 horas (DEC-53). Pendências: a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
 
 **Login de admin mais forte (13/11/2026, branch `feature/superadmin-2fa-e-expo-web`):**
 - **Bloqueio por conta:** 5 senhas erradas seguidas bloqueiam o login do admin por 15 minutos, igual ao dos usuários (DEC-43). Fica na auditoria ("conta-bloqueada").
@@ -1003,7 +1003,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 **Até lá:**
 - não remover nem afrouxar a CSP de `web/public/_headers`;
 - não usar `dangerouslySetInnerHTML` com dado de usuário ou da API;
-- pendências que reduzem o risco sem migrar: encurtar a validade do token de admin (`Admin__ExpiresMinutes`) e fazer a troca de senha derrubar as sessões abertas (versão do token, também em aberto nas DEC-50 e DEC-52).
+- pendências que reduzem o risco sem migrar: encurtar a validade do token de admin (feito em 13/11/2026: 24 horas por padrão em `Admin__ExpiresMinutes`, decidido pelo Davi Oliveira) e fazer a troca de senha derrubar as sessões abertas (versão do token, também em aberto nas DEC-50 e DEC-52).
 
 **Impacto:** nenhum agora. A migração futura mexe na emissão do token, na autenticação da API, no CORS e no cliente HTTP do web.
 
@@ -1097,4 +1097,4 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - **Telas:**
   - no superadmin, o bloco **Assinatura** (situação, valor, licenças, acessos em uso, histórico, "Registrar pagamento" e "Ajustar"), a coluna e o filtro de assinatura na lista de empresas;
   - para o Dono, o aviso no topo do painel (vence em breve ou carência, com o link do WhatsApp do Agesto) e o bloco **Assinatura** na Parametrização (`GET /api/assinatura`).
-- **Fora do MVP:** desfazer um pagamento registrado por engano. Por enquanto, corrige-se pelo "Ajustar" (pago até) e o registro fica no histórico.
+- **Desfazer pagamento (13/11/2026, branch `feature/pagamentos`):** a equipe desfaz um pagamento registrado por engano no histórico do superadmin. Só o último pagamento ativo, e só enquanto o "pago até" ainda é o que ele gerou; depois de um "Ajustar", corrige-se pelo "Ajustar". O "pago até" volta ao de antes do pagamento, o registro fica no histórico como desfeito (quem e quando), a rotina de bloqueio automático volta a valer e a ação entra na auditoria.
