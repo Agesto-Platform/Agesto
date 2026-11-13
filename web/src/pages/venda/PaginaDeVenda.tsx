@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { Icon, type IconName } from '../../components/Icon'
 import { linkWhatsApp } from '../../lib/whatsapp'
+import { AuthContext } from '../../auth/context'
 import { CONTATO, PRECO, licencasExtras, reais, totalMensal } from './oferta'
 import './venda.css'
 
@@ -10,6 +11,7 @@ import './venda.css'
  * Página de venda do Agesto (DEC-57): quem não está logado e abre a raiz do web
  * cai aqui. Não há cadastro aberto; a assinatura começa pelo contato, e a equipe
  * cria a empresa no superadmin (convite por email, DEC-55). Sempre no modo claro.
+ * Também em /conheca, o link para divulgar: quem está logado vê "Ir para o painel".
  */
 
 const ANO = new Date().getFullYear()
@@ -52,6 +54,8 @@ const PERGUNTAS: { p: string; r: string }[] = [
 
 export function PaginaDeVenda() {
   const [funcionarios, setFuncionarios] = useState(2)
+  const logado = useContext(AuthContext)?.isAuthenticated ?? false
+  const entrar = logado ? { to: '/', texto: 'Ir para o painel' } : { to: '/login', texto: 'Entrar' }
 
   useEffect(() => {
     const anterior = document.title
@@ -81,8 +85,8 @@ export function PaginaDeVenda() {
             <a href="#contato">Contato</a>
           </nav>
           <div className="v-top-acoes">
-            <Link className="btn" to="/login">
-              Entrar
+            <Link className="btn" to={entrar.to}>
+              {entrar.texto}
             </Link>
             <a className="btn accent v-so-desktop" href={quero} target="_blank" rel="noopener noreferrer">
               Fale conosco
@@ -400,7 +404,7 @@ export function PaginaDeVenda() {
             Agesto
           </span>
           <nav aria-label="Links do rodapé">
-            <Link to="/login">Entrar</Link>
+            <Link to={entrar.to}>{entrar.texto}</Link>
             <Link to="/baixar">Baixar o app</Link>
             <Link to="/termos">Termos de uso</Link>
             <Link to="/privacidade">Privacidade</Link>
