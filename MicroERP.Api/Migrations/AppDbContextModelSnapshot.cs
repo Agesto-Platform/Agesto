@@ -765,6 +765,46 @@ namespace MicroERP.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MicroERP.Api.Models.UsoIa", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Dia")
+                        .HasColumnType("date");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Perguntas")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Relatorios")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("TokensEntrada")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TokensSaida")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "Dia")
+                        .IsUnique();
+
+                    b.ToTable("UsosIa", (string)null);
+                });
+
             modelBuilder.Entity("MicroERP.Api.Models.Usuario", b =>
                 {
                     b.Property<long>("Id")
@@ -1014,6 +1054,17 @@ namespace MicroERP.Api.Migrations
                     b.Navigation("Admin");
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.UsoIa", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Usuario", b =>

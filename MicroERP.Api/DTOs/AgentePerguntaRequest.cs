@@ -32,4 +32,8 @@ public sealed class AgenteRespostaResponse
 {
     public string Resposta { get; set; } = string.Empty;
     public string Modelo { get; set; } = string.Empty;
+
+    // Limite diário por empresa (DEC-21): quantas perguntas ainda restam hoje.
+    public int PerguntasRestantes { get; set; }
+    public int LimiteDiario { get; set; }
 }

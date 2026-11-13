@@ -26,4 +26,8 @@ public sealed class InsightsOptions
 
     // Perguntas ao Agente por empresa por hora.
     public int LimitePerguntasPorHora { get; set; } = 30;
+
+    // Perguntas ao Agente por empresa por dia de Brasília, guardadas no banco
+    // (UsosIa). Definido pelo Davi em 13/11/2026 (DEC-21).
+    public int PerguntasPorDia { get; set; } = 20;
 }

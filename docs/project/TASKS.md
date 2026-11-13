@@ -64,7 +64,7 @@
 | — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | A fazer |
 | — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |
 | 12/11 | Convites por email: acesso novo (pelo Dono ou pela equipe do Agesto) e convite de admin, com a pessoa criando a própria senha; fim da senha provisória (DEC-55) | Extra | Feito (PR #162, release #163, 12/11); migrations aplicadas no Supabase e envio testado em produção |
-| — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | A fazer |
+| — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | Consumo e limite diário feitos no código (13/11), branch `feature/limite-ia-diario`: tabela `UsosIa` e 20 perguntas por empresa por dia. Falta aplicar a migration `AddUsoIa`. Limite por plano em aberto |
 | 12/11 | RLS nas tabelas do superadmin (`AdminsPlataforma`, `AuditoriasAdmin`), que ficaram de fora do `EnableRlsLockdown` (DEC-34, DEC-52) | Extra | Feito no código (12/11): migration `EnableRlsSuperadmin`, com a policy do `agesto_api`. Não havia exposição (`anon` e `authenticated` sem privilégio, Data API desligada) |
 | 12/11 | WhatsApp por link `wa.me`: enviar o orçamento pelo WhatsApp e abrir a conversa com o cliente no web e no app (DEC-56) | Extra | Links feitos (PR #168, release #169, 12/11). Orçamento em PDF no lugar da mensagem: feito no código (12/11), branch `feature/orcamento-pdf`. Conversa dentro do Agesto fica para depois, pela API oficial (DEC-56) |
 

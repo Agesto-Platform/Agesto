@@ -253,7 +253,8 @@ Dois fluxos distintos:
 - **[Implementado]** `POST /api/insights` (resumo, destaques, alertas e recomendações do período) e `POST /api/agente/perguntar` (chat do painel Agente), só para o Dono, com Claude Haiku 5.5 por padrão (DEC-21)
 - **[Implementado]** O chat recebe as métricas do período e a agenda dos próximos 7 dias sem nome, telefone nem endereço do cliente
 - **[Implementado]** Limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`
-- **[Planejado / não implementado]** Registro do consumo por empresa (`TenantUsage`) e limite por plano (DEC-21)
+- **[Implementado]** Registro do consumo da IA por empresa e dia (tabela `UsosIa`, o `TenantUsage` da DEC-21) e limite de 20 perguntas por dia ao Agente
+- **[Planejado / não implementado]** Limite por plano (DEC-21)
 
 ---
 
