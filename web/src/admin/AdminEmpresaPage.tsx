@@ -19,6 +19,7 @@ import { ApiError } from '../lib/api'
 import { dataCurta, hora } from '../lib/format'
 import type { PerfilUsuario } from '../types/api'
 import { AuditoriaLista } from './AuditoriaLista'
+import { AssinaturaAdminCard } from './AssinaturaAdminCard'
 import {
   avisoDeEnvio,
   useAtivoUsuarioAdmin,
@@ -248,6 +249,7 @@ export function AdminEmpresaPage() {
       {!e.ativa && (
         <p className="adm-alerta" role="status">
           Bloqueada em {quando(e.bloqueadaEm)}. Motivo: {e.motivoBloqueio}
+          {e.assinatura?.bloqueioAutomatico && ' (bloqueio automático: sai sozinho quando o pagamento for registrado)'}
         </p>
       )}
 
@@ -269,6 +271,8 @@ export function AdminEmpresaPage() {
           <b>{e.ultimoAcessoEm ? dataCurta(e.ultimoAcessoEm) : 'Nunca'}</b>
         </div>
       </div>
+
+      {e.assinatura && <AssinaturaAdminCard empresaId={e.id} assinatura={e.assinatura} />}
 
       <Card className="adm-bloco">
         <CardHead

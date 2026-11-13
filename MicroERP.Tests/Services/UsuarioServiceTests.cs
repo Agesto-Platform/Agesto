@@ -22,7 +22,7 @@ public sealed class UsuarioServiceTests
     {
         await using var db = await Seed();
         var convites = new ConvitesFalsos();
-        var service = new UsuarioService(new UsuarioRepository(db), convites);
+        var service = new UsuarioService(new UsuarioRepository(db), convites, new LicencasLivres());
 
         var criado = await service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = " Carlos ", Email = " Carlos@Teste.com " }, CancellationToken.None);
 
@@ -44,7 +44,7 @@ public sealed class UsuarioServiceTests
     public async Task CreateAsync_EmailJaUsado_Lanca()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<EmailAlreadyExistsException>(() =>
             service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = "Outro", Email = "DONO@teste.com" }, CancellationToken.None));
@@ -54,7 +54,7 @@ public sealed class UsuarioServiceTests
     public async Task CreateAsync_PerfilNenhum_Lanca()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = "X", Email = "x@teste.com", Perfil = PerfilUsuario.Nenhum }, CancellationToken.None));
@@ -65,7 +65,7 @@ public sealed class UsuarioServiceTests
     {
         await using var db = await Seed();
         var convites = new ConvitesFalsos();
-        var service = new UsuarioService(new UsuarioRepository(db), convites);
+        var service = new UsuarioService(new UsuarioRepository(db), convites, new LicencasLivres());
 
         // Carla (101) está com o convite pendente; o Dono já criou a senha.
         var reenviado = await service.ReenviarConviteAsync(Empresa, 101, CancellationToken.None);
@@ -83,7 +83,7 @@ public sealed class UsuarioServiceTests
     public async Task GetAllAsync_SoTrazUsuariosDaEmpresa_ComOConvitePendente()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         var usuarios = await service.GetAllAsync(Empresa, CancellationToken.None);
 
@@ -97,7 +97,7 @@ public sealed class UsuarioServiceTests
     public async Task SetAtivoAsync_DesativaEReativaAgente()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         var desativado = await service.SetAtivoAsync(Empresa, DonoId, 101, false, CancellationToken.None);
         Assert.False(desativado.Ativo);
@@ -110,7 +110,7 @@ public sealed class UsuarioServiceTests
     public async Task SetAtivoAsync_DonoNaoSeDesativa()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<RegraUsuarioException>(() =>
             service.SetAtivoAsync(Empresa, DonoId, DonoId, false, CancellationToken.None));
@@ -123,7 +123,7 @@ public sealed class UsuarioServiceTests
         // Segundo Dono, inativo: o DonoId continua sendo o único ativo.
         db.Usuarios.Add(new Usuario { Id = 102, Nome = "Socio", Email = "socio@teste.com", Senha = "x", EmpresaId = Empresa, Perfil = PerfilUsuario.Dono, Ativo = false });
         await db.SaveChangesAsync();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<RegraUsuarioException>(() =>
             service.SetAtivoAsync(Empresa, 102, DonoId, false, CancellationToken.None));
@@ -135,7 +135,7 @@ public sealed class UsuarioServiceTests
         await using var db = await Seed();
         db.Usuarios.Add(new Usuario { Id = 102, Nome = "Socio", Email = "socio@teste.com", Senha = "x", EmpresaId = Empresa, Perfil = PerfilUsuario.Dono, Ativo = false });
         await db.SaveChangesAsync();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<RegraUsuarioException>(() =>
             service.UpdateAsync(Empresa, 102, DonoId, new UsuarioUpdateRequest { Nome = "Dono", Perfil = PerfilUsuario.Agente }, CancellationToken.None));
@@ -145,7 +145,7 @@ public sealed class UsuarioServiceTests
     public async Task UpdateAsync_PromoveAgenteADono()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         var atualizado = await service.UpdateAsync(Empresa, DonoId, 101, new UsuarioUpdateRequest { Nome = "Carla Souza", Perfil = PerfilUsuario.Dono }, CancellationToken.None);
 
@@ -157,7 +157,7 @@ public sealed class UsuarioServiceTests
     public async Task UsuarioDeOutraEmpresa_NaoEncontrado()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<NotFoundException>(() =>
             service.SetAtivoAsync(Empresa, DonoId, 200, false, CancellationToken.None));
@@ -169,7 +169,7 @@ public sealed class UsuarioServiceTests
         await using var db = await Seed();
         db.Atendimentos.Add(new Atendimento { Id = 1, Uuid = Guid.NewGuid(), EmpresaId = Empresa, ClienteId = 1, UsuarioId = 101 });
         await db.SaveChangesAsync();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         Assert.True(await service.DeleteAsync(101, Empresa, CancellationToken.None));
 
@@ -186,7 +186,7 @@ public sealed class UsuarioServiceTests
     public async Task DeleteAsync_ContaRemovidaNaoEntraESomeDaLista()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
         var carla = await db.Usuarios.SingleAsync(u => u.Id == 101);
         carla.Senha = new Microsoft.AspNetCore.Identity.PasswordHasher<Usuario>().HashPassword(carla, "SenhaDaCarla1");
         await db.SaveChangesAsync();
@@ -204,7 +204,7 @@ public sealed class UsuarioServiceTests
     public async Task DeleteAsync_LiberaOEmailParaNovoCadastro()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await service.DeleteAsync(101, Empresa, CancellationToken.None);
 
@@ -215,7 +215,7 @@ public sealed class UsuarioServiceTests
     public async Task DeleteAsync_UltimoDonoAtivo_Bloqueia()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<UltimoDonoDaEmpresaException>(() => service.DeleteAsync(DonoId, Empresa, CancellationToken.None));
         Assert.Null((await db.Usuarios.SingleAsync(u => u.Id == DonoId)).DeletedAt);
@@ -227,7 +227,7 @@ public sealed class UsuarioServiceTests
         await using var db = await Seed();
         db.Usuarios.Add(new Usuario { Id = 102, Nome = "Dono inativo", Email = "inativo@teste.com", Senha = "x", EmpresaId = Empresa, Perfil = PerfilUsuario.Dono, Ativo = false });
         await db.SaveChangesAsync();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         // antes a regra contava Donos inativos e deixaria a empresa sem Dono ativo
         await Assert.ThrowsAsync<UltimoDonoDaEmpresaException>(() => service.DeleteAsync(DonoId, Empresa, CancellationToken.None));
@@ -237,7 +237,7 @@ public sealed class UsuarioServiceTests
     public async Task DeleteAsync_OutraEmpresa_NaoEncontra()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos());
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         Assert.False(await service.DeleteAsync(200, Empresa, CancellationToken.None));
         Assert.Null((await db.Usuarios.SingleAsync(u => u.Id == 200)).DeletedAt);

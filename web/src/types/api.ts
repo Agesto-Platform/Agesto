@@ -504,3 +504,38 @@ export interface AppVersao {
   versaoMinimaAndroid: string | null
   urlDownload: string | null
 }
+
+/* ---------- Assinatura (DEC-58) ---------- */
+
+export type SituacaoAssinatura = 'SemCobranca' | 'EmDia' | 'VenceEmBreve' | 'EmCarencia' | 'Atrasada'
+export type FormaPagamento = 'Pix' | 'Boleto' | 'Cartao' | 'Outro'
+
+export interface PagamentoAssinatura {
+  id: number
+  valor: number
+  pagoEm: string
+  forma: FormaPagamento
+  meses: number
+  periodoInicio: string
+  periodoFim: string
+  observacao: string | null
+  adminNome: string | null
+  createdAt: string
+}
+
+/** GET /api/assinatura (Dono) e o bloco Assinatura do superadmin. */
+export interface Assinatura {
+  situacao: SituacaoAssinatura
+  /** Último dia coberto ("2026-12-12"); null = sem cobrança. */
+  pagoAte: string | null
+  diasParaVencer: number | null
+  diasDeAtraso: number | null
+  diasParaBloqueio: number | null
+  licencasFuncionarios: number
+  acessosEmUso: number
+  acessosPermitidos: number
+  valorMensal: number
+  ativa: boolean
+  bloqueioAutomatico: boolean
+  pagamentos: PagamentoAssinatura[]
+}

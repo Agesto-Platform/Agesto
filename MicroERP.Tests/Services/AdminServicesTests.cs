@@ -22,7 +22,7 @@ public sealed class AdminServicesTests
         new(db, Config(setupKey, doisFatores), convites ?? new ConvitesFalsos(), codigos ?? new CodigosFalsos());
 
     private static AdminEmpresaService Empresas(AppDbContext db, ConvitesFalsos? convites = null) =>
-        new(db, new AuthService(db, Config()), convites ?? new ConvitesFalsos());
+        new(db, new AuthService(db, Config()), convites ?? new ConvitesFalsos(), new AssinaturaService(db, TimeProvider.System), TimeProvider.System);
 
     [Fact]
     public async Task Setup_CriaPrimeiroAdminSoComAChaveCertaEUmaVez()

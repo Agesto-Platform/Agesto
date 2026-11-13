@@ -5,7 +5,8 @@ namespace MicroERP.Api.Models;
 public class AuditoriaAdmin
 {
     public long Id { get; set; }
-    public long AdminId { get; set; }
+    // Null nas ações automáticas do sistema (ex.: bloqueio por atraso, DEC-58).
+    public long? AdminId { get; set; }
     public string Acao { get; set; } = string.Empty;
     public long? EmpresaId { get; set; }
     public long? UsuarioId { get; set; }
