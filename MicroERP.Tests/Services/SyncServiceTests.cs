@@ -159,6 +159,56 @@ public sealed class SyncServiceTests
     }
 
     [Fact]
+    public async Task CargaAsync_TrazAgendaEHistoricoSoDoAgente()
+    {
+        await using var db = CreateContext();
+        var agora = DateTime.UtcNow;
+        db.Clientes.Add(new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Maria", Cpf = "1", Telefone = "(34) 99999-0000", EmpresaId = 1 });
+        db.Servicos.Add(new Servico { Id = 5, Uuid = Guid.NewGuid(), Descricao = "Instalação", EmpresaId = 1 });
+        Atendimento A(long id, long usuarioId, DateTime? agendada, DateTime registro, long empresaId = 1, DateTime? excluido = null) => new()
+        {
+            Id = id, Uuid = Guid.NewGuid(), EmpresaId = empresaId, UsuarioId = usuarioId, ClienteId = 1,
+            Status = StatusAtendimento.Pendente, DataAgendada = agendada, DataRegistro = registro, DeletedAt = excluido,
+        };
+        db.Atendimentos.AddRange(
+            A(1, 7, agora.AddDays(2), agora.AddDays(-1)),            // agenda do agente 7
+            A(2, 7, agora.AddDays(20), agora),                       // além dos 14 dias: fora da agenda
+            A(3, 8, agora.AddDays(1), agora),                        // de outro agente
+            A(4, 7, null, agora.AddDays(-3)),                        // histórico (registrado sem agenda)
+            A(5, 7, agora.AddDays(-10), agora.AddDays(-12)),         // histórico (agendado no passado)
+            A(6, 7, null, agora.AddDays(-40)),                       // mais de 30 dias: fora do histórico
+            A(7, 7, null, agora.AddDays(-1), excluido: agora),       // excluído
+            A(8, 7, agora.AddDays(1), agora, empresaId: 2));         // outra empresa
+        db.ItemServicos.Add(new ItemServico { Id = 1, Uuid = Guid.NewGuid(), AtendimentoId = 1, ServicoId = 5, Quantidade = 1, PrecoUnitario = 350m, Subtotal = 350m });
+        await db.SaveChangesAsync();
+
+        var carga = await BuildSync(db).CargaAsync(1, null, CancellationToken.None, restringirDadosSensiveis: true, agenteId: 7);
+
+        var agenda = Assert.Single(carga.Agenda);
+        Assert.Equal(1, agenda.Id);
+        Assert.Equal("Maria", agenda.ClienteNome);
+        Assert.Equal("Instalação", Assert.Single(agenda.Itens).Descricao);
+        Assert.Equal([4L, 5L], carga.Historico.Select(h => h.Id).ToList());
+        Assert.Equal(agora.AddDays(-3), carga.Historico[0].DataRegistro);
+    }
+
+    [Fact]
+    public async Task CargaAsync_DoDono_TrazAgendaDeTodos()
+    {
+        await using var db = CreateContext();
+        var agora = DateTime.UtcNow;
+        db.Clientes.Add(new Cliente { Id = 1, Uuid = Guid.NewGuid(), Nome = "Maria", Cpf = "1", EmpresaId = 1 });
+        db.Atendimentos.AddRange(
+            new Atendimento { Id = 1, Uuid = Guid.NewGuid(), EmpresaId = 1, UsuarioId = 7, ClienteId = 1, DataAgendada = agora.AddDays(1), DataRegistro = agora },
+            new Atendimento { Id = 2, Uuid = Guid.NewGuid(), EmpresaId = 1, UsuarioId = 8, ClienteId = 1, DataAgendada = agora.AddDays(2), DataRegistro = agora });
+        await db.SaveChangesAsync();
+
+        var carga = await BuildSync(db).CargaAsync(1, null, CancellationToken.None);
+
+        Assert.Equal([1L, 2L], carga.Agenda.Select(a => a.Id).ToList());
+    }
+
+    [Fact]
     public async Task CargaAsync_IncluiMateriaisSugeridosDosServicos()
     {
         await using var db = CreateContext();

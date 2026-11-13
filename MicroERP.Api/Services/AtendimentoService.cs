@@ -199,7 +199,8 @@ public sealed class AtendimentoService : IAtendimentoService
         return string.IsNullOrWhiteSpace(produto) ? null : produto;
     }
 
-    private static AgendaItemResponse MapAgendaItem(Atendimento a)
+    // Também usado pela Carga do sync (agenda e histórico do app).
+    internal static AgendaItemResponse MapAgendaItem(Atendimento a)
     {
         var resumo = Resumo(a) ?? "Atendimento";
 
@@ -211,6 +212,7 @@ public sealed class AtendimentoService : IAtendimentoService
             Id = a.Id,
             Uuid = a.Uuid.ToString(),
             DataAgendada = a.DataAgendada,
+            DataRegistro = a.DataRegistro,
             Status = a.Status,
             ValorTotal = a.ValorTotal,
             UsuarioId = a.UsuarioId,

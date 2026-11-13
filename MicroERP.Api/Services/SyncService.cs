@@ -49,7 +49,11 @@ public sealed class SyncService : ISyncService
 
     // restringirDadosSensiveis (Agente): CPF mascarado e sem custo nos orçamentos.
     // O app em campo não precisa desses dados, e um celular perdido não os expõe (LGPD).
-    public async Task<SyncCargaResponse> CargaAsync(long empresaId, DateTime? ultimaSincronizacao, CancellationToken cancellationToken, bool restringirDadosSensiveis = false)
+    public const int DiasDeAgendaNaCarga = 14;
+    public const int DiasDeHistoricoNaCarga = 30;
+    public const int MaxHistoricoNaCarga = 200;
+
+    public async Task<SyncCargaResponse> CargaAsync(long empresaId, DateTime? ultimaSincronizacao, CancellationToken cancellationToken, bool restringirDadosSensiveis = false, long? agenteId = null)
     {
         // Antes das consultas: o que mudar durante a Carga entra na próxima.
         var sincronizadoEm = DateTime.UtcNow;
@@ -188,6 +192,15 @@ public sealed class SyncService : ISyncService
             };
         }
 
+        // Agenda e histórico do app no mesmo pedido da Carga, para funcionar offline
+        // sem um passo à parte. Dia de Brasília: de hoje até 14 dias à frente; o
+        // histórico, dos últimos 30 dias até agora.
+        var hoje = FusoBrasilia.InicioDoDiaUtc(sincronizadoEm);
+        var agenda = await _atendimentoRepository.GetAgendaAsync(
+            empresaId, hoje, hoje.AddDays(DiasDeAgendaNaCarga + 1).AddTicks(-1), agenteId, cancellationToken);
+        var historico = await _atendimentoRepository.GetHistoricoAsync(
+            empresaId, hoje.AddDays(-DiasDeHistoricoNaCarga), sincronizadoEm, agenteId, MaxHistoricoNaCarga, cancellationToken);
+
         return new SyncCargaResponse
         {
             Clientes = clientes,
@@ -197,6 +210,8 @@ public sealed class SyncService : ISyncService
             Sugeridos = sugeridos,
             Configuracao = configuracao,
             Removidos = removidos,
+            Agenda = agenda.Select(AtendimentoService.MapAgendaItem).ToList(),
+            Historico = historico.Select(AtendimentoService.MapAgendaItem).ToList(),
             SincronizadoEm = sincronizadoEm
         };
     }

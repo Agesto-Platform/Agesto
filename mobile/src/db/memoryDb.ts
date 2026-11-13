@@ -18,6 +18,7 @@ export function createMemoryDb(): LocalDb {
   let produtos: Produto[] = []
   let servicos: Servico[] = []
   let agenda: AgendaItem[] = []
+  let historico: AgendaItem[] = []
   let pendingClientes: PendingCliente[] = []
   let pendingServicos: PendingServico[] = []
   let atendimentos: LocalAtendimento[] = []
@@ -37,6 +38,9 @@ export function createMemoryDb(): LocalDb {
     },
     async saveAgenda(items) {
       agenda = clone(items)
+    },
+    async saveHistorico(items) {
+      historico = clone(items)
     },
     async mergeClientes(items, removidos) {
       clientes = merge(clientes, items, removidos)
@@ -58,6 +62,9 @@ export function createMemoryDb(): LocalDb {
     },
     async getAgenda() {
       return clone(agenda)
+    },
+    async getHistorico() {
+      return clone(historico)
     },
 
     async addCliente(c) {

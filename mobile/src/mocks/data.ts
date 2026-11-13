@@ -29,8 +29,26 @@ export function seedCarga(): SyncCargaResponse {
       { servicoId: 1, produtoId: 3, quantidadePadrao: 1 },
     ],
     configuracao: { tipoOperacao: 'Servico', modoAgendaAgente: 'Flexivel', controlaEstoque: true, agenteCadastraServico: true },
+    agenda: seedAgenda(),
+    historico: seedHistorico(),
     sincronizadoEm: new Date().toISOString(),
   }
+}
+
+function diasAtras(dias: number, hour: number, min = 0): string {
+  const d = new Date()
+  d.setDate(d.getDate() - dias)
+  d.setHours(hour, min, 0, 0)
+  return d.toISOString()
+}
+
+/** Atendimentos dos últimos dias que já estão no servidor (aba Atend.). */
+export function seedHistorico(): AgendaItem[] {
+  return [
+    { id: 91, uuid: 'at-091', dataAgendada: diasAtras(1, 14, 0), dataRegistro: diasAtras(3, 10, 0), status: 'Concluido', valorTotal: 280, clienteId: 2, clienteNome: 'Marina Alves', clienteTelefone: '(34) 98888-1010', enderecoResumo: 'Av. Leopoldino, 45 — Fabrício', enderecoCompleto: null, resumo: 'Manutenção preventiva', itens: [{ descricao: 'Manutenção preventiva', quantidade: 2, precoUnitario: 140, subtotal: 280 }] },
+    { id: 90, uuid: 'at-090', dataAgendada: null, dataRegistro: diasAtras(2, 16, 30), status: 'Concluido', valorTotal: 160, clienteId: 1, clienteNome: 'Vó Joana', clienteTelefone: '(34) 99999-0000', enderecoResumo: 'R. das Acácias, 120 — Centro', enderecoCompleto: null, resumo: 'Limpeza / higienização', itens: [{ descricao: 'Limpeza / higienização', quantidade: 1, precoUnitario: 160, subtotal: 160 }] },
+    { id: 88, uuid: 'at-088', dataAgendada: diasAtras(5, 9, 0), dataRegistro: diasAtras(6, 11, 0), status: 'Cancelado', valorTotal: 0, clienteId: 3, clienteNome: 'Renata Vieira', clienteTelefone: null, enderecoResumo: 'Centro', enderecoCompleto: null, resumo: 'Visita técnica', itens: [] },
+  ]
 }
 
 function hoje(hour: number, min = 0): string {
