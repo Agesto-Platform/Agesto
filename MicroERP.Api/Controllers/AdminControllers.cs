@@ -213,10 +213,12 @@ public sealed class AdminEquipeController : AdminControllerBase
 public sealed class AdminEmpresasController : AdminControllerBase
 {
     private readonly IAdminEmpresaService _service;
+    private readonly IAssinaturaService _assinaturas;
 
-    public AdminEmpresasController(IAdminEmpresaService service)
+    public AdminEmpresasController(IAdminEmpresaService service, IAssinaturaService assinaturas)
     {
         _service = service;
+        _assinaturas = assinaturas;
     }
 
     [HttpGet]
@@ -289,9 +291,45 @@ public sealed class AdminEmpresasController : AdminControllerBase
         {
             return Erro(StatusCodes.Status409Conflict, ex.Message);
         }
+        catch (RegraUsuarioException ex)
+        {
+            return Erro(StatusCodes.Status409Conflict, ex.Message);
+        }
         catch (ArgumentException ex)
         {
             return Erro(StatusCodes.Status400BadRequest, ex.Message);
+        }
+    }
+
+    // Assinatura (DEC-58): registra um pagamento combinado no contato.
+    [HttpPost("{id:long}/pagamentos")]
+    public async Task<ActionResult<ApiResponse>> RegistrarPagamento(long id, [FromBody] PagamentoAssinaturaRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
+        try
+        {
+            var assinatura = await _assinaturas.RegistrarPagamentoAsync(adminId, id, request, Ip, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Pagamento registrado.", Data = assinatura });
+        }
+        catch (NotFoundException ex)
+        {
+            return Erro(StatusCodes.Status404NotFound, ex.Message);
+        }
+    }
+
+    // Assinatura (DEC-58): licenças de funcionário e ajuste manual do "pago até".
+    [HttpPut("{id:long}/assinatura")]
+    public async Task<ActionResult<ApiResponse>> AtualizarAssinatura(long id, [FromBody] AssinaturaAtualizarRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
+        try
+        {
+            var assinatura = await _assinaturas.AtualizarAsync(adminId, id, request, Ip, cancellationToken);
+            return Ok(new ApiResponse { Success = true, Message = "Assinatura atualizada.", Data = assinatura });
+        }
+        catch (NotFoundException ex)
+        {
+            return Erro(StatusCodes.Status404NotFound, ex.Message);
         }
     }
 
@@ -326,6 +364,10 @@ public sealed class AdminEmpresasController : AdminControllerBase
         catch (NotFoundException ex)
         {
             return Erro(StatusCodes.Status404NotFound, ex.Message);
+        }
+        catch (RegraUsuarioException ex)
+        {
+            return Erro(StatusCodes.Status409Conflict, ex.Message);
         }
     }
 }

@@ -98,3 +98,16 @@
   .input.num::-webkit-outer-spin-button, .input.num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .input.num { -moz-appearance: textfield; appearance: textfield; }
 }
+
+/* Assinatura (DEC-58): aviso no topo do painel e bloco da Parametrização. */
+@layer components {
+  .aviso-assinatura { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-ink); font-size: 13.5px; }
+  .aviso-assinatura.grave { background: var(--neg-bg); color: var(--neg-ink); }
+  .aviso-assinatura span { flex: 1; }
+  .aviso-assinatura a { color: inherit; font-weight: 600; white-space: nowrap; }
+  .assinatura-fatos { display: grid; gap: 10px; margin: 0; }
+  .assinatura-fatos div { display: grid; gap: 2px; }
+  .assinatura-fatos dt { font-size: 12px; color: var(--ink-3); }
+  .assinatura-fatos dd { margin: 0; font-weight: 600; color: var(--ink); }
+  .assinatura-fatos .hint { font-weight: 400; }
+}

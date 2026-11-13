@@ -9,8 +9,11 @@ import type {
   EmpresaAdminCriarInput,
   EmpresaAdminDetalhe,
   EmpresaAdminResumo,
+  AssinaturaAtualizarInput,
+  PagamentoAssinaturaInput,
   UsuarioAdminCriarInput,
 } from './types'
+import type { Assinatura } from '../types/api'
 
 /** Tudo da área de superadmin fica sob ['admin', ...] no cache. */
 const K = {
@@ -73,6 +76,24 @@ export function useDesbloquearEmpresa(id: number) {
   const invalidar = useInvalidarAdmin()
   return useMutation({
     mutationFn: () => adminApi.post<null>(`/api/admin/empresas/${id}/desbloquear`, {}),
+    onSuccess: invalidar,
+  })
+}
+
+/** Assinatura (DEC-58): registra um pagamento combinado no contato. */
+export function useRegistrarPagamento(id: number) {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: (input: PagamentoAssinaturaInput) => adminApi.post<Assinatura>(`/api/admin/empresas/${id}/pagamentos`, input),
+    onSuccess: invalidar,
+  })
+}
+
+/** Assinatura (DEC-58): licenças de funcionário e ajuste do "pago até". */
+export function useAtualizarAssinatura(id: number) {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: (input: AssinaturaAtualizarInput) => adminApi.put<Assinatura>(`/api/admin/empresas/${id}/assinatura`, input),
     onSuccess: invalidar,
   })
 }

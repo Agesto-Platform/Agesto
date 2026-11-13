@@ -1,4 +1,4 @@
-import type { PerfilUsuario } from '../types/api'
+import type { Assinatura, FormaPagamento, PerfilUsuario, SituacaoAssinatura } from '../types/api'
 
 /** Contratos da área de superadmin (MicroERP.Api/DTOs/AdminDtos.cs). */
 
@@ -46,6 +46,12 @@ export interface EmpresaAdminResumo {
   donoNome: string | null
   donoEmail: string | null
   ultimoAcessoEm: string | null
+  /** Assinatura (DEC-58). */
+  pagoAte: string | null
+  licencasFuncionarios: number
+  situacaoAssinatura: SituacaoAssinatura
+  diasParaVencer: number | null
+  diasDeAtraso: number | null
 }
 
 export interface UsuarioAdminItem {
@@ -75,6 +81,20 @@ export interface EmpresaAdminDetalhe {
   totalAtendimentos: number
   ultimoAcessoEm: string | null
   usuarios: UsuarioAdminItem[]
+  assinatura: Assinatura | null
+}
+
+export interface PagamentoAssinaturaInput {
+  valor: number
+  pagoEm: string
+  forma: FormaPagamento
+  meses: number
+  observacao: string | null
+}
+
+export interface AssinaturaAtualizarInput {
+  licencasFuncionarios: number
+  pagoAte: string | null
 }
 
 export interface EmpresaAdminCriarInput {

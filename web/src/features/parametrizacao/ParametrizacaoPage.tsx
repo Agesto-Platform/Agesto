@@ -1,3 +1,4 @@
+import { AssinaturaBloco } from '../assinatura/AssinaturaBloco'
 import { useState, type FormEvent } from 'react'
 import { useConfiguracao, useUpdateConfiguracao } from './queries'
 import { Badge, Button, Card, CardBody, PageHead, Switch, useToast } from '../../components/ui'
@@ -163,6 +164,8 @@ export function ParametrizacaoPage() {
             </div>
           </div>
         </section>
+
+        <AssinaturaBloco />
 
         {/* a API ainda não guarda nome, cidade e telefone da empresa: campos só de leitura */}
         <section className="card set">

@@ -1,3 +1,4 @@
+import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
@@ -123,6 +124,7 @@ export function AppShell() {
           <div className="main">
             <Topbar agentOpen={agentOpen} onToggleAgent={() => escolherAgente(!agentOpen)} onOpenNav={() => setNavOpen(true)} />
             <div className="page">
+              <AvisoAssinatura />
               <div id="page">
                 <Outlet context={{ period, setPeriod, entradaPronta } satisfies ShellContext} />
               </div>

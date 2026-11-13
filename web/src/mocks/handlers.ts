@@ -10,6 +10,7 @@ import { agendaHandlers } from './data/agenda'
 import { atendimentoHandlers } from './data/atendimentos'
 import { orcamentoHandlers } from './data/orcamentos'
 import { configuracaoHandlers } from './data/configuracao'
+import { assinaturaHandlers } from './data/assinatura'
 import { usuarioHandlers } from './data/usuarios'
 import { agenteHandlers } from './data/agente'
 import { adminHandlers } from './data/admin'
@@ -78,6 +79,7 @@ export const handlers = [
   ...servicoHandlers,
   ...orcamentoHandlers,
   ...configuracaoHandlers,
+  ...assinaturaHandlers,
   ...usuarioHandlers,
   ...agenteHandlers,
   ...adminHandlers,

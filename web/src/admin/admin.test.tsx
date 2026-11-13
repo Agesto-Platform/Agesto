@@ -73,6 +73,7 @@ describe('área de superadmin', () => {
       {
         id: 3, nome: 'Hidráulica Rápida', documento: null, ativa: false, createdAt: '2026-08-01T00:00:00Z',
         totalUsuarios: 2, usuariosAtivos: 1, donoNome: 'Marcos', donoEmail: 'marcos@h.com', ultimoAcessoEm: null,
+        pagoAte: '2026-10-20', licencasFuncionarios: 1, situacaoAssinatura: 'Atrasada', diasParaVencer: null, diasDeAtraso: 24,
       },
     ])
 

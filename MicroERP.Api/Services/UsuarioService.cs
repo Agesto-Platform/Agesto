@@ -13,12 +13,14 @@ public sealed class UsuarioService : IUsuarioService
 {
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IConviteService _convites;
+    private readonly IAssinaturaService _assinaturas;
     private readonly PasswordHasher<Usuario> _passwordHasher = new();
 
-    public UsuarioService(IUsuarioRepository usuarioRepository, IConviteService convites)
+    public UsuarioService(IUsuarioRepository usuarioRepository, IConviteService convites, IAssinaturaService assinaturas)
     {
         _usuarioRepository = usuarioRepository;
         _convites = convites;
+        _assinaturas = assinaturas;
     }
 
     public async Task<bool> DeleteAsync(long usuarioId, long empresaId, CancellationToken cancellationToken)
@@ -64,6 +66,8 @@ public sealed class UsuarioService : IUsuarioService
         {
             throw new EmailAlreadyExistsException("Email já cadastrado.");
         }
+        // Licenças da assinatura (DEC-58): não passa do contratado.
+        await _assinaturas.GarantirLicencaAsync(empresaId, cancellationToken);
 
         var agora = DateTime.UtcNow;
         var usuario = new Usuario
@@ -134,6 +138,8 @@ public sealed class UsuarioService : IUsuarioService
                 throw new RegraUsuarioException("A empresa precisa de pelo menos um Dono ativo.");
         }
 
+        if (ativo && !usuario.Ativo)
+            await _assinaturas.GarantirLicencaAsync(empresaId, cancellationToken);
         usuario.Ativo = ativo;
         usuario.UpdatedAt = DateTime.UtcNow;
 

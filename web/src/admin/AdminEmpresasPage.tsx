@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button, DataTable, Drawer, PageHead, SearchBox, TextField, useToast, type Column } from '../components/ui'
+import { Badge, Button, DataTable, Drawer, PageHead, SearchBox, SelectField, TextField, useToast, type Column } from '../components/ui'
+import { SITUACAO, vencimentoTexto } from '../lib/assinatura'
+import type { SituacaoAssinatura } from '../types/api'
 import { ApiError } from '../lib/api'
 import { dataCurta } from '../lib/format'
 import { avisoDeEnvio, useCriarEmpresa, useEmpresasAdmin } from './queries'
@@ -28,6 +30,17 @@ const COLUNAS: Column<EmpresaAdminResumo>[] = [
     ),
   },
   { header: 'Usuários', cell: (e) => `${e.usuariosAtivos} de ${e.totalUsuarios} ativos` },
+  {
+    header: 'Assinatura',
+    cell: (e) => (
+      <div className="adm-cell">
+        <Badge tone={(SITUACAO[e.situacaoAssinatura] ?? SITUACAO.SemCobranca).tone}>
+          {(SITUACAO[e.situacaoAssinatura] ?? SITUACAO.SemCobranca).label}
+        </Badge>
+        <span>{vencimentoTexto({ situacao: e.situacaoAssinatura, pagoAte: e.pagoAte, diasParaVencer: e.diasParaVencer, diasDeAtraso: e.diasDeAtraso })}</span>
+      </div>
+    ),
+  },
   { header: 'Último acesso', cell: (e) => (e.ultimoAcessoEm ? dataCurta(e.ultimoAcessoEm) : 'Nunca') },
   { header: 'Cliente desde', cell: (e) => dataCurta(e.createdAt) },
   {
@@ -45,11 +58,34 @@ const COLUNAS: Column<EmpresaAdminResumo>[] = [
   },
 ]
 
-/** Lista das empresas clientes, com busca e cadastro de empresa nova. */
+type FiltroAssinatura = 'todas' | 'atencao' | 'bloqueadas' | SituacaoAssinatura
+
+const FILTROS: { value: FiltroAssinatura; label: string }[] = [
+  { value: 'todas', label: 'Todas' },
+  { value: 'atencao', label: 'Precisam de atenção' },
+  { value: 'EmDia', label: 'Em dia' },
+  { value: 'VenceEmBreve', label: 'Vence em breve' },
+  { value: 'EmCarencia', label: 'Em carência' },
+  { value: 'Atrasada', label: 'Atrasadas' },
+  { value: 'bloqueadas', label: 'Bloqueadas' },
+  { value: 'SemCobranca', label: 'Sem cobrança' },
+]
+
+/** Filtro da lista pela assinatura (DEC-58). "Atenção": vence em breve, carência ou atrasada. */
+function passaNoFiltro(s: SituacaoAssinatura, ativa: boolean, f: FiltroAssinatura): boolean {
+  if (f === 'todas') return true
+  if (f === 'bloqueadas') return !ativa
+  if (f === 'atencao') return s === 'VenceEmBreve' || s === 'EmCarencia' || s === 'Atrasada'
+  return s === f
+}
+
+/** Lista das empresas clientes, com busca, filtro pela assinatura e cadastro de empresa nova. */
 export function AdminEmpresasPage() {
   const navigate = useNavigate()
   const [busca, setBusca] = useState('')
+  const [filtro, setFiltro] = useState<FiltroAssinatura>('todas')
   const empresas = useEmpresasAdmin(busca)
+  const lista = empresas.data?.filter((e) => passaNoFiltro(e.situacaoAssinatura, e.ativa, filtro))
   const criar = useCriarEmpresa()
   const [aberto, setAberto] = useState(false)
   const [form, setForm] = useState(VAZIO)
@@ -92,6 +128,9 @@ export function AdminEmpresasPage() {
       />
       <div className="toolbar adm-toolbar">
         <SearchBox value={busca} onChange={setBusca} placeholder="Buscar por nome, CNPJ ou email" label="Buscar empresas" />
+        <div className="adm-filtro">
+          <SelectField<FiltroAssinatura> label="Assinatura" value={filtro} onChange={setFiltro} options={FILTROS} />
+        </div>
       </div>
       {empresas.isError && (
         <p className="form-error" role="alert">
@@ -100,7 +139,7 @@ export function AdminEmpresasPage() {
       )}
       <DataTable
         columns={COLUNAS}
-        rows={empresas.data}
+        rows={lista}
         getKey={(e) => e.id}
         loading={empresas.isLoading}
         empty={{ title: busca ? 'Nenhuma empresa encontrada' : 'Nenhuma empresa cadastrada', icon: 'store' }}

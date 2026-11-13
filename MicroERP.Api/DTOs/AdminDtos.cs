@@ -108,6 +108,12 @@ public sealed class EmpresaAdminResumo
     public string? DonoNome { get; set; }
     public string? DonoEmail { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
+    // Assinatura (DEC-58).
+    public DateOnly? PagoAte { get; set; }
+    public int LicencasFuncionarios { get; set; }
+    public SituacaoAssinatura SituacaoAssinatura { get; set; }
+    public int? DiasParaVencer { get; set; }
+    public int? DiasDeAtraso { get; set; }
 }
 
 public sealed class EmpresaAdminDetalhe
@@ -123,6 +129,7 @@ public sealed class EmpresaAdminDetalhe
     public int TotalAtendimentos { get; set; }
     public DateTime? UltimoAcessoEm { get; set; }
     public IReadOnlyList<UsuarioAdminItem> Usuarios { get; set; } = [];
+    public AssinaturaResponse? Assinatura { get; set; }
 }
 
 public sealed class UsuarioAdminItem
