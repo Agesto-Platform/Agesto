@@ -11,6 +11,8 @@ import type {
 /** Área de superadmin no modo de demonstração (MSW): dados em memória. */
 export const ADMIN_DEMO_EMAIL = 'equipe@agesto.app'
 export const ADMIN_DEMO_SENHA = 'agesto-admin-123'
+/** Código da verificação em duas etapas no modo de demonstração (DEC-52). */
+export const ADMIN_DEMO_CODIGO = '123456'
 
 function b64url(obj: unknown): string {
   return btoa(JSON.stringify(obj)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
@@ -87,9 +89,19 @@ const resumo = (e: EmpresaMock): EmpresaAdminResumo => {
 const autenticado = (request: Request) => request.headers.get('Authorization')?.startsWith('Bearer ') === true
 
 export const adminHandlers = [
+  // Duas etapas (DEC-52): a senha devolve um desafio; no modo de demonstração o código é 123456.
   http.post('*/api/admin/auth/login', async ({ request }) => {
     const body = (await request.json()) as { email?: string; senha?: string }
     if (body.email !== ADMIN_DEMO_EMAIL || body.senha !== ADMIN_DEMO_SENHA) return fail(401, 'Credenciais inválidas.')
+    return HttpResponse.json(
+      ok({ token: '', expiresAt: agora(), admin: admins[0], exigeCodigo: true, desafio: 'demo', emailMascarado: 'eq***@agesto.app' }, 'Enviamos um código para o seu email.'),
+    )
+  }),
+
+  http.post('*/api/admin/auth/login/codigo', async ({ request }) => {
+    const body = (await request.json()) as { desafio?: string; codigo?: string }
+    if (body.desafio !== 'demo' || body.codigo !== ADMIN_DEMO_CODIGO)
+      return fail(401, 'Código inválido ou expirado. Confira o email ou entre de novo.')
     return HttpResponse.json(ok({ token: tokenAdmin(), expiresAt: agora(), admin: admins[0] }, 'Login realizado com sucesso.'))
   }),
 

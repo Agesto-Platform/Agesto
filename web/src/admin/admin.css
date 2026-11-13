@@ -35,6 +35,7 @@
   .adm-login-head { display: flex; align-items: center; justify-content: space-between; }
   .adm-login-card h1 { margin: 6px 0 0; font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
   .adm-login-card .muted { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .adm-login-acoes { display: flex; justify-content: space-between; gap: 8px; }
 
   @media (max-width: 760px) {
     .adm-top { height: auto; flex-wrap: wrap; padding: 10px 16px; gap: 10px; }

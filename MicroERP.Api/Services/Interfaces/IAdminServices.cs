@@ -6,6 +6,7 @@ namespace MicroERP.Api.Services.Interfaces;
 public interface IAdminAuthService
 {
     Task<AdminAuthResponse?> LoginAsync(AdminLoginRequest request, string? ip, CancellationToken cancellationToken);
+    Task<AdminAuthResponse?> ConfirmarCodigoAsync(AdminCodigoRequest request, string? ip, CancellationToken cancellationToken);
     Task<AdminResponse> SetupAsync(AdminCriarRequest request, string? chave, string? ip, CancellationToken cancellationToken);
     Task<AdminResponse> ObterAsync(long adminId, CancellationToken cancellationToken);
     Task<IReadOnlyList<AdminResponse>> ListarAsync(CancellationToken cancellationToken);

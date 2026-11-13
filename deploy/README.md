@@ -221,6 +221,8 @@ Para criar o **primeiro** admin:
 
 Opcional: `Admin__ExpiresMinutes` define quanto tempo o login de admin vale (padrão 43200, 30 dias).
 
+O login de admin tem duas etapas (DEC-52): depois da senha, chega um código de 6 dígitos no email do admin pelo Brevo (seção 11). Só em emergência, como o Brevo fora do ar, `Admin__DoisFatores=false` desliga a segunda etapa; volte a apagar a variável assim que o envio voltar.
+
 ## 11. Email pelo Brevo ("Esqueci a senha" e convites, DEC-54 e DEC-55)
 
 1. Crie a conta em brevo.com (o plano gratuito envia até 300 emails por dia).

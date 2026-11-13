@@ -17,6 +17,10 @@ export interface AdminAuthResponse {
   token: string
   expiresAt: string
   admin: AdminConta
+  /** Verificação em duas etapas (DEC-52): a senha confere, falta o código do email. */
+  exigeCodigo?: boolean
+  desafio?: string | null
+  emailMascarado?: string | null
 }
 
 /** Convite para a equipe: a pessoa cria a senha pelo link do email (DEC-55). */

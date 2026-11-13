@@ -34,6 +34,7 @@ public sealed class PolicyCoverageTests
         "AdminAuthController.Setup",
         // Senha do convite de admin, pelo link do email (DEC-55).
         "AdminAuthController.CriarSenha",
+        "AdminAuthController.ConfirmarCodigo",
     ];
 
     public static TheoryData<string> Actions()

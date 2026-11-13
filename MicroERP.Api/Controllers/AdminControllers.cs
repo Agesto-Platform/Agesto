@@ -61,10 +61,37 @@ public sealed class AdminAuthController : AdminControllerBase
     [EnableRateLimiting(RateLimits.Login)]
     public async Task<ActionResult<ApiResponse>> Login([FromBody] AdminLoginRequest request, CancellationToken cancellationToken)
     {
-        var resposta = await _service.LoginAsync(request, Ip, cancellationToken);
-        return resposta is null
-            ? Erro(StatusCodes.Status401Unauthorized, "Credenciais inválidas.")
-            : Ok(new ApiResponse { Success = true, Message = "Login realizado com sucesso.", Data = resposta });
+        try
+        {
+            var resposta = await _service.LoginAsync(request, Ip, cancellationToken);
+            if (resposta is null) return Erro(StatusCodes.Status401Unauthorized, "Credenciais inválidas.");
+            var mensagem = resposta.ExigeCodigo
+                ? "Enviamos um código para o seu email."
+                : "Login realizado com sucesso.";
+            return Ok(new ApiResponse { Success = true, Message = mensagem, Data = resposta });
+        }
+        catch (ContaBloqueadaException ex)
+        {
+            return Erro(StatusCodes.Status423Locked, ex.Message);
+        }
+    }
+
+    // Segunda etapa do login (DEC-52): o código de 6 dígitos enviado por email.
+    [HttpPost("login/codigo")]
+    [EnableRateLimiting(RateLimits.Login)]
+    public async Task<ActionResult<ApiResponse>> ConfirmarCodigo([FromBody] AdminCodigoRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var resposta = await _service.ConfirmarCodigoAsync(request, Ip, cancellationToken);
+            return resposta is null
+                ? Erro(StatusCodes.Status401Unauthorized, "Código inválido ou expirado. Confira o email ou entre de novo.")
+                : Ok(new ApiResponse { Success = true, Message = "Login realizado com sucesso.", Data = resposta });
+        }
+        catch (ContaBloqueadaException ex)
+        {
+            return Erro(StatusCodes.Status423Locked, ex.Message);
+        }
     }
 
     // Cria o primeiro admin. Só funciona com Admin:SetupKey configurada, a chave

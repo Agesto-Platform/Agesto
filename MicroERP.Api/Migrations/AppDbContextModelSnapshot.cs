@@ -33,8 +33,23 @@ namespace MicroERP.Api.Migrations
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("BloqueadoAte")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CodigoLoginExpiraEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CodigoLoginHash")
+                        .HasColumnType("text");
+
+                    b.Property<int>("CodigoLoginTentativas")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DesafioLoginHash")
+                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -53,6 +68,9 @@ namespace MicroERP.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<int>("TentativasLoginFalhas")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("UltimoAcessoEm")
                         .HasColumnType("timestamp with time zone");
