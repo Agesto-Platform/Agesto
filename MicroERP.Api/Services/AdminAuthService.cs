@@ -21,18 +21,27 @@ public sealed class AdminAuthService : IAdminAuthService
     private readonly AppDbContext _db;
     private readonly IConfiguration _configuration;
     private readonly IConviteService _convites;
+    private readonly IEnvioCodigoAdmin _codigos;
     private readonly PasswordHasher<AdminPlataforma> _hasher = new();
+
+    // Verificação em duas etapas por email (DEC-52). Admin:DoisFatores=false
+    // desliga (só para emergência, ex.: Brevo fora do ar).
+    public static readonly TimeSpan ValidadeCodigo = TimeSpan.FromMinutes(10);
+    public const int TentativasDeCodigo = 5;
 
     // Mesmo truque do AuthService: email inexistente custa o mesmo tempo que senha errada.
     private static readonly string HashFicticio = new PasswordHasher<AdminPlataforma>()
         .HashPassword(new AdminPlataforma(), Guid.NewGuid().ToString());
 
-    public AdminAuthService(AppDbContext db, IConfiguration configuration, IConviteService convites)
+    public AdminAuthService(AppDbContext db, IConfiguration configuration, IConviteService convites, IEnvioCodigoAdmin codigos)
     {
         _db = db;
         _configuration = configuration;
         _convites = convites;
+        _codigos = codigos;
     }
+
+    private bool DoisFatores => !string.Equals(_configuration["Admin:DoisFatores"], "false", StringComparison.OrdinalIgnoreCase);
 
     public async Task<AdminAuthResponse?> LoginAsync(AdminLoginRequest request, string? ip, CancellationToken cancellationToken)
     {
@@ -44,6 +53,12 @@ public sealed class AdminAuthService : IAdminAuthService
             return null;
         }
 
+        var agora = DateTime.UtcNow;
+
+        // Bloqueada (DEC-52): nem a senha certa entra até o prazo acabar.
+        if (admin.BloqueadoAte > agora)
+            throw new ContaBloqueadaException(MensagemBloqueio(admin.BloqueadoAte.Value - agora));
+
         var verificacao = _hasher.VerifyHashedPassword(admin, admin.Senha, request.Senha);
         // Admin desativado recebe a mesma resposta de senha errada. A tentativa
         // fica na auditoria (email inexistente não tem admin para registrar).
@@ -51,16 +66,120 @@ public sealed class AdminAuthService : IAdminAuthService
         {
             AdminAuditoria.Registrar(_db, admin.Id, "login-falhou",
                 detalhes: admin.Ativo ? "Senha incorreta" : "Conta desativada", ip: ip);
+            admin.TentativasLoginFalhas++;
+            if (admin.TentativasLoginFalhas >= AuthService.TentativasAteBloquear)
+            {
+                admin.TentativasLoginFalhas = 0;
+                admin.BloqueadoAte = agora + AuthService.TempoDeBloqueio;
+                LimparDesafio(admin);
+                AdminAuditoria.Registrar(_db, admin.Id, "conta-bloqueada",
+                    detalhes: $"{AuthService.TentativasAteBloquear} senhas erradas seguidas", ip: ip);
+                await _db.SaveChangesAsync(cancellationToken);
+                throw new ContaBloqueadaException(MensagemBloqueio(AuthService.TempoDeBloqueio));
+            }
             await _db.SaveChangesAsync(cancellationToken);
             return null;
         }
 
-        admin.UltimoAcessoEm = DateTime.UtcNow;
+        admin.TentativasLoginFalhas = 0;
+        admin.BloqueadoAte = null;
+
+        if (DoisFatores)
+        {
+            // Segunda etapa: código de 6 dígitos por email, amarrado a este login pelo desafio.
+            var desafio = Base64Url(RandomNumberGenerator.GetBytes(32));
+            var codigo = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+            admin.DesafioLoginHash = LinksDeSenha.Hash(desafio);
+            admin.CodigoLoginHash = LinksDeSenha.Hash($"{desafio}:{codigo}");
+            admin.CodigoLoginExpiraEm = agora + ValidadeCodigo;
+            admin.CodigoLoginTentativas = 0;
+            AdminAuditoria.Registrar(_db, admin.Id, "login-codigo-enviado", ip: ip);
+            await _db.SaveChangesAsync(cancellationToken);
+            _codigos.Enviar(admin, codigo);
+
+            return new AdminAuthResponse
+            {
+                ExigeCodigo = true,
+                Desafio = desafio,
+                EmailMascarado = MascararEmail(admin.Email),
+            };
+        }
+
+        admin.UltimoAcessoEm = agora;
         AdminAuditoria.Registrar(_db, admin.Id, "login", ip: ip);
         await _db.SaveChangesAsync(cancellationToken);
 
         return GerarToken(admin);
     }
+
+    // Segunda etapa do login (DEC-52): o desafio desta tentativa e o código do email.
+    public async Task<AdminAuthResponse?> ConfirmarCodigoAsync(AdminCodigoRequest request, string? ip, CancellationToken cancellationToken)
+    {
+        var desafio = request.Desafio.Trim();
+        var codigo = new string(request.Codigo.Where(char.IsDigit).ToArray());
+        if (desafio.Length == 0 || codigo.Length != 6) return null;
+
+        var hashDesafio = LinksDeSenha.Hash(desafio);
+        var admin = await _db.AdminsPlataforma.FirstOrDefaultAsync(a => a.DesafioLoginHash == hashDesafio, cancellationToken);
+        if (admin is null) return null;
+
+        var agora = DateTime.UtcNow;
+        if (admin.BloqueadoAte > agora)
+            throw new ContaBloqueadaException(MensagemBloqueio(admin.BloqueadoAte.Value - agora));
+
+        if (!admin.Ativo || admin.CodigoLoginExpiraEm is null || admin.CodigoLoginExpiraEm < agora)
+        {
+            LimparDesafio(admin);
+            AdminAuditoria.Registrar(_db, admin.Id, "login-codigo-falhou", detalhes: "Código expirado", ip: ip);
+            await _db.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
+        var esperado = Encoding.UTF8.GetBytes(admin.CodigoLoginHash ?? string.Empty);
+        var recebido = Encoding.UTF8.GetBytes(LinksDeSenha.Hash($"{desafio}:{codigo}"));
+        if (!CryptographicOperations.FixedTimeEquals(esperado, recebido))
+        {
+            admin.CodigoLoginTentativas++;
+            var esgotou = admin.CodigoLoginTentativas >= TentativasDeCodigo;
+            if (esgotou) LimparDesafio(admin);
+            AdminAuditoria.Registrar(_db, admin.Id, "login-codigo-falhou",
+                detalhes: esgotou ? "Código errado; tentativas esgotadas" : "Código errado", ip: ip);
+            await _db.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
+        LimparDesafio(admin);
+        admin.UltimoAcessoEm = agora;
+        AdminAuditoria.Registrar(_db, admin.Id, "login", ip: ip);
+        await _db.SaveChangesAsync(cancellationToken);
+        return GerarToken(admin);
+    }
+
+    private static void LimparDesafio(AdminPlataforma admin)
+    {
+        admin.DesafioLoginHash = null;
+        admin.CodigoLoginHash = null;
+        admin.CodigoLoginExpiraEm = null;
+        admin.CodigoLoginTentativas = 0;
+    }
+
+    private static string MensagemBloqueio(TimeSpan restante)
+    {
+        var minutos = Math.Max(1, (int)Math.Ceiling(restante.TotalMinutes));
+        return $"Conta bloqueada por excesso de tentativas. Tente de novo em {minutos} min.";
+    }
+
+    // "davi@empresa.com" -> "da***@empresa.com": a tela diz para onde foi o código.
+    public static string MascararEmail(string email)
+    {
+        var arroba = email.IndexOf('@');
+        if (arroba <= 0) return email;
+        var nome = email[..arroba];
+        return $"{nome[..Math.Min(2, nome.Length)]}***{email[arroba..]}";
+    }
+
+    private static string Base64Url(byte[] bytes) =>
+        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
     public async Task<AdminResponse> SetupAsync(AdminCriarRequest request, string? chave, string? ip, CancellationToken cancellationToken)
     {

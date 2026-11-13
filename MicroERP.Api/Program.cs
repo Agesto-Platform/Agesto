@@ -96,6 +96,7 @@ builder.Services.AddSingleton<IInsightsGerador, ClaudeInsightsGerador>();
 builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAgenteService, AgenteService>();
 builder.Services.AddScoped<IUsoIaService, UsoIaService>();
+builder.Services.AddScoped<IEnvioCodigoAdmin, EnvioCodigoAdmin>();
 builder.Services.AddSingleton(TimeProvider.System);
 
 // Email transacional pelo Brevo e "Esqueci a senha" do Dono (DEC-54). Sem chave,

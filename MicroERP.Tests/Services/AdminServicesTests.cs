@@ -15,8 +15,11 @@ public sealed class AdminServicesTests
 {
     private const string ChaveSetup = "chave-de-setup-de-teste";
 
-    private static AdminAuthService Auth(AppDbContext db, ConvitesFalsos? convites = null, string? setupKey = ChaveSetup) =>
-        new(db, Config(setupKey), convites ?? new ConvitesFalsos());
+    // Os testes antigos entram só com a senha; os da verificação em duas etapas ligam doisFatores.
+    private static AdminAuthService Auth(
+        AppDbContext db, ConvitesFalsos? convites = null, string? setupKey = ChaveSetup,
+        CodigosFalsos? codigos = null, bool doisFatores = false) =>
+        new(db, Config(setupKey, doisFatores), convites ?? new ConvitesFalsos(), codigos ?? new CodigosFalsos());
 
     private static AdminEmpresaService Empresas(AppDbContext db, ConvitesFalsos? convites = null) =>
         new(db, new AuthService(db, Config()), convites ?? new ConvitesFalsos());
@@ -286,13 +289,121 @@ public sealed class AdminServicesTests
         return admin.Id;
     }
 
-    private static IConfiguration Config(string? setupKey = ChaveSetup) =>
+    // --- Bloqueio por conta e verificação em duas etapas (DEC-52) ---
+
+    private static async Task<(AdminAuthService Servico, CodigosFalsos Codigos)> AdminCom2fa(AppDbContext db)
+    {
+        var codigos = new CodigosFalsos();
+        var servico = Auth(db, codigos: codigos, doisFatores: true);
+        await servico.SetupAsync(new AdminCriarRequest { Nome = "Equipe", Email = "equipe@agesto.com", Senha = "senha-bem-longa-123" },
+            ChaveSetup, null, CancellationToken.None);
+        return (servico, codigos);
+    }
+
+    private static AdminLoginRequest Senha(string senha = "senha-bem-longa-123") => new() { Email = "equipe@agesto.com", Senha = senha };
+
+    [Fact]
+    public async Task Login_CincoSenhasErradas_BloqueiaMesmoComASenhaCerta()
+    {
+        await using var db = CreateContext();
+        var (servico, _) = await AdminCom2fa(db);
+
+        for (var i = 0; i < 4; i++)
+            Assert.Null(await servico.LoginAsync(Senha("errada"), null, CancellationToken.None));
+        await Assert.ThrowsAsync<ContaBloqueadaException>(() => servico.LoginAsync(Senha("errada"), null, CancellationToken.None));
+        await Assert.ThrowsAsync<ContaBloqueadaException>(() => servico.LoginAsync(Senha(), null, CancellationToken.None));
+
+        Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "conta-bloqueada");
+    }
+
+    [Fact]
+    public async Task Login_ComDoisFatores_PedeOCodigoEOCodigoCertoEntra()
+    {
+        await using var db = CreateContext();
+        var (servico, codigos) = await AdminCom2fa(db);
+
+        var primeira = await servico.LoginAsync(Senha(), null, CancellationToken.None);
+
+        Assert.NotNull(primeira);
+        Assert.True(primeira!.ExigeCodigo);
+        Assert.Equal(string.Empty, primeira.Token);
+        Assert.Equal("eq***@agesto.com", primeira.EmailMascarado);
+        var (para, codigo) = Assert.Single(codigos.Enviados);
+        Assert.Equal("equipe@agesto.com", para);
+        Assert.Matches("^[0-9]{6}$", codigo);
+        // O banco guarda só os hashes.
+        var admin = db.AdminsPlataforma.Single();
+        Assert.DoesNotContain(codigo, admin.CodigoLoginHash);
+
+        var final = await servico.ConfirmarCodigoAsync(new AdminCodigoRequest { Desafio = primeira.Desafio!, Codigo = codigo }, null, CancellationToken.None);
+        Assert.NotNull(final);
+        Assert.False(string.IsNullOrEmpty(final!.Token));
+
+        // Uso único: o mesmo código não entra de novo.
+        Assert.Null(await servico.ConfirmarCodigoAsync(new AdminCodigoRequest { Desafio = primeira.Desafio!, Codigo = codigo }, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ConfirmarCodigo_CodigoDeOutroLoginOuErradoNaoEntra_ECincoErrosInvalidam()
+    {
+        await using var db = CreateContext();
+        var (servico, codigos) = await AdminCom2fa(db);
+        var primeira = await servico.LoginAsync(Senha(), null, CancellationToken.None);
+        var codigo = codigos.Enviados[^1].Codigo;
+        var errado = codigo == "000000" ? "111111" : "000000";
+
+        // Desafio inventado não serve.
+        Assert.Null(await servico.ConfirmarCodigoAsync(new AdminCodigoRequest { Desafio = "inventado", Codigo = codigo }, null, CancellationToken.None));
+
+        for (var i = 0; i < AdminAuthService.TentativasDeCodigo; i++)
+            Assert.Null(await servico.ConfirmarCodigoAsync(new AdminCodigoRequest { Desafio = primeira!.Desafio!, Codigo = errado }, null, CancellationToken.None));
+
+        // Depois de 5 erros, nem o código certo serve: precisa entrar de novo com a senha.
+        Assert.Null(await servico.ConfirmarCodigoAsync(new AdminCodigoRequest { Desafio = primeira!.Desafio!, Codigo = codigo }, null, CancellationToken.None));
+        Assert.Null(db.AdminsPlataforma.Single().DesafioLoginHash);
+    }
+
+    [Fact]
+    public async Task ConfirmarCodigo_Expirado_NaoEntra()
+    {
+        await using var db = CreateContext();
+        var (servico, codigos) = await AdminCom2fa(db);
+        var primeira = await servico.LoginAsync(Senha(), null, CancellationToken.None);
+        db.AdminsPlataforma.Single().CodigoLoginExpiraEm = DateTime.UtcNow.AddMinutes(-1);
+        await db.SaveChangesAsync();
+
+        Assert.Null(await servico.ConfirmarCodigoAsync(
+            new AdminCodigoRequest { Desafio = primeira!.Desafio!, Codigo = codigos.Enviados[^1].Codigo }, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Login_NovoLoginInvalidaOCodigoAnterior()
+    {
+        await using var db = CreateContext();
+        var (servico, codigos) = await AdminCom2fa(db);
+        var primeira = await servico.LoginAsync(Senha(), null, CancellationToken.None);
+        var codigoAntigo = codigos.Enviados[^1].Codigo;
+        await servico.LoginAsync(Senha(), null, CancellationToken.None);
+
+        Assert.Null(await servico.ConfirmarCodigoAsync(
+            new AdminCodigoRequest { Desafio = primeira!.Desafio!, Codigo = codigoAntigo }, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public void MascararEmail_EscondeOMeioDoNome()
+    {
+        Assert.Equal("da***@gmail.com", AdminAuthService.MascararEmail("davi@gmail.com"));
+        Assert.Equal("a***@x.com", AdminAuthService.MascararEmail("a@x.com"));
+    }
+
+    private static IConfiguration Config(string? setupKey = ChaveSetup, bool doisFatores = false) =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Jwt:Secret"] = "uma-chave-de-teste-com-pelo-menos-32-bytes!!",
             ["Jwt:Issuer"] = "MicroERP.Api",
             ["Jwt:Audience"] = "MicroERP.Api",
             ["Admin:SetupKey"] = setupKey,
+            ["Admin:DoisFatores"] = doisFatores ? "true" : "false",
         }).Build();
 
     private static AppDbContext CreateContext() =>
