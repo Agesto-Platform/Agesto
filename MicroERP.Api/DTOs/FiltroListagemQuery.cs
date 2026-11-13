@@ -30,6 +30,12 @@ public sealed class AtendimentoFiltroQuery
     // a ordem da tela (agendada, senão registro). Outro valor = 400.
     [RegularExpression("^(registro|agendada)$", ErrorMessage = "Ordem inválida. Use registro ou agendada.")]
     public string? Ordem { get; set; }
+
+    // Cobrança: "areceber" = concluídos sem pagamento; "pago" = com pagamento registrado.
+    public const string RecebimentoAReceber = "areceber";
+    public const string RecebimentoPago = "pago";
+    [RegularExpression("^(areceber|pago)$", ErrorMessage = "Recebimento inválido. Use areceber ou pago.")]
+    public string? Recebimento { get; set; }
 }
 
 public sealed class ProdutoFiltroQuery : IValidatableObject
@@ -98,4 +104,16 @@ public sealed class AtendimentoContagemResponse
     public int Pendente { get; set; }
     public int Concluido { get; set; }
     public int Cancelado { get; set; }
+    // Concluídos sem pagamento registrado, e quanto somam.
+    public int AReceber { get; set; }
+    public decimal ValorAReceber { get; set; }
+}
+
+public sealed class AtendimentoRecebimentoRequest
+{
+    /// <summary>Data do pagamento; null volta o atendimento para "a receber".</summary>
+    public DateOnly? PagoEm { get; set; }
+
+    [EnumDataType(typeof(FormaRecebimento), ErrorMessage = "Forma de pagamento inválida.")]
+    public FormaRecebimento? Forma { get; set; }
 }

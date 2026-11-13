@@ -89,6 +89,15 @@ export function useRegistrarPagamento(id: number) {
   })
 }
 
+/** Assinatura (DEC-58): desfaz o último pagamento, registrado por engano. */
+export function useDesfazerPagamento(id: number) {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: (pagamentoId: number) => adminApi.post<Assinatura>(`/api/admin/empresas/${id}/pagamentos/${pagamentoId}/desfazer`, {}),
+    onSuccess: invalidar,
+  })
+}
+
 /** Assinatura (DEC-58): licenças de funcionário e ajuste do "pago até". */
 export function useAtualizarAssinatura(id: number) {
   const invalidar = useInvalidarAdmin()

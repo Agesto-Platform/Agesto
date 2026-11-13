@@ -12,6 +12,9 @@ public sealed class AtendimentoResponse
     public decimal ValorTotal { get; set; }
     public decimal CustoTotal { get; set; }
     public decimal Margem { get; set; }
+    // Cobrança mínima: null = a receber.
+    public DateOnly? PagoEm { get; set; }
+    public FormaRecebimento? FormaPagamento { get; set; }
     public long ClienteId { get; set; }
     public long UsuarioId { get; set; }
     // Primeiro serviço, senão o primeiro produto; nulo sem itens. Vem preenchido na listagem.

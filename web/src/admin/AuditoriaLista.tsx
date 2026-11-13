@@ -29,6 +29,7 @@ const ACAO: Record<string, string> = {
   'login-codigo-enviado': 'Recebeu o código de acesso',
   'login-codigo-falhou': 'Código de acesso recusado',
   'registrar-pagamento': 'Registrou pagamento',
+  'desfazer-pagamento': 'Desfez pagamento',
   'atualizar-assinatura': 'Ajustou a assinatura',
   'bloqueio-automatico': 'Bloqueio automático por atraso',
   'desbloqueio-automatico': 'Desbloqueio automático (pagamento em dia)',

@@ -115,6 +115,13 @@ namespace MicroERP.Api.Migrations
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
 
+                    b.Property<string>("FormaPagamento")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateOnly?>("PagoEm")
+                        .HasColumnType("date");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -614,6 +621,12 @@ namespace MicroERP.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DesfeitoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long?>("DesfeitoPorAdminId")
+                        .HasColumnType("bigint");
+
                     b.Property<long>("EmpresaId")
                         .HasColumnType("bigint");
 
@@ -628,6 +641,9 @@ namespace MicroERP.Api.Migrations
                     b.Property<string>("Observacao")
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<DateOnly?>("PagoAteAnterior")
+                        .HasColumnType("date");
 
                     b.Property<DateOnly>("PagoEm")
                         .HasColumnType("date");

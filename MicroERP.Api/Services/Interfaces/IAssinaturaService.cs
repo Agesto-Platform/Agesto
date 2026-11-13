@@ -15,6 +15,12 @@ public interface IAssinaturaService
 
     Task<AssinaturaResponse> RegistrarPagamentoAsync(long adminId, long empresaId, PagamentoAssinaturaRequest request, string? ip, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Desfaz o último pagamento (registrado por engano): o "pago até" volta ao de antes.
+    /// Lança InvalidOperationException se não for o último ou se o "pago até" foi ajustado depois.
+    /// </summary>
+    Task<AssinaturaResponse> DesfazerPagamentoAsync(long adminId, long empresaId, long pagamentoId, string? ip, CancellationToken cancellationToken);
+
     Task<AssinaturaResponse> AtualizarAsync(long adminId, long empresaId, AssinaturaAtualizarRequest request, string? ip, CancellationToken cancellationToken);
 
     /// <summary>Bloqueia as empresas com mais de 10 dias de atraso. Devolve quantas bloqueou.</summary>

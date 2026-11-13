@@ -80,6 +80,7 @@ public sealed class AssinaturaService : IAssinaturaService
         {
             EmpresaId = empresaId,
             AdminId = adminId,
+            PagoAteAnterior = empresa.PagoAte,
             Valor = decimal.Round(request.Valor, 2),
             PagoEm = request.PagoEm ?? hoje,
             Forma = request.Forma,
@@ -97,6 +98,39 @@ public sealed class AssinaturaService : IAssinaturaService
         await _db.SaveChangesAsync(cancellationToken);
         return await MontarAsync(empresa, comPagamentos: true, cancellationToken);
     }
+
+    public async Task<AssinaturaResponse> DesfazerPagamentoAsync(
+        long adminId, long empresaId, long pagamentoId, string? ip, CancellationToken cancellationToken)
+    {
+        var empresa = await _db.Empresas.FirstOrDefaultAsync(e => e.Id == empresaId, cancellationToken)
+            ?? throw new NotFoundException("Empresa não encontrada.");
+        var pagamento = await _db.PagamentosAssinatura
+            .FirstOrDefaultAsync(p => p.Id == pagamentoId && p.EmpresaId == empresaId, cancellationToken)
+            ?? throw new NotFoundException("Pagamento não encontrado.");
+        if (pagamento.DesfeitoEm is not null)
+            throw new InvalidOperationException("Este pagamento já foi desfeito.");
+
+        var ultimo = await UltimoAtivoAsync(empresaId, cancellationToken);
+        if (ultimo?.Id != pagamento.Id || empresa.PagoAte != pagamento.PeriodoFim)
+            throw new InvalidOperationException(
+                "Só dá para desfazer o último pagamento, e só enquanto o \"pago até\" não foi ajustado depois dele. Use \"Ajustar\" para corrigir.");
+
+        pagamento.DesfeitoEm = DateTime.UtcNow;
+        pagamento.DesfeitoPorAdminId = adminId;
+        empresa.PagoAte = pagamento.PagoAteAnterior;
+        // Sem o pagamento, a rotina volta a avaliar o atraso do zero (pode bloquear de novo).
+        empresa.BloqueioAutomaticoReferencia = null;
+        AdminAuditoria.Registrar(_db, adminId, "desfazer-pagamento", empresaId,
+            detalhes: $"R$ {pagamento.Valor:0.00} de {pagamento.PagoEm:dd/MM/yyyy}; pago até volta para {empresa.PagoAte?.ToString("dd/MM/yyyy") ?? "sem cobrança"}", ip: ip);
+        await _db.SaveChangesAsync(cancellationToken);
+        return await MontarAsync(empresa, comPagamentos: true, cancellationToken);
+    }
+
+    private Task<PagamentoAssinatura?> UltimoAtivoAsync(long empresaId, CancellationToken cancellationToken) =>
+        _db.PagamentosAssinatura
+            .Where(p => p.EmpresaId == empresaId && p.DesfeitoEm == null)
+            .OrderByDescending(p => p.PeriodoFim).ThenByDescending(p => p.Id)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<AssinaturaResponse> AtualizarAsync(
         long adminId, long empresaId, AssinaturaAtualizarRequest request, string? ip, CancellationToken cancellationToken)
@@ -186,8 +220,16 @@ public sealed class AssinaturaService : IAssinaturaService
                     Observacao = p.Observacao,
                     AdminNome = _db.AdminsPlataforma.Where(a => a.Id == p.AdminId).Select(a => a.Nome).FirstOrDefault(),
                     CreatedAt = p.CreatedAt,
+                    DesfeitoEm = p.DesfeitoEm,
+                    DesfeitoPor = _db.AdminsPlataforma.Where(a => a.Id == p.DesfeitoPorAdminId).Select(a => a.Nome).FirstOrDefault(),
                 })
                 .ToListAsync(cancellationToken);
+            var ultimo = await UltimoAtivoAsync(empresa.Id, cancellationToken);
+            if (ultimo is not null && empresa.PagoAte == ultimo.PeriodoFim)
+            {
+                var item = resposta.Pagamentos.FirstOrDefault(p => p.Id == ultimo.Id);
+                if (item is not null) item.PodeDesfazer = true;
+            }
         }
         return resposta;
     }

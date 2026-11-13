@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Badge, Button, Card, CardBody, CardHead, Drawer, SelectField, TextField, useToast } from '../components/ui'
+import { Badge, Button, Card, CardBody, CardHead, ConfirmDialog, Drawer, SelectField, TextField, useToast } from '../components/ui'
 import { ApiError } from '../lib/api'
 import { FORMAS, SITUACAO, dataBr, reais, rotuloForma, vencimentoTexto } from '../lib/assinatura'
-import type { Assinatura, FormaPagamento } from '../types/api'
-import { useAtualizarAssinatura, useRegistrarPagamento } from './queries'
+import type { Assinatura, FormaPagamento, PagamentoAssinatura } from '../types/api'
+import { useAtualizarAssinatura, useDesfazerPagamento, useRegistrarPagamento } from './queries'
 
 const hojeIso = () => {
   const d = new Date()
@@ -20,6 +20,8 @@ export function AssinaturaAdminCard({ empresaId, assinatura: a }: { empresaId: n
   const toast = useToast()
   const registrar = useRegistrarPagamento(empresaId)
   const atualizar = useAtualizarAssinatura(empresaId)
+  const desfazer = useDesfazerPagamento(empresaId)
+  const [aDesfazer, setADesfazer] = useState<PagamentoAssinatura | null>(null)
 
   const [pagando, setPagando] = useState(false)
   const [pagamento, setPagamento] = useState({ valor: '', pagoEm: hojeIso(), forma: 'Pix' as FormaPagamento, meses: '1', observacao: '' })
@@ -60,6 +62,18 @@ export function AssinaturaAdminCard({ empresaId, assinatura: a }: { empresaId: n
       toast.success(`Pagamento registrado. Pago até ${dataBr(r.pagoAte)}.${!a.ativa && r.ativa ? ' A empresa foi desbloqueada.' : ''}`)
     } catch (err) {
       setErro(err instanceof ApiError ? [err.message, ...err.errors].join(' ') : 'Não foi possível registrar o pagamento.')
+    }
+  }
+
+  const confirmarDesfazer = async () => {
+    if (!aDesfazer) return
+    try {
+      const r = await desfazer.mutateAsync(aDesfazer.id)
+      setADesfazer(null)
+      toast.success(r.pagoAte ? `Pagamento desfeito. Pago até ${dataBr(r.pagoAte)}.` : 'Pagamento desfeito. A empresa voltou para "sem cobrança".')
+    } catch (err) {
+      setADesfazer(null)
+      toast.error(err instanceof ApiError ? err.message : 'Não foi possível desfazer o pagamento.')
     }
   }
 
@@ -129,11 +143,12 @@ export function AssinaturaAdminCard({ empresaId, assinatura: a }: { empresaId: n
                 <th>Forma</th>
                 <th className="n">Valor</th>
                 <th>Registrado por</th>
+                <th />
               </tr>
             </thead>
             <tbody>
               {a.pagamentos.map((p) => (
-                <tr key={p.id}>
+                <tr key={p.id} className={p.desfeitoEm ? 'desfeito' : undefined}>
                   <td>{dataBr(p.pagoEm)}</td>
                   <td>
                     {dataBr(p.periodoInicio)} a {dataBr(p.periodoFim)}
@@ -141,7 +156,17 @@ export function AssinaturaAdminCard({ empresaId, assinatura: a }: { empresaId: n
                   </td>
                   <td>{rotuloForma(p.forma)}</td>
                   <td className="n">{reais(p.valor)}</td>
-                  <td>{p.adminNome ?? '—'}</td>
+                  <td>
+                    {p.adminNome ?? '—'}
+                    {p.desfeitoEm && <span className="sub">Desfeito{p.desfeitoPor ? ` por ${p.desfeitoPor}` : ''}</span>}
+                  </td>
+                  <td className="n">
+                    {p.podeDesfazer && (
+                      <Button size="sm" variant="ghost" onClick={() => setADesfazer(p)}>
+                        Desfazer
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -152,6 +177,22 @@ export function AssinaturaAdminCard({ empresaId, assinatura: a }: { empresaId: n
           </p>
         )}
       </CardBody>
+
+      <ConfirmDialog
+        open={aDesfazer !== null}
+        title="Desfazer este pagamento?"
+        message={
+          aDesfazer
+            ? `O pagamento de ${reais(aDesfazer.valor)} de ${dataBr(aDesfazer.pagoEm)} fica no histórico como desfeito, e o "pago até" volta para ${
+                aDesfazer.periodoInicio ? dataBr(diaAnterior(aDesfazer.periodoInicio)) : 'o de antes'
+              } (ou "sem cobrança", se era o primeiro). Se a empresa ficar com mais de 10 dias de atraso, a rotina a bloqueia de novo.`
+            : ''
+        }
+        confirmLabel="Desfazer"
+        loading={desfazer.isPending}
+        onConfirm={confirmarDesfazer}
+        onCancel={() => setADesfazer(null)}
+      />
 
       <Drawer
         open={pagando}
@@ -215,6 +256,11 @@ export function AssinaturaAdminCard({ empresaId, assinatura: a }: { empresaId: n
       </Drawer>
     </Card>
   )
+}
+
+function diaAnterior(iso: string): string {
+  const [a, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(a, m - 1, d - 1)).toISOString().slice(0, 10)
 }
 
 function diaSeguinte(iso: string): string {
