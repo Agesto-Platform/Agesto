@@ -10,7 +10,9 @@ public interface IAtendimentoRepository
         string? busca, StatusAtendimento? status, long? clienteId, bool porRegistro, CancellationToken cancellationToken, string? recebimento = null);
     Task<Dictionary<StatusAtendimento, int>> ContarPorStatusAsync(long empresaId, CancellationToken cancellationToken);
     Task<Dictionary<long, string?>> GetResumosAsync(long empresaId, IReadOnlyCollection<long> ids, CancellationToken cancellationToken);
-    Task<List<Atendimento>> GetAgendaAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, CancellationToken cancellationToken);
+    Task<List<Atendimento>> GetAgendaAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, bool historico, CancellationToken cancellationToken);
+    Task<List<Atendimento>> GetPendentesAgendadosAsync(long empresaId, DateTime? de, DateTime ate, long? usuarioId, int limite, CancellationToken cancellationToken);
+    Task<int> ContarPendentesAgendadosAsync(long empresaId, DateTime? de, DateTime ate, long? usuarioId, CancellationToken cancellationToken);
     // Histórico do app: pela data agendada ou, sem ela, pela de registro; mais recentes primeiro.
     Task<List<Atendimento>> GetHistoricoAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, int limite, CancellationToken cancellationToken);
     Task<Atendimento?> GetByIdAsync(long empresaId, long id, bool track, CancellationToken cancellationToken);

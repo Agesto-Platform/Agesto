@@ -197,7 +197,7 @@ public sealed class SyncService : ISyncService
         // histórico, dos últimos 30 dias até agora.
         var hoje = FusoBrasilia.InicioDoDiaUtc(sincronizadoEm);
         var agenda = await _atendimentoRepository.GetAgendaAsync(
-            empresaId, hoje, hoje.AddDays(DiasDeAgendaNaCarga + 1).AddTicks(-1), agenteId, cancellationToken);
+            empresaId, hoje, hoje.AddDays(DiasDeAgendaNaCarga + 1).AddTicks(-1), agenteId, historico: false, cancellationToken);
         var historico = await _atendimentoRepository.GetHistoricoAsync(
             empresaId, hoje.AddDays(-DiasDeHistoricoNaCarga), sincronizadoEm, agenteId, MaxHistoricoNaCarga, cancellationToken);
 

@@ -224,7 +224,7 @@ public sealed class AtendimentoServiceTests
         var ate = new DateTime(2026, 7, 31, 0, 0, 0, DateTimeKind.Utc);
 
         _atendimentoRepoMock
-            .Setup(r => r.GetAgendaAsync(1, de, ate, 5L, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetAgendaAsync(1, de, ate, 5L, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Atendimento>
             {
                 new()
@@ -238,7 +238,7 @@ public sealed class AtendimentoServiceTests
                 new() { Id = 2, DataAgendada = new DateTime(2026, 7, 15, 14, 0, 0, DateTimeKind.Utc), Cliente = new Cliente { Nome = "Removido", DeletedAt = DateTime.UtcNow } }
             });
 
-        var result = await _service.GetAgendaAsync(1, de, ate, 5L, CancellationToken.None);
+        var result = await _service.GetAgendaAsync(1, de, ate, 5L, false, CancellationToken.None);
 
         Assert.Equal(2, result.Count);
         Assert.Equal(new DateTime(2026, 7, 10, 9, 0, 0, DateTimeKind.Utc), result[0].DataAgendada);
@@ -262,19 +262,19 @@ public sealed class AtendimentoServiceTests
         var de = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
         var ate = de.AddDays(dias);
         _atendimentoRepoMock
-            .Setup(r => r.GetAgendaAsync(1, de, ate, null, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetAgendaAsync(1, de, ate, null, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Atendimento>());
 
         if (aceita)
         {
-            Assert.Empty(await _service.GetAgendaAsync(1, de, ate, null, CancellationToken.None));
+            Assert.Empty(await _service.GetAgendaAsync(1, de, ate, null, false, CancellationToken.None));
         }
         else
         {
-            var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.GetAgendaAsync(1, de, ate, null, CancellationToken.None));
+            var ex = await Assert.ThrowsAsync<ArgumentException>(() => _service.GetAgendaAsync(1, de, ate, null, false, CancellationToken.None));
             Assert.Contains("62 dias", ex.Message);
             _atendimentoRepoMock.Verify(r => r.GetAgendaAsync(It.IsAny<long>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(),
-                It.IsAny<long?>(), It.IsAny<CancellationToken>()), Times.Never);
+                It.IsAny<long?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         }
     }
 
@@ -283,7 +283,7 @@ public sealed class AtendimentoServiceTests
     {
         var de = new DateTime(2026, 7, 10, 0, 0, 0, DateTimeKind.Utc);
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            _service.GetAgendaAsync(1, de, de.AddDays(-1), null, CancellationToken.None));
+            _service.GetAgendaAsync(1, de, de.AddDays(-1), null, false, CancellationToken.None));
     }
 
     // PAG-02: a listagem traz o resumo, para o web não pedir a agenda do ano só por ele.

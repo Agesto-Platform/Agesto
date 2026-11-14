@@ -4,6 +4,7 @@ import { getToken, setToken, clearToken } from '@/lib/tokenStore'
 import { setOnSessionExpired } from '@/lib/session'
 import { db } from '@/db/instance'
 import { initialSync } from '@/sync/sync'
+import { cancelarAvisosDoDia } from '@/lib/avisosDoDia'
 import { ensureLocalOwner } from './localData'
 import { AuthContext, type AuthValue } from './context'
 import type { AuthResponse, Termos } from '@/types/api'
@@ -77,8 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await clearToken()
-    // Sair apaga os dados locais (a tela avisa antes se houver pendências).
+    // Sair apaga os dados locais (a tela avisa antes se houver pendências) e os avisos do dia.
     await db.reset()
+    await cancelarAvisosDoDia()
     setDeve(false)
     setTermos(null)
     setTok(null)

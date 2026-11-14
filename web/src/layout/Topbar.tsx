@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { NAV_LOOKUP } from './nav'
+import { AvisosSino } from './AvisosSino'
 import { Icon } from '../components/Icon'
 import { Seg } from '../components/ui'
 import { setMode, useTheme, type Mode } from '../theme/theme'
@@ -67,10 +68,7 @@ export function Topbar({
           { value: 'dark', label: <Icon name="moon" />, ariaLabel: 'Tema escuro' },
         ]}
       />
-      <button className="icon-btn" type="button" aria-label="Notificações">
-        <Icon name="bell" />
-        <span className="dot" />
-      </button>
+      <AvisosSino />
       <button
         className="icon-btn"
         type="button"

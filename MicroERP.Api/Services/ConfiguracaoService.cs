@@ -60,6 +60,7 @@ public sealed class ConfiguracaoService : IConfiguracaoService
             EmpresaId = configuracao.EmpresaId,
             EmpresaNome = configuracao.Empresa?.Nome,
             EmpresaDocumento = configuracao.Empresa?.Documento,
+            EmpresaCriadaEm = configuracao.Empresa?.CreatedAt,
             CreatedAt = configuracao.CreatedAt,
             UpdatedAt = configuracao.UpdatedAt
         };
