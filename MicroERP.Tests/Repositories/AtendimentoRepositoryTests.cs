@@ -33,11 +33,11 @@ public sealed class AtendimentoRepositoryTests
         var repo = new AtendimentoRepository(db);
 
         // Sem filtro de agente (Dono): empresa 1, no periodo, com DataAgendada, nao deletado -> ids 1 e 5
-        var todos = await repo.GetAgendaAsync(1, De, Ate, null, CancellationToken.None);
+        var todos = await repo.GetAgendaAsync(1, De, Ate, null, false, CancellationToken.None);
         Assert.Equal(new long[] { 1, 5 }, todos.Select(a => a.Id).ToArray());
 
         // Filtrando pelo agente 5: só o id 1
-        var doAgente = await repo.GetAgendaAsync(1, De, Ate, 5L, CancellationToken.None);
+        var doAgente = await repo.GetAgendaAsync(1, De, Ate, 5L, false, CancellationToken.None);
         Assert.Single(doAgente);
         Assert.Equal(1, doAgente[0].Id);
     }

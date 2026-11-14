@@ -61,7 +61,7 @@ public sealed class AgenteService : IAgenteService
         // Agenda de hoje (00:00 em Brasília) até o fim do 7º dia.
         var inicioHojeUtc = TimeZoneInfo.ConvertTimeToUtc(agoraLocal.Date, Brasilia);
         var agenda = await _atendimentoService.GetAgendaAsync(
-            empresaId, inicioHojeUtc, inicioHojeUtc.AddDays(DiasDeAgenda + 1).AddTicks(-1), null, cancellationToken);
+            empresaId, inicioHojeUtc, inicioHojeUtc.AddDays(DiasDeAgenda + 1).AddTicks(-1), null, historico: false, cancellationToken);
 
         var dados = new
         {

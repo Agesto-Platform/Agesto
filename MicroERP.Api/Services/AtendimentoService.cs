@@ -19,6 +19,10 @@ public sealed class AtendimentoService : IAtendimentoService
     private readonly IProdutoRepository _produtoRepository;
     private readonly IConfiguracaoRepository _configuracaoRepository;
     private readonly IUsuarioRepository _usuarioRepository;
+    private readonly TimeProvider _relogio;
+
+    // Atrasados no sino: os mais recentes; o total vem à parte.
+    public const int MaxAtrasadosNosAvisos = 20;
 
     public AtendimentoService(
         IAtendimentoRepository atendimentoRepository,
@@ -27,8 +31,10 @@ public sealed class AtendimentoService : IAtendimentoService
         IItemServicoRepository itemServicoRepository,
         IProdutoRepository produtoRepository,
         IConfiguracaoRepository configuracaoRepository,
-        IUsuarioRepository usuarioRepository)
+        IUsuarioRepository usuarioRepository,
+        TimeProvider? relogio = null)
     {
+        _relogio = relogio ?? TimeProvider.System;
         _atendimentoRepository = atendimentoRepository;
         _clienteRepository = clienteRepository;
         _itemProdutoRepository = itemProdutoRepository;
@@ -110,7 +116,29 @@ public sealed class AtendimentoService : IAtendimentoService
         return MapResponse(atendimento, null, cliente);
     }
 
-    public async Task<IReadOnlyList<AgendaItemResponse>> GetAgendaAsync(long empresaId, DateTime? de, DateTime? ate, long? agenteId, CancellationToken cancellationToken)
+    // Pendentes de hoje (dia de Brasília) e os atrasados: o sino do web.
+    public async Task<AvisosAgendaResponse> GetAvisosAsync(long empresaId, long? agenteId, CancellationToken cancellationToken)
+    {
+        var inicioHoje = FusoBrasilia.InicioDoDiaUtc(_relogio.GetUtcNow().UtcDateTime);
+        var fimHoje = inicioHoje.AddDays(1);
+
+        var hoje = await _atendimentoRepository.GetPendentesAgendadosAsync(
+            empresaId, inicioHoje, fimHoje, agenteId, int.MaxValue, cancellationToken);
+        var atrasados = await _atendimentoRepository.GetPendentesAgendadosAsync(
+            empresaId, null, inicioHoje, agenteId, MaxAtrasadosNosAvisos, cancellationToken);
+        var totalAtrasados = atrasados.Count < MaxAtrasadosNosAvisos
+            ? atrasados.Count
+            : await _atendimentoRepository.ContarPendentesAgendadosAsync(empresaId, null, inicioHoje, agenteId, cancellationToken);
+
+        return new AvisosAgendaResponse
+        {
+            Hoje = hoje.Select(MapAgendaItem).ToList(),
+            Atrasados = atrasados.Select(MapAgendaItem).ToList(),
+            TotalAtrasados = totalAtrasados
+        };
+    }
+
+    public async Task<IReadOnlyList<AgendaItemResponse>> GetAgendaAsync(long empresaId, DateTime? de, DateTime? ate, long? agenteId, bool historico, CancellationToken cancellationToken)
     {
         var (inicio, fim) = ResolvePeriodo(de, ate);
         // PAG-02: a agenda vem inteira, sem paginação; o teto do período limita a resposta.
@@ -118,7 +146,7 @@ public sealed class AtendimentoService : IAtendimentoService
             throw new ArgumentException("O fim do período da agenda vem antes do início.");
         if (fim - inicio > TimeSpan.FromDays(PeriodoMaximoAgendaDias))
             throw new ArgumentException($"O período da agenda é de no máximo {PeriodoMaximoAgendaDias} dias.");
-        var atendimentos = await _atendimentoRepository.GetAgendaAsync(empresaId, inicio, fim, agenteId, cancellationToken);
+        var atendimentos = await _atendimentoRepository.GetAgendaAsync(empresaId, inicio, fim, agenteId, historico, cancellationToken);
         return atendimentos.Select(MapAgendaItem).ToList();
     }
 
