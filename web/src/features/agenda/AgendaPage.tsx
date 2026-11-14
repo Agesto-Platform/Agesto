@@ -1,12 +1,9 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import type { ShellContext } from '../../layout/AppShell'
-import { PeriodSwitch, type AgendaPeriod } from '../../layout/PeriodSwitch'
 import { Button, CardHead, Drawer, Empty, IconButton, PageHead, Seg, brl, useToast } from '../../components/ui'
 import { Icon } from '../../components/Icon'
-import { useAgenda } from '../../lib/queries'
-import { agendaPeriod, agendaRange } from '../../lib/period'
+import { useAgendaDoMes } from '../../lib/queries'
 import { ApiError } from '../../lib/api'
 import { hora, mesNome, MES_LONGO, SEMANA_CURTA } from '../../lib/format'
 import { linkWhatsApp } from '../../lib/whatsapp'
@@ -16,7 +13,7 @@ import { useCreateAtendimento } from '../atendimentos/queries'
 import { AtendimentoForm } from '../atendimentos/AtendimentoForm'
 import { StatusAtendimentoPill } from '../atendimentos/status'
 import type { AgendaItem, AtendimentoInput, ModoAgendaAgente } from '../../types/api'
-import { chaveDoDia, coresPorResponsavel, diaInicial, diasComVisitas, pontosDoDia } from './mapa'
+import { chaveDoDia, coresPorResponsavel, diaInicial, diasComVisitas, pontosDoDia, quando } from './mapa'
 import './agenda.css'
 
 const AgendaMapa = lazy(() => import('./AgendaMapa'))
@@ -42,12 +39,6 @@ const MODO: Record<ModoAgendaAgente, string> = {
   Fixa: 'Modo Fixo: a equipe segue a agenda montada por você.',
 }
 
-/** "em outubro" / "nos próximos 7 dias". */
-function noPeriodo(period: AgendaPeriod, hoje = new Date()): string {
-  if (period === '7d') return 'nos próximos 7 dias'
-  return `em ${MES_LONGO[hoje.getMonth()]}`
-}
-
 /** "2026-10-20" -> Date local. */
 function dataDaChave(k: string): Date {
   const [y, m, d] = k.split('-').map(Number)
@@ -56,6 +47,11 @@ function dataDaChave(k: string): Date {
 
 /** "2026-10-20" -> "2026-10". */
 const chaveMes = (k: string) => k.slice(0, 7)
+
+/** "?dia=2026-10-20" (vindo do sino) quando é uma data de verdade. */
+function diaDoLink(v: string | null): string | null {
+  return v && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(dataDaChave(v).getTime()) ? v : null
+}
 
 function somaMes(mes: string, delta: number): string {
   const [y, m] = mes.split('-').map(Number)
@@ -68,17 +64,35 @@ function tituloDia(k: string, hojeK: string): string {
   return (k === hojeK ? 'Hoje · ' : '') + SEMANA_CURTA[d.getDay()]!.replace('.', '') + ', ' + d.getDate() + ' de ' + MES_LONGO[d.getMonth()]
 }
 
-const porHorario = (a: AgendaItem, b: AgendaItem) => a.dataAgendada!.localeCompare(b.dataAgendada!)
+const porHorario = (a: AgendaItem, b: AgendaItem) => quando(a).localeCompare(quando(b))
 
 export function AgendaPage() {
-  const shell = useOutletContext<ShellContext>()
-  // A agenda vai até o mês (a API limita a 62 dias, PAG-02); "Ano" no topo vira "Mês" aqui.
-  const period = agendaPeriod(shell.period)
-  const setPeriod = shell.setPeriod
-  const { data, isLoading, isError, error } = useAgenda(period)
   const usuarios = useUsuarios()
   const config = useConfiguracao()
   const toast = useToast()
+
+  // Mês a mês pelas setas, do mês em que a empresa entrou no Agesto em diante: o
+  // passado é o histórico (inclusive o registrado sem agendamento) e o futuro, a
+  // agenda. Um mês por pedido, dentro do teto de 62 dias da API (PAG-02).
+  const [params] = useSearchParams()
+  const [hojeK] = useState(() => chaveDoDia(new Date()))
+  const [selEscolhido, setSel] = useState(() => diaDoLink(params.get('dia')) ?? hojeK)
+  const [mes, setMes] = useState(() => chaveMes(diaDoLink(params.get('dia')) ?? hojeK))
+  // O sino leva a um dia (?dia=); com a Agenda já aberta, o link novo também vale.
+  const [diaDoSino, setDiaDoSino] = useState(params.get('dia'))
+  if (params.get('dia') !== diaDoSino) {
+    setDiaDoSino(params.get('dia'))
+    const d = diaDoLink(params.get('dia'))
+    if (d) {
+      setSel(d)
+      setMes(chaveMes(d))
+    }
+  }
+
+  const [ano, mesNum] = mes.split('-').map(Number) as [number, number]
+  const inicioMes = new Date(ano, mesNum - 1, 1)
+  const fimMes = new Date(ano, mesNum, 0, 23, 59, 59, 999)
+  const { data, isLoading, isError, error } = useAgendaDoMes(inicioMes.toISOString(), fimMes.toISOString())
 
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [agente, setAgente] = useState('')
@@ -89,23 +103,15 @@ export function AgendaPage() {
   const variasPessoas = pessoas.length > 1
   const nomeResponsavel = useCallback((id: number) => nomeUsuario(usuarios.data, id), [usuarios.data])
 
-  // Janela carregada (o período da topbar): os dias fora dela ficam apagados no calendário.
-  const [hojeK] = useState(() => chaveDoDia(new Date()))
-  const { de, ate } = agendaRange(period)
-  const deK = chaveDoDia(de)
-  const ateK = chaveDoDia(ate)
-  const dentro = (k: string) => k >= deK && k <= ateK
-
-  const [selEscolhido, setSel] = useState(hojeK)
-  const sel = dentro(selEscolhido) ? selEscolhido : hojeK
-  const [mesEscolhido, setMes] = useState(chaveMes(hojeK))
-  const mes =
-    mesEscolhido < chaveMes(deK) ? chaveMes(deK) : mesEscolhido > chaveMes(ateK) ? chaveMes(ateK) : mesEscolhido
+  // Antes de a empresa entrar no Agesto não há o que mostrar: dias apagados e sem voltar mais.
+  const criadaK = config.data?.empresaCriadaEm ? chaveDoDia(config.data.empresaCriadaEm) : null
+  const dentro = (k: string) => !criadaK || k >= criadaK
+  const sel = chaveMes(selEscolhido) === mes ? selEscolhido : mes === chaveMes(hojeK) ? hojeK : `${mes}-01`
 
   const filtrados = useMemo(
     () =>
       (data ?? [])
-        .filter((i) => i.dataAgendada)
+        .filter((i) => quando(i))
         .filter((i) => (filtro === 'todos' ? true : i.status === filtro))
         .filter((i) => (agente ? i.usuarioId === Number(agente) : true))
         .sort(porHorario),
@@ -114,7 +120,7 @@ export function AgendaPage() {
   const porDia = useMemo(() => {
     const m = new Map<string, AgendaItem[]>()
     for (const i of filtrados) {
-      const k = chaveDoDia(i.dataAgendada!)
+      const k = chaveDoDia(quando(i))
       const lista = m.get(k)
       if (lista) lista.push(i)
       else m.set(k, [i])
@@ -165,21 +171,17 @@ export function AgendaPage() {
   const total = filtrados.length
   const sub = [
     config.data ? MODO[config.data.modoAgendaAgente] : null,
-    isLoading || isError ? null : `${total} atendimento${total === 1 ? '' : 's'} ${noPeriodo(period)}.`,
+    isLoading || isError ? null : `${total} atendimento${total === 1 ? '' : 's'} em ${MES_LONGO[mesNum - 1]} de ${ano}.`,
   ]
     .filter(Boolean)
     .join(' ')
 
   // ---------- calendário do mês ----------
-  const [ano, mesNum] = mes.split('-').map(Number) as [number, number]
-  const inicioMes = new Date(ano, mesNum - 1, 1)
   const primeiro = inicioMes.getDay()
   const diasNoMes = new Date(ano, mesNum, 0).getDate()
   const diasMesAnterior = new Date(ano, mesNum - 1, 0).getDate()
   const resto = (7 - ((primeiro + diasNoMes) % 7)) % 7
-  const podeVoltarMes = mes > chaveMes(deK)
-  const podeAvancarMes = mes < chaveMes(ateK)
-  const dicaMes = 'Troque o período (7 dias / Mês / Ano) para ver outros meses'
+  const podeVoltarMes = !criadaK || mes > chaveMes(criadaK)
 
   const filtros = (
     <div className="toolbar cal-filters">
@@ -211,17 +213,12 @@ export function AgendaPage() {
         <IconButton
           aria-label="Mês anterior"
           disabled={!podeVoltarMes}
-          title={podeVoltarMes ? undefined : dicaMes}
+          title={podeVoltarMes ? undefined : 'A empresa entrou no Agesto neste mês'}
           onClick={() => setMes(somaMes(mes, -1))}
         >
           <Icon name="left" />
         </IconButton>
-        <IconButton
-          aria-label="Próximo mês"
-          disabled={!podeAvancarMes}
-          title={podeAvancarMes ? undefined : dicaMes}
-          onClick={() => setMes(somaMes(mes, 1))}
-        >
+        <IconButton aria-label="Próximo mês" onClick={() => setMes(somaMes(mes, 1))}>
           <Icon name="right" />
         </IconButton>
         <Button size="sm" onClick={() => escolherDia(hojeK)}>
@@ -259,7 +256,7 @@ export function AgendaPage() {
           const k = `${mes}-${String(d).padStart(2, '0')}`
           if (!dentro(k)) {
             return (
-              <div key={k} className="day off" title="Fora do período escolhido">
+              <div key={k} className="day off" title="Antes de a empresa entrar no Agesto">
                 <span className="n">{d}</span>
               </div>
             )
@@ -276,8 +273,8 @@ export function AgendaPage() {
             >
               <span className="n">{d}</span>
               {evs.map((a) => (
-                <span key={a.id} className={`ev ${a.status}`} title={`${hora(a.dataAgendada!)} · ${a.clienteNome} · ${a.resumo}`}>
-                  <b>{hora(a.dataAgendada!)}</b>
+                <span key={a.id} className={`ev ${a.status}`} title={`${hora(quando(a))} · ${a.clienteNome} · ${a.resumo}`}>
+                  <b>{hora(quando(a))}</b>
                   <span className="nm">{a.clienteNome}</span>
                 </span>
               ))}
@@ -356,7 +353,7 @@ export function AgendaPage() {
   )
 
   // ---------- lista do dia ----------
-  const proximo = filtrados.find((a) => a.status === 'Pendente' && chaveDoDia(a.dataAgendada!) > sel)
+  const proximo = filtrados.find((a) => a.status === 'Pendente' && a.dataAgendada && chaveDoDia(a.dataAgendada) > sel)
   const proximoTexto = (() => {
     if (!proximo) return 'Sem atendimentos pendentes depois deste dia.'
     const d = new Date(proximo.dataAgendada!)
@@ -382,7 +379,10 @@ export function AgendaPage() {
     listaDoDia = doDia.map((a) => (
       <article key={a.id} className="appt">
         <div className="top">
-          <span className="t">{hora(a.dataAgendada!)}</span>
+          <span className="t" title={a.dataAgendada ? undefined : 'Registrado sem agendamento'}>
+            {hora(quando(a))}
+            {!a.dataAgendada && <span className="hint"> · registrado</span>}
+          </span>
           <StatusAtendimentoPill status={a.status} />
         </div>
         <h3>{a.resumo}</h3>
@@ -445,7 +445,6 @@ export function AgendaPage() {
         actions={
           <>
             <Seg label="Visualização" options={VISOES} value={visao} onChange={trocarVisao} />
-            <PeriodSwitch value={period} onChange={setPeriod} semAno />
             <Button variant="primary" icon="plus" onClick={abrirAgendar}>
               Agendar
             </Button>

@@ -14,6 +14,8 @@ let config: Configuracao = {
   empresaId: 1,
   empresaNome: 'Clima Bom Instalações',
   empresaDocumento: '12.345.678/0001-90',
+  // Entrou no Agesto há dois meses: a Agenda volta até o dia 10 daquele mês.
+  empresaCriadaEm: new Date(new Date().getFullYear(), new Date().getMonth() - 2, 10).toISOString(),
   createdAt: now,
   updatedAt: now,
 }

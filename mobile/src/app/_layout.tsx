@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { useAuth } from '@/auth/useAuth'
+import { notificacoes, PREFIXO_AVISO } from '@/lib/avisosDoDia'
 
 function Guard() {
   const { token, ready, deveTrocarSenha, termos } = useAuth()
@@ -27,8 +28,28 @@ function Guard() {
     else if (token && !pendente && (onLogin || onTroca || onTermos || onEsqueci)) router.replace('/')
   }, [token, ready, deveTrocarSenha, termos, segments, router])
 
+  // Tocar no aviso do dia abre a Agenda.
+  useEffect(() => {
+    const N = notificacoes()
+    if (!N) return
+    const sub = N.addNotificationResponseReceivedListener((r) => {
+      if (r.notification.request.identifier.startsWith(PREFIXO_AVISO)) router.push('/agenda')
+    })
+    return () => sub.remove()
+  }, [router])
+
   return <Stack screenOptions={{ headerShown: false }} />
 }
+
+// Com o app aberto, o aviso do dia também aparece (sem som: é um lembrete).
+notificacoes()?.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+})
 
 export default function RootLayout() {
   return (

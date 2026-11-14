@@ -2,6 +2,7 @@ import { api } from '@/lib/api'
 import { db } from '@/db/instance'
 import { saveConfig } from '@/lib/appConfig'
 import { saveSugeridos } from '@/lib/sugeridos'
+import { agendarAvisosDoDia } from '@/lib/avisosDoDia'
 import type { LocalAtendimento, LocalDb } from '@/db/types'
 import type {
   AgendaItem,
@@ -92,6 +93,8 @@ export async function syncAgenda(database: LocalDb = db): Promise<number> {
 export async function initialSync(database: LocalDb = db): Promise<SyncResult> {
   const c = await carga(database)
   const agenda = c.agenda ?? (await syncAgenda(database))
+  // Com a agenda nova no aparelho, refaz os avisos do dia (7h; ou agora, uma vez por dia).
+  await agendarAvisosDoDia(database)
   return { ...c, agenda }
 }
 

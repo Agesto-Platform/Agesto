@@ -104,15 +104,18 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
                : null);
     }
 
-    public async Task<List<Atendimento>> GetAgendaAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, CancellationToken cancellationToken)
+    public async Task<List<Atendimento>> GetAgendaAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, bool historico, CancellationToken cancellationToken)
     {
         var query = _dbContext.Atendimentos
             .AsNoTracking()
-            .Where(a => a.EmpresaId == empresaId
-                        && a.DeletedAt == null
-                        && a.DataAgendada != null
-                        && a.DataAgendada >= de
-                        && a.DataAgendada <= ate);
+            .Where(a => a.EmpresaId == empresaId && a.DeletedAt == null);
+
+        // Com histórico, o atendimento registrado sem agendamento entra no dia em que
+        // foi registrado (a Agenda do web vira o histórico da empresa). Sem ele, como
+        // sempre: só o que tem data agendada (agenda do app).
+        query = historico
+            ? query.Where(a => (a.DataAgendada ?? a.DataRegistro) >= de && (a.DataAgendada ?? a.DataRegistro) <= ate)
+            : query.Where(a => a.DataAgendada != null && a.DataAgendada >= de && a.DataAgendada <= ate);
 
         if (usuarioId.HasValue)
         {
@@ -121,13 +124,44 @@ public sealed class AtendimentoRepository : IAtendimentoRepository
 
         // Enriquecimento p/ agenda mobile (evita N+1): cliente + itens com seus
         // catalogos. Itens soft-deletados sao filtrados no mapeamento (service).
-        return await query
-            .Include(a => a.Cliente)
-            .Include(a => a.ItensServico).ThenInclude(i => i.Servico)
-            .Include(a => a.ItensProduto).ThenInclude(i => i.Produto)
-            .OrderBy(a => a.DataAgendada)
+        return await IncluirParaAgenda(query)
+            .OrderBy(a => a.DataAgendada ?? a.DataRegistro)
             .ToListAsync(cancellationToken);
     }
+
+    // Avisos do dia: pendentes agendados de 'de' (inclusive) a 'ate' (exclusive).
+    // Sem 'de', os atrasados: do mais recente para o mais antigo, até 'limite'.
+    public async Task<List<Atendimento>> GetPendentesAgendadosAsync(long empresaId, DateTime? de, DateTime ate, long? usuarioId, int limite, CancellationToken cancellationToken)
+    {
+        var query = PendentesAgendados(empresaId, de, ate, usuarioId);
+        query = de.HasValue
+            ? query.OrderBy(a => a.DataAgendada)
+            : query.OrderByDescending(a => a.DataAgendada);
+        return await IncluirParaAgenda(query.Take(limite)).ToListAsync(cancellationToken);
+    }
+
+    public Task<int> ContarPendentesAgendadosAsync(long empresaId, DateTime? de, DateTime ate, long? usuarioId, CancellationToken cancellationToken) =>
+        PendentesAgendados(empresaId, de, ate, usuarioId).CountAsync(cancellationToken);
+
+    private IQueryable<Atendimento> PendentesAgendados(long empresaId, DateTime? de, DateTime ate, long? usuarioId)
+    {
+        var query = _dbContext.Atendimentos
+            .AsNoTracking()
+            .Where(a => a.EmpresaId == empresaId
+                        && a.DeletedAt == null
+                        && a.Status == StatusAtendimento.Pendente
+                        && a.DataAgendada != null
+                        && a.DataAgendada < ate);
+        if (de.HasValue) query = query.Where(a => a.DataAgendada >= de.Value);
+        if (usuarioId.HasValue) query = query.Where(a => a.UsuarioId == usuarioId.Value);
+        return query;
+    }
+
+    private static IQueryable<Atendimento> IncluirParaAgenda(IQueryable<Atendimento> query) =>
+        query
+            .Include(a => a.Cliente)
+            .Include(a => a.ItensServico).ThenInclude(i => i.Servico)
+            .Include(a => a.ItensProduto).ThenInclude(i => i.Produto);
 
     public async Task<List<Atendimento>> GetHistoricoAsync(long empresaId, DateTime de, DateTime ate, long? usuarioId, int limite, CancellationToken cancellationToken)
     {

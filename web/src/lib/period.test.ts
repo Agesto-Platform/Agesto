@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { agendaPeriod, periodRange, agendaRange } from './period'
+import { periodRange, agendaRange } from './period'
 
 // 15 de agosto de 2026, meio-dia (local)
 const now = new Date(2026, 7, 15, 12, 0, 0)
@@ -30,15 +30,10 @@ describe('agendaRange (janela pra frente — inclui o futuro)', () => {
   })
 })
 
-// PAG-02: a API limita a agenda a 62 dias; "Ano" do topo vira "Mês" na agenda.
-describe('agendaPeriod', () => {
-  it('troca ano por mês e mantém os outros', () => {
-    expect(agendaPeriod('ano')).toBe('mes')
-    expect(agendaPeriod('mes')).toBe('mes')
-    expect(agendaPeriod('7d')).toBe('7d')
-  })
-  it('a janela do mês cabe nos 62 dias', () => {
-    const { de, ate } = agendaRange(agendaPeriod('ano'), now)
+// PAG-02: a API limita a agenda a 62 dias; a janela do mês cabe.
+describe('agendaRange do mês', () => {
+  it('cabe nos 62 dias', () => {
+    const { de, ate } = agendaRange('mes', now)
     expect((new Date(ate).getTime() - new Date(de).getTime()) / 86_400_000).toBeLessThanOrEqual(62)
   })
 })

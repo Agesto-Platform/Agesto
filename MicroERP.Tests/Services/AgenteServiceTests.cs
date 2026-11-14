@@ -42,7 +42,7 @@ public sealed class AgenteServiceTests
             });
 
         var atendimentos = new Mock<IAtendimentoService>();
-        atendimentos.Setup(a => a.GetAgendaAsync(7, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), null, It.IsAny<CancellationToken>()))
+        atendimentos.Setup(a => a.GetAgendaAsync(7, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), null, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new AgendaItemResponse
@@ -129,7 +129,7 @@ public sealed class AgenteServiceTests
         metricas.Setup(m => m.GetDashboardAsync(empresaId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new DashboardResponse { De = De, Ate = Ate });
         var atendimentos = new Mock<IAtendimentoService>();
-        atendimentos.Setup(a => a.GetAgendaAsync(empresaId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), null, It.IsAny<CancellationToken>()))
+        atendimentos.Setup(a => a.GetAgendaAsync(empresaId, It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), null, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         return (metricas, atendimentos);
     }

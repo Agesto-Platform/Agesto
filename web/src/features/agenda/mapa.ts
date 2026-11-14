@@ -25,9 +25,14 @@ export function chaveDoDia(d: string | Date): string {
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`
 }
 
+/** Quando o atendimento acontece na agenda: a data agendada, senão a do registro (histórico). */
+export function quando(i: AgendaItem): string {
+  return i.dataAgendada ?? i.dataRegistro ?? ''
+}
+
 /** Dias que têm visita, em ordem. */
 export function diasComVisitas(items: AgendaItem[]): string[] {
-  return [...new Set(items.filter((i) => i.dataAgendada).map((i) => chaveDoDia(i.dataAgendada!)))].sort()
+  return [...new Set(items.filter((i) => quando(i)).map((i) => chaveDoDia(quando(i))))].sort()
 }
 
 /** Dia que o mapa abre: hoje, se tiver visita; senão o próximo; senão o último. */
@@ -48,8 +53,8 @@ export interface PontoMapa {
 /** Visitas do dia em ordem de horário, separando as que ainda não têm localização. */
 export function pontosDoDia(items: AgendaItem[], dia: string): { pontos: PontoMapa[]; semLocal: AgendaItem[] } {
   const doDia = items
-    .filter((i) => i.dataAgendada && chaveDoDia(i.dataAgendada) === dia)
-    .sort((a, b) => a.dataAgendada!.localeCompare(b.dataAgendada!))
+    .filter((i) => quando(i) && chaveDoDia(quando(i)) === dia)
+    .sort((a, b) => quando(a).localeCompare(quando(b)))
   const pontos: PontoMapa[] = []
   const semLocal: AgendaItem[] = []
   doDia.forEach((item, idx) => {
