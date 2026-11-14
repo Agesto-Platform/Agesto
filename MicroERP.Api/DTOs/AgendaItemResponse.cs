@@ -39,3 +39,12 @@ public sealed class AgendaItemLinhaResponse
     public decimal PrecoUnitario { get; set; }
     public decimal Subtotal { get; set; }
 }
+
+// Sino do web: pendentes agendados para hoje (dia de Brasília) e os atrasados
+// (pendentes agendados antes de hoje), estes limitados aos mais recentes.
+public sealed class AvisosAgendaResponse
+{
+    public IReadOnlyList<AgendaItemResponse> Hoje { get; set; } = [];
+    public IReadOnlyList<AgendaItemResponse> Atrasados { get; set; } = [];
+    public int TotalAtrasados { get; set; }
+}

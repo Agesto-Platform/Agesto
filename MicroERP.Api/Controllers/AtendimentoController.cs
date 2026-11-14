@@ -45,8 +45,10 @@ public sealed class AtendimentoController : ApiControllerBase
         return Ok(new ApiResponse { Success = true, Message = "Contagem encontrada.", Data = contagem });
     }
 
+    // historico=true: o atendimento sem agendamento entra no dia em que foi registrado
+    // (a Agenda do web mostra o histórico desde a criação da empresa).
     [HttpGet("agenda")]
-    public async Task<ActionResult<ApiResponse>> GetAgenda([FromQuery] DateTime? de, [FromQuery] DateTime? ate, [FromQuery] long? agenteId, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse>> GetAgenda([FromQuery] DateTime? de, [FromQuery] DateTime? ate, [FromQuery] long? agenteId, [FromQuery] bool historico, CancellationToken cancellationToken)
     {
         if (!TryGetEmpresaId(out var empresaId))
             return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
@@ -66,13 +68,26 @@ public sealed class AtendimentoController : ApiControllerBase
 
         try
         {
-            var agenda = await _atendimentoService.GetAgendaAsync(empresaId, de, ate, filtroAgente, cancellationToken);
+            var agenda = await _atendimentoService.GetAgendaAsync(empresaId, de, ate, filtroAgente, historico, cancellationToken);
             return Ok(new ApiResponse { Success = true, Message = "Agenda encontrada.", Data = agenda });
         }
         catch (ArgumentException ex)
         {
             return BadRequest(new ApiResponse { Success = false, Message = ex.Message });
         }
+    }
+
+    // Sino do web (só o Dono entra no painel): pendentes de hoje e atrasados da empresa.
+    // O app avisa o agente com a agenda que já está no aparelho, sem este endpoint.
+    [HttpGet("avisos")]
+    [Authorize(Policy = Policies.Dono)]
+    public async Task<ActionResult<ApiResponse>> GetAvisos(CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        var avisos = await _atendimentoService.GetAvisosAsync(empresaId, agenteId: null, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Avisos encontrados.", Data = avisos });
     }
 
     [HttpGet("{id:long}")]

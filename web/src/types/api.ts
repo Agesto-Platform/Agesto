@@ -330,6 +330,8 @@ export interface Configuracao {
   /** Nome e documento da empresa: cabeçalho do PDF do orçamento e nome na conta. */
   empresaNome?: string | null
   empresaDocumento?: string | null
+  /** Quando a empresa entrou no Agesto: o começo do histórico da Agenda. */
+  empresaCriadaEm?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -462,6 +464,8 @@ export interface AgendaItem {
   id: number
   uuid: string
   dataAgendada: string | null
+  /** Quando foi registrado: o dia do atendimento no histórico quando não há agendamento. */
+  dataRegistro?: string
   status: StatusAtendimento
   valorTotal: number
   usuarioId: number
@@ -473,6 +477,13 @@ export interface AgendaItem {
   latitude?: number | null
   longitude?: number | null
   resumo: string
+}
+
+/** Sino do web (GET /api/atendimento/avisos): pendentes de hoje e atrasados. */
+export interface AvisosAgenda {
+  hoje: AgendaItem[]
+  atrasados: AgendaItem[]
+  totalAtrasados: number
 }
 
 /* ---------- Agente (IA) ---------- */

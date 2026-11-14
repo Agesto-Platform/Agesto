@@ -12,6 +12,8 @@ public sealed class ConfiguracaoResponse
     // Cabeçalho do PDF do orçamento e nome na conta (DEC-56).
     public string? EmpresaNome { get; set; }
     public string? EmpresaDocumento { get; set; }
+    // Quando a empresa entrou no Agesto: o começo do histórico da Agenda.
+    public DateTime? EmpresaCriadaEm { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
