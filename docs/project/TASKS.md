@@ -368,8 +368,8 @@ Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
 
 ### ✅ Deltas de backend resolvidos / pendentes
 
-- **Últimos atendimentos** (dashboard): resolvido no front — `GET /api/atendimento` (real `AtendimentoResponse`) + join do nome do cliente no cliente. Não precisa mais do formato fictício.
-- **Nome do cliente** em Orçamento/Atendimento: a API devolve só `clienteId`; o front junta com a lista de clientes. Se virar gargalo, expor `clienteNome` no backend.
+- **Últimos atendimentos** (dashboard): resolvido — o Dashboard pede só os 6 últimos (`GET /api/atendimento?pagina=1&tamanho=6&ordem=registro`), já com o nome do cliente (PAG-01).
+- **Nome do cliente** em Orçamento/Atendimento: resolvido no backend (PAG-01) — as respostas trazem `clienteNome`; o web não junta mais com a lista de clientes.
 
 > O frontend improvisado da apresentação foi **descartado**. Este é o front novo, com design original aprovado (protótipo `web-dono.html`), consumindo a API real em produção (o MSW fica para desenvolvimento local). **Módulo Dono (web) essencialmente completo:** dashboard, auth, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização).
 
@@ -410,9 +410,9 @@ Tracking local (Jira offline); numeração `mob-0x`.
 | Item | Descrição | Prioridade | Responsável |
 |------|-----------|------------|-------------|
 | ~~APK e atualização OTA~~ | ✅ `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão em `develop` (DEC-47, PR #108). Falta o primeiro `eas build` (Diego, ver Lançamento do MVP) | Alta | — |
-| ~~Histórico de atendimentos próprios~~ | Feito no código (13/11), branch `feature/app-agenda-e-historico`: a aba Atend. junta o que está no aparelho com os atendimentos do servidor dos últimos 30 dias, sem repetir | Baixa | — |
+| ~~Histórico de atendimentos próprios~~ | Feito (PR #180, 13/11): a aba Atend. junta o que está no aparelho com os atendimentos do servidor dos últimos 30 dias, sem repetir | Baixa | — |
 | Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2, depois do lançamento) | Baixa | Davi Gomes |
-| Teste de componente RN | Adiado por incompatibilidade de versão (`@testing-library/react-native` v14 + jest-expo + React 19) | Baixa | Davi Gomes |
+| Teste de componente RN | A base funciona: `@testing-library/react-native` v14 já roda na `develop` (`esqueciSenha.test.tsx` renderiza a tela; `AuthProvider.test.tsx` usa `renderHook`). Falta ampliar para as outras telas; a branch `feature/tasks-davi-gomes` tem mais testes de componente, sem PR | Baixa | Davi Gomes |
 | ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta | — |
 | ~~Sincronização automática~~ | ✅ em `develop` (I5, PR #113): sincroniza ao abrir o app, ao voltar para ele e quando a internet volta, nunca com uma tela de cadastro aberta | Média | — |
 | Redesign do app | Mesmo visual do web, depois do lançamento (DEC-46) | Baixa | Diego |
