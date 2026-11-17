@@ -1,14 +1,16 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Aparência do painel: paleta (Marinho + Vermelho ou Oceano) e modo (claro/escuro).
+ * Aparência do painel: paleta (Azul petróleo, a padrão; Marinho + Vermelho ou Oceano,
+ * opcionais) e modo (claro/escuro).
  * Vive como atributos no <html> (data-palette / data-mode), lidos pelo tokens.css,
  * e fica guardada no navegador. O index.html aplica antes do primeiro quadro.
  */
-export type PaletteId = 'marinho' | 'oceano'
+export type PaletteId = 'petroleo' | 'marinho' | 'oceano'
 export type Mode = 'light' | 'dark'
 
 export const PALETTES: { id: PaletteId; nome: string; cores: string[] }[] = [
+  { id: 'petroleo', nome: 'Azul petróleo', cores: ['#1D4E6B', '#E2EAF0', '#FFFFFF'] },
   { id: 'marinho', nome: 'Marinho + Vermelho', cores: ['#283E72', '#D62D32', '#F3F1ED'] },
   { id: 'oceano', nome: 'Oceano', cores: ['#0F4448', '#FF5C1F', '#BFE0DA', '#EADFCB'] },
 ]
@@ -28,7 +30,8 @@ function save(key: string, value: string): void {
 }
 
 export function getPalette(): PaletteId {
-  return document.documentElement.dataset.palette === 'oceano' ? 'oceano' : 'marinho'
+  const p = document.documentElement.dataset.palette
+  return p === 'marinho' || p === 'oceano' ? p : 'petroleo'
 }
 
 export function getMode(): Mode {

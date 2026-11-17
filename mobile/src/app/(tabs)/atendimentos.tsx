@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { useAoSincronizar } from '@/sync/automatica'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { getRecusas } from '@/sync/sync'
 import { montarLinhas, type Row } from '@/features/atendimentos/historico'
@@ -13,7 +13,7 @@ import type { StatusAtendimento } from '@/types/api'
 const STATUS: Record<StatusAtendimento, { label: string; fg: string; bg: string }> = {
   Concluido: { label: 'Concluído', fg: colors.good, bg: colors.goodSoft },
   Pendente: { label: 'Pendente', fg: colors.warn, bg: colors.warnSoft },
-  Cancelado: { label: 'Cancelado', fg: colors.bad, bg: colors.surface2 },
+  Cancelado: { label: 'Cancelado', fg: colors.bad, bg: colors.badSoft },
 }
 
 export default function Atendimentos() {
@@ -118,11 +118,12 @@ const styles = StyleSheet.create({
     paddingVertical: space(3.5),
     borderBottomWidth: 1,
     borderBottomColor: colors.line2,
+    backgroundColor: colors.surface,
   },
-  title: { fontSize: 18, fontWeight: '700', color: colors.ink },
-  sub: { fontSize: 12, color: colors.ink3, marginTop: 1 },
+  title: { fontSize: 22, fontFamily: font.semibold, color: colors.ink, letterSpacing: -0.3 },
+  sub: { fontFamily: font.regular, fontSize: 12, color: colors.ink3, marginTop: 1 },
   novo: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), backgroundColor: colors.brand, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2) },
-  novoText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+  novoText: { color: '#fff', fontFamily: font.semibold, fontSize: 13.5 },
 
   body: { padding: space(4), gap: space(2.5) },
   row: {
@@ -135,15 +136,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space(3.75),
   },
-  rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  rowSub: { fontSize: 12.5, color: colors.ink3 },
+  rowName: { fontSize: 15, fontFamily: font.semibold, color: colors.ink },
+  rowSub: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3 },
   motivo: { flexDirection: 'row', alignItems: 'flex-start', gap: space(1.5), marginTop: space(0.5) },
-  motivoText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: colors.bad },
+  motivoText: { fontFamily: font.regular, flex: 1, fontSize: 12.5, lineHeight: 17, color: colors.bad },
   tags: { alignItems: 'flex-end', gap: space(1.5) },
   statusPill: { borderRadius: radius.pill, paddingHorizontal: space(2.5), paddingVertical: space(1) },
-  statusText: { fontSize: 11.5, fontWeight: '700' },
+  statusText: { fontSize: 11.5, fontFamily: font.semibold },
   pendingPill: { flexDirection: 'row', alignItems: 'center', gap: space(1), backgroundColor: colors.warnSoft, borderRadius: radius.pill, paddingHorizontal: space(2), paddingVertical: space(0.75) },
-  pendingText: { color: colors.warn, fontSize: 10.5, fontWeight: '700' },
+  pendingText: { color: colors.warn, fontSize: 10.5, fontFamily: font.semibold },
 
-  empty: { fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
+  empty: { fontFamily: font.regular, fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
 })

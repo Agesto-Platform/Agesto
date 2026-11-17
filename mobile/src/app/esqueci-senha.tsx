@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import NetInfo from '@react-native-community/netinfo'
 import { Screen } from '@/ui/Screen'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { api } from '@/lib/api'
 import { ApiError } from '@/lib/errors'
 import { emailValido } from '@/features/conta/emailValido'
@@ -109,11 +109,12 @@ export default function EsqueciSenha() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: space(6), gap: space(4), justifyContent: 'center' },
-  title: { fontSize: 19, fontWeight: '700', color: colors.ink },
-  sub: { fontSize: 13.5, lineHeight: 19, color: colors.ink3, marginTop: -space(2) },
+  title: { fontSize: 19, fontFamily: font.semibold, color: colors.ink },
+  sub: { fontFamily: font.regular, fontSize: 13.5, lineHeight: 19, color: colors.ink3, marginTop: -space(2) },
   field: { gap: space(1.5) },
-  label: { fontSize: 12.5, fontWeight: '600', color: colors.ink2 },
+  label: { fontSize: 12.5, fontFamily: font.semibold, color: colors.ink2 },
   input: {
+    fontFamily: font.regular,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.ink,
   },
-  error: { color: colors.bad, fontSize: 13, fontWeight: '500' },
+  error: { color: colors.bad, fontSize: 13, fontFamily: font.medium },
   button: {
     backgroundColor: colors.brand,
     borderRadius: radius.sm,
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: space(1),
   },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  buttonText: { color: '#fff', fontFamily: font.semibold, fontSize: 15 },
   voltar: { alignItems: 'center', paddingVertical: space(2) },
-  voltarText: { color: colors.ink3, fontWeight: '600', fontSize: 13.5 },
+  voltarText: { color: colors.ink3, fontFamily: font.semibold, fontSize: 13.5 },
 })
