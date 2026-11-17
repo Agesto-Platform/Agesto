@@ -1,30 +1,30 @@
-# Documentação de produto do Agesto
+# Agesto product documentation
 
-Esta pasta passa a ser a fonte versionada da documentação de produto e arquitetura. As cópias externas e `MicroERP.Doc/` são legadas e não devem orientar novas implementações.
+This folder is now the versioned source of product and architecture documentation. External copies and `MicroERP.Doc/` are legacy and must not guide new implementations.
 
-## Documentos
+## Documents
 
-| Documento | Função | Estado inicial |
+| Document | Purpose | Initial state |
 |---|---|---|
-| `OVERVIEW.md` | visão do produto e estado geral | importado; revisão necessária |
-| `REQUIREMENTS.md` | comportamento esperado do sistema | **em auditoria** após reconstrução anterior |
-| `DESIGN.md` | arquitetura, integrações e experiência | importado; revisão necessária |
-| `DECISIONS.md` | histórico de decisões e justificativas | fonte histórica; validar status de implementação |
-| `TASKS.md` | roadmap e pendências | importado; contém status antigos a reconciliar |
+| `OVERVIEW.md` | product vision and general status | imported; review needed |
+| `REQUIREMENTS.md` | expected system behavior | **under audit** after an earlier rebuild |
+| `DESIGN.md` | architecture, integrations and experience | imported; review needed |
+| `DECISIONS.md` | history of decisions and their rationale | historical source; validate implementation status |
+| `TASKS.md` | roadmap and open items | imported; contains old statuses to reconcile |
 
-## Estados permitidos
+## Allowed states
 
-- **Implementado:** comprovado por código e testes no repositório.
-- **Decidido:** aprovado por Davi, ainda que não implementado.
-- **Proposto:** hipótese ou alternativa aguardando decisão.
-- **Obsoleto:** preservado apenas por contexto histórico.
+- **Implemented:** proven by code and tests in the repository.
+- **Decided:** approved by Davi, even if not implemented.
+- **Proposed:** hypothesis or alternative awaiting a decision.
+- **Obsolete:** kept only for historical context.
 
-Documentação não transforma uma proposta em requisito. Em caso de divergência, registrar a evidência encontrada no código ou Git e pedir a decisão de produto necessária.
+Documentation does not turn a proposal into a requirement. When there is a divergence, record the evidence found in the code or Git and ask for the product decision needed.
 
-## Processo de atualização
+## Update process
 
-1. Trabalhar por patch pequeno no mesmo pull request da mudança.
-2. Citar a task/KAN e, quando útil, o commit que comprova a implementação.
-3. Revisar o diff completo; nunca substituir um documento inteiro para reconstruí-lo.
-4. Atualizar `TASKS.md` somente depois de verificar código e testes.
-5. Manter documentos legados até a auditoria terminar; a exclusão será uma tarefa separada.
+1. Work in a small patch in the same pull request as the change.
+2. Cite the task/KAN and, when useful, the commit that proves the implementation.
+3. Review the full diff; never replace a whole document to rebuild it.
+4. Update `TASKS.md` only after checking code and tests.
+5. Keep legacy documents until the audit is finished; deleting them will be a separate task.
