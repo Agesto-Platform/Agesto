@@ -2,7 +2,7 @@
   "expo": {
     "name": "Agesto",
     "slug": "agesto",
-    "owner": "agesto",
+    "owner": "agesto-platform",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -43,6 +43,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "523deb8e-a072-4642-8009-5aa3b991f983"
+      }
     }
   }
 }
