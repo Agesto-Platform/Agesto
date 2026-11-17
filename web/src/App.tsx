@@ -25,6 +25,8 @@ import { AdminEmpresasPage } from './admin/AdminEmpresasPage'
 import { AdminEmpresaPage } from './admin/AdminEmpresaPage'
 import { AdminAuditoriaPage } from './admin/AuditoriaLista'
 import { AdminEquipePage } from './admin/AdminEquipePage'
+import { AdminSuportePage } from './admin/AdminSuportePage'
+import { SuportePage } from './features/suporte/SuportePage'
 
 // DEC-57: a página de venda carrega à parte; quem usa o painel não baixa o código dela.
 const PaginaDeVenda = lazy(() => import('./pages/venda/PaginaDeVenda'))
@@ -61,6 +63,7 @@ export default function App() {
         <Route path="empresas/:id" element={<AdminEmpresaPage />} />
         <Route path="auditoria" element={<AdminAuditoriaPage />} />
         <Route path="equipe" element={<AdminEquipePage />} />
+        <Route path="suporte" element={<AdminSuportePage />} />
       </Route>
 
       <Route
@@ -87,6 +90,7 @@ export default function App() {
           <Route path="usuarios" element={<UsuariosPage />} />
           <Route path="relatorios" element={<RelatoriosPage />} />
           <Route path="parametrizacao" element={<ParametrizacaoPage />} />
+          <Route path="suporte" element={<SuportePage />} />
         </Route>
       </Route>
 

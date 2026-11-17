@@ -84,6 +84,48 @@ export interface UsuarioConvite {
   conviteEnviado?: boolean
 }
 
+/* ---------- Suporte (DEC-60) ---------- */
+
+export type AssuntoTicket = 'Duvida' | 'Bug' | 'Melhoria' | 'Assinatura' | 'Outro'
+export type StatusTicket = 'Aberto' | 'EmAndamento' | 'Resolvido'
+
+export interface AnexoTicket {
+  id: number
+  nomeArquivo: string
+  contentType: string
+  tamanho: number
+  /** Link temporário (10 minutos); null se o armazenamento falhar. */
+  url: string | null
+}
+
+export interface RespostaTicket {
+  id: number
+  mensagem: string
+  /** Nome de quem respondeu pela equipe do Agesto. */
+  autor: string
+  createdAt: string
+}
+
+export interface Ticket {
+  id: number
+  assunto: AssuntoTicket
+  status: StatusTicket
+  mensagem: string
+  totalRespostas: number
+  totalAnexos?: number
+  createdAt: string
+  updatedAt: string
+  resolvidoEm: string | null
+  /** Só no superadmin. */
+  empresaId?: number | null
+  empresaNome?: string | null
+  donoNome?: string | null
+  donoEmail?: string | null
+  /** Só no detalhe. */
+  respostas?: RespostaTicket[] | null
+  anexos?: AnexoTicket[] | null
+}
+
 /* ---------- Métricas / Dashboard ---------- */
 
 export interface MetricasRentabilidade {

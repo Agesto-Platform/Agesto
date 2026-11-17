@@ -29,6 +29,7 @@ export function AdminLayout() {
           <NavLink to="/admin" end>
             Empresas
           </NavLink>
+          <NavLink to="/admin/suporte">Suporte</NavLink>
           <NavLink to="/admin/auditoria">Auditoria</NavLink>
           <NavLink to="/admin/equipe">Equipe</NavLink>
         </nav>

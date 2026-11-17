@@ -17,6 +17,10 @@ public sealed class EmailOptions
     // Endereço do web, base dos links enviados por email (ex.: https://agesto.pages.dev).
     public string? UrlWeb { get; set; }
 
+    // Caixa da equipe do Agesto que recebe os chamados da aba Suporte (DEC-60).
+    // Vazio: o chamado fica no superadmin e só a cópia do Dono sai.
+    public string? SuporteEmail { get; set; }
+
     public bool EnvioHabilitado =>
         !string.IsNullOrWhiteSpace(BrevoApiKey) && !string.IsNullOrWhiteSpace(RemetenteEmail);
 }
