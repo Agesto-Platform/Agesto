@@ -809,292 +809,292 @@ Reason: allows checking the app end to end on Expo Web and running Jest tests wi
 
 ---
 
-## DEC-41 — `main` é a produção; `develop` é integração e teste local
+## DEC-41 — `main` is production; `develop` is integration and local testing
 
-**Status:** 🟢 Implementado em 21/10/2026, pedido por Diego e autorizado por Davi: PR #60 promoveu a `develop` para a `main` (merge commit) e Render e Cloudflare passaram a publicar a `main`; previews da Cloudflare desligados.
+**Status:** 🟢 Implemented on 21/10/2026, requested by Diego and authorized by Davi: PR #60 promoted `develop` to `main` (merge commit) and Render and Cloudflare started deploying `main`; Cloudflare previews turned off.
 
-**Decisão:** o Render (API) e a Cloudflare Pages (web) publicam a `main`. A `develop` recebe as funcionalidades novas e é testada na máquina, com API local e Postgres local (`docker-compose.yml`, parte da KAN-14), sem ambiente de homologação na nuvem.
-- Preview deployments da Cloudflare desligados, para nada fora da `main` falar com a API de produção.
-- Promoção sempre por PR `develop → main` com merge commit, nunca squash, para as duas branches manterem o mesmo histórico.
-- Migration nova é aplicada no Supabase antes do merge na `main` e precisa ser compatível com a versão anterior da API.
+**Decision:** Render (API) and Cloudflare Pages (web) deploy `main`. `develop` receives the new features and is tested on the machine, with a local API and local Postgres (`docker-compose.yml`, part of KAN-14), with no staging environment in the cloud.
+- Cloudflare preview deployments turned off, so nothing outside `main` talks to the production API.
+- Promotion always through a `develop → main` PR with a merge commit, never squash, so both branches keep the same history.
+- A new migration is applied on Supabase before the merge into `main` and must be compatible with the previous API version.
 
-**Por quê:** o plano Free do Render dá para um serviço ligado 24 h, não dois, e o Supabase Free tem dois projetos; um ambiente de homologação na nuvem custaria dinheiro ou acordaria a API pela metade. Teste local cobre o tamanho atual da equipe.
+**Why:** Render's Free plan allows one service on 24 h, not two, and Supabase Free has two projects; a staging environment in the cloud would cost money or wake the API halfway. Local testing covers the current team size.
 
-**Impacto:** sem migration e sem mudança de código. Passo a passo em `deploy/README.md` (seções 8 e 9).
-
----
-
-> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub. A DEC-42 foi retomada em 28/10/2026; DEC-43 a DEC-45 foram retomadas em 11/11/2026 (PRs #133 e #134).
+**Impact:** no migration and no code change. Step by step in `deploy/README.md` (sections 8 and 9).
 
 ---
 
-## DEC-42 — Paginação opcional nas listas
-
-**Status:** 🟢 Implementado em `develop` e `main` (PR #98, reaberto e mesclado em 28/10/2026), pedido por Davi.
-
-**Decisão:** `GET` de clientes, atendimentos, orçamentos, produtos e serviços aceitam `?pagina=&tamanho=` (padrão 20, máximo 100) e então devolvem `{ itens, pagina, tamanho, total }`. Sem os parâmetros, a resposta continua sendo a lista inteira.
-
-**Por quê:** o web usa as listas completas em buscas e seletores, e o mobile não usa esses endpoints (só o sync); paginação opcional não quebra nenhum consumidor e fica pronta para quando uma tela precisar.
-
-**Impacto:** sem migration. A paginação é feita no banco e a ordenação ganhou desempate por `Id`.
-
-**Atualização (PAG-01, 12/11/2026):** a paginação ficou obrigatória. Sem `?pagina=&tamanho=`, as cinco listas devolvem a página 1 com 20; o teto continua 100. O web deixou de baixar listas inteiras: as telas carregam de 50 em 50, os campos de escolha de cliente, produto e serviço buscam no servidor, e os nomes de cliente e itens vêm nas respostas. Novos: busca em produtos, serviços e orçamentos, `ids` em produtos, `revisado` em serviços, `ordem=registro` em atendimentos e `GET /api/orcamento/resumo`. Usuários continua sem paginação.
+> **DEC-42 to DEC-45** are reserved for Davi Gomes's October batch (optional pagination, account lockout, user deletion with anonymization and service duration). PRs #98 to #102 were closed without merge on 25/10/2026, at his request, to be resumed later; the branches remain on GitHub. DEC-42 was resumed on 28/10/2026; DEC-43 to DEC-45 were resumed on 11/11/2026 (PRs #133 and #134).
 
 ---
 
-## DEC-43 — Bloqueio da conta após senhas erradas
+## DEC-42 — Optional pagination in the lists
 
-**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira; migration `AddBloqueioLoginExclusaoLgpdDuracaoServico` aplicada no Supabase em 11/11/2026.
+**Status:** 🟢 Implemented in `develop` and `main` (PR #98, reopened and merged on 28/10/2026), requested by Davi.
 
-**Decisão:** 5 senhas erradas seguidas na mesma conta bloqueiam o login por 15 minutos, mesmo com a senha certa; a API responde 423 com os minutos restantes. Login certo zera o contador. A senha provisória gerada pelo Dono ou pela equipe do Agesto (DEC-52) desbloqueia na hora. Vale para Dono e Agente; o login da área de superadmin não tem esse bloqueio.
+**Decision:** `GET` for clients, atendimentos, quotes, products and services accept `?pagina=&tamanho=` (default 20, maximum 100) and then return `{ itens, pagina, tamanho, total }`. Without the parameters, the response is still the whole list.
 
-**Por quê:** complementa o limite por IP, que não segura tentativas vindas de vários IPs.
+**Why:** the web uses the full lists in searches and pickers, and mobile does not use these endpoints (only sync); optional pagination breaks no consumer and is ready for when a screen needs it.
 
-**Impacto:** colunas `Usuarios.TentativasLoginFalhas` e `Usuarios.BloqueadoAte`. Quem sabe o email de alguém consegue bloquear essa conta por 15 minutos; o limite por IP reduz o abuso.
+**Impact:** no migration. Pagination is done in the database and the ordering gained a tiebreak by `Id`.
 
----
-
-## DEC-44 — Exclusão da própria conta com anonimização
-
-**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira.
-
-**Decisão:** a exclusão da própria conta (`DELETE /api/usuario`, LGPD) deixa de apagar a linha: o usuário é anonimizado ("Usuário removido", email `removido-{id}@anonimo.invalid`), ganha uma senha aleatória e `DeletedAt`. O histórico (atendimentos, orçamentos) continua apontando para a linha, a pessoa não entra mais e o email real fica livre. A empresa não pode ficar sem Dono ativo.
-
-**Por quê:** o DELETE físico falhava com erro 500 para quem tinha atendimentos ou orçamentos (chaves estrangeiras *Restrict*) e contrariava o soft delete das entidades operacionais.
-
-**Impacto:** coluna `Usuarios.DeletedAt`. Listas de usuários, inclusive as da área de superadmin, ignoram os removidos, e o token deles cai na hora.
+**Update (PAG-01, 12/11/2026):** pagination became mandatory. Without `?pagina=&tamanho=`, the five lists return page 1 with 20; the ceiling is still 100. The web stopped downloading whole lists: screens load 50 at a time, the client, product and service picker fields search on the server, and client names and items come in the responses. New: search in products, services and quotes, `ids` in products, `revisado` in services, `ordem=registro` in atendimentos and `GET /api/orcamento/resumo`. Users still have no pagination.
 
 ---
 
-## DEC-45 — Duração do serviço e receita por hora
+## DEC-43 — Account lockout after wrong passwords
 
-**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes (KAN-79), integrado por Davi Oliveira.
+**Status:** 🟢 In `main` (PR #133, release #134, 11/11/2026). Code from Davi Gomes's October batch, integrated by Davi Oliveira; migration `AddBloqueioLoginExclusaoLgpdDuracaoServico` applied on Supabase on 11/11/2026.
 
-**Decisão:** `Servico.DuracaoMinutos` (opcional, de 1 a 1440) entra no cadastro de serviço do web. As métricas de serviços passam a devolver horas e receita por hora: serviço por hora usa as horas lançadas; serviço por empreitada usa execuções vezes a duração estimada, e fica sem R$/h quando não tem duração. Os Relatórios mostram o R$/h por serviço.
+**Decision:** 5 wrong passwords in a row on the same account lock the login for 15 minutes, even with the right password; the API answers 423 with the remaining minutes. A correct login resets the counter. The temporary password generated by the Dono or by the Agesto team (DEC-52) unlocks it immediately. Applies to Dono and Agente; the superadmin area login does not have this lockout.
 
-**Por quê:** parte restante do KAN-79. A margem por hora continua pendente, porque o custo ainda não é atribuído ao serviço.
+**Why:** complements the per-IP limit, which does not stop attempts coming from several IPs.
 
-**Impacto:** coluna `Servicos.DuracaoMinutos`. O Agente IA (DEC-21) recebe as horas e o R$/h junto com as métricas.
-
----
-
-## DEC-46 — Plano de lançamento do MVP: escopo e cronograma
-
-**Status:** 🟢 Decidido por Diego em 22/10/2026 no plano de lançamento, com aval do Davi Gomes no merge do PR #106 (27/10/2026). O plano completo, com tarefas, prazos e status por pessoa, está no documento "Agesto: plano de lançamento do MVP".
-
-**Decisão:**
-1. **Público do lançamento:** o prestador de serviço com equipe pequena (Dono no web, agentes no app Android). O modo Venda/Híbrido, o comerciante e a IA (DEC-21) ficam fora do lançamento.
-2. **Cronograma:** ensaio geral em 03/11, piloto pago com desconto de 04/11 a 28/11 com um cliente real, revisão do piloto em 01/12 e lançamento oficial em 15/12/2026.
-3. **Portão do piloto (bloqueadores):** APK instalável, API sem dormir, backup diário do banco, sessão de 30 dias (DEC-50), CPF validado pelo dígito no app e no web, termos de uso e política de privacidade aceitos no primeiro acesso, monitor do `/health` e chave do OpenRouteService no Render.
-4. **Cobrança:** sem módulo de cobrança no piloto. Para o lançamento, o Dono marca no web se o atendimento foi pago ou está em aberto, com forma e data do pagamento (cobrança mínima). A assinatura do Agesto é mensal por empresa, com faixas pelo número de agentes, paga por link de pagamento recorrente.
-5. **Outras decisões do plano:** o agente pode mudar o preço no app (DEC-39 mantida); organização `agesto` no expo.dev; pacote Android `br.com.agesto.app`; acordo do piloto por escrito; termos escritos por Davi Gomes com revisão jurídica; domínio próprio (ex.: `agesto.com.br`); suporte por WhatsApp Business e email; redesign no web antes do lançamento e no app depois (DEC-51).
-
-**Responsáveis:** Davi Gomes (mobile e geral), Davi Oliveira (web e geral) e Diego (infra e redesign). A divisão das tarefas está em `TASKS.md`, seção "Lançamento do MVP".
-
-**Impacto:** a seção "Lançamento do MVP" do `TASKS.md` passa a ser a prioridade; o resto do backlog só entra se não atrasar o portão do piloto.
+**Impact:** columns `Usuarios.TentativasLoginFalhas` and `Usuarios.BloqueadoAte`. Anyone who knows someone's email can lock that account for 15 minutes; the per-IP limit reduces abuse.
 
 ---
 
-## DEC-47 — Android só por APK, fora das lojas
+## DEC-44 — Deleting one's own account with anonymization
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Projeto do app pronto em `develop` (PR #108, 28/10/2026: `eas.json`, `br.com.agesto.app`, `expo-updates` e aviso de versão) e página de download em `/baixar` (PR #111). Falta o primeiro `eas build` até 31/10.
+**Status:** 🟢 In `main` (PR #133, release #134, 11/11/2026). Code from Davi Gomes's October batch, integrated by Davi Oliveira.
 
-**Decisão:** o app do agente não vai para a Google Play nem para a App Store. No Android ele é sempre distribuído como APK, gerado pelo EAS Build e baixado de uma página do Agesto com o passo a passo de instalação. Correções de JavaScript chegam por `eas update` (OTA); mudança nativa exige APK novo.
-- Todo APK é assinado com a mesma chave, para instalar por cima do anterior sem perder os dados offline. Uma cópia da chave fica guardada fora do repositório e do Expo.
-- O app avisa quando existe versão nova que precisa de APK novo.
-- iPhone fica fora por enquanto: o piloto e o lançamento são só Android.
+**Decision:** deleting one's own account (`DELETE /api/usuario`, LGPD) no longer deletes the row: the user is anonymized ("Usuário removido", email `removido-{id}@anonimo.invalid`), gets a random password and `DeletedAt`. The history (atendimentos, quotes) keeps pointing to the row, the person can no longer log in and the real email becomes free. The company cannot be left without an active Dono.
 
-**Por quê:** evita a taxa e a revisão das lojas e dá controle total do ritmo de versões para um produto vendido diretamente a poucas empresas.
+**Why:** the physical DELETE failed with a 500 error for anyone who had atendimentos or quotes (*Restrict* foreign keys) and went against the soft delete of the operational entities.
 
-**Impacto:** `mobile/eas.json`, `android.package` = `br.com.agesto.app` e `expo-updates` no app; ícone, ícone adaptativo e splash do Agesto.
+**Impact:** column `Usuarios.DeletedAt`. User lists, including those in the superadmin area, ignore removed users, and their token drops immediately.
 
 ---
 
-## DEC-48 — Cadastro aberto com verificação de email e período de teste
+## DEC-45 — Service duration and revenue per hour
 
-**Status:** ⛔ Substituída pela DEC-57 (12/11/2026): não haverá cadastro aberto; a assinatura começa pelo contato. Decidida antes por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026).
+**Status:** 🟢 In `main` (PR #133, release #134, 11/11/2026). Code from Davi Gomes's October batch (KAN-79), integrated by Davi Oliveira.
 
-**Decisão:** no lançamento, qualquer prestador cria a conta pelo web, confirma o email e ganha um período de teste antes de assinar. Isso substitui, a partir do lançamento, o cadastro fechado por `Auth__RegistrationKey` da DEC-34. O rate limit por IP continua.
+**Decision:** `Servico.DuracaoMinutos` (optional, from 1 to 1440) enters the web's service form. The service metrics now return hours and revenue per hour: an hourly service uses the hours recorded; an empreitada service uses executions times the estimated duration, and has no R$/h when it has no duration. Relatórios show R$/h per service.
 
-**Por quê:** a venda direta não escala se cada conta nova depender de alguém da equipe. A DEC-34 já condicionava reabrir o cadastro à verificação de email.
+**Why:** the remaining part of KAN-79. Margin per hour is still pending, because cost is not yet assigned to the service.
 
-**Impacto:** depende de domínio próprio e de provedor de email por API (ex.: Resend), que também atende o "esqueci a senha". A chave de cadastro fica só para contas criadas pela equipe durante o piloto.
-
----
-
-## DEC-49 — Hospedagem paga para o piloto e o lançamento
-
-**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). A fazer: Render Starter antes do ensaio, Supabase Pro no lançamento.
-
-**Decisão:**
-1. **API:** Render Starter antes do piloto, para a API não dormir (no Free a primeira chamada leva cerca de 1 minuto e o app do agente sofre com isso no campo).
-2. **Backup:** `pg_dump` diário por GitHub Actions, guardado fora do Supabase, com um teste de restauração antes do piloto.
-3. **Banco:** Supabase Pro a partir do lançamento, para ter backup gerenciado e não pausar por inatividade. No piloto, o Free com o backup do item 2 basta.
-
-**Por quê:** revê o "plano gratuito" das DEC-30 e DEC-32 para clientes pagantes, que não podem esperar a API acordar nem perder dados.
-
-**Impacto:** custo mensal fixo de hospedagem, a entrar no preço da assinatura (DEC-46). Sem mudança de código; o backup ganha um workflow novo em `.github/workflows/`.
+**Impact:** column `Servicos.DuracaoMinutos`. The AI Agente (DEC-21) receives the hours and R$/h together with the metrics.
 
 ---
 
-## DEC-50 — Sessão de 30 dias
+## DEC-46 — MVP launch plan: scope and schedule
 
-**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` e `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
+**Status:** 🟢 Decided by Diego on 22/10/2026 in the launch plan, with Davi Gomes's approval in the merge of PR #106 (27/10/2026). The full plan, with tasks, deadlines and status per person, is in the document "Agesto: plano de lançamento do MVP".
 
-**Decisão:** o login vale 30 dias na API e no app (hoje o JWT expira em 120 minutos, `Jwt:ExpiresMinutes`). A revogação da DEC-34 continua: desativar o usuário ou trocar a senha derruba a sessão na próxima requisição.
+**Decision:**
+1. **Launch audience:** the service provider with a small team (Dono on the web, agents on the Android app). The Venda/Híbrido mode, the retailer and AI (DEC-21) are out of the launch.
+2. **Schedule:** dress rehearsal on 03/11, discounted paid pilot from 04/11 to 28/11 with a real customer, pilot review on 01/12 and official launch on 15/12/2026.
+3. **Pilot gate (blockers):** installable APK, API that does not sleep, daily database backup, 30-day session (DEC-50), CPF validated by check digit in the app and on the web, terms of use and privacy policy accepted on first access, `/health` monitor and OpenRouteService key on Render.
+4. **Billing:** no billing module in the pilot. For the launch, the Dono marks on the web whether the atendimento was paid or is open, with payment method and date (minimal billing). The Agesto subscription is monthly per company, with tiers by number of agents, paid through a recurring payment link.
+5. **Other plan decisions:** the agent can change the price in the app (DEC-39 kept); `agesto` organization on expo.dev; Android package `br.com.agesto.app`; written pilot agreement; terms written by Davi Gomes with legal review; own domain (e.g. `agesto.com.br`); support by WhatsApp Business and email; redesign on the web before the launch and on the app afterwards (DEC-51).
 
-**Por quê:** o agente trabalha offline e não pode ser deslogado no meio do dia, sem internet, com atendimentos pendentes de envio.
+**Owners:** Davi Gomes (mobile and general), Davi Oliveira (web and general) and Diego (infra and redesign). The task split is in `TASKS.md`, section "Lançamento do MVP".
 
-**Impacto:** sem migration. Configuração no Render e ajuste no app para tratar sessão vencida sem perder dados locais.
-
----
-
-## DEC-51 — Redesign do web
-
-**Status:** 🟢 Em `develop` e `main` (PRs #80 a #95, de 22 a 25/10/2026): Diego fez o redesign e Davi Oliveira o ajuste do painel do Agente (#95).
-
-**Decisão:** o painel do Dono passou a seguir os templates aprovados em `agesto/design/templates`, com os mesmos dados e fluxos de antes:
-- paletas Marinho + Vermelho (padrão) e Oceano, cada uma com tema claro e escuro, escolhidas em "Aparência"; fonte Geist servida pelo próprio app, sem CDN;
-- sidebar recolhível, trilha de navegação, busca (Ctrl K) e menu em gaveta no celular;
-- login novo sem entrar com conta social, símbolo Bloco como marca e favicon;
-- gavetas e diálogos por cima da tela inteira, revisão visual das telas e painel do Agente recolhido entre telas.
-
-**Por quê:** a DEC-46 pede o redesign no web antes do lançamento; o app recebe o mesmo visual depois.
-
-**Impacto:** só front-end, sem mudança na API. O painel do Agente aparece como "Prévia" e não faz parte do lançamento (a IA ficou fora do escopo na DEC-46); desde 10/11/2026 o chat dele funciona com a IA da DEC-21, ainda com o selo "Prévia". Falta fechar o design system até 17/11.
+**Impact:** the "Lançamento do MVP" section of `TASKS.md` becomes the priority; the rest of the backlog only gets in if it does not delay the pilot gate.
 
 ---
 
-## DEC-52 — Área de superadmin da equipe do Agesto
+## DEC-47 — Android only via APK, outside the stores
 
-**Status:** 🟢 Em `main` (PR #131, release #132, 10/11/2026), decidido por Davi Oliveira em 10/11/2026. Migration `AddSuperadmin` aplicada no Supabase em 10/11/2026; o primeiro admin foi criado no mesmo dia.
+**Status:** 🟡 Decided by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026). App project ready in `develop` (PR #108, 28/10/2026: `eas.json`, `br.com.agesto.app`, `expo-updates` and version warning) and download page at `/baixar` (PR #111). The first `eas build` is still missing, due by 31/10.
 
-**Decisão:** a equipe do Agesto gerencia as empresas clientes em `/admin`, no web atual:
-- contas de admin separadas dos usuários das empresas (tabela `AdminsPlataforma`); o token de admin tem audiência própria e a claim `escopo=plataforma`, então o token de um cliente não abre o `/admin` e o de admin não abre o painel do cliente;
-- listar e ver empresas, criar empresa com Dono (senha provisória), bloquear e desbloquear empresa com motivo, e desativar, reativar ou gerar senha provisória para usuários de qualquer empresa (*desde a DEC-55, a senha provisória virou convite e "enviar link de senha" por email, e a equipe também cria acessos numa empresa*);
-- equipe de admins (cadastrar, desativar e reativar; ninguém desativa a si mesmo; *desde a DEC-55, cadastrar é convidar por email*);
-- auditoria de toda ação de admin, inclusive logins e tentativas recusadas (tabela `AuditoriasAdmin`).
+**Decision:** the agent app does not go to Google Play or the App Store. On Android it is always distributed as an APK, generated by EAS Build and downloaded from an Agesto page with step-by-step installation instructions. JavaScript fixes arrive through `eas update` (OTA); a native change requires a new APK.
+- Every APK is signed with the same key, so it installs over the previous one without losing offline data. A copy of the key is kept outside the repository and Expo.
+- The app warns when there is a new version that needs a new APK.
+- iPhone is out for now: the pilot and the launch are Android only.
 
-**Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
+**Why:** avoids the stores' fee and review and gives full control of the release pace for a product sold directly to a few companies.
 
-**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira; desde 13/11/2026 vale 24 horas (DEC-53). Pendências: a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
-
-**Login de admin mais forte (13/11/2026, branch `feature/superadmin-2fa-e-expo-web`):**
-- **Bloqueio por conta:** 5 senhas erradas seguidas bloqueiam o login do admin por 15 minutos, igual ao dos usuários (DEC-43). Fica na auditoria ("conta-bloqueada").
-- **Verificação em duas etapas por email** (escolha do Davi, no lugar do app autenticador): depois da senha, o Agesto manda um código de 6 dígitos pelo Brevo, que vale 10 minutos e uma vez só, preso àquela tentativa de login por um desafio. Cinco códigos errados invalidam o desafio, e um login novo invalida o código anterior. O banco guarda só os hashes. A tela pede o código, mostra o email mascarado e permite reenviar. `Admin__DoisFatores=false` desliga a segunda etapa só em emergência (ex.: Brevo fora do ar).
+**Impact:** `mobile/eas.json`, `android.package` = `br.com.agesto.app` and `expo-updates` in the app; Agesto icon, adaptive icon and splash.
 
 ---
 
-## DEC-53 — Token do web em `localStorage`: risco aceito no MVP
+## DEC-48 — Open sign-up with email verification and a trial period
 
-**Status:** 🟡 Risco aceito por Davi Oliveira em 11/11/2026, com gatilhos de revisão. Sem mudança de código.
+**Status:** ⛔ Replaced by DEC-57 (12/11/2026): there will be no open sign-up; the subscription starts through contact. Decided earlier by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026).
 
-**Decisão:** o web continua guardando o JWT em `localStorage`: o token das empresas em `web/src/lib/token.ts` e o de admin (`agesto_admin_token`) em `web/src/admin/sessao.ts`. O cookie httpOnly recomendado em `docs/SECURITY_NOTES.md` (seção 1) fica para depois. O app segue com `expo-secure-store`.
+**Decision:** at the launch, any provider creates the account on the web, confirms the email and gets a trial period before subscribing. From the launch on, this replaces the sign-up closed by `Auth__RegistrationKey` from DEC-34. The per-IP rate limit stays.
 
-**Por quê:**
-- API (`agesto-api.onrender.com`) e web (Cloudflare Pages) estão em sites diferentes. Cookie de login entre eles exige `SameSite=None`, proteção contra CSRF e credenciais no CORS, e navegadores que bloqueiam cookie de terceiros podem quebrar o login. Fazer bem pede domínio próprio com API e web no mesmo site.
-- O app usa token Bearer; a API teria de aceitar os dois modos.
-- O risco hoje é contido: a CSP de `web/public/_headers` só roda script do próprio site (`script-src 'self'`) e só conecta no próprio site e na API; o React escapa o texto exibido; o único `dangerouslySetInnerHTML` (`Icon.tsx`) usa desenhos fixos do código; o `TokenRevalidator` derruba na hora o token de usuário desativado ou de empresa bloqueada; e só há contas de teste.
+**Why:** direct sales do not scale if each new account depends on someone from the team. DEC-34 already made reopening sign-up conditional on email verification.
 
-**Risco aceito:** um XSS que passe pela CSP leva um token válido por até 30 dias (DEC-50 e DEC-52), e trocar a senha ainda não derruba as sessões abertas.
-
-**Revisar quando acontecer o primeiro destes:** domínio próprio do Agesto, primeiro cliente pagante ou fim da fase de contas de teste. Nesse ponto, migrar o web para cookie httpOnly.
-
-**Até lá:**
-- não remover nem afrouxar a CSP de `web/public/_headers`;
-- não usar `dangerouslySetInnerHTML` com dado de usuário ou da API;
-- pendências que reduzem o risco sem migrar: encurtar a validade do token de admin (feito em 13/11/2026: 24 horas por padrão em `Admin__ExpiresMinutes`, decidido pelo Davi Oliveira) e fazer a troca de senha derrubar as sessões abertas (versão do token, também em aberto nas DEC-50 e DEC-52).
-
-**Impacto:** nenhum agora. A migração futura mexe na emissão do token, na autenticação da API, no CORS e no cliente HTTP do web.
+**Impact:** depends on an own domain and on an email provider with an API (e.g. Resend), which also serves "forgot password". The sign-up key stays only for accounts created by the team during the pilot.
 
 ---
 
-## DEC-54 — "Esqueci a senha" do Dono por email, com o Brevo
+## DEC-49 — Paid hosting for the pilot and the launch
 
-**Status:** 🟢 Em `main` (PR #161, release #163, 12/11/2026), escolhido por Davi Oliveira. Migration `AddTokenRedefinicaoSenha` aplicada no Supabase; Brevo configurado no Render e envio testado em produção em 12/11/2026.
+**Status:** 🟡 Decided by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026). To do: Render Starter before the rehearsal, Supabase Pro at the launch.
 
-**Decisão:** o Dono pede, na tela de login, um link para criar uma senha nova:
-- `POST /api/auth/esqueci-senha` responde sempre a mesma mensagem, exista o email ou não. Só gera link para Dono ativo de empresa ativa; o agente continua recebendo senha provisória do Dono (DEC-35).
-- O token tem 32 bytes aleatórios e vale 15 minutos, uma vez só. No banco fica só o hash SHA-256 (tabela `TokensRedefinicaoSenha`). Um pedido novo invalida o anterior, e cada conta recebe no máximo um email a cada 2 minutos.
-- O link é `{Email:UrlWeb}/redefinir-senha#token=...`: depois do `#`, o token não vai ao servidor do web nem aparece em logs.
-- `POST /api/auth/redefinir-senha` troca a senha, tira o bloqueio por senhas erradas (DEC-43) e invalida todos os links abertos da conta.
-- O envio é pelo Brevo (API HTTP; o Render Free bloqueia SMTP), numa fila em memória fora da requisição: a resposta leva o mesmo tempo exista o email ou não, e uma lentidão do Brevo não segura a tela.
-- Sem `Email__BrevoApiKey` e `Email__RemetenteEmail`, o envio fica desligado e a rota continua respondendo igual.
+**Decision:**
+1. **API:** Render Starter before the pilot, so the API does not sleep (on Free the first call takes about 1 minute and the agent app suffers from it in the field).
+2. **Backup:** daily `pg_dump` through GitHub Actions, stored outside Supabase, with a restore test before the pilot.
+3. **Database:** Supabase Pro from the launch on, to have managed backup and no pause for inactivity. In the pilot, Free with the backup from item 2 is enough.
 
-**Por quê:** o Dono sem acesso dependia da equipe do Agesto para uma senha provisória (DEC-52). O Brevo foi escolhido por Davi Oliveira; o plano gratuito envia até 300 emails por dia.
+**Why:** revisits the "free plan" of DEC-30 and DEC-32 for paying customers, who cannot wait for the API to wake up or lose data.
 
-**Impacto:** migration `AddTokenRedefinicaoSenha` (tabela nova com RLS e a policy do `agesto_api`). Variáveis novas no Render (`deploy/README.md`, seção 3). Enquanto o SEG-01 não entrar (PR #155), redefinir a senha não derruba as sessões já abertas.
-
-**Atualização (DEC-55, 12/11/2026):** o "Esqueci a senha" passou a valer também para o Agente (no app e no web), e a mesma tabela guarda os links de convite.
+**Impact:** fixed monthly hosting cost, to be included in the subscription price (DEC-46). No code change; the backup gets a new workflow in `.github/workflows/`.
 
 ---
 
-## DEC-55 — Acessos novos por convite no email; fim da senha provisória
+## DEC-50 — 30-day session
 
-**Status:** 🟢 Em `main` (PR #162, release #163, 12/11/2026), decidido por Davi Oliveira. Migration `AddConvitesPorEmail` aplicada no Supabase; envio testado em produção em 12/11/2026.
+**Status:** 🟢 Decided by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026). Implemented in `develop` and `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Deactivating the user already drops the session; changing the password does not yet drop open sessions (`TokenRevalidator` only checks active user, company and profile), an open point.
 
-**Decisão:** ninguém mais recebe senha de outra pessoa. Todo acesso novo nasce com o **convite pendente** e a pessoa cria a própria senha pelo link do email:
-- **Quem cria acesso:** o Dono, na tela Usuários (funcionário Agente ou outro Dono da empresa), e a equipe do Agesto, no superadmin (Dono da empresa nova e qualquer acesso de uma empresa). Novo administrador da equipe também é convidado assim; só o primeiro admin continua pelo setup com `Admin__SetupKey`.
-- **Convite:** link `{Email:UrlWeb}/criar-senha#token=...` (admin: `/admin/criar-senha`), válido por **72 horas** e uma vez só; um convite novo invalida o anterior. Ao usar, a senha é criada e o email fica confirmado (`Usuario.EmailConfirmadoEm`, `AdminPlataforma.EmailConfirmadoEm`). O email do agente aponta para o app e para `/baixar`.
-- **Senha provisória:** sai do Dono e do superadmin. O Dono só **reenvia o convite** de quem ainda não criou a senha. No superadmin, "senha provisória" virou **"Enviar link de senha"** (reenvia o convite, ou manda um link de 72 horas a quem já tem acesso; a senha atual vale até o link ser usado).
-- **Esqueci a senha:** Dono e Agente (link de 15 minutos, DEC-54).
-- **Acessos que já existiam:** não mudam. A migration marca o email deles como confirmado pela data de criação; ninguém perde a senha nem recebe email.
+**Decision:** the login lasts 30 days in the API and in the app (today the JWT expires in 120 minutes, `Jwt:ExpiresMinutes`). The revocation from DEC-34 stays: deactivating the user or changing the password drops the session on the next request.
 
-**Por quê:** pedido de Davi Oliveira em 12/11/2026. A senha provisória passava por terceiros (Dono, equipe, WhatsApp); com o convite, só a própria pessoa conhece a senha e o email fica confirmado.
+**Why:** the agent works offline and cannot be logged out in the middle of the day, without internet, with atendimentos waiting to be sent.
 
-**Impacto:** migration `AddConvitesPorEmail` (colunas `EmailConfirmadoEm`, e `AdminId` e `Tipo` na tabela de links). Rotas novas: `POST /api/usuario/{id}/reenviar-convite`, `POST /api/admin/empresas/{id}/usuarios`, `POST /api/admin/empresas/{id}/usuarios/{usuarioId}/enviar-link-senha`, `POST /api/admin/equipe/{id}/reenviar-convite` e `POST /api/admin/auth/criar-senha`. Saem `POST /api/usuario/{id}/redefinir-senha` e `.../senha-provisoria`. Telas novas no web: `/criar-senha` e `/admin/criar-senha`; o app ganha "Esqueci a senha". Revê o item 2 da DEC-35 e a senha provisória da DEC-52.
+**Impact:** no migration. Configuration on Render and an adjustment in the app to handle an expired session without losing local data.
 
-## DEC-56 — WhatsApp por link (wa.me), sem integração com a conta do Dono
+---
 
-**Status:** 🟢 Links em `main` (PR #168, release #169, 12/11/2026), escolhido por Davi Oliveira. PDF do orçamento na branch `feature/orcamento-pdf` (12/11/2026).
+## DEC-51 — Web redesign
 
-**Decisão:** o Agesto conversa com o WhatsApp só por **links `wa.me`**. O botão abre o WhatsApp de quem está usando o Agesto (web ou app), na conversa com o cliente e, quando faz sentido, com a mensagem já escrita. A pessoa revisa e envia pelo próprio WhatsApp. O Agesto não guarda sessão, credencial nem conversa:
-- **Orçamento (web):** vai como **PDF** (pedido do Davi em 12/11/2026, no lugar da mensagem com os itens). O PDF é gerado no navegador e leva empresa, cliente, itens e total, **nunca custo nem margem**. Como o `wa.me` não aceita anexo: no celular, "Enviar PDF por WhatsApp" abre o compartilhar do sistema com o arquivo, e a pessoa escolhe o WhatsApp e o contato; no computador, o PDF é baixado e a conversa do cliente abre no WhatsApp, para anexar o arquivo. "Baixar PDF" serve para email ou impressão.
-- **Clientes e Agenda (web), agenda do app:** botão ou link que abre a conversa com o cliente.
-- **Telefone:** aceita DDD + número (10 ou 11 dígitos) ou já com o 55; sem telefone válido, o botão não aparece (no orçamento, fica desligado e explica o motivo).
-- **Fora desta fase:** conversar com os clientes dentro do Agesto. Se for preciso, o caminho é a API oficial do WhatsApp (Cloud API, da Meta), em uma DEC própria com custo e escopo. **Baileys não**, nem outras bibliotecas que imitam o WhatsApp Web.
+**Status:** 🟢 In `develop` and `main` (PRs #80 to #95, from 22 to 25/10/2026): Diego did the redesign and Davi Oliveira the adjustment of the Agente panel (#95).
 
-**Por quê:** pedido de Davi Oliveira em 12/11/2026, para o Dono falar com os clientes pelo WhatsApp a partir do Agesto. O Baileys foi avaliado e recusado: não é oficial e pode levar ao banimento do número do Dono; a sessão guardada daria acesso ao WhatsApp inteiro dele; exigiria um serviço Node.js sempre ligado, fora da arquitetura atual; quebra quando o WhatsApp muda; e aumentaria muito os dados pessoais sob responsabilidade do Agesto (LGPD). O link entrega o principal, cabe antes do lançamento e não tem nenhum desses riscos.
+**Decision:** the Dono panel now follows the templates approved in `agesto/design/templates`, with the same data and flows as before:
+- Marinho + Vermelho (default) and Oceano palettes, each with a light and dark theme, chosen in "Aparência"; Geist font served by the app itself, no CDN;
+- collapsible sidebar, breadcrumb, search (Ctrl K) and drawer menu on the phone;
+- new login without social sign-in, the Bloco symbol as logo and favicon;
+- drawers and dialogs over the whole screen, visual review of the screens and Agente panel collapsed between screens.
 
-**Impacto:** `OrcamentoResponse` ganha `ClienteTelefone`, e `ConfiguracaoResponse` ganha `EmpresaNome` e `EmpresaDocumento` (sem migration; o nome também passa a aparecer na conta do web, no lugar de "Minha empresa"). Utilitários `web/src/lib/whatsapp.ts` e `mobile/src/lib/whatsapp.ts`; PDF em `web/src/features/orcamentos/pdf.ts`, com a dependência `jspdf` carregada só quando o orçamento abre. O app só recebe o botão num próximo build ou update.
+**Why:** DEC-46 asks for the redesign on the web before the launch; the app gets the same look afterwards.
 
-## DEC-57 — Venda por contato, sem cadastro aberto; página de venda na raiz do web
+**Impact:** front end only, no change to the API. The Agente panel shows as "Prévia" (Preview) and is not part of the launch (AI was left out of scope in DEC-46); since 10/11/2026 its chat works with the AI from DEC-21, still with the "Prévia" badge. The design system is still to be closed by 17/11.
 
-**Status:** 🟢 Em `main` (página de venda: PR #172, release #173, 12/11/2026; `/conheca`: PR #174, release #175, 13/11/2026), decidido por Davi Oliveira e testado por ele em produção. Substitui a DEC-48.
+---
 
-**Decisão:** o Agesto **não terá cadastro aberto**. Quem quer assinar entra em contato, e a equipe cria a empresa no superadmin; o Dono recebe o convite por email e cria a senha (DEC-52, DEC-55).
-- **Página de venda:** quem não está logado e abre a raiz do web (`/`) vê a apresentação do Agesto. Quem está logado continua indo direto para a Visão geral. A página fica sempre no modo claro (paleta Marinho), e o login ganha o link "Conheça e fale com a gente". O endereço **`/conheca`** mostra a página para qualquer pessoa, logada ou não; é o link para divulgar (redes, WhatsApp, propostas) e para mostrar o Agesto sem sair da conta. Para quem está logado, o botão "Entrar" vira "Ir para o painel".
-- **Conteúdo:** a promessa "sua empresa inteira em um lugar só", os recursos, o fluxo do orçamento ao resultado, como começar, os preços, as dúvidas frequentes e o contato.
-- **Preços** (definidos pelo Davi em 12/11/2026): **assinatura de R$ 49,90/mês** por empresa, com o acesso do Dono e todos os recursos, **mais 1 licença de funcionário inclusa**. Cada funcionário a mais custa **R$ 19,90/mês**. A página tem uma calculadora que leva a quantidade de funcionários para a mensagem do WhatsApp.
-- **Pagamento:** cartão de crédito, boleto ou Pix. A forma, e outros acordos, são combinados no contato; a página não fala de fidelidade nem de cancelamento.
-- **Contato:** WhatsApp comercial (34) 99632-6130, pelo link `wa.me` (DEC-56), e o email agesto.contact@gmail.com. Não há formulário, para não abrir endpoint público na API.
-- **Hospedagem:** no mesmo projeto do web (Cloudflare Pages), com o código da página num pedaço separado, carregado só por quem a abre. Quando houver domínio próprio, ou se o marketing crescer, a página pode ir para um projeto próprio (ex.: `agesto.com.br` e o painel em `app.agesto.com.br`).
+## DEC-52 — Superadmin area for the Agesto team
 
-**Por quê:** pedido de Davi Oliveira em 12/11/2026. A venda é feita pela equipe, com assinatura e licenças combinadas no contato. A DEC-48 previa cadastro aberto com verificação de email e período de teste; isso deixa de ser necessário. No mesmo projeto não há infra nova nem dependência do domínio próprio, que ainda não existe.
+**Status:** 🟢 In `main` (PR #131, release #132, 10/11/2026), decided by Davi Oliveira on 10/11/2026. Migration `AddSuperadmin` applied on Supabase on 10/11/2026; the first admin was created the same day.
 
-**Impacto:** sem mudança na API nem migration. `ProtectedRoute` ganha `raizPublica`; a página fica em `web/src/pages/venda/`. As tarefas de cadastro aberto saem do TASKS, e a página de apresentação passa a ser feita agora. O controle de assinatura (quem pagou e quem está em atraso) continua em aberto.
+**Decision:** the Agesto team manages customer companies at `/admin`, in the current web:
+- admin accounts separate from the companies' users (`AdminsPlataforma` table); the admin token has its own audience and the claim `escopo=plataforma`, so a customer's token does not open `/admin` and an admin's does not open the customer panel;
+- list and view companies, create a company with a Dono (temporary password), block and unblock a company with a reason, and deactivate, reactivate or generate a temporary password for users of any company (*since DEC-55, the temporary password became an invitation and "enviar link de senha" (send password link) by email, and the team also creates accesses in a company*);
+- admin team (add, deactivate and reactivate; nobody deactivates themselves; *since DEC-55, adding means inviting by email*);
+- auditing of every admin action, including logins and refused attempts (`AuditoriasAdmin` table).
 
-## DEC-58 — Controle de assinatura e licenças no superadmin
+**Why:** replace sign-up through `curl` with `X-Registration-Key` and give the team a way to serve customers (access, password, late payment) without touching the database. Integrations come later.
 
-**Status:** 🟡 Definido por Davi Oliveira em 13/11/2026; implementado na branch `feature/controle-assinatura` (13/11/2026). Falta aplicar a migration `AddAssinatura`.
+**Impact:** a blocked company loses login and already issued tokens (`TokenRevalidator`, including in the app's sync). The first admin is created through `POST /api/admin/auth/setup` with `Admin__SetupKey`, only once (`deploy/README.md`, section 10). The admin login lasts 30 days (`Admin__ExpiresMinutes`), by Davi Oliveira's choice; since 13/11/2026 it lasts 24 hours (DEC-53). Pending: the temporary password dropping the user's already open sessions (also open in DEC-50).
 
-**Decisão:** a assinatura de cada empresa é controlada no superadmin, sem gateway de pagamento no MVP (cartão, boleto ou Pix são combinados no contato, DEC-57):
-- **Registro manual de pagamento:** a equipe registra cada pagamento (data, valor, forma e a que mês se refere), com histórico por empresa. Cada pagamento leva o "pago até" para o fim do período pago.
-- **Situação:** em dia, vence em breve ou em atraso (com os dias de atraso), e a lista de empresas do superadmin pode filtrar por ela.
-- **Atraso:** bloqueio **manual** (o botão que já existe, DEC-52) e **automático**: depois de **10 dias de carência** sem pagamento, a empresa é bloqueada sozinha até a equipe registrar o pagamento e desbloquear. O desbloqueio também pode ser manual.
-- **Aviso ao Dono:** um aviso no topo do painel quando a assinatura estiver perto de vencer, vencida ou na carência (com quantos dias faltam para o bloqueio), e um bloco "Assinatura" na Parametrização com plano, licenças e vencimento.
-- **Licenças:** a assinatura (R$ 49,90/mês) inclui o Dono e **1 funcionário**; cada funcionário a mais é uma licença de R$ 19,90/mês (DEC-57). O número de licenças fica na empresa e só a equipe muda. O Dono **não passa do contratado**: ao tentar convidar um funcionário além das licenças, o Agesto pede para falar com a equipe.
+**Stronger admin login (13/11/2026, branch `feature/superadmin-2fa-e-expo-web`):**
+- **Per-account lockout:** 5 wrong passwords in a row lock the admin login for 15 minutes, the same as for users (DEC-43). It goes into the audit log ("conta-bloqueada").
+- **Two-step verification by email** (Davi's choice, instead of an authenticator app): after the password, Agesto sends a 6-digit code through Brevo, valid for 10 minutes and only once, tied to that login attempt by a challenge. Five wrong codes invalidate the challenge, and a new login invalidates the previous code. The database stores only the hashes. The screen asks for the code, shows the masked email and allows resending. `Admin__DoisFatores=false` turns off the second step only in an emergency (e.g. Brevo down).
 
-**Por quê:** a venda é por contato e o pagamento é combinado fora do sistema; o controle precisa mostrar quem pagou, quem atrasou e travar o uso sem pagamento, com uma carência para não cortar um cliente por um atraso de dias.
+---
 
-**Como ficou (13/11/2026):**
-- **Empresa:** `PagoAte`, `LicencasFuncionarios` (padrão 1), `BloqueioAutomatico` e `BloqueioAutomaticoReferencia`. Tabela `PagamentosAssinatura` com o histórico, com RLS.
-- **Empresas que já existiam:** ficam **sem cobrança** (`PagoAte` vazio), sem aviso e sem bloqueio automático, até a equipe registrar o primeiro pagamento ou ajustar o "pago até". A migration põe nas licenças os acessos ativos de hoje, para ninguém ficar travado.
-- **Situação, pelo dia de Brasília:** em dia; vence em breve (até 5 dias); em carência (venceu há até 10 dias, com aviso ao Dono e a contagem até o bloqueio); atrasada (mais de 10 dias).
-- **Pagamento:** o período começa no dia seguinte ao último pago (sem histórico, hoje) e cobre de 1 a 12 meses.
-- **Bloqueio automático:** uma rotina na API roda de hora em hora e bloqueia as atrasadas, com registro na auditoria como "Sistema". O pagamento tira esse bloqueio sozinho; o bloqueio manual só sai pela equipe. Se a equipe desbloquear na mão uma empresa atrasada, a rotina não bloqueia de novo até o "pago até" mudar.
-- **Licenças:** contam os acessos ativos, inclusive convites pendentes. O Dono e a equipe não criam nem reativam acesso além do contratado (409, com a mensagem pedindo para falar com a equipe); desativar sempre pode.
-- **Telas:**
-  - no superadmin, o bloco **Assinatura** (situação, valor, licenças, acessos em uso, histórico, "Registrar pagamento" e "Ajustar"), a coluna e o filtro de assinatura na lista de empresas;
-  - para o Dono, o aviso no topo do painel (vence em breve ou carência, com o link do WhatsApp do Agesto) e o bloco **Assinatura** na Parametrização (`GET /api/assinatura`).
-- **Desfazer pagamento (13/11/2026, branch `feature/pagamentos`):** a equipe desfaz um pagamento registrado por engano no histórico do superadmin. Só o último pagamento ativo, e só enquanto o "pago até" ainda é o que ele gerou; depois de um "Ajustar", corrige-se pelo "Ajustar". O "pago até" volta ao de antes do pagamento, o registro fica no histórico como desfeito (quem e quando), a rotina de bloqueio automático volta a valer e a ação entra na auditoria.
+## DEC-53 — Web token in `localStorage`: risk accepted in the MVP
+
+**Status:** 🟡 Risk accepted by Davi Oliveira on 11/11/2026, with review triggers. No code change.
+
+**Decision:** the web keeps storing the JWT in `localStorage`: the companies' token in `web/src/lib/token.ts` and the admin one (`agesto_admin_token`) in `web/src/admin/sessao.ts`. The httpOnly cookie recommended in `docs/SECURITY_NOTES.md` (section 1) is left for later. The app keeps using `expo-secure-store`.
+
+**Why:**
+- API (`agesto-api.onrender.com`) and web (Cloudflare Pages) are on different sites. A login cookie between them requires `SameSite=None`, CSRF protection and credentials in CORS, and browsers that block third-party cookies can break the login. Doing it well needs an own domain with API and web on the same site.
+- The app uses a Bearer token; the API would have to accept both modes.
+- The risk today is contained: the CSP in `web/public/_headers` only runs scripts from the site itself (`script-src 'self'`) and only connects to the site itself and the API; React escapes displayed text; the only `dangerouslySetInnerHTML` (`Icon.tsx`) uses fixed drawings from the code; `TokenRevalidator` immediately drops the token of a deactivated user or a blocked company; and there are only test accounts.
+
+**Accepted risk:** an XSS that gets past the CSP takes a token valid for up to 30 days (DEC-50 and DEC-52), and changing the password does not yet drop open sessions.
+
+**Review when the first of these happens:** Agesto's own domain, the first paying customer or the end of the test accounts phase. At that point, migrate the web to an httpOnly cookie.
+
+**Until then:**
+- do not remove or loosen the CSP in `web/public/_headers`;
+- do not use `dangerouslySetInnerHTML` with user or API data;
+- open items that reduce the risk without migrating: shorten the admin token's validity (done on 13/11/2026: 24 hours by default in `Admin__ExpiresMinutes`, decided by Davi Oliveira) and make a password change drop open sessions (token version, also open in DEC-50 and DEC-52).
+
+**Impact:** none now. The future migration touches token issuing, API authentication, CORS and the web's HTTP client.
+
+---
+
+## DEC-54 — Dono's "Esqueci a senha" (forgot password) by email, with Brevo
+
+**Status:** 🟢 In `main` (PR #161, release #163, 12/11/2026), chosen by Davi Oliveira. Migration `AddTokenRedefinicaoSenha` applied on Supabase; Brevo configured on Render and sending tested in production on 12/11/2026.
+
+**Decision:** the Dono asks, on the login screen, for a link to create a new password:
+- `POST /api/auth/esqueci-senha` always answers the same message, whether the email exists or not. It only generates a link for an active Dono of an active company; the agent keeps getting a temporary password from the Dono (DEC-35).
+- The token has 32 random bytes and lasts 15 minutes, only once. The database keeps only the SHA-256 hash (`TokensRedefinicaoSenha` table). A new request invalidates the previous one, and each account gets at most one email every 2 minutes.
+- The link is `{Email:UrlWeb}/redefinir-senha#token=...`: after the `#`, the token does not go to the web server nor show up in logs.
+- `POST /api/auth/redefinir-senha` changes the password, removes the wrong-password lockout (DEC-43) and invalidates all of the account's open links.
+- Sending is through Brevo (HTTP API; Render Free blocks SMTP), in an in-memory queue outside the request: the response takes the same time whether the email exists or not, and a slow Brevo does not hold up the screen.
+- Without `Email__BrevoApiKey` and `Email__RemetenteEmail`, sending is off and the route keeps answering the same.
+
+**Why:** a Dono without access depended on the Agesto team for a temporary password (DEC-52). Brevo was chosen by Davi Oliveira; the free plan sends up to 300 emails per day.
+
+**Impact:** migration `AddTokenRedefinicaoSenha` (new table with RLS and the `agesto_api` policy). New variables on Render (`deploy/README.md`, section 3). Until SEG-01 lands (PR #155), resetting the password does not drop already open sessions.
+
+**Update (DEC-55, 12/11/2026):** "Esqueci a senha" now also applies to the Agente (in the app and on the web), and the same table stores the invitation links.
+
+---
+
+## DEC-55 — New accesses by email invitation; end of the temporary password
+
+**Status:** 🟢 In `main` (PR #162, release #163, 12/11/2026), decided by Davi Oliveira. Migration `AddConvitesPorEmail` applied on Supabase; sending tested in production on 12/11/2026.
+
+**Decision:** nobody receives a password from another person anymore. Every new access is born with a **pending invitation** and the person creates their own password through the link in the email:
+- **Who creates access:** the Dono, on the Usuários screen (Agente employee or another Dono of the company), and the Agesto team, in the superadmin (Dono of the new company and any access of a company). A new team administrator is also invited this way; only the first admin still goes through the setup with `Admin__SetupKey`.
+- **Invitation:** link `{Email:UrlWeb}/criar-senha#token=...` (admin: `/admin/criar-senha`), valid for **72 hours** and only once; a new invitation invalidates the previous one. When used, the password is created and the email is confirmed (`Usuario.EmailConfirmadoEm`, `AdminPlataforma.EmailConfirmadoEm`). The agent's email points to the app and to `/baixar`.
+- **Temporary password:** removed from the Dono and the superadmin. The Dono only **resends the invitation** to whoever has not created a password yet. In the superadmin, "senha provisória" (temporary password) became **"Enviar link de senha"** (resends the invitation, or sends a 72-hour link to whoever already has access; the current password works until the link is used).
+- **Forgot password:** Dono and Agente (15-minute link, DEC-54).
+- **Existing accesses:** do not change. The migration marks their email as confirmed by the creation date; nobody loses their password or gets an email.
+
+**Why:** requested by Davi Oliveira on 12/11/2026. The temporary password passed through third parties (Dono, team, WhatsApp); with the invitation, only the person knows the password and the email is confirmed.
+
+**Impact:** migration `AddConvitesPorEmail` (columns `EmailConfirmadoEm`, and `AdminId` and `Tipo` in the links table). New routes: `POST /api/usuario/{id}/reenviar-convite`, `POST /api/admin/empresas/{id}/usuarios`, `POST /api/admin/empresas/{id}/usuarios/{usuarioId}/enviar-link-senha`, `POST /api/admin/equipe/{id}/reenviar-convite` and `POST /api/admin/auth/criar-senha`. Removed: `POST /api/usuario/{id}/redefinir-senha` and `.../senha-provisoria`. New web screens: `/criar-senha` and `/admin/criar-senha`; the app gets "Esqueci a senha". Revisits item 2 of DEC-35 and the temporary password of DEC-52.
+
+## DEC-56 — WhatsApp by link (wa.me), with no integration with the Dono's account
+
+**Status:** 🟢 Links in `main` (PR #168, release #169, 12/11/2026), chosen by Davi Oliveira. Quote PDF on the `feature/orcamento-pdf` branch (12/11/2026).
+
+**Decision:** Agesto talks to WhatsApp only through **`wa.me` links**. The button opens the WhatsApp of whoever is using Agesto (web or app), in the conversation with the client and, when it makes sense, with the message already written. The person reviews and sends it from their own WhatsApp. Agesto stores no session, credential or conversation:
+- **Quote (web):** goes as a **PDF** (Davi's request on 12/11/2026, instead of the message with the items). The PDF is generated in the browser and carries company, client, items and total, **never cost or margin**. Since `wa.me` does not accept attachments: on the phone, "Enviar PDF por WhatsApp" (send PDF by WhatsApp) opens the system share sheet with the file, and the person picks WhatsApp and the contact; on the computer, the PDF is downloaded and the client's conversation opens in WhatsApp, to attach the file. "Baixar PDF" (download PDF) is for email or printing.
+- **Clientes and Agenda (web), app schedule:** a button or link that opens the conversation with the client.
+- **Phone:** accepts area code + number (10 or 11 digits) or already with the 55; without a valid phone, the button does not show (on the quote, it is disabled and explains why).
+- **Out of this phase:** talking to clients inside Agesto. If needed, the way is the official WhatsApp API (Cloud API, from Meta), in its own DEC with cost and scope. **Not Baileys**, nor other libraries that imitate WhatsApp Web.
+
+**Why:** requested by Davi Oliveira on 12/11/2026, for the Dono to talk to clients through WhatsApp from Agesto. Baileys was evaluated and refused: it is not official and can lead to the Dono's number being banned; the stored session would give access to their whole WhatsApp; it would require an always-on Node.js service, outside the current architecture; it breaks when WhatsApp changes; and it would greatly increase the personal data under Agesto's responsibility (LGPD). The link delivers the main thing, fits before the launch and has none of these risks.
+
+**Impact:** `OrcamentoResponse` gains `ClienteTelefone`, and `ConfiguracaoResponse` gains `EmpresaNome` and `EmpresaDocumento` (no migration; the name also shows up in the web account, instead of "Minha empresa"). Utilities `web/src/lib/whatsapp.ts` and `mobile/src/lib/whatsapp.ts`; PDF in `web/src/features/orcamentos/pdf.ts`, with the `jspdf` dependency loaded only when the quote opens. The app only gets the button in a next build or update.
+
+## DEC-57 — Sales by contact, no open sign-up; sales page at the web root
+
+**Status:** 🟢 In `main` (sales page: PR #172, release #173, 12/11/2026; `/conheca`: PR #174, release #175, 13/11/2026), decided by Davi Oliveira and tested by him in production. Replaces DEC-48.
+
+**Decision:** Agesto **will not have open sign-up**. Whoever wants to subscribe gets in touch, and the team creates the company in the superadmin; the Dono receives the invitation by email and creates the password (DEC-52, DEC-55).
+- **Sales page:** someone not logged in who opens the web root (`/`) sees the Agesto presentation. Someone logged in keeps going straight to the Visão geral. The page is always in light mode (Marinho palette), and the login gets the link "Conheça e fale com a gente" (learn more and talk to us). The **`/conheca`** address shows the page to anyone, logged in or not; it is the link to share (social media, WhatsApp, proposals) and to show Agesto without leaving the account. For someone logged in, the "Entrar" (sign in) button becomes "Ir para o painel" (go to the panel).
+- **Content:** the promise "sua empresa inteira em um lugar só" (your whole company in one place), the features, the flow from quote to result, how to start, the prices, the FAQ and the contact.
+- **Prices** (set by Davi on 12/11/2026): **subscription of R$ 49,90/month** per company, with the Dono's access and all features, **plus 1 employee license included**. Each additional employee costs **R$ 19,90/month**. The page has a calculator that carries the number of employees into the WhatsApp message.
+- **Payment:** credit card, boleto or Pix. The method, and other arrangements, are agreed in the contact; the page does not talk about lock-in or cancellation.
+- **Contact:** commercial WhatsApp (34) 99632-6130, through the `wa.me` link (DEC-56), and the email agesto.contact@gmail.com. There is no form, so as not to open a public endpoint in the API.
+- **Hosting:** in the same web project (Cloudflare Pages), with the page's code in a separate chunk, loaded only by whoever opens it. When there is an own domain, or if marketing grows, the page can move to its own project (e.g. `agesto.com.br` and the panel at `app.agesto.com.br`).
+
+**Why:** requested by Davi Oliveira on 12/11/2026. Sales are done by the team, with subscription and licenses agreed in the contact. DEC-48 planned open sign-up with email verification and a trial period; that is no longer needed. In the same project there is no new infra nor dependency on the own domain, which does not exist yet.
+
+**Impact:** no API change or migration. `ProtectedRoute` gains `raizPublica`; the page lives in `web/src/pages/venda/`. The open sign-up tasks leave TASKS, and the presentation page is done now. Subscription control (who paid and who is late) remains open.
+
+## DEC-58 — Subscription and license control in the superadmin
+
+**Status:** 🟡 Defined by Davi Oliveira on 13/11/2026; implemented on the `feature/controle-assinatura` branch (13/11/2026). The `AddAssinatura` migration is still to be applied.
+
+**Decision:** each company's subscription is controlled in the superadmin, with no payment gateway in the MVP (card, boleto or Pix are agreed in the contact, DEC-57):
+- **Manual payment record:** the team records each payment (date, amount, method and which month it refers to), with a history per company. Each payment moves "pago até" (paid until) to the end of the paid period.
+- **Status:** up to date, due soon or late (with the days late), and the superadmin's company list can filter by it.
+- **Late payment:** **manual** blocking (the button that already exists, DEC-52) and **automatic**: after a **10-day grace period** without payment, the company is blocked on its own until the team records the payment and unblocks it. Unblocking can also be manual.
+- **Notice to the Dono:** a notice at the top of the panel when the subscription is close to due, overdue or in the grace period (with how many days are left before blocking), and an "Assinatura" (subscription) block in Parametrização with plan, licenses and due date.
+- **Licenses:** the subscription (R$ 49,90/month) includes the Dono and **1 employee**; each additional employee is a R$ 19,90/month license (DEC-57). The number of licenses is stored on the company and only the team changes it. The Dono **cannot go beyond what was contracted**: when trying to invite an employee beyond the licenses, Agesto asks them to talk to the team.
+
+**Why:** sales are by contact and payment is agreed outside the system; the control needs to show who paid, who is late and lock usage without payment, with a grace period so as not to cut off a customer for being a few days late.
+
+**How it turned out (13/11/2026):**
+- **Empresa:** `PagoAte`, `LicencasFuncionarios` (default 1), `BloqueioAutomatico` and `BloqueioAutomaticoReferencia`. `PagamentosAssinatura` table with the history, with RLS.
+- **Existing companies:** stay **without billing** (empty `PagoAte`), with no notice and no automatic blocking, until the team records the first payment or adjusts "pago até". The migration sets the licenses to today's active accesses, so nobody is locked.
+- **Status, by the Brasília day:** up to date; due soon (up to 5 days); in grace period (overdue for up to 10 days, with a notice to the Dono and the countdown to blocking); late (more than 10 days).
+- **Payment:** the period starts the day after the last paid day (with no history, today) and covers 1 to 12 months.
+- **Automatic blocking:** a routine in the API runs every hour and blocks the late ones, recorded in the audit log as "Sistema". A payment removes this block on its own; a manual block is only removed by the team. If the team manually unblocks a late company, the routine does not block it again until "pago até" changes.
+- **Licenses:** count active accesses, including pending invitations. The Dono and the team cannot create or reactivate access beyond what was contracted (409, with the message asking to talk to the team); deactivating is always allowed.
+- **Screens:**
+  - in the superadmin, the **Assinatura** block (status, amount, licenses, accesses in use, history, "Registrar pagamento" (record payment) and "Ajustar" (adjust)), the subscription column and filter in the company list;
+  - for the Dono, the notice at the top of the panel (due soon or grace period, with the link to Agesto's WhatsApp) and the **Assinatura** block in Parametrização (`GET /api/assinatura`).
+- **Undo payment (13/11/2026, branch `feature/pagamentos`):** the team undoes a payment recorded by mistake from the superadmin history. Only the last active payment, and only while "pago até" is still the one it generated; after an "Ajustar", it is corrected through "Ajustar". "Pago até" goes back to what it was before the payment, the record stays in the history as undone (who and when), the automatic blocking routine applies again and the action goes into the audit log.
