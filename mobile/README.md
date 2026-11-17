@@ -1,10 +1,10 @@
-# Agesto — Mobile (App do Agente)
+# Agesto — Mobile (Agent App)
 
-App do agente de campo do Agesto: offline-first e action-first, em React Native + Expo + TypeScript, com Expo Router e SQLite local (`expo-sqlite`). O agente registra e agenda atendimentos, cadastra clientes e serviços sem internet; a sincronização (Carga e Descarga) envia as pendências quando a conexão volta. Distribuído só como APK, fora das lojas (DEC-47).
+Agesto's field agent app: offline-first and action-first, in React Native + Expo + TypeScript, with Expo Router and local SQLite (`expo-sqlite`). The agent records and schedules atendimentos and registers clients and services without internet; sync (Carga and Descarga) sends the pending items when the connection comes back. Distributed only as an APK, outside the stores (DEC-47).
 
-> Este arquivo substituiu o README padrão do `create-expo-app`. **Não rode `npm run reset-project`:** o script do template move `src/` e `scripts/` para `example/` e apaga o app.
+> This file replaced the default `create-expo-app` README. **Do not run `npm run reset-project`:** the template script moves `src/` and `scripts/` to `example/` and deletes the app.
 
-## Rodar localmente
+## Run locally
 
 ```bash
 cd mobile
@@ -12,19 +12,19 @@ npm ci
 npx expo start
 ```
 
-Crie `mobile/.env` antes:
+Create `mobile/.env` first:
 
 ```
-EXPO_PUBLIC_API_BASE_URL=http://<IP da sua máquina>:5216
+EXPO_PUBLIC_API_BASE_URL=http://<your machine's IP>:5216
 EXPO_PUBLIC_USE_MOCKS=false
 ```
 
-- `EXPO_PUBLIC_API_BASE_URL`: base da API. No celular, use o IP da máquina na rede local, não `localhost`. Em release, a URL precisa ser `https` (`src/lib/config.ts`).
-- `EXPO_PUBLIC_USE_MOCKS`: `true` usa os mocks locais, sem API.
+- `EXPO_PUBLIC_API_BASE_URL`: API base. On the phone, use the machine's IP on the local network, not `localhost`. In release, the URL must be `https` (`src/lib/config.ts`).
+- `EXPO_PUBLIC_USE_MOCKS`: `true` uses the local mocks, with no API.
 
-A API local está em `deploy/README.md`, seção 8.
+The local API is described in `deploy/README.md`, section 8.
 
-## Verificações (as mesmas do CI)
+## Checks (the same as CI)
 
 ```bash
 npm run lint        # expo lint
@@ -32,21 +32,21 @@ npm run typecheck   # tsc --noEmit
 npm test            # jest
 ```
 
-## Estrutura
+## Structure
 
 ```
 src/
-  app/       rotas (Expo Router)
-  auth/      login, sessão e pendências do primeiro acesso
-  db/        SQLite local (fonte dos dados no aparelho)
-  sync/      Carga e Descarga
-  features/  telas por domínio
-  lib/       cliente da API e configuração
-  ui/        componentes base
-  mocks/     dados de demonstração
-  types/     tipos espelhando os DTOs da API
+  app/       routes (Expo Router)
+  auth/      login, session and first-access pending steps
+  db/        local SQLite (source of the data on the device)
+  sync/      Carga and Descarga
+  features/  screens per domain
+  lib/       API client and configuration
+  ui/        base components
+  mocks/     demo data
+  types/     types mirroring the API DTOs
 ```
 
-## APK e atualizações
+## APK and updates
 
-Geração do APK, atualização OTA (`eas update`) e aviso de versão nova: `deploy/README.md`, seção 5.
+APK build, OTA update (`eas update`) and new version warning: `deploy/README.md`, section 5.
