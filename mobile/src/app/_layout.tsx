@@ -3,9 +3,14 @@ import { Stack, useRouter, useSegments } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import * as SplashScreen from 'expo-splash-screen'
+import { useFonts, Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold } from '@expo-google-fonts/geist'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { useAuth } from '@/auth/useAuth'
 import { notificacoes, PREFIXO_AVISO } from '@/lib/avisosDoDia'
+
+// Segura a splash até a Geist carregar, para a tela não piscar com a fonte do sistema.
+SplashScreen.preventAutoHideAsync().catch(() => {})
 
 function Guard() {
   const { token, ready, deveTrocarSenha, termos } = useAuth()
@@ -52,6 +57,16 @@ notificacoes()?.setNotificationHandler({
 })
 
 export default function RootLayout() {
+  const [fontesProntas, erroFontes] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold })
+  const pronto = fontesProntas || erroFontes !== null
+
+  useEffect(() => {
+    if (pronto) SplashScreen.hideAsync().catch(() => {})
+  }, [pronto])
+
+  // Se a fonte falhar, segue com a do sistema em vez de travar na splash.
+  if (!pronto) return null
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

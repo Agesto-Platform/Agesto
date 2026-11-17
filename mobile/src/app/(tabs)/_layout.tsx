@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { colors } from '@/ui/theme'
+import { colors, font } from '@/ui/theme'
 import { useSincronizacaoAutomatica } from '@/sync/useSincronizacaoAutomatica'
 
 export default function TabsLayout() {
@@ -11,9 +11,9 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.brand,
-        tabBarInactiveTintColor: colors.ink4,
+        tabBarInactiveTintColor: colors.ink3,
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line2 },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: font.semibold },
       }}
     >
       <Tabs.Screen
