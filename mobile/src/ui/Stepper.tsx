@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { colors, radius, space } from './theme'
+import { colors, radius, space, font } from './theme'
 
 /** Contador de toque fácil (− valor +). Não desce abaixo de `min`. */
 export function Stepper({
@@ -49,5 +49,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   plus: { backgroundColor: colors.brand, borderColor: colors.brand },
-  value: { minWidth: 22, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.ink },
+  value: { minWidth: 22, textAlign: 'center', fontSize: 16, fontFamily: font.semibold, color: colors.ink },
 })

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { JobCard } from '@/ui/JobCard'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { getConfig } from '@/lib/appConfig'
 import { acaoDaAgenda } from '@/features/agenda/acaoDaAgenda'
@@ -141,21 +141,22 @@ const styles = StyleSheet.create({
     paddingVertical: space(3.5),
     borderBottomWidth: 1,
     borderBottomColor: colors.line2,
+    backgroundColor: colors.surface,
   },
-  title: { fontSize: 18, fontWeight: '700', color: colors.ink },
-  count: { fontSize: 13, color: colors.ink3, marginTop: 2 },
+  title: { fontSize: 22, fontFamily: font.semibold, color: colors.ink, letterSpacing: -0.3 },
+  count: { fontFamily: font.regular, fontSize: 13, color: colors.ink3, marginTop: 2 },
   novo: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), backgroundColor: colors.brand, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2) },
-  novoText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+  novoText: { color: '#fff', fontFamily: font.semibold, fontSize: 13.5 },
 
   body: { padding: space(4), gap: space(4) },
   group: { gap: space(2.5) },
   dayLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: font.semibold,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: colors.ink4,
+    color: colors.ink3,
     paddingHorizontal: space(1),
   },
-  empty: { fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
+  empty: { fontFamily: font.regular, fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
 })

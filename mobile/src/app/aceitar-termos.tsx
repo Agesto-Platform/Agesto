@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Screen } from '@/ui/Screen'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
 import { ApiError } from '@/lib/errors'
 
@@ -74,8 +74,8 @@ function Documento({ titulo, url }: { titulo: string; url: string | null }) {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: space(6), gap: space(4), justifyContent: 'center' },
-  title: { fontSize: 19, fontWeight: '700', color: colors.ink },
-  sub: { fontSize: 13.5, color: colors.ink3, marginTop: -space(2) },
+  title: { fontSize: 19, fontFamily: font.semibold, color: colors.ink },
+  sub: { fontFamily: font.regular, fontSize: 13.5, color: colors.ink3, marginTop: -space(2) },
   doc: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -86,9 +86,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space(3.5),
   },
-  docText: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink },
-  versao: { fontSize: 12, color: colors.ink4, marginTop: -space(2) },
-  error: { color: colors.bad, fontSize: 13, fontWeight: '500' },
+  docText: { flex: 1, fontSize: 15, fontFamily: font.semibold, color: colors.ink },
+  versao: { fontFamily: font.regular, fontSize: 12, color: colors.ink3, marginTop: -space(2) },
+  error: { color: colors.bad, fontSize: 13, fontFamily: font.medium },
   button: {
     backgroundColor: colors.brand,
     borderRadius: radius.sm,
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: space(1),
   },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  buttonText: { color: '#fff', fontFamily: font.semibold, fontSize: 15 },
   sair: { alignItems: 'center', paddingVertical: space(2) },
-  sairText: { color: colors.ink3, fontWeight: '600', fontSize: 13.5 },
+  sairText: { color: colors.ink3, fontFamily: font.semibold, fontSize: 13.5 },
 })
