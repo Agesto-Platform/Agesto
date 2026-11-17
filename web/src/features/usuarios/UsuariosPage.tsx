@@ -2,12 +2,14 @@ import { useState, type KeyboardEvent } from 'react'
 import {
   avisoDeConvite,
   useCreateUsuario,
+  useDefinirSenhaUsuario,
   useReenviarConvite,
   useSetAtivoUsuario,
   useUpdateUsuario,
   useUsuarios,
 } from './queries'
 import { UsuarioForm } from './UsuarioForm'
+import { SenhaAgenteForm } from './SenhaAgenteForm'
 import {
   Badge,
   Button,
@@ -49,7 +51,7 @@ function Situacao({ u }: { u: Usuario }) {
   if (u.convitePendente)
     return (
       <Badge tone="warn" dot>
-        Convite pendente
+        {u.perfil === 'Agente' ? 'Sem senha' : 'Convite pendente'}
       </Badge>
     )
   if (u.deveTrocarSenha)
@@ -72,6 +74,7 @@ function UsuarioDetalhe({
   onEdit,
   onReenviar,
   reenviando,
+  onDefinirSenha,
   onDesativar,
   onReativar,
   reativando,
@@ -81,6 +84,7 @@ function UsuarioDetalhe({
   onEdit: () => void
   onReenviar: () => void
   reenviando: boolean
+  onDefinirSenha: () => void
   onDesativar: () => void
   onReativar: () => void
   reativando: boolean
@@ -98,10 +102,17 @@ function UsuarioDetalhe({
           <Button size="sm" variant="primary" icon="pencil" onClick={onEdit}>
             Editar
           </Button>
-          {u.ativo && u.convitePendente && (
-            <Button size="sm" icon="mail" onClick={onReenviar} disabled={reenviando}>
-              {reenviando ? 'Reenviando…' : 'Reenviar convite'}
+          {u.perfil === 'Agente' ? (
+            <Button size="sm" icon="lock" onClick={onDefinirSenha}>
+              Definir senha
             </Button>
+          ) : (
+            u.ativo &&
+            u.convitePendente && (
+              <Button size="sm" icon="mail" onClick={onReenviar} disabled={reenviando}>
+                {reenviando ? 'Reenviando…' : 'Reenviar convite'}
+              </Button>
+            )
           )}
         </div>
       </div>
@@ -139,11 +150,15 @@ function UsuarioDetalhe({
         <p className="hint" style={{ margin: '0 0 10px' }}>
           {!u.ativo
             ? 'Sem acesso. Os atendimentos dele continuam no sistema.'
-            : u.convitePendente
-              ? 'Recebeu o convite por email e ainda não criou a senha. O link vale por 72 horas.'
-              : u.deveTrocarSenha
-                ? 'Entra com a senha provisória e troca no primeiro acesso.'
-                : 'Pode entrar normalmente. Se esquecer a senha, usa "Esqueci a senha" na tela de entrada.'}
+            : u.perfil === 'Agente'
+              ? u.convitePendente
+                ? 'Ainda sem senha. Use "Definir senha" e passe a senha para o agente entrar no app.'
+                : 'Entra no app com este email e a senha que você definiu. Se esquecer, use "Definir senha".'
+              : u.convitePendente
+                ? 'Recebeu o convite por email e ainda não criou a senha. O link vale por 72 horas.'
+                : u.deveTrocarSenha
+                  ? 'Entra com a senha provisória e troca no primeiro acesso.'
+                  : 'Pode entrar normalmente. Se esquecer a senha, usa "Esqueci a senha" na tela de entrada.'}
         </p>
         {eu ? (
           <p className="hint" style={{ margin: 0 }}>
@@ -169,6 +184,7 @@ export function UsuariosPage() {
   const update = useUpdateUsuario()
   const setAtivo = useSetAtivoUsuario()
   const reenviar = useReenviarConvite()
+  const definirSenha = useDefinirSenhaUsuario()
   const toast = useToast()
   const { user } = useAuth()
   const meuId = Number(user?.sub)
@@ -180,6 +196,8 @@ export function UsuariosPage() {
   const [editing, setEditing] = useState<Usuario | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   const [pendente, setPendente] = useState<Pendente | null>(null)
+  const [senhaDe, setSenhaDe] = useState<Usuario | null>(null)
+  const [senhaErro, setSenhaErro] = useState<string | null>(null)
 
   const erro = (e: unknown, padrao: string) => (e instanceof ApiError ? e.message : padrao)
   // Depois de criar ou reenviar: confirma o envio ou avisa que o email está desligado.
@@ -254,6 +272,27 @@ export function UsuariosPage() {
     })
   }
 
+  function abrirSenha(u: Usuario) {
+    setSenhaErro(null)
+    setSenhaDe(u)
+  }
+
+  function salvarSenha(novaSenha: string) {
+    if (!senhaDe) return
+    const u = senhaDe
+    setSenhaErro(null)
+    definirSenha.mutate(
+      { id: u.id, novaSenha },
+      {
+        onSuccess: () => {
+          setSenhaDe(null)
+          toast.success(`Senha de ${u.nome} definida. Passe a nova senha para o agente.`)
+        },
+        onError: (e) => setSenhaErro(erro(e, 'Não foi possível definir a senha.')),
+      },
+    )
+  }
+
   function confirmar() {
     if (!pendente) return
     const { usuario } = pendente
@@ -272,7 +311,7 @@ export function UsuariosPage() {
       <PageHead
         title="Usuários"
         badge={list.data && <Badge>{ativos === 1 ? '1 ativo' : `${ativos} ativos`}</Badge>}
-        sub="Quem acessa o Agesto: agentes entram pelo app, donos por este painel. Cada pessoa recebe um convite por email e cria a própria senha."
+        sub="Quem acessa o Agesto: agentes entram pelo app com o email e a senha que você define; donos usam este painel e recebem um convite por email."
         actions={
           <Button variant="primary" icon="plus" onClick={openCreate}>
             Novo usuário
@@ -380,6 +419,7 @@ export function UsuariosPage() {
             onEdit={() => openEdit(sel)}
             onReenviar={() => reenviarConvite(sel)}
             reenviando={reenviar.isPending}
+            onDefinirSenha={() => abrirSenha(sel)}
             onDesativar={() => setPendente({ tipo: 'desativar', usuario: sel })}
             onReativar={() => reativar(sel)}
             reativando={setAtivo.isPending}
@@ -407,6 +447,19 @@ export function UsuariosPage() {
           serverError={serverError}
           onCancel={() => setDrawerOpen(false)}
         />
+      </Drawer>
+
+      <Drawer open={senhaDe !== null} onClose={() => setSenhaDe(null)} title="Definir senha" sub={senhaDe?.email}>
+        {senhaDe && (
+          <SenhaAgenteForm
+            key={senhaDe.id}
+            nome={senhaDe.nome}
+            onSubmit={salvarSenha}
+            submitting={definirSenha.isPending}
+            serverError={senhaErro}
+            onCancel={() => setSenhaDe(null)}
+          />
+        )}
       </Drawer>
 
       <ConfirmDialog

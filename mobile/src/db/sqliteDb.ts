@@ -3,15 +3,39 @@ import type { AgendaItem, Cliente, Produto, Servico } from '@/types/api'
 import type { LocalDb, LocalAtendimento, PendingCliente, PendingServico } from './types'
 import { remapItensServico } from './remap'
 
+const ESQUEMA = `
+  CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS servicos (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS agenda (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS historico (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS pending_clientes (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
+  CREATE TABLE IF NOT EXISTS pending_servicos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
+  CREATE TABLE IF NOT EXISTS atendimentos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
+  CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+`
+
 type Row = { json: string }
 type AtRow = { json: string; syncedAt: string | null }
 
 /** Adapter SQLite (device). Dados de referência e atendimentos como JSON por linha. */
 export function createSqliteDb(): LocalDb {
-  let db: SQLite.SQLiteDatabase | null = null
-  async function conn(): Promise<SQLite.SQLiteDatabase> {
-    if (!db) db = await SQLite.openDatabaseAsync('agesto.db')
-    return db
+  // A conexão só fica pronta depois de criar as tabelas: assim nenhuma tela lê
+  // o banco antes do init() (a Início abre junto com o AuthProvider).
+  let pronto: Promise<SQLite.SQLiteDatabase> | null = null
+  function conn(): Promise<SQLite.SQLiteDatabase> {
+    if (!pronto) {
+      pronto = (async () => {
+        const d = await SQLite.openDatabaseAsync('agesto.db')
+        await d.execAsync(ESQUEMA)
+        return d
+      })()
+      // Se falhar, a próxima chamada tenta de novo em vez de herdar o erro.
+      pronto.catch(() => {
+        pronto = null
+      })
+    }
+    return pronto
   }
 
   async function saveRef(table: string, items: { id: number }[]): Promise<void> {
@@ -43,18 +67,7 @@ export function createSqliteDb(): LocalDb {
 
   return {
     async init() {
-      const d = await conn()
-      await d.execAsync(`
-        CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS servicos (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS agenda (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS historico (id INTEGER PRIMARY KEY, json TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS pending_clientes (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
-        CREATE TABLE IF NOT EXISTS pending_servicos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
-        CREATE TABLE IF NOT EXISTS atendimentos (uuid TEXT PRIMARY KEY, json TEXT NOT NULL, syncedAt TEXT);
-        CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-      `)
+      await conn()
     },
 
     saveClientes: (items) => saveRef('clientes', items),

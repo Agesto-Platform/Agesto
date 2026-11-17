@@ -24,14 +24,14 @@ Não faça push direto em `develop` ou `main`, não use force push nessas branch
 
 ## Commits
 
-Escreva em inglês, no formato:
+Escreva em português (pt-BR), no formato abaixo. Títulos e descrições de pull request também ficam em português.
 
 ```text
-feat(scope): short description (KAN-XX)
-fix(scope): short description (KAN-XX)
-test(scope): short description (KAN-XX)
-docs(scope): short description (KAN-XX)
-chore(scope): short description
+feat(escopo): descrição curta (KAN-XX)
+fix(escopo): descrição curta (KAN-XX)
+test(escopo): descrição curta (KAN-XX)
+docs(escopo): descrição curta (KAN-XX)
+chore(escopo): descrição curta
 ```
 
 Quando não existir KAN, explique a origem da manutenção no pull request. Não invente identificadores.

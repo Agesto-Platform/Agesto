@@ -30,7 +30,8 @@ public sealed class UsuarioController : ApiControllerBase
         return Ok(new ApiResponse { Success = true, Message = "Usuários encontrados.", Data = usuarios });
     }
 
-    // O Dono cria o acesso; a pessoa recebe o convite por email e cria a senha (DEC-55).
+    // O Dono cria o acesso. Outro Dono recebe o convite por email (DEC-55); o Agente
+    // já sai com a senha que o Dono definiu (DEC-59).
     [HttpPost]
     [Authorize(Policy = Policies.Dono)]
     public async Task<ActionResult<ApiResponse>> Create([FromBody] UsuarioCreateRequest request, CancellationToken cancellationToken)
@@ -44,7 +45,9 @@ public sealed class UsuarioController : ApiControllerBase
             return StatusCode(StatusCodes.Status201Created, new ApiResponse
             {
                 Success = true,
-                Message = "Acesso criado. Enviamos o convite por email.",
+                Message = criado.ConviteEnviado
+                    ? "Acesso criado. Enviamos o convite por email."
+                    : "Acesso criado. O agente já pode entrar com o email e a senha definidos.",
                 Data = criado
             });
         }
@@ -72,6 +75,19 @@ public sealed class UsuarioController : ApiControllerBase
         return await Executar(
             () => _usuarioService.ReenviarConviteAsync(empresaId, id, cancellationToken),
             "Convite reenviado.");
+    }
+
+    // O Dono define a senha do Agente (DEC-59).
+    [HttpPost("{id:long}/senha")]
+    [Authorize(Policy = Policies.Dono)]
+    public async Task<ActionResult<ApiResponse>> DefinirSenha(long id, [FromBody] DefinirSenhaUsuarioRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetEmpresaId(out var empresaId))
+            return Unauthorized(new ApiResponse { Success = false, Message = "Empresa não identificada no token." });
+
+        return await Executar(
+            () => _usuarioService.DefinirSenhaAsync(empresaId, id, request, cancellationToken),
+            "Senha definida. Passe a nova senha para o agente.");
     }
 
     [HttpPut("{id:long}")]

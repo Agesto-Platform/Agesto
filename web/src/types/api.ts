@@ -64,6 +64,8 @@ export interface UsuarioCreateInput {
   nome: string
   email: string
   perfil: PerfilUsuario
+  /** Só do Agente: a senha que o Dono define (DEC-59). O Dono recebe convite por email. */
+  senha?: string
 }
 
 export interface UsuarioUpdateInput {
@@ -78,6 +80,8 @@ export interface UsuarioUpdateInput {
 export interface UsuarioConvite {
   usuario: Usuario
   envioHabilitado: boolean
+  /** false quando o Agente já saiu com a senha do Dono e nenhum email foi enviado (DEC-59). */
+  conviteEnviado?: boolean
 }
 
 /* ---------- Métricas / Dashboard ---------- */
