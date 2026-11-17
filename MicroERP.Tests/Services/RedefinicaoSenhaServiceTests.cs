@@ -62,8 +62,9 @@ public sealed class RedefinicaoSenhaServiceTests
         Assert.Empty(db.TokensRedefinicaoSenha);
     }
 
+    // DEC-59: o email do Agente pode não ser real; quem define a senha dele é o Dono.
     [Fact]
-    public async Task Solicitar_Agente_TambemRecebeOLink()
+    public async Task Solicitar_Agente_NaoRecebeLink()
     {
         await using var db = await Seed();
         var fila = new FilaFalsa();
@@ -71,11 +72,8 @@ public sealed class RedefinicaoSenhaServiceTests
 
         await servico.SolicitarAsync(new EsqueciSenhaRequest { Email = "agente@teste.com" }, CancellationToken.None);
 
-        var email = Assert.Single(fila.Enviados);
-        Assert.Equal("agente@teste.com", email.ParaEmail);
-        var perfil = await servico.RedefinirAsync(
-            new RedefinirSenhaRequest { Token = TokenDoLink(email.Texto), NovaSenha = "SenhaNova9" }, CancellationToken.None);
-        Assert.Equal(PerfilUsuario.Agente, perfil);
+        Assert.Empty(fila.Enviados);
+        Assert.Empty(db.TokensRedefinicaoSenha);
     }
 
     [Fact]

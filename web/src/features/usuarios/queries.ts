@@ -17,7 +17,7 @@ function useInvalidate() {
 export function useCreateUsuario() {
   const onSuccess = useInvalidate()
   return useMutation({
-    // A pessoa recebe o convite por email e cria a senha (DEC-55).
+    // O Dono novo recebe o convite por email (DEC-55); o Agente já sai com a senha (DEC-59).
     mutationFn: (body: UsuarioCreateInput) => api.post<UsuarioConvite>(PATH, body),
     onSuccess,
   })
@@ -50,8 +50,23 @@ export function useReenviarConvite() {
   })
 }
 
+/** O Dono define a senha do Agente (DEC-59): primeiro acesso ou senha esquecida. */
+export function useDefinirSenhaUsuario() {
+  const onSuccess = useInvalidate()
+  return useMutation({
+    mutationFn: ({ id, novaSenha }: { id: number; novaSenha: string }) =>
+      api.post<Usuario>(`${PATH}/${id}/senha`, { novaSenha }),
+    onSuccess,
+  })
+}
+
 /** Texto do aviso depois de criar o acesso ou reenviar o convite. */
 export function avisoDeConvite(r: UsuarioConvite): { ok: boolean; texto: string } {
+  if (r.conviteEnviado === false)
+    return {
+      ok: true,
+      texto: `Acesso de ${r.usuario.nome} criado. Já dá para entrar no app com ${r.usuario.email} e a senha que você definiu.`,
+    }
   return r.envioHabilitado
     ? { ok: true, texto: `Convite enviado para ${r.usuario.email}. O link vale por 72 horas.` }
     : {

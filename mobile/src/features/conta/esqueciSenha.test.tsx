@@ -34,6 +34,8 @@ describe('Esqueci a senha', () => {
     // Resposta imediata (a do mock tem atraso e cai fora do act); o handler é testado em api.test.
     const post = jest.spyOn(api, 'post').mockResolvedValueOnce(null)
     await render(<EsqueciSenha />)
+    // DEC-59: o agente pede a senha nova ao Dono; o link por email é do Dono.
+    expect(screen.getByText(/Peça uma senha nova ao responsável pela empresa/)).toBeTruthy()
 
     await fireEvent.changeText(screen.getByLabelText('Email'), '  agente@agesto.app  ')
     await fireEvent.press(screen.getByText('Enviar link'))

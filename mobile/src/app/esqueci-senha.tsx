@@ -12,7 +12,8 @@ const SEM_INTERNET = 'Sem conexão com a internet. Para receber o link, conecte 
 
 /**
  * "Esqueci a senha" (DEC-54): pede o link por email. A senha nova é criada na
- * página web do link; depois o agente volta e entra normalmente aqui.
+ * página web do link; depois a pessoa volta e entra normalmente aqui. Desde a
+ * DEC-59 o link é só do Dono: a senha do agente é o Dono que define no painel.
  */
 export default function EsqueciSenha() {
   const router = useRouter()
@@ -71,7 +72,11 @@ export default function EsqueciSenha() {
       <View style={styles.wrap}>
         <Text style={styles.title}>Esqueci a senha</Text>
         <Text style={styles.sub}>
-          Informe o email que você usa para entrar. Vamos enviar um link para você criar uma senha nova.
+          É agente? Peça uma senha nova ao responsável pela empresa: ele define no painel do Agesto, e você entra
+          com ela aqui.
+        </Text>
+        <Text style={styles.sub}>
+          É o Dono? Informe o email que você usa para entrar. Vamos enviar um link para você criar uma senha nova.
         </Text>
 
         <View style={styles.field}>
