@@ -1,30 +1,30 @@
-# Contribuindo com o Agesto
+# Contributing to Agesto
 
-O Agesto ainda é um MVP. O objetivo do processo é manter segurança e contexto sem criar burocracia desnecessária.
+Agesto is still an MVP. The goal of the process is to keep security and context without creating unnecessary bureaucracy.
 
-## Antes de começar
+## Before you start
 
-1. Leia `AGENTS.md` e os documentos relevantes em `docs/project/`.
-2. Confirme que a task possui objetivo e critério de aceite compreensíveis.
-3. Se a mudança exigir nova regra de produto, registre a dúvida antes de implementar.
-4. Atualize sua `develop` local e crie uma branch curta.
+1. Read `AGENTS.md` and the relevant documents in `docs/project/`.
+2. Make sure the task has an understandable goal and acceptance criteria.
+3. If the change needs a new product rule, record the question before implementing.
+4. Update your local `develop` and create a short-lived branch.
 
 ## Branches
 
-- `feature/<task>-<descricao>` para funcionalidade.
-- `fix/<task>-<descricao>` para correção.
-- `chore/<descricao>` para manutenção sem regra de negócio.
-- `docs/<descricao>` para documentação isolada.
+- `feature/<task>-<description>` for features.
+- `fix/<task>-<description>` for fixes.
+- `chore/<description>` for maintenance without business rules.
+- `docs/<description>` for standalone documentation.
 
-Fluxo: branch curta → pull request para `develop` → teste local → pull request de marco para `main`.
+Flow: short-lived branch → pull request to `develop` → local testing → milestone pull request to `main`.
 
-A `main` é a produção: o Render e a Cloudflare publicam tudo o que entra nela. A `develop` é integração e teste local, sem deploy na nuvem. Promoção para `main` usa merge commit, nunca squash (passo a passo em `deploy/README.md`, seção 9).
+`main` is production: Render and Cloudflare deploy everything that lands in it. `develop` is for integration and local testing, with no cloud deploy. Promotion to `main` uses a merge commit, never squash (step by step in `deploy/README.md`, section 9).
 
-Não faça push direto em `develop` ou `main`, não use force push nessas branches e não misture tarefas sem relação no mesmo pull request.
+Do not push directly to `develop` or `main`, do not force push to those branches and do not mix unrelated tasks in the same pull request.
 
 ## Commits
 
-Escreva em inglês, no formato:
+Write in English, in the format:
 
 ```text
 feat(scope): short description (KAN-XX)
@@ -34,11 +34,11 @@ docs(scope): short description (KAN-XX)
 chore(scope): short description
 ```
 
-Quando não existir KAN, explique a origem da manutenção no pull request. Não invente identificadores.
+When there is no KAN, explain where the maintenance came from in the pull request. Do not invent identifiers.
 
-## Verificações
+## Checks
 
-Execute apenas os módulos afetados durante o desenvolvimento e todas as verificações exigidas antes da promoção para `main`.
+Run only the affected modules during development, and every required check before promotion to `main`.
 
 Backend:
 
@@ -67,18 +67,18 @@ npm run typecheck
 npm test -- --runInBand
 ```
 
-## Regras de segurança e domínio
+## Security and domain rules
 
-- Nunca inclua segredos, tokens ou connection strings.
-- `empresaId` e `usuarioId` vêm do JWT no backend, nunca do body.
-- Toda consulta operacional respeita `EmpresaId`.
-- Exclusão operacional é soft delete por `DeletedAt`.
-- Mudanças de enum persistido devem manter conversão para string.
-- Migrations são geradas e revisadas no pull request, mas só aplicadas com autorização e ambiente definido.
-- Alterações de sincronização precisam considerar retry, idempotência, UUID e falhas parciais.
+- Never include secrets, tokens or connection strings.
+- `empresaId` and `usuarioId` come from the JWT on the backend, never from the body.
+- Every operational query respects `EmpresaId`.
+- Operational deletion is a soft delete through `DeletedAt`.
+- Changes to a persisted enum must keep the conversion to string.
+- Migrations are generated and reviewed in the pull request, but only applied with authorization and a defined environment.
+- Synchronization changes must take retry, idempotency, UUID and partial failures into account.
 
 ## Pull request
 
-O PR deve explicar comportamento anterior e novo, impacto entre módulos, evidência dos testes, migration e risco residual. Interface deve incluir imagem ou vídeo curto quando a alteração visual for relevante.
+The PR must explain the previous and new behavior, the impact across modules, test evidence, migrations and residual risk. Interface changes should include an image or short video when the visual change is relevant.
 
-Uma aprovação não substitui testes verdes. Testes verdes também não substituem revisão de regra de negócio.
+An approval does not replace green tests. Green tests do not replace a business rule review either.
