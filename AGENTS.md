@@ -31,6 +31,7 @@ This file is the source of shared rules for any agent working in this repository
 - Mobile: lint, TypeScript and tests defined in `mobile/package.json`.
 - Always ask Davi for authorization before a commit, push, promotion to `main`, applying a migration or an external change.
 - Commits, pull request titles and descriptions in English, citing the KAN/task when there is one, with a short line explaining the result.
+- Exception: Davi's own commits and pull requests (including those an agent writes for Davi) are in Portuguese (pt-BR). Do not translate them.
 - Repository documentation is written in English. User-facing text in the app and the web panel stays in Portuguese (pt-BR).
 - Do not discard or overwrite the user's existing changes.
 

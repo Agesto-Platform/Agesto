@@ -24,7 +24,7 @@ Do not push directly to `develop` or `main`, do not force push to those branches
 
 ## Commits
 
-Write in English, in the format:
+Write in English, in the format below. Davi's own commits and pull requests (including those an agent writes for Davi) are in Portuguese (pt-BR), with the same prefixes:
 
 ```text
 feat(scope): short description (KAN-XX)
