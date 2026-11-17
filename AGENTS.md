@@ -30,7 +30,7 @@ Este arquivo é a fonte de regras compartilhadas para qualquer agente que trabal
 - Web: lint, testes e build definidos em `web/package.json`.
 - Mobile: lint, TypeScript e testes definidos em `mobile/package.json`.
 - Sempre pedir autorização de Davi antes de commit, push, promoção para `main`, aplicação de migration ou mudança externa.
-- Commits em inglês, citando a KAN/task quando existir, com uma linha curta explicando o resultado.
+- Commits, títulos e descrições de pull request em português (pt-BR), citando a KAN/task quando existir, com uma linha curta explicando o resultado.
 - Não descarte nem sobrescreva alterações existentes do usuário.
 
 ## Autoridade e decisões
