@@ -9,5 +9,7 @@ public interface IUsuarioRepository
     Task<bool> EmailExistsAsync(string email, CancellationToken cancellationToken);
     Task<int> CountDonosAtivos(long empresaId, CancellationToken cancellationToken);
     Task AddAsync(Usuario usuario, CancellationToken cancellationToken);
+    // Marca como usados os links de senha ainda abertos da pessoa (convite ou redefinição).
+    Task InvalidarLinksDeSenhaAsync(long usuarioId, DateTime agora, CancellationToken cancellationToken);
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

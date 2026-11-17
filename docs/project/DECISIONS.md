@@ -1098,3 +1098,25 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
   - no superadmin, o bloco **Assinatura** (situação, valor, licenças, acessos em uso, histórico, "Registrar pagamento" e "Ajustar"), a coluna e o filtro de assinatura na lista de empresas;
   - para o Dono, o aviso no topo do painel (vence em breve ou carência, com o link do WhatsApp do Agesto) e o bloco **Assinatura** na Parametrização (`GET /api/assinatura`).
 - **Desfazer pagamento (13/11/2026, branch `feature/pagamentos`):** a equipe desfaz um pagamento registrado por engano no histórico do superadmin. Só o último pagamento ativo, e só enquanto o "pago até" ainda é o que ele gerou; depois de um "Ajustar", corrige-se pelo "Ajustar". O "pago até" volta ao de antes do pagamento, o registro fica no histórico como desfeito (quem e quando), a rotina de bloqueio automático volta a valer e a ação entra na auditoria.
+
+---
+
+## DEC-59 — Field agents get their password from the Owner, no email verification
+
+**Status:** 🟡 Decided by Davi Oliveira on 17/11/2026; implemented on branch `feature/agente-senha-pelo-dono`. No migration.
+
+**Decision:** an Agente (field agent) no longer depends on email:
+- **Login:** the agent's email is only the login for the app. It must look like an email (`name@something`), but it does not need to exist or be verified, for example `joao@minhaempresa`.
+- **Password:** the Dono (Owner) sets the agent's password when creating the access, and the agent signs in right away, with no forced change on the first access.
+- **Forgotten password:** the Dono sets a new one in the panel ("Definir senha"). The "Esqueci a senha" email link is now only for the Dono.
+- **Dono:** nothing changes. A new Dono still gets the email invite and creates their own password (DEC-55).
+
+**Why:** many field agents do not have, or do not check, an email address, and the invite link blocked them from starting to work.
+
+**How it works:**
+- `POST /api/usuario` with `perfil: "Agente"` requires `senha` (8 to 128 characters). The account is created ready (`EmailConfirmadoEm` set, as in sign-up with a password) and no invite is sent; the response has `conviteEnviado: false`. Sending `senha` for a Dono is rejected.
+- `POST /api/usuario/{id}/senha` (Dono only, same company, Agente only) sets a new password. It also clears a lockout from wrong passwords and invalidates any open invite or reset link. Agents created before this change with a pending invite get their first password this way.
+- `POST /api/auth/esqueci-senha` sends the link only to a Dono; for an agent the response stays the same, but no email goes out.
+- Web: the new-user form asks for the password when the profile is Agente, and the agent detail has "Definir senha". The web login accepts `name@something`. The app's "Esqueci a senha" screen tells agents to ask the Dono.
+
+**Pending:** a password set by the Dono does not sign out sessions already open on the agent's phone (same open point as SEG-01). Promoting an agent with a made-up email to Dono leaves that Dono without a working "Esqueci a senha"; the panel does not warn about it yet. The superadmin still creates agents through the invite flow.

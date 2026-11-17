@@ -9,6 +9,8 @@ public interface IUsuarioService
     // Acesso novo com convite por email (DEC-55).
     Task<UsuarioConviteResponse> CreateAsync(long empresaId, UsuarioCreateRequest request, CancellationToken cancellationToken);
     Task<UsuarioConviteResponse> ReenviarConviteAsync(long empresaId, long id, CancellationToken cancellationToken);
+    // O Dono define a senha do Agente (DEC-59).
+    Task<UsuarioResponse> DefinirSenhaAsync(long empresaId, long id, DefinirSenhaUsuarioRequest request, CancellationToken cancellationToken);
     Task<UsuarioResponse> UpdateAsync(long empresaId, long donoId, long id, UsuarioUpdateRequest request, CancellationToken cancellationToken);
     Task<UsuarioResponse> SetAtivoAsync(long empresaId, long donoId, long id, bool ativo, CancellationToken cancellationToken);
 }
