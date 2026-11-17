@@ -50,6 +50,7 @@ describe('navVisivel', () => {
       '/relatorios',
       '/usuarios',
       '/parametrizacao',
+      '/suporte',
     ])
   })
 
