@@ -1,29 +1,30 @@
 /**
  * Design tokens do app do agente (mobile). Tema claro fixo.
  *
- * Redesign Petróleo: uma cor só para agir (`brand`). O resto é branco, cinza
+ * Redesign Azul petróleo (#1D4E6B, o mesmo tom padrão do painel web): uma cor
+ * só para agir (`brand`), com os mesmos cinzas do painel. O resto é branco, cinza
  * bem claro e o próprio petróleo em transparência — `brandSoft` (8%) para
  * fundos selecionados e `brandLine` (20%) para bordas. Verde, âmbar e vermelho
  * aparecem só em selos e avisos de estado. Texto em `ink`..`ink3` passa AA
  * (4.5:1) sobre `bg` e `surface`; `ink4` é só para ícones e placeholder.
  */
 export const colors = {
-  bg: '#F6F7F7',
+  bg: '#F6F7F9',
   surface: '#FFFFFF',
-  surface2: '#F1F3F4',
+  surface2: '#F1F3F5',
 
-  ink: '#14212A',
-  ink2: '#3A4850',
-  ink3: '#5E6A71',
-  ink4: '#8A949A',
+  ink: '#141F29',
+  ink2: '#3A4753',
+  ink3: '#5D6974',
+  ink4: '#8A949C',
 
-  line: '#E4E8E9',
-  line2: '#EEF1F2',
+  line: '#E3E8EC',
+  line2: '#EEF1F3',
 
-  brand: '#0F4C5C',
-  brandSoft: '#ECF1F2',
-  brandLine: '#CFDBDE',
-  brandInk: '#0B3D49',
+  brand: '#1D4E6B',
+  brandSoft: '#EDF1F3',
+  brandLine: '#D2DCE1',
+  brandInk: '#163E56',
 
   good: '#2B6E50',
   goodSoft: '#EAF3EE',
