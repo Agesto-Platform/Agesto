@@ -30,7 +30,7 @@ interface Sessao {
 async function apiFetch<T>(sessao: Sessao, path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
-  if (init.body && !headers.has('Content-Type')) {
+  if (init.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
   const token = sessao.getToken()
@@ -71,6 +71,8 @@ export function criarApi(sessao: Sessao) {
     get: <T>(path: string) => apiFetch<T>(sessao, path),
     post: <T>(path: string, data: unknown) =>
       apiFetch<T>(sessao, path, { method: 'POST', body: JSON.stringify(data) }),
+    /** Formulário com arquivos (multipart): o navegador põe o Content-Type com o boundary. */
+    postForm: <T>(path: string, form: FormData) => apiFetch<T>(sessao, path, { method: 'POST', body: form }),
     put: <T>(path: string, data: unknown) =>
       apiFetch<T>(sessao, path, { method: 'PUT', body: JSON.stringify(data) }),
     del: <T>(path: string) => apiFetch<T>(sessao, path, { method: 'DELETE' }),

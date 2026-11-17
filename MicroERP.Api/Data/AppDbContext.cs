@@ -27,6 +27,9 @@ public class AppDbContext : DbContext
     public DbSet<TokenRedefinicaoSenha> TokensRedefinicaoSenha => Set<TokenRedefinicaoSenha>();
     public DbSet<UsoIa> UsosIa => Set<UsoIa>();
     public DbSet<PagamentoAssinatura> PagamentosAssinatura => Set<PagamentoAssinatura>();
+    public DbSet<TicketSuporte> TicketsSuporte => Set<TicketSuporte>();
+    public DbSet<RespostaTicketSuporte> RespostasTicketSuporte => Set<RespostaTicketSuporte>();
+    public DbSet<AnexoTicketSuporte> AnexosTicketSuporte => Set<AnexoTicketSuporte>();
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -84,6 +87,53 @@ public class AppDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.EmpresaId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Chamados de suporte do Dono (DEC-60).
+        modelBuilder.Entity<TicketSuporte>(entity =>
+        {
+            entity.ToTable("TicketsSuporte");
+            entity.Property(e => e.Assunto).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Mensagem).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(e => new { e.EmpresaId, e.CreatedAt });
+            entity.HasIndex(e => e.Status);
+            entity.HasOne(e => e.Empresa)
+                .WithMany()
+                .HasForeignKey(e => e.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Usuario)
+                .WithMany()
+                .HasForeignKey(e => e.UsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasMany(e => e.Respostas)
+                .WithOne(r => r.Ticket)
+                .HasForeignKey(r => r.TicketId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AnexoTicketSuporte>(entity =>
+        {
+            entity.ToTable("AnexosTicketSuporte");
+            entity.Property(e => e.NomeArquivo).HasMaxLength(150).IsRequired();
+            entity.Property(e => e.ContentType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Caminho).HasMaxLength(300).IsRequired();
+            entity.HasIndex(e => e.TicketId);
+            entity.HasOne(e => e.Ticket)
+                .WithMany(t => t.Anexos)
+                .HasForeignKey(e => e.TicketId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RespostaTicketSuporte>(entity =>
+        {
+            entity.ToTable("RespostasTicketSuporte");
+            entity.Property(e => e.Mensagem).HasMaxLength(4000).IsRequired();
+            entity.HasIndex(e => e.TicketId);
+            entity.HasOne(e => e.Admin)
+                .WithMany()
+                .HasForeignKey(e => e.AdminId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<AdminPlataforma>(entity =>

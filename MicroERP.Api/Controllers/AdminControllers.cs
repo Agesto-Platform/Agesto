@@ -392,6 +392,58 @@ public sealed class AdminEmpresasController : AdminControllerBase
     }
 }
 
+// Chamados de suporte dos Donos (DEC-60): a equipe lê, responde e avança o status.
+[ApiController]
+[Authorize(Policy = Policies.AdminPlataforma)]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+[Route("api/admin/suporte")]
+public sealed class AdminSuporteController : AdminControllerBase
+{
+    private readonly ISuporteService _suporte;
+
+    public AdminSuporteController(ISuporteService suporte)
+    {
+        _suporte = suporte;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse>> Listar([FromQuery] Enums.StatusTicket? status, CancellationToken cancellationToken)
+    {
+        var tickets = await _suporte.ListarAdminAsync(status, cancellationToken);
+        return Ok(new ApiResponse { Success = true, Message = "Chamados.", Data = tickets });
+    }
+
+    [HttpGet("{id:long}")]
+    public Task<ActionResult<ApiResponse>> Obter(long id, CancellationToken cancellationToken) =>
+        Executar(_ => _suporte.ObterAdminAsync(id, cancellationToken), "Chamado.");
+
+    [HttpPost("{id:long}/respostas")]
+    public Task<ActionResult<ApiResponse>> Responder(long id, [FromBody] TicketResponderRequest request, CancellationToken cancellationToken) =>
+        Executar(adminId => _suporte.ResponderAsync(adminId, id, request, Ip, cancellationToken), "Resposta enviada ao Dono.");
+
+    [HttpPut("{id:long}/status")]
+    public Task<ActionResult<ApiResponse>> MudarStatus(long id, [FromBody] TicketStatusRequest request, CancellationToken cancellationToken) =>
+        Executar(adminId => _suporte.MudarStatusAsync(adminId, id, request.Status, Ip, cancellationToken), "Status atualizado.");
+
+    private async Task<ActionResult<ApiResponse>> Executar(Func<long, Task<TicketResponse>> acao, string mensagem)
+    {
+        if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
+        try
+        {
+            var ticket = await acao(adminId);
+            return Ok(new ApiResponse { Success = true, Message = mensagem, Data = ticket });
+        }
+        catch (NotFoundException ex)
+        {
+            return Erro(StatusCodes.Status404NotFound, ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return Erro(StatusCodes.Status400BadRequest, ex.Message);
+        }
+    }
+}
+
 [ApiController]
 [Authorize(Policy = Policies.AdminPlataforma)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
