@@ -14,6 +14,7 @@ import { assinaturaHandlers } from './data/assinatura'
 import { usuarioHandlers } from './data/usuarios'
 import { agenteHandlers } from './data/agente'
 import { adminHandlers } from './data/admin'
+import { suporteHandlers } from './data/suporte'
 import { listasHandlers } from './data/listas'
 
 /**
@@ -83,4 +84,5 @@ export const handlers = [
   ...usuarioHandlers,
   ...agenteHandlers,
   ...adminHandlers,
+  ...suporteHandlers,
 ]

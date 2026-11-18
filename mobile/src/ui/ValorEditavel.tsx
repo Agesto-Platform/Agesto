@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { colors, radius, space } from './theme'
+import { colors, radius, space, font } from './theme'
 import { parseValor } from '@/features/servicos/validateServico'
 
 /** R$ sem centavos quando o valor é inteiro; com os dois dígitos quando não é. */
@@ -85,11 +85,12 @@ export function ValorEditavel({
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), alignSelf: 'flex-start', marginTop: 2 },
-  valor: { fontSize: 12.5, color: colors.ink3 },
-  ajustado: { color: colors.brandInk, fontWeight: '700' },
+  valor: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3 },
+  ajustado: { color: colors.brandInk, fontFamily: font.semibold },
   tag: { backgroundColor: colors.brandSoft, borderRadius: radius.pill, paddingHorizontal: space(1.5), paddingVertical: 1 },
-  tagText: { fontSize: 10.5, fontWeight: '700', color: colors.brandInk },
+  tagText: { fontSize: 10.5, fontFamily: font.semibold, color: colors.brandInk },
   input: {
+    fontFamily: font.regular,
     marginTop: 2,
     alignSelf: 'flex-start',
     minWidth: 110,

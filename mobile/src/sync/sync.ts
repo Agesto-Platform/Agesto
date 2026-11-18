@@ -3,6 +3,8 @@ import { db } from '@/db/instance'
 import { saveConfig } from '@/lib/appConfig'
 import { saveSugeridos } from '@/lib/sugeridos'
 import { agendarAvisosDoDia } from '@/lib/avisosDoDia'
+import { ApiError } from '@/lib/errors'
+import { iniciarEnvio, terminarEnvio } from './emEnvio'
 import type { LocalAtendimento, LocalDb } from '@/db/types'
 import type {
   AgendaItem,
@@ -176,7 +178,22 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
     })),
   }
 
-  const res = await api.post<SyncDescargaResponse>('/api/sync/descarga', body)
+  // Trava a edição do que vai no envio até saber o que o servidor gravou (MOB-03).
+  const enviados = [
+    ...clientesPend.map((c) => c.uuid),
+    ...servicosPend.map((s) => s.uuid),
+    ...atendPend.map((a) => a.uuid),
+  ]
+  await iniciarEnvio(database, enviados)
+  let res: SyncDescargaResponse
+  try {
+    res = await api.post<SyncDescargaResponse>('/api/sync/descarga', body)
+  } catch (e) {
+    // 4xx (exceto 408) = recusado antes de gravar: libera. Rede caída ou 5xx: talvez tenha gravado.
+    const recusado = e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 408
+    await terminarEnvio(database, enviados, recusado)
+    throw e
+  }
 
   // Religa atendimentos de clientes criados offline ao id do servidor. Vale
   // também para os que foram rejeitados: no reenvio já vão com o id.
@@ -220,6 +237,8 @@ export async function descarga(database: LocalDb = db): Promise<DescargaResult> 
     recusas[k] = recusas[k] ? `${recusas[k]} ${r.motivo}` : r.motivo
   }
   await database.setMeta(RECUSAS, JSON.stringify(recusas))
+  // Resposta aplicada: aceitos já estão marcados e os recusados seguem pendentes e editáveis.
+  await terminarEnvio(database, enviados, true)
 
   return {
     clientesImportados: res.clientesImportados,

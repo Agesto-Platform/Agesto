@@ -3,8 +3,10 @@ import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { db } from '@/db/instance'
+import { MENSAGEM_EM_ENVIO, MENSAGEM_JA_ENVIADO, podeAlterar } from '@/sync/emEnvio'
+import { avisar } from '@/ui/confirmar'
 import { uuid } from '@/lib/uuid'
 import { maskCpf, maskPhone } from '@/lib/masks'
 import { validateCliente, isValid, type ClienteFormErrors } from '@/features/clientes/validateCliente'
@@ -44,6 +46,16 @@ export default function ClienteNovo() {
     const e = validateCliente({ nome, cpf })
     setErrors(e)
     if (!isValid(e)) return
+    // MOB-03: não corrige o que está sendo enviado (ou ficou sem resposta).
+    if (!(await podeAlterar(db, original?.uuid))) {
+      avisar('Envio em andamento', MENSAGEM_EM_ENVIO)
+      return
+    }
+    // Foi enviado enquanto a tela estava aberta: a correção não chegaria ao servidor.
+    if (original && !(await db.getPendingClientes()).some((c) => c.uuid === original.uuid && c.syncedAt === null)) {
+      avisar('Já enviado', MENSAGEM_JA_ENVIADO)
+      return
+    }
     setSaving(true)
     try {
       await db.addCliente({
@@ -106,16 +118,16 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: space(3), paddingHorizontal: space(4), paddingVertical: space(3.5), borderBottomWidth: 1, borderBottomColor: colors.line2, backgroundColor: colors.surface },
   close: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: colors.ink },
+  title: { fontSize: 17, fontFamily: font.semibold, color: colors.ink },
 
   body: { padding: space(4), gap: space(4) },
   field: { gap: space(1.5) },
-  label: { fontSize: 12.5, fontWeight: '600', color: colors.ink2 },
-  input: { borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(3), fontSize: 15, color: colors.ink },
+  label: { fontSize: 12.5, fontFamily: font.semibold, color: colors.ink2 },
+  input: { fontFamily: font.regular, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(3), fontSize: 15, color: colors.ink },
   inputErr: { borderColor: colors.bad },
-  err: { fontSize: 12, color: colors.bad },
+  err: { fontFamily: font.regular, fontSize: 12, color: colors.bad },
 
   footer: { padding: space(4), borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.surface },
   save: { backgroundColor: colors.brand, borderRadius: radius.sm, paddingVertical: space(3.75), alignItems: 'center' },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  saveText: { color: '#fff', fontSize: 15, fontFamily: font.semibold },
 })

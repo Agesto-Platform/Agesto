@@ -45,6 +45,8 @@ export const NAV: NavGroup[] = [
     items: [
       { to: '/usuarios', label: 'Usuários', icon: 'user' },
       { to: '/parametrizacao', label: 'Parametrização', icon: 'sliders' },
+      // Chamados para a equipe do Agesto (DEC-60). O painel é só do Dono.
+      { to: '/suporte', label: 'Suporte', icon: 'help' },
     ],
   },
 ]

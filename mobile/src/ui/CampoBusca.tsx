@@ -1,6 +1,6 @@
 import { View, TextInput, Pressable, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { colors, radius, space } from './theme'
+import { colors, radius, space, font } from './theme'
 
 /** Campo de busca com lupa e botão de limpar (I1). */
 export function CampoBusca({
@@ -45,5 +45,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     paddingHorizontal: space(3),
   },
-  input: { flex: 1, fontSize: 15, color: colors.ink, paddingVertical: space(2.5) },
+  input: { fontFamily: font.regular, flex: 1, fontSize: 15, color: colors.ink, paddingVertical: space(2.5) },
 })

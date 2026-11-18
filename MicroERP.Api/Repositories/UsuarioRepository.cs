@@ -47,6 +47,12 @@ public sealed class UsuarioRepository : IUsuarioRepository
         await _dbContext.Usuarios.AddAsync(usuario, cancellationToken);
     }
 
+    public async Task InvalidarLinksDeSenhaAsync(long usuarioId, DateTime agora, CancellationToken cancellationToken)
+    {
+        var abertos = await Services.LinksDeSenha.Abertos(_dbContext, usuarioId, null).ToListAsync(cancellationToken);
+        foreach (var t in abertos) t.UsadoEm = agora;
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
         await _dbContext.SaveChangesAsync(cancellationToken);

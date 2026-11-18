@@ -10,7 +10,8 @@ import { guardarTransicao } from '../layout/entrada'
 import './login.css'
 import { Logo } from '../components/Logo'
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Só algo@algo: o login do Agente não precisa ser um email real (DEC-59).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+$/
 const USING_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 

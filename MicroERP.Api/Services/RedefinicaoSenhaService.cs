@@ -16,7 +16,7 @@ namespace MicroERP.Api.Services;
 // - o pedido responde igual exista o email ou não;
 // - o link vale 15 minutos (esqueci) ou 72 horas (convite da equipe), uma vez só;
 // - o envio sai da requisição (FilaDeEmails), então a resposta leva o mesmo tempo.
-// Dono e Agente podem pedir; a equipe do Agesto usa o próprio convite.
+// Só o Dono pede (o Agente pede ao Dono uma senha nova, DEC-59); a equipe do Agesto usa o próprio convite.
 public sealed class RedefinicaoSenhaService : IRedefinicaoSenhaService
 {
     // Um email por conta a cada 2 minutos: evita encher a caixa de alguém.
@@ -51,7 +51,8 @@ public sealed class RedefinicaoSenhaService : IRedefinicaoSenhaService
 
         var usuario = await _db.Usuarios
             .FirstOrDefaultAsync(u => u.Email == email && u.DeletedAt == null, cancellationToken);
-        if (usuario is null || !usuario.Ativo || usuario.Perfil is not (PerfilUsuario.Dono or PerfilUsuario.Agente)) return;
+        // Só o Dono: o email do Agente pode não ser real, e a senha dele é o Dono que define (DEC-59).
+        if (usuario is null || !usuario.Ativo || usuario.Perfil != PerfilUsuario.Dono) return;
 
         var empresaAtiva = await _db.Empresas.AnyAsync(e => e.Id == usuario.EmpresaId && e.Ativa, cancellationToken);
         if (!empresaAtiva) return;

@@ -18,21 +18,22 @@ public sealed class UsuarioServiceTests
     private const long DonoId = 100;
 
     [Fact]
-    public async Task CreateAsync_CriaAcessoComConvitePendenteESemSenhaConhecida()
+    public async Task CreateAsync_DonoNovoRecebeConvitePendenteESemSenhaConhecida()
     {
         await using var db = await Seed();
         var convites = new ConvitesFalsos();
         var service = new UsuarioService(new UsuarioRepository(db), convites, new LicencasLivres());
 
-        var criado = await service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = " Carlos ", Email = " Carlos@Teste.com " }, CancellationToken.None);
+        var criado = await service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = " Carlos ", Email = " Carlos@Teste.com ", Perfil = PerfilUsuario.Dono }, CancellationToken.None);
 
         Assert.Equal("Carlos", criado.Usuario.Nome);
         Assert.Equal("carlos@teste.com", criado.Usuario.Email);
-        Assert.Equal(PerfilUsuario.Agente, criado.Usuario.Perfil);
+        Assert.Equal(PerfilUsuario.Dono, criado.Usuario.Perfil);
         Assert.True(criado.Usuario.Ativo);
         Assert.True(criado.Usuario.ConvitePendente);
         Assert.False(criado.Usuario.DeveTrocarSenha);
         Assert.True(criado.EnvioHabilitado);
+        Assert.True(criado.ConviteEnviado);
         Assert.Equal(["carlos@teste.com"], convites.Usuarios.Select(u => u.Email));
 
         var carlos = await db.Usuarios.SingleAsync(u => u.Email == "carlos@teste.com");
@@ -47,7 +48,77 @@ public sealed class UsuarioServiceTests
         var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
 
         await Assert.ThrowsAsync<EmailAlreadyExistsException>(() =>
-            service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = "Outro", Email = "DONO@teste.com" }, CancellationToken.None));
+            service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = "Outro", Email = "DONO@teste.com", Senha = "SenhaDoAgente1" }, CancellationToken.None));
+    }
+
+    // DEC-59: o Agente nasce com a senha do Dono, sem convite, e entra na hora.
+    [Fact]
+    public async Task CreateAsync_AgenteComSenhaDoDono_EntraSemConviteNemEmailReal()
+    {
+        await using var db = await Seed();
+        var convites = new ConvitesFalsos();
+        var service = new UsuarioService(new UsuarioRepository(db), convites, new LicencasLivres());
+
+        var criado = await service.CreateAsync(Empresa,
+            new UsuarioCreateRequest { Nome = "João", Email = "joao@minhaempresa", Senha = "SenhaDoJoao1" }, CancellationToken.None);
+
+        Assert.Equal(PerfilUsuario.Agente, criado.Usuario.Perfil);
+        Assert.False(criado.Usuario.ConvitePendente);
+        Assert.False(criado.ConviteEnviado);
+        Assert.Empty(convites.Usuarios);
+        Assert.Empty(db.TokensRedefinicaoSenha);
+
+        var login = await new AuthService(db, Configuracao())
+            .LoginAsync(new AuthLoginRequest { Email = "joao@minhaempresa", Senha = "SenhaDoJoao1" }, CancellationToken.None);
+        Assert.NotNull(login);
+        Assert.False(login.DeveTrocarSenha);
+    }
+
+    [Fact]
+    public async Task CreateAsync_AgenteSemSenha_OuDonoComSenha_Lanca()
+    {
+        await using var db = await Seed();
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = "Sem senha", Email = "sem@teste.com" }, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.CreateAsync(Empresa, new UsuarioCreateRequest { Nome = "Dono", Email = "dono2@teste.com", Perfil = PerfilUsuario.Dono, Senha = "SenhaQualquer1" }, CancellationToken.None));
+        Assert.Equal(3, await db.Usuarios.CountAsync());
+    }
+
+    // DEC-59: o Dono define a senha do Agente; links abertos e bloqueio caem.
+    [Fact]
+    public async Task DefinirSenha_AgenteEntraComANovaSenha_LinksAbertosDeixamDeValer()
+    {
+        await using var db = await Seed();
+        var carla = await db.Usuarios.SingleAsync(u => u.Id == 101);
+        carla.BloqueadoAte = DateTime.UtcNow.AddMinutes(10);
+        carla.TentativasLoginFalhas = 3;
+        await LinksDeSenha.EmitirAsync(db, 101, null, TipoTokenSenha.Convite, DateTime.UtcNow, CancellationToken.None);
+        await db.SaveChangesAsync();
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
+
+        var r = await service.DefinirSenhaAsync(Empresa, 101, new DefinirSenhaUsuarioRequest { NovaSenha = "SenhaNovaCarla1" }, CancellationToken.None);
+
+        Assert.False(r.ConvitePendente);
+        Assert.All(db.TokensRedefinicaoSenha, t => Assert.NotNull(t.UsadoEm));
+        var login = await new AuthService(db, Configuracao())
+            .LoginAsync(new AuthLoginRequest { Email = "carla@teste.com", Senha = "SenhaNovaCarla1" }, CancellationToken.None);
+        Assert.NotNull(login);
+    }
+
+    [Fact]
+    public async Task DefinirSenha_SoDoAgenteDaPropriaEmpresa()
+    {
+        await using var db = await Seed();
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
+        var pedido = new DefinirSenhaUsuarioRequest { NovaSenha = "SenhaNova123" };
+
+        await Assert.ThrowsAsync<RegraUsuarioException>(() => service.DefinirSenhaAsync(Empresa, DonoId, pedido, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.DefinirSenhaAsync(Empresa, 200, pedido, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.DefinirSenhaAsync(Empresa, 101, new DefinirSenhaUsuarioRequest { NovaSenha = "curta" }, CancellationToken.None));
     }
 
     [Fact]

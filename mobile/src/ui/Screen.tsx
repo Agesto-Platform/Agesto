@@ -13,6 +13,7 @@ export function Screen({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bg },
-  inner: { flex: 1 },
+  // A faixa da barra de status fica branca, junto do cabeçalho; o conteúdo, no cinza claro.
+  safe: { flex: 1, backgroundColor: colors.surface },
+  inner: { flex: 1, backgroundColor: colors.bg },
 })
