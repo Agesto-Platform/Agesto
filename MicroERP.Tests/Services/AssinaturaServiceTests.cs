@@ -209,7 +209,7 @@ public sealed class AssinaturaServiceTests
         var usuarios = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), Servico(db));
 
         await Assert.ThrowsAsync<RegraUsuarioException>(() => usuarios.CreateAsync(1,
-            new UsuarioCreateRequest { Nome = "Novo", Email = "novo@x.com", Perfil = PerfilUsuario.Agente }, CancellationToken.None));
+            new UsuarioCreateRequest { Nome = "Novo", Email = "novo@x.com", Perfil = PerfilUsuario.Agente, Senha = "SenhaDoNovo1" }, CancellationToken.None));
         await Assert.ThrowsAsync<RegraUsuarioException>(() => usuarios.SetAtivoAsync(1, 1, 3, true, CancellationToken.None));
 
         // Desativar sempre pode, e libera a vaga.

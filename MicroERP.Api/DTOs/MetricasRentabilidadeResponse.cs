@@ -11,4 +11,13 @@ public sealed class MetricasRentabilidadeResponse
     public decimal MargemPercentual { get; set; }
     public int Atendimentos { get; set; }
     public decimal TicketMedio { get; set; }
+    // Faturamento de cada dia em Brasília, com os mesmos atendimentos do total (J-02).
+    public IReadOnlyList<ReceitaDiaPonto> ReceitaPorDia { get; set; } = [];
+}
+
+// Dia no calendário de Brasília ("2026-11-17"), sem hora nem fuso, para o web não deslocar.
+public sealed class ReceitaDiaPonto
+{
+    public DateOnly Dia { get; set; }
+    public decimal Valor { get; set; }
 }

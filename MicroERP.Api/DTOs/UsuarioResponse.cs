@@ -22,4 +22,6 @@ public sealed class UsuarioConviteResponse
 {
     public UsuarioResponse Usuario { get; set; } = new();
     public bool EnvioHabilitado { get; set; }
+    // false para o Agente com senha definida pelo Dono (DEC-59): nenhum email sai.
+    public bool ConviteEnviado { get; set; } = true;
 }

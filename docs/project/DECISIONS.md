@@ -1098,3 +1098,49 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
   - no superadmin, o bloco **Assinatura** (situação, valor, licenças, acessos em uso, histórico, "Registrar pagamento" e "Ajustar"), a coluna e o filtro de assinatura na lista de empresas;
   - para o Dono, o aviso no topo do painel (vence em breve ou carência, com o link do WhatsApp do Agesto) e o bloco **Assinatura** na Parametrização (`GET /api/assinatura`).
 - **Desfazer pagamento (13/11/2026, branch `feature/pagamentos`):** a equipe desfaz um pagamento registrado por engano no histórico do superadmin. Só o último pagamento ativo, e só enquanto o "pago até" ainda é o que ele gerou; depois de um "Ajustar", corrige-se pelo "Ajustar". O "pago até" volta ao de antes do pagamento, o registro fica no histórico como desfeito (quem e quando), a rotina de bloqueio automático volta a valer e a ação entra na auditoria.
+
+---
+
+## DEC-59 — Field agents get their password from the Owner, no email verification
+
+**Status:** 🟡 Decided by Davi Oliveira on 17/11/2026; implemented on branch `feature/agente-senha-pelo-dono`. No migration.
+
+**Decision:** an Agente (field agent) no longer depends on email:
+- **Login:** the agent's email is only the login for the app. It must look like an email (`name@something`), but it does not need to exist or be verified, for example `joao@minhaempresa`.
+- **Password:** the Dono (Owner) sets the agent's password when creating the access, and the agent signs in right away, with no forced change on the first access.
+- **Forgotten password:** the Dono sets a new one in the panel ("Definir senha"). The "Esqueci a senha" email link is now only for the Dono.
+- **Dono:** nothing changes. A new Dono still gets the email invite and creates their own password (DEC-55).
+
+**Why:** many field agents do not have, or do not check, an email address, and the invite link blocked them from starting to work.
+
+**How it works:**
+- `POST /api/usuario` with `perfil: "Agente"` requires `senha` (8 to 128 characters). The account is created ready (`EmailConfirmadoEm` set, as in sign-up with a password) and no invite is sent; the response has `conviteEnviado: false`. Sending `senha` for a Dono is rejected.
+- `POST /api/usuario/{id}/senha` (Dono only, same company, Agente only) sets a new password. It also clears a lockout from wrong passwords and invalidates any open invite or reset link. Agents created before this change with a pending invite get their first password this way.
+- `POST /api/auth/esqueci-senha` sends the link only to a Dono; for an agent the response stays the same, but no email goes out.
+- Web: the new-user form asks for the password when the profile is Agente, and the agent detail has "Definir senha". The web login accepts `name@something`. The app's "Esqueci a senha" screen tells agents to ask the Dono.
+
+**Pending:** a password set by the Dono does not sign out sessions already open on the agent's phone (same open point as SEG-01). Promoting an agent with a made-up email to Dono leaves that Dono without a working "Esqueci a senha"; the panel does not warn about it yet. The superadmin still creates agents through the invite flow.
+
+---
+
+## DEC-60 — Support tab: tickets from the Dono, answered in the superadmin
+
+**Status:** 🟡 Decided by Davi Oliveira on 17/11/2026; implemented on branch `feature/suporte-tickets`. Migration `AddTicketsSuporte` (new tables, not applied to Supabase yet). Attachments need the private Storage bucket `suporte-anexos` and the `Storage__*` variables on Render.
+
+**Decision:** the panel gets a **Suporte** tab, only for the Dono (the web panel is Dono-only already):
+- **Open a ticket:** the Dono picks a subject (Dúvida, Problema/bug, Sugestão de melhoria, Assinatura e pagamento, Outro) and writes the message (10 to 4,000 characters).
+- **Attachments:** up to 3 files per ticket, images (PNG, JPG, WEBP) or PDF, at most 5 MB each. A screenshot can be pasted into the message with Ctrl+V. Images are shrunk in the browser before upload (longest side 1,920 px, re-encoded as WEBP, or JPEG where WEBP is not available); a 16 MB phone-sized PNG became a 109 KB WEBP in the test. PDFs are stored as they are: they are usually compressed already, and recompressing them would need a tool such as Ghostscript on the server.
+- **Emails:** the ticket goes to the Agesto team inbox (`Email__SuporteEmail`) with a copy to the Dono who opened it. Each team reply is also emailed to the Dono.
+- **Follow-up:** the Dono sees each ticket's status (Aberto, Em andamento, Resolvido) and the team's replies in the tab.
+- **Superadmin:** a **Suporte** page lists every company's tickets, filtered by status. The team replies and moves the status; a reply to an open ticket moves it to "Em andamento" unless another status is chosen. Replies and status changes go to the admin audit log.
+
+**Why:** the launch plan needs a support channel (D14), and a ticket inside the panel keeps the history next to the company, instead of scattered across WhatsApp and email.
+
+**How it works:**
+- Tables `TicketsSuporte` and `RespostasTicketSuporte` (enums stored as text, RLS like the other tables). Company and author come from the token.
+- Dono: `GET/POST /api/suporte` and `GET /api/suporte/{id}`, only the company's own tickets. At most 10 tickets per company in 24 hours (429), to protect the email quota.
+- Team: `GET /api/admin/suporte?status=`, `GET /api/admin/suporte/{id}`, `POST /api/admin/suporte/{id}/respostas` and `PUT /api/admin/suporte/{id}/status`.
+- Everything the Dono writes is HTML-escaped in the emails.
+- Attachment storage: Supabase Storage, private bucket `suporte-anexos`, outside the database (the database keeps only name, type, size and path, in `AnexosTicketSuporte`). The API checks the real type by the file's first bytes, not by its name, and opens each file through a signed link valid for 10 minutes. The files are not attached to the emails; the emails say how many there are. Without `Storage__SupabaseUrl` and `Storage__ChaveSecreta`, tickets still work, but attachments are refused.
+
+**Pending:** the Dono cannot reply inside the ticket yet (a new ticket is needed); the team cannot attach files to a reply; the agent app has no support tab.

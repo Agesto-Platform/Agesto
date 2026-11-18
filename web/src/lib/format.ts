@@ -4,7 +4,17 @@ export const MES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'ju
 export const SEMANA_CURTA = ['dom.', 'seg.', 'ter.', 'qua.', 'qui.', 'sex.', 'sáb.']
 export const SEMANA_LONGA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-const toDate = (d: Date | string) => (typeof d === 'string' ? new Date(d) : d)
+/**
+ * Converte para Date. Um dia puro ("2026-11-17", como a API manda a receita por dia)
+ * vira meia-noite local: `new Date('2026-11-17')` seria UTC e cairia no dia anterior no Brasil.
+ */
+export function paraData(d: Date | string): Date {
+  if (typeof d !== 'string') return d
+  const dia = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d)
+  return dia ? new Date(Number(dia[1]), Number(dia[2]) - 1, Number(dia[3])) : new Date(d)
+}
+
+const toDate = paraData
 
 /** "20 out." */
 export function dataCurta(d: Date | string | null | undefined): string {

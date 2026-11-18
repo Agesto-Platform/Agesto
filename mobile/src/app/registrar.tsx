@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Alert, Platform } from 'react-native'
+import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Stepper } from '@/ui/Stepper'
 import { ValorEditavel, brl } from '@/ui/ValorEditavel'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { buildAtendimento, estadoDoAtendimento, hasItems, type QtyMap } from '@/features/registrar/buildAtendimento'
 import { getConfig, DEFAULT_CONFIG } from '@/lib/appConfig'
@@ -16,6 +16,8 @@ import { parseValor, toServicoInput, validateServico, type ServicoFormErrors } f
 import { toItemAvulso, validateItemAvulso, type ItemAvulso, type ItemAvulsoErrors } from '@/features/registrar/itemAvulso'
 import { uuid } from '@/lib/uuid'
 import { CampoBusca } from '@/ui/CampoBusca'
+import { avisar, confirmar } from '@/ui/confirmar'
+import { MENSAGEM_EM_ENVIO, MENSAGEM_JA_ENVIADO, podeAlterar } from '@/sync/emEnvio'
 import { combinaBusca } from '@/features/busca/busca'
 import { getRecusas, motivoDaRecusa } from '@/sync/sync'
 import type { LocalAtendimento, PendingServico } from '@/db/types'
@@ -55,22 +57,6 @@ function definirPreco(m: Record<number, number>, id: number, v: number | undefin
   if (v === undefined) delete next[id]
   else next[id] = v
   return next
-}
-
-function confirmar(
-  titulo: string,
-  mensagem: string,
-  onSim: () => void,
-  { acao = 'Excluir', voltar = 'Cancelar' }: { acao?: string; voltar?: string } = {},
-) {
-  if (Platform.OS === 'web') {
-    if (globalThis.confirm?.(`${titulo}\n\n${mensagem}`)) onSim()
-    return
-  }
-  Alert.alert(titulo, mensagem, [
-    { text: voltar, style: 'cancel' },
-    { text: acao, style: 'destructive', onPress: onSim },
-  ])
 }
 
 /**
@@ -271,6 +257,20 @@ export default function Registrar() {
     (!agendando || dataAgendada !== null) &&
     !saving
 
+  // MOB-03: não altera o que está sendo enviado (ou ficou sem resposta), senão a correção se perde.
+  async function travadoPeloEnvio(): Promise<boolean> {
+    if (!(await podeAlterar(db, original?.uuid ?? agendaItem?.uuid))) {
+      avisar('Envio em andamento', MENSAGEM_EM_ENVIO)
+      return true
+    }
+    // Foi enviado enquanto a tela estava aberta: salvar agora criaria uma versão que o servidor ignora.
+    if (original && !(await db.getPendingAtendimentos()).some((a) => a.uuid === original.uuid)) {
+      avisar('Já enviado', MENSAGEM_JA_ENVIADO)
+      return true
+    }
+    return false
+  }
+
   function excluir() {
     if (!original) return
     confirmar(
@@ -279,6 +279,7 @@ export default function Registrar() {
         ? 'O atendimento volta a ficar pendente na agenda. O que você lançou aqui não será enviado.'
         : 'Ele ainda não foi enviado e será apagado deste aparelho.',
       async () => {
+        if (await travadoPeloEnvio()) return
         await db.deleteAtendimento(original.uuid)
         router.back()
       },
@@ -292,6 +293,7 @@ export default function Registrar() {
       'Cancelar atendimento?',
       'Use quando o cliente desistiu. Ele vai como cancelado na próxima sincronização, sem o que você lançou aqui.',
       async () => {
+        if (await travadoPeloEnvio()) return
         await db.addAtendimento(
           buildAtendimento({
             uuid: original?.uuid ?? agendaItem?.uuid,
@@ -312,6 +314,7 @@ export default function Registrar() {
 
   async function desfazerCancelamento() {
     if (!original) return
+    if (await travadoPeloEnvio()) return
     await db.deleteAtendimento(original.uuid)
     router.back()
   }
@@ -319,6 +322,7 @@ export default function Registrar() {
   async function salvar() {
     if (cliente === undefined) return
     if (agendando && dataAgendada === null) return
+    if (await travadoPeloEnvio()) return
     setSaving(true)
     try {
       await db.addAtendimento(
@@ -775,10 +779,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   close: { width: 38, height: 38, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: colors.ink },
+  title: { fontSize: 17, fontFamily: font.semibold, color: colors.ink },
 
   body: { padding: space(4), gap: space(2.5), paddingBottom: space(6) },
-  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: colors.ink4, marginTop: space(2) },
+  label: { fontSize: 12, fontFamily: font.semibold, letterSpacing: 1, textTransform: 'uppercase', color: colors.ink3, marginTop: space(2) },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -789,54 +793,54 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space(3.5),
   },
-  rowOn: { borderColor: colors.brand, backgroundColor: colors.brandSoft },
-  rowTitle: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  rowSub: { fontSize: 12.5, color: colors.ink3, marginTop: 2 },
-  vazio: { fontSize: 13, color: colors.ink3, paddingVertical: space(1) },
+  rowOn: { borderColor: colors.brandLine, backgroundColor: colors.brandSoft },
+  rowTitle: { fontSize: 15, fontFamily: font.semibold, color: colors.ink },
+  rowSub: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3, marginTop: 2 },
+  vazio: { fontFamily: font.regular, fontSize: 13, color: colors.ink3, paddingVertical: space(1) },
   recusa: { flexDirection: 'row', alignItems: 'flex-start', gap: space(2), backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.bad, borderRadius: radius.sm, padding: space(3.5) },
-  recusaText: { flex: 1, fontSize: 13.5, lineHeight: 19, color: colors.ink },
+  recusaText: { fontFamily: font.regular, flex: 1, fontSize: 13.5, lineHeight: 19, color: colors.ink },
   aviso: { flexDirection: 'row', alignItems: 'flex-start', gap: space(2), backgroundColor: colors.surface2, borderRadius: radius.sm, padding: space(3.5), marginTop: space(2) },
-  avisoText: { flex: 1, fontSize: 13.5, lineHeight: 19, color: colors.ink2 },
+  avisoText: { fontFamily: font.regular, flex: 1, fontSize: 13.5, lineHeight: 19, color: colors.ink2 },
   cancelar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space(2), marginTop: space(4), paddingVertical: space(3), borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line },
-  cancelarText: { fontSize: 14, fontWeight: '600', color: colors.bad },
+  cancelarText: { fontSize: 14, fontFamily: font.semibold, color: colors.bad },
   secundario: { flex: 1, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line, paddingVertical: space(3.75), alignItems: 'center' },
-  secundarioText: { color: colors.ink, fontSize: 15, fontWeight: '700' },
+  secundarioText: { color: colors.ink, fontSize: 15, fontFamily: font.semibold },
 
   novoBtn: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), alignSelf: 'flex-start', paddingVertical: space(2), paddingHorizontal: space(1) },
-  novoBtnText: { fontSize: 14, fontWeight: '700', color: colors.brandInk },
-  novoCard: { gap: space(2.5), backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.brand, borderRadius: radius.sm, padding: space(3.5) },
-  novoTitulo: { fontSize: 15, fontWeight: '700', color: colors.ink },
-  novoHint: { fontSize: 12, color: colors.ink3 },
+  novoBtnText: { fontSize: 14, fontFamily: font.semibold, color: colors.brandInk },
+  novoCard: { gap: space(2.5), backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.brandLine, borderRadius: radius.sm, padding: space(3.5) },
+  novoTitulo: { fontSize: 15, fontFamily: font.semibold, color: colors.ink },
+  novoHint: { fontFamily: font.regular, fontSize: 12, color: colors.ink3 },
   novoAcoes: { flexDirection: 'row', justifyContent: 'flex-end', gap: space(2) },
   novoCancelar: { paddingVertical: space(2.5), paddingHorizontal: space(4), borderRadius: radius.sm },
-  novoCancelarText: { fontSize: 14, fontWeight: '600', color: colors.ink3 },
+  novoCancelarText: { fontSize: 14, fontFamily: font.semibold, color: colors.ink3 },
   novoAdicionar: { backgroundColor: colors.brand, paddingVertical: space(2.5), paddingHorizontal: space(4), borderRadius: radius.sm },
-  novoAdicionarText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  input: { fontSize: 15, color: colors.ink, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: space(2.5), paddingHorizontal: space(3) },
+  novoAdicionarText: { fontSize: 14, fontFamily: font.semibold, color: '#fff' },
+  input: { fontFamily: font.regular, fontSize: 15, color: colors.ink, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: space(2.5), paddingHorizontal: space(3) },
   inputErr: { borderColor: colors.bad },
-  err: { fontSize: 12, color: colors.bad, marginTop: -space(1) },
+  err: { fontFamily: font.regular, fontSize: 12, color: colors.bad, marginTop: -space(1) },
   avulsoLinha: { flexDirection: 'row', gap: space(2) },
   avulsoQtd: { width: 80, textAlign: 'center' },
   lancados: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingHorizontal: space(3.5), paddingVertical: space(2) },
   lancado: { flexDirection: 'row', justifyContent: 'space-between', gap: space(3), paddingVertical: space(1.5) },
-  lancadoNome: { flex: 1, fontSize: 14, color: colors.ink2 },
-  lancadoValor: { fontSize: 14, fontWeight: '600', color: colors.ink },
+  lancadoNome: { fontFamily: font.regular, flex: 1, fontSize: 14, color: colors.ink2 },
+  lancadoValor: { fontSize: 14, fontFamily: font.semibold, color: colors.ink },
 
   sugerido: { flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.brandSoft, borderRadius: radius.sm, paddingHorizontal: space(3.5), paddingVertical: space(3), alignSelf: 'flex-start' },
-  sugeridoText: { fontSize: 13.5, fontWeight: '700', color: colors.brandInk },
+  sugeridoText: { fontSize: 13.5, fontFamily: font.semibold, color: colors.brandInk },
   chip: { paddingHorizontal: space(3.5), paddingVertical: space(2.25), borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
-  chipOn: { backgroundColor: colors.brandSoft, borderColor: colors.brand },
-  chipText: { fontSize: 13.5, fontWeight: '600', color: colors.ink3 },
+  chipOn: { backgroundColor: colors.brandSoft, borderColor: colors.brandLine },
+  chipText: { fontSize: 13.5, fontFamily: font.semibold, color: colors.ink3 },
   chipTextOn: { color: colors.brandInk },
   horaRow: { flexDirection: 'row', alignItems: 'center', gap: space(3) },
-  horaLabel: { fontSize: 13.5, color: colors.ink2, fontWeight: '600' },
-  horaInput: { flex: 0, minWidth: 80, textAlign: 'center', fontSize: 15, fontWeight: '600', color: colors.ink, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: space(2), paddingHorizontal: space(3) },
+  horaLabel: { fontSize: 13.5, color: colors.ink2, fontFamily: font.semibold },
+  horaInput: { flex: 0, minWidth: 80, textAlign: 'center', fontSize: 15, fontFamily: font.semibold, color: colors.ink, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: space(2), paddingHorizontal: space(3) },
   horaInputErr: { borderColor: colors.bad },
 
-  seg: { flexDirection: 'row', backgroundColor: colors.surface2, borderRadius: radius.sm, padding: 3, gap: 3 },
+  seg: { flexDirection: 'row', backgroundColor: colors.line2, borderRadius: radius.sm, padding: 3, gap: 3 },
   segBtn: { flex: 1, paddingVertical: space(2.5), borderRadius: radius.sm - 3, alignItems: 'center' },
   segBtnOn: { backgroundColor: colors.surface },
-  segText: { fontSize: 13.5, fontWeight: '600', color: colors.ink3 },
+  segText: { fontSize: 13.5, fontFamily: font.semibold, color: colors.ink3 },
   segTextOn: { color: colors.ink },
 
   footer: {
@@ -849,8 +853,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   estimate: { flexShrink: 0 },
-  estLabel: { fontSize: 11, color: colors.ink4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  estValue: { fontSize: 18, fontWeight: '700', color: colors.ink },
+  estLabel: { fontFamily: font.regular, fontSize: 11, color: colors.ink3, textTransform: 'uppercase', letterSpacing: 0.5 },
+  estValue: { fontSize: 18, fontFamily: font.semibold, color: colors.ink },
   save: { flex: 1, backgroundColor: colors.brand, borderRadius: radius.sm, paddingVertical: space(3.75), alignItems: 'center' },
-  saveText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  saveText: { color: '#fff', fontSize: 15, fontFamily: font.semibold },
 })

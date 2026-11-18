@@ -64,6 +64,8 @@ export interface UsuarioCreateInput {
   nome: string
   email: string
   perfil: PerfilUsuario
+  /** Só do Agente: a senha que o Dono define (DEC-59). O Dono recebe convite por email. */
+  senha?: string
 }
 
 export interface UsuarioUpdateInput {
@@ -78,6 +80,50 @@ export interface UsuarioUpdateInput {
 export interface UsuarioConvite {
   usuario: Usuario
   envioHabilitado: boolean
+  /** false quando o Agente já saiu com a senha do Dono e nenhum email foi enviado (DEC-59). */
+  conviteEnviado?: boolean
+}
+
+/* ---------- Suporte (DEC-60) ---------- */
+
+export type AssuntoTicket = 'Duvida' | 'Bug' | 'Melhoria' | 'Assinatura' | 'Outro'
+export type StatusTicket = 'Aberto' | 'EmAndamento' | 'Resolvido'
+
+export interface AnexoTicket {
+  id: number
+  nomeArquivo: string
+  contentType: string
+  tamanho: number
+  /** Link temporário (10 minutos); null se o armazenamento falhar. */
+  url: string | null
+}
+
+export interface RespostaTicket {
+  id: number
+  mensagem: string
+  /** Nome de quem respondeu pela equipe do Agesto. */
+  autor: string
+  createdAt: string
+}
+
+export interface Ticket {
+  id: number
+  assunto: AssuntoTicket
+  status: StatusTicket
+  mensagem: string
+  totalRespostas: number
+  totalAnexos?: number
+  createdAt: string
+  updatedAt: string
+  resolvidoEm: string | null
+  /** Só no superadmin. */
+  empresaId?: number | null
+  empresaNome?: string | null
+  donoNome?: string | null
+  donoEmail?: string | null
+  /** Só no detalhe. */
+  respostas?: RespostaTicket[] | null
+  anexos?: AnexoTicket[] | null
 }
 
 /* ---------- Métricas / Dashboard ---------- */
@@ -89,6 +135,13 @@ export interface MetricasRentabilidade {
   margemPercentual: number
   atendimentos: number
   ticketMedio: number
+  /** Faturamento de cada dia em Brasília (J-02). Opcional: API anterior não manda. */
+  receitaPorDia?: ReceitaDiaPonto[]
+}
+
+export interface ReceitaDiaPonto {
+  dia: string // "2026-11-17", dia de Brasília
+  valor: number
 }
 
 export interface ProdutoRankingItem {

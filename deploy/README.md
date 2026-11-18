@@ -232,7 +232,14 @@ The admin login has two steps (DEC-52): after the password, a 6-digit code arriv
    - `Email__BrevoApiKey`: the key from step 3;
    - `Email__RemetenteEmail`: the sender confirmed in step 2;
    - `Email__RemetenteNome` (optional, default `Agesto`);
-   - `Email__UrlWeb`: the web address, base of the link sent (e.g. `https://agesto.pages.dev`).
+   - `Email__UrlWeb`: the web address, base of the link sent (e.g. `https://agesto.pages.dev`);
+   - `Email__SuporteEmail`: the Agesto team inbox that receives the support tickets from the Suporte tab (DEC-60). Without it, tickets still show up in the superadmin and only the Dono's copy is sent.
+
+   Ticket attachments (DEC-60) use a private Supabase Storage bucket named `suporte-anexos` (create it in Supabase → Storage → New bucket, with "Public bucket" off). On Render:
+   - `Storage__SupabaseUrl`: the project URL, `https://<project>.supabase.co`;
+   - `Storage__ChaveSecreta`: the project's secret key (Supabase → Project Settings → API Keys → `secret`, or the legacy `service_role` key). It bypasses RLS: keep it only on Render, never in the web, the app or Git;
+   - `Storage__BucketSuporte` (optional, default `suporte-anexos`).
+   Without the URL and the key, tickets still work, but attachments are refused.
 5. Test: at `/esqueci-senha`, ask for the link for a Dono's email and check the inbox. Sending failures show up in the Render log as "Falha ao enviar email", without the recipient or the link.
 
 The reset link lasts 15 minutes; the invitation, 72 hours. Both work only once. In development (`ASPNETCORE_ENVIRONMENT=Development`), the link also goes to the API log, to test without Brevo; in production, never.

@@ -17,7 +17,7 @@ namespace MicroERP.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -84,6 +84,45 @@ namespace MicroERP.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("AdminsPlataforma", (string)null);
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.AnexoTicketSuporte", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Caminho")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NomeArquivo")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<long>("Tamanho")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TicketId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("AnexosTicketSuporte", (string)null);
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.Atendimento", b =>
@@ -713,6 +752,37 @@ namespace MicroERP.Api.Migrations
                     b.ToTable("Produtos");
                 });
 
+            modelBuilder.Entity("MicroERP.Api.Models.RespostaTicketSuporte", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long?>("AdminId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<long>("TicketId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminId");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("RespostasTicketSuporte", (string)null);
+                });
+
             modelBuilder.Entity("MicroERP.Api.Models.Servico", b =>
                 {
                     b.Property<long>("Id")
@@ -812,6 +882,58 @@ namespace MicroERP.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("ServicoItemSugeridos");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.TicketSuporte", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Assunto")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("EmpresaId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime?>("ResolvidoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("UsuarioId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("EmpresaId", "CreatedAt");
+
+                    b.ToTable("TicketsSuporte", (string)null);
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.TokenRedefinicaoSenha", b =>
@@ -977,6 +1099,17 @@ namespace MicroERP.Api.Migrations
                     b.ToTable("Usuarios");
                 });
 
+            modelBuilder.Entity("MicroERP.Api.Models.AnexoTicketSuporte", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.TicketSuporte", "Ticket")
+                        .WithMany("Anexos")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Ticket");
+                });
+
             modelBuilder.Entity("MicroERP.Api.Models.Atendimento", b =>
                 {
                     b.HasOne("MicroERP.Api.Models.Cliente", "Cliente")
@@ -1109,6 +1242,24 @@ namespace MicroERP.Api.Migrations
                     b.Navigation("Empresa");
                 });
 
+            modelBuilder.Entity("MicroERP.Api.Models.RespostaTicketSuporte", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.AdminPlataforma", "Admin")
+                        .WithMany()
+                        .HasForeignKey("AdminId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MicroERP.Api.Models.TicketSuporte", "Ticket")
+                        .WithMany("Respostas")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Admin");
+
+                    b.Navigation("Ticket");
+                });
+
             modelBuilder.Entity("MicroERP.Api.Models.Servico", b =>
                 {
                     b.HasOne("MicroERP.Api.Models.Usuario", "CriadoPor")
@@ -1144,6 +1295,25 @@ namespace MicroERP.Api.Migrations
                     b.Navigation("Produto");
 
                     b.Navigation("Servico");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.TicketSuporte", b =>
+                {
+                    b.HasOne("MicroERP.Api.Models.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MicroERP.Api.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("MicroERP.Api.Models.TokenRedefinicaoSenha", b =>
@@ -1200,6 +1370,13 @@ namespace MicroERP.Api.Migrations
             modelBuilder.Entity("MicroERP.Api.Models.Orcamento", b =>
                 {
                     b.Navigation("Itens");
+                });
+
+            modelBuilder.Entity("MicroERP.Api.Models.TicketSuporte", b =>
+                {
+                    b.Navigation("Anexos");
+
+                    b.Navigation("Respostas");
                 });
 #pragma warning restore 612, 618
         }

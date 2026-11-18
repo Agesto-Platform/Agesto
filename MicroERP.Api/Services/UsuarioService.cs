@@ -55,11 +55,17 @@ public sealed class UsuarioService : IUsuarioService
         return usuarios.Select(MapResponse).ToList();
     }
 
-    // O Dono cria o acesso de um funcionário; a pessoa recebe o convite por email e
-    // cria a própria senha pelo link (DEC-55). Não há mais senha provisória.
+    // O Dono cria o acesso de um funcionário. Outro Dono recebe o convite por email e
+    // cria a própria senha pelo link (DEC-55). O Agente já nasce com a senha que o
+    // Dono definiu e o email é só o login: não precisa ser real (DEC-59).
     public async Task<UsuarioConviteResponse> CreateAsync(long empresaId, UsuarioCreateRequest request, CancellationToken cancellationToken)
     {
         ValidarPerfil(request.Perfil);
+        var agente = request.Perfil == PerfilUsuario.Agente;
+        if (agente && string.IsNullOrEmpty(request.Senha))
+            throw new ArgumentException("Defina a senha do agente (mínimo 8 caracteres).");
+        if (!agente && request.Senha is not null)
+            throw new ArgumentException("O Dono cria a própria senha pelo convite no email.");
 
         var email = AuthService.NormalizeEmail(request.Email);
         if (await _usuarioRepository.EmailExistsAsync(email, cancellationToken))
@@ -80,14 +86,48 @@ public sealed class UsuarioService : IUsuarioService
             CreatedAt = agora,
             UpdatedAt = agora
         };
-        // Até o convite ser usado, a senha é um valor aleatório que ninguém conhece.
-        usuario.Senha = _passwordHasher.HashPassword(usuario, AuthService.SenhaDesconhecida());
+        if (agente)
+        {
+            // Acesso pronto: EmailConfirmadoEm marca que a senha já existe (como no cadastro com senha).
+            usuario.Senha = _passwordHasher.HashPassword(usuario, request.Senha!);
+            usuario.EmailConfirmadoEm = agora;
+        }
+        else
+        {
+            // Até o convite ser usado, a senha é um valor aleatório que ninguém conhece.
+            usuario.Senha = _passwordHasher.HashPassword(usuario, AuthService.SenhaDesconhecida());
+        }
 
         await _usuarioRepository.AddAsync(usuario, cancellationToken);
         await _usuarioRepository.SaveChangesAsync(cancellationToken);
-        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
+        if (agente)
+            return new UsuarioConviteResponse { Usuario = MapResponse(usuario), EnvioHabilitado = _convites.EnvioHabilitado, ConviteEnviado = false };
 
+        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
         return new UsuarioConviteResponse { Usuario = MapResponse(usuario), EnvioHabilitado = _convites.EnvioHabilitado };
+    }
+
+    // O Dono define uma senha nova para o Agente: no primeiro acesso de quem ainda
+    // tinha convite pendente ou quando o agente esqueceu a senha (DEC-59). Links de
+    // senha abertos deixam de valer e um bloqueio por senhas erradas é liberado.
+    public async Task<UsuarioResponse> DefinirSenhaAsync(long empresaId, long id, DefinirSenhaUsuarioRequest request, CancellationToken cancellationToken)
+    {
+        var usuario = await ObterAsync(empresaId, id, cancellationToken);
+        if (usuario.Perfil != PerfilUsuario.Agente)
+            throw new RegraUsuarioException("Só a senha do Agente é definida pelo Dono. O Dono usa \"Esqueci a senha\".");
+        if (string.IsNullOrEmpty(request.NovaSenha) || request.NovaSenha.Length < 8)
+            throw new ArgumentException("Senha deve ter no mínimo 8 caracteres.");
+
+        var agora = DateTime.UtcNow;
+        usuario.Senha = _passwordHasher.HashPassword(usuario, request.NovaSenha);
+        usuario.DeveTrocarSenha = false;
+        usuario.EmailConfirmadoEm ??= agora;
+        usuario.TentativasLoginFalhas = 0;
+        usuario.BloqueadoAte = null;
+        usuario.UpdatedAt = agora;
+        await _usuarioRepository.InvalidarLinksDeSenhaAsync(usuario.Id, agora, cancellationToken);
+        await _usuarioRepository.SaveChangesAsync(cancellationToken);
+        return MapResponse(usuario);
     }
 
     // Reenvia o convite a quem ainda não criou a senha (o link anterior deixa de valer).
