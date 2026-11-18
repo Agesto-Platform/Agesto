@@ -1,0 +1,52 @@
+name: Jira key
+
+# Every PR must be tied to a Jira task: the PR title or the branch name has to
+# contain a key like KAN-59. Release PRs (develop -> main), syncs back
+# (main -> develop) and Dependabot PRs are exempt.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: [develop, main]
+
+permissions: {}
+
+concurrency:
+  group: jira-key-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  jira-key:
+    name: Jira key
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check PR title or branch for a Jira key
+        env:
+          # Jira project keys accepted, separated by "|" (e.g. "KAN|AGE").
+          JIRA_KEYS: KAN
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            echo "Dependabot PR: exempt."
+            exit 0
+          fi
+          if [ "$HEAD_REF" = "develop" ] || [ "$HEAD_REF" = "main" ]; then
+            echo "Release or sync PR from '$HEAD_REF': exempt."
+            exit 0
+          fi
+
+          pattern="(^|[^A-Za-z0-9])(${JIRA_KEYS})-[0-9]+([^0-9]|$)"
+          if printf '%s' "$PR_TITLE" | grep -Eiq "$pattern"; then
+            echo "Jira key found in the PR title."
+            exit 0
+          fi
+          if printf '%s' "$HEAD_REF" | grep -Eiq "$pattern"; then
+            echo "Jira key found in the branch name."
+            exit 0
+          fi
+
+          echo "::error title=Missing Jira key::Add the Jira task key (e.g. KAN-59) to the PR title or the branch name. Work without a Jira task needs the tech lead's OK first."
+          exit 1
