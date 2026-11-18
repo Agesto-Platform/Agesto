@@ -225,6 +225,32 @@ public sealed class MetricasServiceTests
         Assert.Equal(750m, r.TicketMedio);
     }
 
+    // J-02: o card "Receita por dia" usa a mesma base do faturamento (serviços, produtos e
+    // avulsos) e o dia de Brasília: 01:30 UTC de 10/06 ainda é 09/06 em Brasília.
+    [Fact]
+    public async Task GetRentabilidade_ReceitaPorDia_SomaOFaturamentoPeloDiaDeBrasilia()
+    {
+        await using var db = CreateContext();
+        db.Servicos.Add(Servico(1, "Instalação", TipoCobranca.Empreitada, 1));
+        AddAtendimentoComServico(db, 1, 1, StatusAtendimento.Concluido, 300m,
+            new DateTime(2026, 6, 10, 1, 30, 0, DateTimeKind.Utc), (1, 1, 300m));
+        AddAtendimentoComProduto(db, 2, 1, StatusAtendimento.Concluido, 80m,
+            new DateTime(2026, 6, 9, 15, 0, 0, DateTimeKind.Utc));
+        AddAtendimentoComServico(db, 3, 1, StatusAtendimento.Concluido, 365m,
+            new DateTime(2026, 6, 10, 18, 0, 0, DateTimeKind.Utc), (1, 1, 365m));
+        AddAtendimentoComServico(db, 4, 1, StatusAtendimento.Cancelado, 999m,
+            new DateTime(2026, 6, 10, 18, 0, 0, DateTimeKind.Utc), (1, 1, 999m));
+        await db.SaveChangesAsync();
+
+        var r = await new MetricasService(new MetricasRepository(db)).GetRentabilidadeAsync(1, De, Ate, CancellationToken.None);
+
+        Assert.Equal(745m, r.Faturamento);
+        Assert.Collection(r.ReceitaPorDia,
+            p => { Assert.Equal(new DateOnly(2026, 6, 9), p.Dia); Assert.Equal(380m, p.Valor); },
+            p => { Assert.Equal(new DateOnly(2026, 6, 10), p.Dia); Assert.Equal(365m, p.Valor); });
+        Assert.Equal(r.Faturamento, r.ReceitaPorDia.Sum(p => p.Valor));
+    }
+
     // ---- helpers ----
 
     private static Produto Produto(long id, string nome, long empresaId, int estoque) => new()

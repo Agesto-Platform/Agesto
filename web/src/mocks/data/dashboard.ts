@@ -15,6 +15,11 @@ function buildSerie(): DashboardResponse['vendas']['receitaPorPeriodo'] {
   })
 }
 
+/** A mesma série no formato da receita por dia (dia de Brasília, "2026-11-17"). */
+const diaIso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const receitaPorDia = buildSerie().map((p) => ({ dia: diaIso(new Date(p.data)), valor: p.valor }))
+
 /** Contrato-espelho do GET /api/metrics/dashboard (exemplo: AC Fernando). */
 export const dashboardMock: DashboardResponse = {
   de: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
@@ -26,6 +31,7 @@ export const dashboardMock: DashboardResponse = {
     margemPercentual: 61.7,
     atendimentos: 36,
     ticketMedio: 512,
+    receitaPorDia,
   },
   vendas: {
     receitaTotal: 4260,

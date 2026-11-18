@@ -3,6 +3,7 @@ using MicroERP.Api.Data;
 using MicroERP.Api.DTOs;
 using MicroERP.Api.Enums;
 using MicroERP.Api.Repositories.Interfaces;
+using MicroERP.Api.Services;
 
 namespace MicroERP.Api.Repositories;
 
@@ -30,10 +31,16 @@ public sealed class MetricasRepository : IMetricasRepository
                         && a.Status == StatusAtendimento.Concluido
                         && a.DataRegistro >= de
                         && a.DataRegistro <= ate)
-            .Select(a => new { a.ValorTotal, a.CustoTotal })
+            .Select(a => new { a.ValorTotal, a.CustoTotal, a.DataRegistro })
             .ToListAsync(cancellationToken);
 
         var faturamento = atendimentos.Sum(x => x.ValorTotal);
+        // Mesma base do faturamento (produtos, serviços e avulsos), agrupada pelo dia de Brasília.
+        var receitaPorDia = atendimentos
+            .GroupBy(x => FusoBrasilia.DiaLocal(x.DataRegistro))
+            .Select(g => new ReceitaDiaPonto { Dia = g.Key, Valor = g.Sum(x => x.ValorTotal) })
+            .OrderBy(p => p.Dia)
+            .ToList();
         var custo = atendimentos.Sum(x => x.CustoTotal);
         var margem = faturamento - custo;
         var count = atendimentos.Count;
@@ -45,7 +52,8 @@ public sealed class MetricasRepository : IMetricasRepository
             Margem = margem,
             MargemPercentual = faturamento > 0 ? Math.Round(margem / faturamento * 100m, 1) : 0m,
             Atendimentos = count,
-            TicketMedio = count > 0 ? faturamento / count : 0m
+            TicketMedio = count > 0 ? faturamento / count : 0m,
+            ReceitaPorDia = receitaPorDia
         };
     }
 

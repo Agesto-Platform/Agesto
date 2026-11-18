@@ -4,11 +4,13 @@ import { Ionicons } from '@expo/vector-icons'
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space, font } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
+import { useSairComAviso } from '@/auth/useSairComAviso'
 import { ApiError } from '@/lib/errors'
 
 /** Aceite dos termos de uso e da política de privacidade (B6), antes de usar o app. */
 export default function AceitarTermos() {
-  const { termos, aceitarTermos, logout } = useAuth()
+  const { termos, aceitarTermos } = useAuth()
+  const sair = useSairComAviso()
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -49,7 +51,7 @@ export default function AceitarTermos() {
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Li e aceito</Text>}
         </Pressable>
 
-        <Pressable onPress={logout} disabled={busy} style={styles.sair}>
+        <Pressable onPress={sair} disabled={busy} style={styles.sair}>
           <Text style={styles.sairText}>Sair</Text>
         </Pressable>
       </View>
