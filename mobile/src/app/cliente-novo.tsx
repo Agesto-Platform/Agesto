@@ -5,6 +5,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { colors, radius, space, font } from '@/ui/theme'
 import { db } from '@/db/instance'
+import { MENSAGEM_EM_ENVIO, MENSAGEM_JA_ENVIADO, podeAlterar } from '@/sync/emEnvio'
+import { avisar } from '@/ui/confirmar'
 import { uuid } from '@/lib/uuid'
 import { maskCpf, maskPhone } from '@/lib/masks'
 import { validateCliente, isValid, type ClienteFormErrors } from '@/features/clientes/validateCliente'
@@ -44,6 +46,16 @@ export default function ClienteNovo() {
     const e = validateCliente({ nome, cpf })
     setErrors(e)
     if (!isValid(e)) return
+    // MOB-03: não corrige o que está sendo enviado (ou ficou sem resposta).
+    if (!(await podeAlterar(db, original?.uuid))) {
+      avisar('Envio em andamento', MENSAGEM_EM_ENVIO)
+      return
+    }
+    // Foi enviado enquanto a tela estava aberta: a correção não chegaria ao servidor.
+    if (original && !(await db.getPendingClientes()).some((c) => c.uuid === original.uuid && c.syncedAt === null)) {
+      avisar('Já enviado', MENSAGEM_JA_ENVIADO)
+      return
+    }
     setSaving(true)
     try {
       await db.addCliente({

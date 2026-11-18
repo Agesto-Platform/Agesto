@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Alert, Platform } from 'react-native'
+import { View, Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -16,6 +16,8 @@ import { parseValor, toServicoInput, validateServico, type ServicoFormErrors } f
 import { toItemAvulso, validateItemAvulso, type ItemAvulso, type ItemAvulsoErrors } from '@/features/registrar/itemAvulso'
 import { uuid } from '@/lib/uuid'
 import { CampoBusca } from '@/ui/CampoBusca'
+import { avisar, confirmar } from '@/ui/confirmar'
+import { MENSAGEM_EM_ENVIO, MENSAGEM_JA_ENVIADO, podeAlterar } from '@/sync/emEnvio'
 import { combinaBusca } from '@/features/busca/busca'
 import { getRecusas, motivoDaRecusa } from '@/sync/sync'
 import type { LocalAtendimento, PendingServico } from '@/db/types'
@@ -55,22 +57,6 @@ function definirPreco(m: Record<number, number>, id: number, v: number | undefin
   if (v === undefined) delete next[id]
   else next[id] = v
   return next
-}
-
-function confirmar(
-  titulo: string,
-  mensagem: string,
-  onSim: () => void,
-  { acao = 'Excluir', voltar = 'Cancelar' }: { acao?: string; voltar?: string } = {},
-) {
-  if (Platform.OS === 'web') {
-    if (globalThis.confirm?.(`${titulo}\n\n${mensagem}`)) onSim()
-    return
-  }
-  Alert.alert(titulo, mensagem, [
-    { text: voltar, style: 'cancel' },
-    { text: acao, style: 'destructive', onPress: onSim },
-  ])
 }
 
 /**
@@ -271,6 +257,20 @@ export default function Registrar() {
     (!agendando || dataAgendada !== null) &&
     !saving
 
+  // MOB-03: não altera o que está sendo enviado (ou ficou sem resposta), senão a correção se perde.
+  async function travadoPeloEnvio(): Promise<boolean> {
+    if (!(await podeAlterar(db, original?.uuid ?? agendaItem?.uuid))) {
+      avisar('Envio em andamento', MENSAGEM_EM_ENVIO)
+      return true
+    }
+    // Foi enviado enquanto a tela estava aberta: salvar agora criaria uma versão que o servidor ignora.
+    if (original && !(await db.getPendingAtendimentos()).some((a) => a.uuid === original.uuid)) {
+      avisar('Já enviado', MENSAGEM_JA_ENVIADO)
+      return true
+    }
+    return false
+  }
+
   function excluir() {
     if (!original) return
     confirmar(
@@ -279,6 +279,7 @@ export default function Registrar() {
         ? 'O atendimento volta a ficar pendente na agenda. O que você lançou aqui não será enviado.'
         : 'Ele ainda não foi enviado e será apagado deste aparelho.',
       async () => {
+        if (await travadoPeloEnvio()) return
         await db.deleteAtendimento(original.uuid)
         router.back()
       },
@@ -292,6 +293,7 @@ export default function Registrar() {
       'Cancelar atendimento?',
       'Use quando o cliente desistiu. Ele vai como cancelado na próxima sincronização, sem o que você lançou aqui.',
       async () => {
+        if (await travadoPeloEnvio()) return
         await db.addAtendimento(
           buildAtendimento({
             uuid: original?.uuid ?? agendaItem?.uuid,
@@ -312,6 +314,7 @@ export default function Registrar() {
 
   async function desfazerCancelamento() {
     if (!original) return
+    if (await travadoPeloEnvio()) return
     await db.deleteAtendimento(original.uuid)
     router.back()
   }
@@ -319,6 +322,7 @@ export default function Registrar() {
   async function salvar() {
     if (cliente === undefined) return
     if (agendando && dataAgendada === null) return
+    if (await travadoPeloEnvio()) return
     setSaving(true)
     try {
       await db.addAtendimento(

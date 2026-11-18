@@ -3,12 +3,14 @@ import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space, font } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
+import { useSairComAviso } from '@/auth/useSairComAviso'
 import { ApiError } from '@/lib/errors'
 import { validarNovaSenha } from '@/features/conta/validarNovaSenha'
 
 /** Primeiro acesso com senha provisória: o agente cria a própria senha. */
 export default function TrocarSenha() {
-  const { trocarSenha, logout } = useAuth()
+  const { trocarSenha } = useAuth()
+  const sair = useSairComAviso()
   const [atual, setAtual] = useState('')
   const [nova, setNova] = useState('')
   const [confirma, setConfirma] = useState('')
@@ -52,7 +54,7 @@ export default function TrocarSenha() {
           {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Salvar nova senha</Text>}
         </Pressable>
 
-        <Pressable onPress={logout} disabled={busy} style={styles.sair}>
+        <Pressable onPress={sair} disabled={busy} style={styles.sair}>
           <Text style={styles.sairText}>Sair</Text>
         </Pressable>
       </View>
