@@ -5,6 +5,8 @@ import { Screen } from '@/ui/Screen'
 import { colors, radius, space, font } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
 import { ApiError } from '@/lib/errors'
+import { PendenciasDeOutraContaError } from '@/auth/localData'
+import { confirmar } from '@/ui/confirmar'
 import { DEMO_EMAIL, DEMO_SENHA } from '@/mocks/handlers'
 import { config } from '@/lib/config'
 
@@ -16,18 +18,28 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function onSubmit() {
+  async function entrar(descartarPendencias = false) {
     setError(null)
     setBusy(true)
     try {
       // login() já roda a Carga; a guarda de rota navega ao autenticar.
-      await login(email.trim(), senha)
+      await login(email.trim(), senha, { descartarPendencias })
     } catch (e) {
+      if (e instanceof PendenciasDeOutraContaError) {
+        // Nada foi apagado ainda: só apaga se a pessoa confirmar (MOB-01).
+        confirmar('Registros não enviados', e.message, () => void entrar(true), {
+          acao: 'Apagar e entrar',
+          voltar: 'Cancelar',
+        })
+        return
+      }
       setError(e instanceof ApiError ? e.message : 'Não foi possível entrar. Tente novamente.')
     } finally {
       setBusy(false)
     }
   }
+
+  const onSubmit = () => void entrar()
 
   return (
     <Screen>

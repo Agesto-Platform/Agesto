@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react-native'
 import type { ReactNode } from 'react'
 import { AuthProvider } from './AuthProvider'
 import { useAuth } from './useAuth'
+import { PendenciasDeOutraContaError } from './localData'
 import { db } from '@/db/instance'
 import {
   DEMO_EMAIL,
@@ -91,6 +92,39 @@ describe('AuthProvider (mock)', () => {
     })
     expect(result.current.termos).toBeNull()
     expect(await db.getMeta('termosPendentes')).toBe('')
+
+    await act(async () => {
+      await result.current.logout()
+    })
+  })
+
+  // MOB-01: a sessão de outra conta caiu (401, sem "Sair") e deixou pendências no aparelho.
+  it('login de outra conta com pendências no aparelho não apaga nada sem confirmar', async () => {
+    const { result } = await renderHook(() => useAuth(), { wrapper })
+    await db.setMeta('ownerSub', '99')
+    await db.setMeta('ownerEmpresaId', '1')
+    await db.setMeta('ownerEmail', 'outro@agente.local')
+    await db.addAtendimento({
+      uuid: 'pendente-1', clienteId: 1, status: 'Concluido', dataRegistro: '2026-11-17T12:00:00Z',
+      dataAgendada: null, itensProduto: [], itensServico: [], syncedAt: null,
+    })
+
+    let erro: unknown
+    await act(async () => {
+      await result.current.login(DEMO_EMAIL, DEMO_SENHA).catch((e: unknown) => (erro = e))
+    })
+    expect(erro).toBeInstanceOf(PendenciasDeOutraContaError)
+    expect((erro as Error).message).toContain('outro@agente.local')
+    expect(result.current.token).toBeNull()
+    expect(await db.getPendingAtendimentos()).toHaveLength(1)
+
+    // Confirmou: apaga as pendências da outra conta e entra.
+    await act(async () => {
+      await result.current.login(DEMO_EMAIL, DEMO_SENHA, { descartarPendencias: true })
+    })
+    expect(result.current.token).toBeTruthy()
+    expect(await db.getPendingAtendimentos()).toHaveLength(0)
+    expect(await db.getMeta('ownerSub')).toBe('2')
 
     await act(async () => {
       await result.current.logout()

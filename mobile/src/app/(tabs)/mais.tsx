@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
 import { colors, radius, space, font } from '@/ui/theme'
-import { useAuth } from '@/auth/useAuth'
-import { countPendentes } from '@/auth/localData'
+import { useSairComAviso } from '@/auth/useSairComAviso'
 import { db } from '@/db/instance'
 import { resumoSincronizacao } from '@/sync/sync'
 import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
@@ -16,7 +15,7 @@ function fmt(iso: string | null): string {
 }
 
 export default function Mais() {
-  const { logout } = useAuth()
+  const sair = useSairComAviso()
   const [pendAt, setPendAt] = useState(0)
   const [pendCli, setPendCli] = useState(0)
   const [pendServ, setPendServ] = useState(0)
@@ -62,25 +61,6 @@ export default function Mais() {
     } finally {
       setSyncing(false)
     }
-  }
-
-  // Sair apaga o banco local: se há pendências, confirma antes de perdê-las.
-  async function sair() {
-    const n = await countPendentes(db)
-    if (n === 0) {
-      await logout()
-      return
-    }
-    const msg = `Há ${n} registro(s) não sincronizado(s). Sair vai apagá-los deste aparelho.`
-    // No web o Alert do RN não tem botões: usa o confirm do navegador.
-    if (Platform.OS === 'web') {
-      if (window.confirm(msg)) await logout()
-      return
-    }
-    Alert.alert('Sair', msg, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair mesmo assim', style: 'destructive', onPress: () => void logout() },
-    ])
   }
 
   const pendentes = pendAt + pendCli + pendServ
