@@ -42,10 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setOnSessionExpired(null)
   }, [])
 
-  const login = useCallback(async (email: string, senha: string) => {
+  const login = useCallback(async (email: string, senha: string, opcoes?: { descartarPendencias?: boolean }) => {
     const res = await api.post<AuthResponse>('/api/auth/login', { email, senha })
-    // Outro usuário/empresa no mesmo aparelho: zera o banco local antes da Carga.
-    await ensureLocalOwner(db, res.token)
+    // Outro usuário/empresa no mesmo aparelho: zera o banco local antes da Carga. Se houver
+    // pendências de quem usou antes, lança sem apagar e a tela de login pergunta (MOB-01).
+    await ensureLocalOwner(db, res.token, { email, descartarPendencias: opcoes?.descartarPendencias })
     const deve = res.deveTrocarSenha === true
     await db.setMeta(META_TROCA, deve ? '1' : '0')
     setDeve(deve)
