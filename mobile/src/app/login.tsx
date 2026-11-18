@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Screen } from '@/ui/Screen'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { useAuth } from '@/auth/useAuth'
 import { ApiError } from '@/lib/errors'
+import { PendenciasDeOutraContaError } from '@/auth/localData'
+import { confirmar } from '@/ui/confirmar'
 import { DEMO_EMAIL, DEMO_SENHA } from '@/mocks/handlers'
 import { config } from '@/lib/config'
 
@@ -16,18 +18,28 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  async function onSubmit() {
+  async function entrar(descartarPendencias = false) {
     setError(null)
     setBusy(true)
     try {
       // login() já roda a Carga; a guarda de rota navega ao autenticar.
-      await login(email.trim(), senha)
+      await login(email.trim(), senha, { descartarPendencias })
     } catch (e) {
+      if (e instanceof PendenciasDeOutraContaError) {
+        // Nada foi apagado ainda: só apaga se a pessoa confirmar (MOB-01).
+        confirmar('Registros não enviados', e.message, () => void entrar(true), {
+          acao: 'Apagar e entrar',
+          voltar: 'Cancelar',
+        })
+        return
+      }
       setError(e instanceof ApiError ? e.message : 'Não foi possível entrar. Tente novamente.')
     } finally {
       setBusy(false)
     }
   }
+
+  const onSubmit = () => void entrar()
 
   return (
     <Screen>
@@ -104,13 +116,14 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, padding: space(6), gap: space(4), justifyContent: 'center' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: space(3), marginBottom: space(2) },
   mark: { width: 44, height: 44, borderRadius: 13, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  markText: { color: '#fff', fontWeight: '700', fontSize: 18 },
-  brand: { fontSize: 18, fontWeight: '700', color: colors.ink },
-  brandSub: { fontSize: 12.5, color: colors.ink4 },
-  title: { fontSize: 17, fontWeight: '600', color: colors.ink },
+  markText: { color: '#fff', fontFamily: font.semibold, fontSize: 18 },
+  brand: { fontSize: 18, fontFamily: font.semibold, color: colors.ink },
+  brandSub: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3 },
+  title: { fontSize: 17, fontFamily: font.semibold, color: colors.ink },
   field: { gap: space(1.5) },
-  label: { fontSize: 12.5, fontWeight: '600', color: colors.ink2 },
+  label: { fontSize: 12.5, fontFamily: font.semibold, color: colors.ink2 },
   input: {
+    fontFamily: font.regular,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
@@ -120,7 +133,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.ink,
   },
-  error: { color: colors.bad, fontSize: 13, fontWeight: '500' },
+  error: { color: colors.bad, fontSize: 13, fontFamily: font.medium },
   button: {
     backgroundColor: colors.brand,
     borderRadius: radius.sm,
@@ -128,8 +141,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: space(1),
   },
-  buttonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  buttonText: { color: '#fff', fontFamily: font.semibold, fontSize: 15 },
   esqueci: { alignItems: 'center', paddingVertical: space(2) },
-  esqueciText: { color: colors.brandInk, fontWeight: '600', fontSize: 13.5 },
-  demo: { textAlign: 'center', fontSize: 12, color: colors.ink4 },
+  esqueciText: { color: colors.brandInk, fontFamily: font.semibold, fontSize: 13.5 },
+  demo: { fontFamily: font.regular, textAlign: 'center', fontSize: 12, color: colors.ink3 },
 })

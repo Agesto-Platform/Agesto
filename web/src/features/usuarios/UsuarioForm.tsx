@@ -3,6 +3,8 @@ import type { PerfilUsuario, Usuario, UsuarioCreateInput } from '../../types/api
 import { Button, SelectField, TextField } from '../../components/ui'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// Login do Agente (DEC-59): só o formato algo@algo, o email não precisa existir.
+const LOGIN_RE = /^[^\s@]+@[^\s@]+$/
 
 const PERFIS: { value: PerfilUsuario; label: string }[] = [
   { value: 'Agente', label: 'Agente (usa o app em campo)' },
@@ -11,7 +13,8 @@ const PERFIS: { value: PerfilUsuario; label: string }[] = [
 
 /**
  * Cadastro e edição de usuário. Na edição o email fica fixo: é o login da
- * pessoa e trocá-lo exige outro fluxo.
+ * pessoa e trocá-lo exige outro fluxo. O Agente nasce com a senha que o Dono
+ * define e o email dele é só o login (DEC-59); o Dono recebe convite por email.
  */
 export function UsuarioForm({
   initial,
@@ -29,16 +32,20 @@ export function UsuarioForm({
   const [nome, setNome] = useState(initial?.nome ?? '')
   const [email, setEmail] = useState(initial?.email ?? '')
   const [perfil, setPerfil] = useState<PerfilUsuario>(initial?.perfil ?? 'Agente')
+  const [senha, setSenha] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const agenteNovo = !initial && perfil === 'Agente'
 
   function handleSubmit(ev: FormEvent) {
     ev.preventDefault()
     const e: Record<string, string> = {}
     if (nome.trim().length < 2) e.nome = 'Nome deve ter no mínimo 2 caracteres.'
-    if (!initial && !EMAIL_RE.test(email.trim())) e.email = 'Informe um email válido.'
+    if (!initial && !(agenteNovo ? LOGIN_RE : EMAIL_RE).test(email.trim()))
+      e.email = agenteNovo ? 'Use o formato nome@empresa.' : 'Informe um email válido.'
+    if (agenteNovo && senha.length < 8) e.senha = 'A senha precisa ter no mínimo 8 caracteres.'
     setErrors(e)
     if (Object.keys(e).length > 0) return
-    onSubmit({ nome: nome.trim(), email: email.trim(), perfil })
+    onSubmit(agenteNovo ? { nome: nome.trim(), email: email.trim(), perfil, senha } : { nome: nome.trim(), email: email.trim(), perfil })
   }
 
   return (
@@ -61,22 +68,39 @@ export function UsuarioForm({
           </div>
         ) : (
           <TextField
-            label="Email"
+            label={agenteNovo ? 'Email (login no app)' : 'Email'}
             value={email}
             onChange={setEmail}
             error={errors.email}
+            hint={agenteNovo ? 'Não precisa ser um email real: é só o login do agente no app.' : undefined}
             required
             maxLength={150}
-            placeholder="pessoa@empresa.com"
+            placeholder={agenteNovo ? 'joao@suaempresa' : 'pessoa@empresa.com'}
             autoComplete="off"
           />
         )}
 
         <SelectField label="Perfil" value={perfil} onChange={setPerfil} options={PERFIS} required />
 
+        {agenteNovo && (
+          <TextField
+            label="Senha"
+            type="password"
+            value={senha}
+            onChange={setSenha}
+            error={errors.senha}
+            hint="Mínimo de 8 caracteres. Passe a senha para o agente."
+            required
+            maxLength={128}
+            autoComplete="new-password"
+          />
+        )}
+
         {!initial && (
           <p className="hint" style={{ margin: 0 }}>
-            Ao salvar, a pessoa recebe um convite neste email para criar a própria senha. O link vale por 72 horas.
+            {agenteNovo
+              ? 'O agente entra no app com este email e a senha. Se esquecer, você define uma nova aqui.'
+              : 'Ao salvar, a pessoa recebe um convite neste email para criar a própria senha. O link vale por 72 horas.'}
           </p>
         )}
       </div>

@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
-import { colors, radius, space } from '@/ui/theme'
-import { useAuth } from '@/auth/useAuth'
-import { countPendentes } from '@/auth/localData'
+import { colors, radius, space, font } from '@/ui/theme'
+import { useSairComAviso } from '@/auth/useSairComAviso'
 import { db } from '@/db/instance'
 import { resumoSincronizacao } from '@/sync/sync'
 import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
@@ -16,7 +15,7 @@ function fmt(iso: string | null): string {
 }
 
 export default function Mais() {
-  const { logout } = useAuth()
+  const sair = useSairComAviso()
   const [pendAt, setPendAt] = useState(0)
   const [pendCli, setPendCli] = useState(0)
   const [pendServ, setPendServ] = useState(0)
@@ -64,25 +63,6 @@ export default function Mais() {
     }
   }
 
-  // Sair apaga o banco local: se há pendências, confirma antes de perdê-las.
-  async function sair() {
-    const n = await countPendentes(db)
-    if (n === 0) {
-      await logout()
-      return
-    }
-    const msg = `Há ${n} registro(s) não sincronizado(s). Sair vai apagá-los deste aparelho.`
-    // No web o Alert do RN não tem botões: usa o confirm do navegador.
-    if (Platform.OS === 'web') {
-      if (window.confirm(msg)) await logout()
-      return
-    }
-    Alert.alert('Sair', msg, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair mesmo assim', style: 'destructive', onPress: () => void logout() },
-    ])
-  }
-
   const pendentes = pendAt + pendCli + pendServ
 
   return (
@@ -122,16 +102,16 @@ export default function Mais() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: space(5), gap: space(4) },
-  title: { fontSize: 18, fontWeight: '700', color: colors.ink },
+  title: { fontSize: 22, fontFamily: font.semibold, color: colors.ink, letterSpacing: -0.3 },
 
   card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.card, padding: space(4), gap: space(2) },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: space(2) },
-  cardTitle: { fontSize: 14.5, fontWeight: '700', color: colors.ink },
-  status: { fontSize: 14, color: colors.ink2 },
-  sub: { fontSize: 12.5, color: colors.ink3 },
-  flash: { fontSize: 12.5, color: colors.good, fontWeight: '600' },
+  cardTitle: { fontSize: 14.5, fontFamily: font.semibold, color: colors.ink },
+  status: { fontFamily: font.regular, fontSize: 14, color: colors.ink2 },
+  sub: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3 },
+  flash: { fontSize: 12.5, color: colors.good, fontFamily: font.semibold },
   syncBtn: { marginTop: space(2), backgroundColor: colors.brand, borderRadius: radius.sm, paddingVertical: space(3.25), alignItems: 'center' },
-  syncText: { color: '#fff', fontSize: 14.5, fontWeight: '700' },
+  syncText: { color: '#fff', fontSize: 14.5, fontFamily: font.semibold },
 
   row: {
     flexDirection: 'row',
@@ -143,5 +123,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space(4),
   },
-  rowText: { fontSize: 15, fontWeight: '600', color: colors.bad },
+  rowText: { fontSize: 15, fontFamily: font.semibold, color: colors.bad },
 })

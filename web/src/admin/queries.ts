@@ -13,7 +13,7 @@ import type {
   PagamentoAssinaturaInput,
   UsuarioAdminCriarInput,
 } from './types'
-import type { Assinatura } from '../types/api'
+import type { Assinatura, StatusTicket, Ticket } from '../types/api'
 
 /** Tudo da área de superadmin fica sob ['admin', ...] no cache. */
 const K = {
@@ -42,6 +42,40 @@ export function useAuditoriaAdmin(empresaId?: number) {
   return useQuery({
     queryKey: K.auditoria(empresaId),
     queryFn: () => adminApi.get<AuditoriaAdminItem[]>(`/api/admin/auditoria${empresaId ? `?empresaId=${empresaId}` : ''}`),
+  })
+}
+
+/** Chamados de suporte dos Donos (DEC-60), com filtro de situação. */
+export function useTicketsAdmin(status?: StatusTicket) {
+  return useQuery({
+    queryKey: ['admin', 'suporte', status ?? 'todos'],
+    queryFn: () => adminApi.get<Ticket[]>(`/api/admin/suporte${status ? `?status=${status}` : ''}`),
+  })
+}
+
+export function useTicketAdmin(id: number | null) {
+  return useQuery({
+    queryKey: ['admin', 'suporte', 'ticket', id ?? 0],
+    queryFn: () => adminApi.get<Ticket>(`/api/admin/suporte/${id}`),
+    enabled: id !== null,
+  })
+}
+
+export function useResponderTicket() {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: ({ id, mensagem, status }: { id: number; mensagem: string; status?: StatusTicket }) =>
+      adminApi.post<Ticket>(`/api/admin/suporte/${id}/respostas`, { mensagem, status }),
+    onSuccess: invalidar,
+  })
+}
+
+export function useMudarStatusTicket() {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: StatusTicket }) =>
+      adminApi.put<Ticket>(`/api/admin/suporte/${id}/status`, { status }),
+    onSuccess: invalidar,
   })
 }
 

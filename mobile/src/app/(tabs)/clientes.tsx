@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { CampoBusca } from '@/ui/CampoBusca'
 import { combinaBusca } from '@/features/busca/busca'
@@ -107,10 +107,11 @@ const styles = StyleSheet.create({
     paddingVertical: space(3.5),
     borderBottomWidth: 1,
     borderBottomColor: colors.line2,
+    backgroundColor: colors.surface,
   },
-  title: { fontSize: 18, fontWeight: '700', color: colors.ink },
+  title: { fontSize: 22, fontFamily: font.semibold, color: colors.ink, letterSpacing: -0.3 },
   novo: { flexDirection: 'row', alignItems: 'center', gap: space(1.5), backgroundColor: colors.brand, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2) },
-  novoText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+  novoText: { color: '#fff', fontFamily: font.semibold, fontSize: 13.5 },
   busca: { paddingHorizontal: space(4), paddingTop: space(3) },
 
   body: { padding: space(4), gap: space(2.5) },
@@ -124,13 +125,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: space(3.5),
   },
-  avatar: { width: 38, height: 38, borderRadius: 11, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: colors.brandInk, fontWeight: '700', fontSize: 15 },
-  rowName: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  rowSub: { fontSize: 12.5, color: colors.ink3, marginTop: 2 },
+  avatar: { width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: colors.brandInk, fontFamily: font.semibold, fontSize: 15 },
+  rowName: { fontSize: 15, fontFamily: font.semibold, color: colors.ink },
+  rowSub: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3, marginTop: 2 },
   badge: { backgroundColor: colors.warnSoft, borderRadius: radius.pill, paddingHorizontal: space(2.25), paddingVertical: space(1) },
-  badgeText: { color: colors.warn, fontSize: 11, fontWeight: '700' },
-  badgeBad: { backgroundColor: colors.surface2 },
+  badgeText: { color: colors.warn, fontSize: 11, fontFamily: font.semibold },
+  badgeBad: { backgroundColor: colors.badSoft },
   badgeBadText: { color: colors.bad },
-  empty: { fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
+  empty: { fontFamily: font.regular, fontSize: 13, color: colors.ink3, textAlign: 'center', marginTop: space(6) },
 })

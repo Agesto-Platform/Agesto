@@ -63,13 +63,27 @@ export const usuarioHandlers = [
       perfil: (b.perfil ?? 'Agente') as PerfilUsuario,
       ativo: true,
       deveTrocarSenha: false,
-      convitePendente: true,
+      // DEC-59: o Agente já sai com a senha do Dono; o Dono recebe convite.
+      convitePendente: (b.perfil ?? 'Agente') !== 'Agente',
       ultimoAcessoEm: null,
       createdAt: new Date().toISOString(),
     }
     usuarios.push(u)
-    const data: UsuarioConvite = { usuario: u, envioHabilitado: true }
-    return HttpResponse.json(ok(data, 'Acesso criado. Enviamos o convite por email.'), { status: 201 })
+    const agente = u.perfil === 'Agente'
+    const data: UsuarioConvite = { usuario: u, envioHabilitado: true, conviteEnviado: !agente }
+    const msg = agente ? 'Acesso criado. O agente já pode entrar com o email e a senha definidos.' : 'Acesso criado. Enviamos o convite por email.'
+    return HttpResponse.json(ok(data, msg), { status: 201 })
+  }),
+
+  http.post('*/api/usuario/:id/senha', async ({ request, params }) => {
+    const b = (await request.json()) as { novaSenha?: string }
+    const u = usuarios.find((x) => x.id === Number(params.id))
+    if (!u) return fail(404, 'Usuário não encontrado.')
+    if (u.perfil !== 'Agente') return fail(409, 'Só a senha do Agente é definida pelo Dono. O Dono usa "Esqueci a senha".')
+    if (!b.novaSenha || b.novaSenha.length < 8) return fail(400, 'Senha deve ter no mínimo 8 caracteres.')
+    u.convitePendente = false
+    u.deveTrocarSenha = false
+    return HttpResponse.json(ok(u, 'Senha definida. Passe a nova senha para o agente.'))
   }),
 
   http.put('*/api/usuario/:id', async ({ request, params }) => {

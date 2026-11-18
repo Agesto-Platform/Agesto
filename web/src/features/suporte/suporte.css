@@ -1,0 +1,22 @@
+/* Chamados de suporte (DEC-60): conversa usada no painel e no superadmin. */
+.ticket { display: flex; flex-direction: column; gap: 14px; }
+.ticket-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
+.ticket-msgs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.ticket-msg { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+.ticket-msg.equipe { border-color: var(--brand); background: var(--brand-soft); }
+.ticket-msg-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; margin-bottom: 4px; }
+.ticket-msg-head span { color: var(--ink-3); white-space: nowrap; }
+.ticket-msg p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; }
+.ticket-resumo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ticket-resumo span { color: var(--ink-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch; }
+.ticket-form { display: flex; flex-direction: column; gap: 12px; }
+.ticket-form .contador { font-size: 12px; color: var(--ink-3); text-align: right; }
+.ticket-anexos-lista { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ticket-anexos-lista li { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
+.ticket-anexos-lista li > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.ticket-anexos { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.ticket-anexos li { display: flex; flex-direction: column; gap: 2px; width: 132px; font-size: 12px; }
+.ticket-anexos a { display: flex; flex-direction: column; gap: 4px; color: inherit; text-decoration: none; }
+.ticket-anexos a > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ticket-anexos img, .ticket-pdf { width: 132px; height: 92px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2, var(--surface)); }
+.ticket-pdf { display: grid; place-items: center; font-weight: 700; color: var(--ink-3); }

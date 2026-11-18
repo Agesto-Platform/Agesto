@@ -25,7 +25,7 @@ import { useAgenda, useDashboard } from '../lib/queries'
 import { useUltimosAtendimentos } from '../features/atendimentos/queries'
 import { StatusAtendimentoPill } from '../features/atendimentos/status'
 import { ApiError } from '../lib/api'
-import { dataCurta, hojeExtenso, hora, iniciais, mesNome, MES_LONGO, SEMANA_CURTA } from '../lib/format'
+import { dataCurta, hojeExtenso, hora, iniciais, mesNome, paraData, MES_LONGO, SEMANA_CURTA } from '../lib/format'
 import type { Atendimento } from '../types/api'
 
 const COBRANCA: Record<string, string> = { PorHora: 'Por hora', Empreitada: 'Empreitada' }
@@ -106,7 +106,9 @@ export function Dashboard() {
     )
   }
 
-  const { rentabilidade: r, vendas, servicos, estoque } = data
+  const { rentabilidade: r, servicos, estoque } = data
+  // Receita por dia = mesma base do faturamento (serviços, produtos e avulsos), por dia de Brasília (J-02).
+  const receitaPorDia = (r.receitaPorDia ?? []).map((p) => ({ data: p.dia, valor: p.valor }))
   const maxServico = Math.max(...servicos.receitaPorServico.map((s) => s.receita), 0)
 
   const colunas: Column<Atendimento>[] = [
@@ -207,8 +209,8 @@ export function Dashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...vendas.receitaPorPeriodo].reverse().map((p) => {
-                      const d = new Date(p.data)
+                    {[...receitaPorDia].reverse().map((p) => {
+                      const d = paraData(p.data)
                       return (
                         <tr key={p.data}>
                           <td>
@@ -222,7 +224,7 @@ export function Dashboard() {
                 </table>
               </div>
             ) : (
-              <BarsChart pontos={vendas.receitaPorPeriodo} label="Receita por dia no período" />
+              <BarsChart pontos={receitaPorDia} label="Receita por dia no período" />
             )}
           </CardBody>
         </Card>

@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { colors, radius, space } from './theme'
+import { colors, radius, space, font } from './theme'
 import { urlNavegacao } from '@/features/rota/montarRota'
 import { linkWhatsApp } from '@/lib/whatsapp'
 import type { AgendaItem } from '@/types/api'
@@ -12,7 +12,9 @@ function hora(iso: string | null): string {
 }
 
 /**
- * Linha grande de agenda. `highlight` = próximo atendimento. Tocar no cartão
+ * Linha grande de agenda. `highlight` = próximo atendimento. `naLista` tira a
+ * moldura para o cartão entrar num painel com divisórias (`divisoria` desenha
+ * a linha de baixo). Tocar no cartão
  * abre a conclusão (`onPress`); o botão da direita abre a navegação até o
  * cliente quando há endereço completo, e o do WhatsApp abre a conversa com o
  * cliente quando o telefone serve (DEC-56).
@@ -22,15 +24,19 @@ export function JobCard({
   highlight = false,
   onPress,
   etiqueta,
+  naLista = false,
+  divisoria = false,
 }: {
   item: AgendaItem
   highlight?: boolean
   onPress?: () => void
   etiqueta?: string | null
+  naLista?: boolean
+  divisoria?: boolean
 }) {
   const whatsapp = linkWhatsApp(item.clienteTelefone)
   return (
-    <View style={[styles.job, highlight && styles.next]}>
+    <View style={[styles.job, highlight && styles.next, naLista && styles.naLista, divisoria && styles.divisoria]}>
       <Pressable
         onPress={onPress}
         disabled={!onPress}
@@ -103,21 +109,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radius.sm,
-    padding: space(3.75),
+    borderRadius: radius.card,
+    padding: space(3.5),
   },
+  naLista: { borderWidth: 0, borderRadius: 0 },
+  divisoria: { borderBottomWidth: 1, borderBottomColor: colors.line2 },
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space(3.5) },
-  next: { borderColor: colors.good, backgroundColor: colors.goodSoft },
+  next: { borderColor: colors.brandLine },
   time: { width: 52, alignItems: 'center' },
-  timeH: { fontSize: 19, fontWeight: '700', color: colors.ink },
+  timeH: { fontSize: 18, fontFamily: font.semibold, color: colors.ink },
   body: { flex: 1, gap: space(1) },
-  title: { fontSize: 16, fontWeight: '600', color: colors.ink },
-  client: { fontSize: 14, color: colors.ink2 },
+  title: { fontSize: 15.5, fontFamily: font.semibold, color: colors.ink },
+  client: { fontFamily: font.regular, fontSize: 14, color: colors.ink2 },
   addrRow: { flexDirection: 'row', alignItems: 'center', gap: space(1.5) },
-  addr: { flex: 1, fontSize: 13, color: colors.ink3 },
-  badge: { marginTop: space(1), backgroundColor: colors.good, borderRadius: radius.pill, paddingHorizontal: space(2.25), paddingVertical: space(1), alignSelf: 'flex-start' },
-  badgeText: { color: '#fff', fontSize: 11.5, fontWeight: '700' },
+  addr: { fontFamily: font.regular, flex: 1, fontSize: 13, color: colors.ink3 },
+  badge: { marginTop: space(1), backgroundColor: colors.brand, borderRadius: radius.pill, paddingHorizontal: space(2.25), paddingVertical: space(1), alignSelf: 'flex-start' },
+  badgeText: { color: '#fff', fontSize: 11.5, fontFamily: font.semibold },
   etiqueta: { marginTop: space(1), backgroundColor: colors.surface2, borderRadius: radius.pill, paddingHorizontal: space(2.25), paddingVertical: space(1), alignSelf: 'flex-start' },
-  etiquetaText: { color: colors.ink2, fontSize: 11.5, fontWeight: '700' },
-  go: { width: 40, height: 40, borderRadius: 11, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
+  etiquetaText: { color: colors.ink2, fontSize: 11.5, fontFamily: font.semibold },
+  go: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: colors.brandSoft, alignItems: 'center', justifyContent: 'center' },
 })

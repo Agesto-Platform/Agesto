@@ -5,7 +5,7 @@ import { useRouter, useFocusEffect } from 'expo-router'
 import * as Updates from 'expo-updates'
 import { Screen } from '@/ui/Screen'
 import { JobCard } from '@/ui/JobCard'
-import { colors, radius, space } from '@/ui/theme'
+import { colors, radius, space, font } from '@/ui/theme'
 import { db } from '@/db/instance'
 import { montarRota } from '@/features/rota/montarRota'
 import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
@@ -80,13 +80,15 @@ export default function Inicio() {
   }
 
   const pending = pendentes.length
-  const card = (item: AgendaItem, highlight = false) => {
+  const card = (item: AgendaItem, highlight = false, naLista = false, divisoria = false) => {
     const { rota: destino, etiqueta } = acaoDaAgenda(item, pendentes)
     return (
       <JobCard
         key={item.id}
         item={item}
         highlight={highlight}
+        naLista={naLista}
+        divisoria={divisoria}
         etiqueta={etiqueta}
         onPress={destino ? () => router.push(destino) : undefined}
       />
@@ -112,8 +114,13 @@ export default function Inicio() {
 
       <ScrollView
         contentContainerStyle={styles.body}
-        refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} />}
+        refreshControl={<RefreshControl refreshing={atualizando} onRefresh={atualizar} tintColor={colors.brand} colors={[colors.brand]} />}
       >
+        <View style={styles.today}>
+          <Text style={styles.todayDate}>{dataHoje()}</Text>
+          <Text style={styles.todayCount}>{agenda.length} na agenda</Text>
+        </View>
+
         <Pressable
           onPress={() => router.push('/registrar')}
           style={({ pressed }) => [styles.register, pressed && { opacity: 0.9 }]}
@@ -155,11 +162,6 @@ export default function Inicio() {
           </View>
         )}
 
-        <View style={styles.today}>
-          <Text style={styles.todayDate}>{dataHoje()}</Text>
-          <Text style={styles.todayCount}>{agenda.length} na agenda</Text>
-        </View>
-
         {rota.url && (
           <View style={{ gap: space(1.5) }}>
             <Pressable
@@ -193,8 +195,8 @@ export default function Inicio() {
         {resto.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.label}>Ainda hoje</Text>
-            <View style={{ gap: space(2.75) }}>
-              {resto.map((item) => card(item))}
+            <View style={styles.lista}>
+              {resto.map((item, i) => card(item, false, true, i < resto.length - 1))}
             </View>
           </View>
         )}
@@ -216,34 +218,36 @@ const styles = StyleSheet.create({
     paddingVertical: space(3.5),
     borderBottomWidth: 1,
     borderBottomColor: colors.line2,
+    backgroundColor: colors.surface,
   },
-  biz: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  bizMark: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  bizName: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  bizSub: { fontSize: 12.5, color: colors.ink3, marginTop: 1 },
+  biz: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
+  bizMark: { color: '#fff', fontFamily: font.semibold, fontSize: 16 },
+  bizName: { fontSize: 15, fontFamily: font.semibold, color: colors.ink },
+  bizSub: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3, marginTop: 1 },
 
   body: { padding: space(4), gap: space(4) },
-  register: { backgroundColor: colors.brand, borderRadius: radius.card, padding: space(5), flexDirection: 'row', alignItems: 'center', gap: space(4) },
-  plus: { width: 46, height: 46, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
-  rt: { color: '#fff', fontSize: 19, fontWeight: '700' },
-  rs: { color: 'rgba(255,255,255,0.92)', fontSize: 13, marginTop: 3 },
+  register: { backgroundColor: colors.brand, borderRadius: radius.card, padding: space(4.5), flexDirection: 'row', alignItems: 'center', gap: space(4) },
+  plus: { width: 44, height: 44, borderRadius: radius.sm, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
+  rt: { color: '#fff', fontSize: 17, fontFamily: font.semibold },
+  rs: { fontFamily: font.regular, color: 'rgba(255,255,255,0.82)', fontSize: 13, marginTop: 3 },
 
   apk: { flexDirection: 'row', alignItems: 'center', gap: space(3), backgroundColor: colors.brandSoft, borderRadius: radius.sm, padding: space(3.5) },
-  apkTitle: { fontSize: 14, fontWeight: '700', color: colors.brandInk },
-  apkText: { fontSize: 12.5, color: colors.brandInk, marginTop: 2 },
+  apkTitle: { fontSize: 14, fontFamily: font.semibold, color: colors.brandInk },
+  apkText: { fontFamily: font.regular, fontSize: 12.5, color: colors.brandInk, marginTop: 2 },
 
   pending: { flexDirection: 'row', alignItems: 'center', gap: space(2), backgroundColor: colors.warnSoft, borderRadius: radius.sm, paddingHorizontal: space(3), paddingVertical: space(2.5) },
-  pendingText: { fontSize: 12.5, color: colors.warn, fontWeight: '600' },
+  pendingText: { fontSize: 12.5, color: colors.warn, fontFamily: font.semibold },
 
-  today: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: space(1) },
-  todayDate: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  todayCount: { fontSize: 13, color: colors.ink3 },
+  today: { gap: 2, paddingHorizontal: space(1) },
+  todayDate: { fontSize: 22, fontFamily: font.semibold, color: colors.ink, letterSpacing: -0.3 },
+  todayCount: { fontFamily: font.regular, fontSize: 13, color: colors.ink3 },
 
   rota: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space(2), backgroundColor: colors.brandSoft, borderRadius: radius.sm, paddingVertical: space(3.25) },
-  rotaText: { fontSize: 15, fontWeight: '700', color: colors.brandInk },
-  rotaHint: { fontSize: 12.5, color: colors.ink3, paddingHorizontal: space(1) },
+  rotaText: { fontSize: 15, fontFamily: font.semibold, color: colors.brandInk },
+  rotaHint: { fontFamily: font.regular, fontSize: 12.5, color: colors.ink3, paddingHorizontal: space(1) },
 
   section: { gap: space(2.5) },
-  label: { fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', color: colors.ink4, paddingHorizontal: space(1) },
-  empty: { fontSize: 13, color: colors.ink3, paddingHorizontal: space(1) },
+  lista: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.card, overflow: 'hidden' },
+  label: { fontSize: 12, fontFamily: font.semibold, letterSpacing: 1, textTransform: 'uppercase', color: colors.ink3, paddingHorizontal: space(1) },
+  empty: { fontFamily: font.regular, fontSize: 13, color: colors.ink3, paddingHorizontal: space(1) },
 })

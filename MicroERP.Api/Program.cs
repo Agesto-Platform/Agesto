@@ -11,6 +11,7 @@ using MicroERP.Api.DTOs;
 using MicroERP.Api.Repositories;
 using MicroERP.Api.Repositories.Interfaces;
 using MicroERP.Api.Services;
+using MicroERP.Api.Services.Arquivos;
 using MicroERP.Api.Services.Email;
 using MicroERP.Api.Services.Geocodificacao;
 using MicroERP.Api.Services.Insights;
@@ -98,6 +99,11 @@ builder.Services.AddScoped<IAgenteService, AgenteService>();
 builder.Services.AddScoped<IUsoIaService, UsoIaService>();
 builder.Services.AddScoped<IEnvioCodigoAdmin, EnvioCodigoAdmin>();
 builder.Services.AddScoped<IAssinaturaService, AssinaturaService>();
+builder.Services.AddScoped<ISuporteService, SuporteService>();
+// Anexos dos chamados no Supabase Storage (DEC-60). Sem URL e chave, ficam desligados.
+builder.Services.Configure<ArmazenamentoOptions>(builder.Configuration.GetSection(ArmazenamentoOptions.Secao));
+builder.Services.PostConfigure<ArmazenamentoOptions>(options => options.ChaveSecreta = options.ChaveSecreta?.Trim());
+builder.Services.AddHttpClient<IArmazenamentoArquivos, SupabaseStorage>(client => client.Timeout = TimeSpan.FromSeconds(30));
 // Bloqueio automático por atraso da assinatura (DEC-58), de hora em hora.
 builder.Services.AddHostedService<AssinaturaWorker>();
 builder.Services.AddSingleton(TimeProvider.System);

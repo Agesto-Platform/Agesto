@@ -1,7 +1,8 @@
 /*
  * Design tokens do Agesto — Módulo Web (Dono).
  * Portados dos templates aprovados (agesto/design/templates, 22/10/2026).
- * Duas paletas: Marinho + Vermelho (padrão) e Oceano, cada uma com claro e escuro.
+ * Três paletas: Azul petróleo (padrão, simples e limpa, irmã do Petróleo do app),
+ * Marinho + Vermelho e Oceano (opcionais, mais artísticas), cada uma com claro e escuro.
  * O <html> carrega data-palette e data-mode (ver index.html e src/theme/theme.ts);
  * cada paleta define os MESMOS papéis e o layout só lê os papéis.
  *
@@ -23,17 +24,52 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-/* 4 · Marinho + Vermelho (pôster "lemons") — ancora: marinho 223°.
+/* 1 · Azul petróleo (padrão) — ancora: azul petróleo 202°.
+   Uma cor só para agir; o resto é branco, cinza bem claro e o próprio azul
+   petróleo em transparência (selecionado ~8%, suave ~12%). Verde, âmbar e
+   vermelho só em selos de estado. Texto ink..ink-3 passa AA sobre surface e shell. */
+:root,
+[data-palette="petroleo"] {
+  --canvas: #EEF1F3; --shell: #F8F9FA; --surface: #FFFFFF; --surface-2: #F6F7F9;
+  --hover: #F1F3F5; --selected: #ECF1F5; --line: #E3E8EC; --line-strong: #D2D9DF;
+  --ink: #141F29; --ink-2: #3A4753; --ink-3: #5D6974;
+  --brand: #1D4E6B; --brand-ink: #FFFFFF; --brand-hover: #163E56; --brand-soft: #E2EAF0;
+  --accent: #1D4E6B; --accent-ink: #FFFFFF; --accent-soft: #E2EAF0; --accent-fg: #163E56;
+  --signal: #1D4E6B; --signal-soft: #ECF1F5;
+  --ok-bg: #EAF3EE;   --ok-ink: #2B6E50;
+  --warn-bg: #F8F0E1; --warn-ink: #8A5A10;
+  --neg-bg: #FBECEA;  --neg-ink: #A8352E;
+  --info-bg: #F1F3F5; --info-ink: #3A4753;
+  --chart: #1D4E6B; --chart-hi: #6A90A8; --chart-empty: #EEF1F3;
+  --focus: #1D4E6B; --selection: #CFDCE6; --shadow-color: 20 45 62;
+  --logo-block: #1D4E6B; --logo-dot: #A9C8DC;
+}
+[data-palette="petroleo"][data-mode="dark"] {
+  --canvas: #0A1219; --shell: #0E171F; --surface: #121C24; --surface-2: #16222C;
+  --hover: #1B2A35; --selected: #1D3344; --line: #1F2E3A; --line-strong: #2C3F4E;
+  --ink: #EEF2F5; --ink-2: #B3C0CB; --ink-3: #8A97A1;
+  --brand: #8DB6D0; --brand-ink: #071722; --brand-hover: #A9C9DD; --brand-soft: #17324A;
+  --accent: #8DB6D0; --accent-ink: #071722; --accent-soft: #17324A; --accent-fg: #A9C9DD;
+  --signal: #8DB6D0; --signal-soft: #16303F;
+  --ok-bg: #123327;   --ok-ink: #9FD8BC;
+  --warn-bg: #3A2E16; --warn-ink: #F0C878;
+  --neg-bg: #43181A;  --neg-ink: #F7A9A6;
+  --info-bg: #1B2833; --info-ink: #C9D3DB;
+  --chart: #6E9DBA; --chart-hi: #B9D3E3; --chart-empty: #16242E;
+  --focus: #8DB6D0; --selection: #24435A; --shadow-color: 0 0 0;
+  --logo-block: #8DB6D0; --logo-dot: #EEF2F5;
+}
+
+/* 2 · Marinho + Vermelho (pôster "lemons") — opcional. Ancora: marinho 223°.
    Psicologia: marinho = seriedade e confianca com dinheiro (a base);
    vermelho = energia e urgencia (so alerta, item ativo e "hoje");
    o papel off-white do video segura o contraste sem frieza. */
-:root,
 [data-palette="marinho"] {
   --canvas: #E6E3DC; --shell: #F3F1ED; --surface: #FDFCFA; --surface-2: #F6F4EF;
   --hover: #EEEBE4; --selected: #E3E7F1; --line: #E8E5DE; --line-strong: #D6D2C8;
   --ink: #18233F; --ink-2: #4C5672; --ink-3: #687089;
   --brand: #283E72; --brand-ink: #F3F1ED; --brand-hover: #1F3260; --brand-soft: #E1E6F2;
-  --accent: #D62D32; --accent-ink: #FFFFFF; --accent-soft: #F9DEDC;
+  --accent: #D62D32; --accent-ink: #FFFFFF; --accent-soft: #F9DEDC; --accent-fg: #A3171C;
   --signal: #0E2A7F; --signal-soft: #DDE2F2;
   --ok-bg: #E1E6F2;   --ok-ink: #1F3260;
   --warn-bg: #F6E8CC; --warn-ink: #77501A;
@@ -41,13 +77,14 @@
   --info-bg: #EEEBE4; --info-ink: #4A4636;
   --chart: #283E72; --chart-hi: #D62D32; --chart-empty: #ECE9E2;
   --focus: #D62D32; --selection: #DDE2F2; --shadow-color: 24 34 70;
+  --logo-block: var(--ink); --logo-dot: var(--accent);
 }
 [data-palette="marinho"][data-mode="dark"] {
   --canvas: #0A0F1E; --shell: #0E1426; --surface: #131B31; --surface-2: #18213A;
   --hover: #1E2844; --selected: #25314F; --line: #212B45; --line-strong: #313D5C;
   --ink: #F3F1ED; --ink-2: #B6BCCD; --ink-3: #858DA6;
   --brand: #8EA4DC; --brand-ink: #0A0F1E; --brand-hover: #A6B8E5; --brand-soft: #1F2C52;
-  --accent: #F0625F; --accent-ink: #1A0707; --accent-soft: #43181A;
+  --accent: #F0625F; --accent-ink: #1A0707; --accent-soft: #43181A; --accent-fg: #F7A9A6;
   --signal: #8EA4DC; --signal-soft: #1C2A4E;
   --ok-bg: #1C2A4E;   --ok-ink: #B9C8F2;
   --warn-bg: #3A2E16; --warn-ink: #F0C878;
@@ -57,7 +94,7 @@
   --focus: #F0625F; --selection: #2A3A66; --shadow-color: 0 0 0;
 }
 
-/* ---------- 2 · Oceano (petroleo, creme, laranja, areia, agua) ---------- */
+/* ---------- 3 · Oceano (petroleo, creme, laranja, areia, agua) — opcional ---------- */
 [data-palette="oceano"] {
   --canvas: #E3D6BD;
   --shell: #F5EFE6;
@@ -80,6 +117,7 @@
   --accent: #FF5C1F;          /* laranja */
   --accent-ink: #17191B;
   --accent-soft: #FFE3D6;
+  --accent-fg: #A83B10;          /* texto sobre accent-soft (avatar, ícone de KPI) */
 
   --signal: #BFE0DA;          /* agua */
   --signal-soft: #E3F1EE;
@@ -96,6 +134,7 @@
   --focus: #FF5C1F;
   --selection: #BFE0DA;
   --shadow-color: 40 48 44;
+  --logo-block: var(--ink); --logo-dot: var(--accent);
 }
 
 /* Oceano escuro — ancora: petroleo 184°.
@@ -125,6 +164,7 @@
   --accent: #FF7A45;
   --accent-ink: #17191B;
   --accent-soft: #40200F;
+  --accent-fg: #FFB08F;
 
   --signal: #BFE0DA;
   --signal-soft: #143B3A;
@@ -146,7 +186,8 @@
 [data-mode="dark"] { color-scheme: dark; }
 
 /* Mascote do Agente: gradiente análogo por paleta (reflexo, corpo, sombra, base/halo). */
-:root, [data-palette="marinho"] { --mascot-hi: #AFC2F0; --mascot-a: #3A58A6; --mascot-a2: #1E2F62; --mascot-b: #93BBF4; }
+:root, [data-palette="petroleo"] { --mascot-hi: #A9C8DC; --mascot-a: #2A6488; --mascot-a2: #163E56; --mascot-b: #8DB6D0; }
+[data-palette="marinho"]       { --mascot-hi: #AFC2F0; --mascot-a: #3A58A6; --mascot-a2: #1E2F62; --mascot-b: #93BBF4; }
 [data-palette="oceano"]        { --mascot-hi: #A8EADF; --mascot-a: #167479; --mascot-a2: #0B4044; --mascot-b: #8FE3D5; }
 
 @theme inline {
