@@ -93,6 +93,18 @@
 
 ---
 
+## Correções da auditoria de 17/11/2026
+
+> Auditoria completa da `develop` `0be630f`, com API local e PostgreSQL descartável (relatório local do Davi, fora do repositório). Os três achados abaixo foram corrigidos em 17/11 a pedido do Davi; os demais seguem só no relatório. Nenhum está em `main` ainda: a API e o web entram na próxima release, e o app só chega aos celulares no próximo APK. As correções do app não foram testadas em aparelho.
+
+| ID | Problema | Onde | Status |
+|----|----------|------|--------|
+| MOB-01 | Entrar com outra conta no app apagava sem aviso os registros ainda não enviados da conta anterior (por exemplo, depois de a sessão cair por 401). Os botões "Sair" de aceitar termos e de trocar senha também apagavam sem avisar, e a contagem de pendências ignorava os serviços criados no app | `mobile/src/auth/localData.ts` (`ensureLocalOwner`) | Feito (PR #220, 17/11): o login mostra o email da conta anterior e pede "Apagar e entrar" antes de apagar; todo "Sair" avisa das pendências |
+| MOB-03 | Uma correção feita enquanto a Descarga estava no ar, ou depois de um envio sem resposta, ficava marcada como enviada, mas o servidor a ignorava porque o uuid já estava gravado | `mobile/src/sync/sync.ts` | Feito (PR #220, 17/11): o registro fica travado para edição durante o envio e até uma sincronização com resposta (a trava fica gravada no aparelho), e salvar um registro enviado com a tela aberta é recusado. Sem internet, um registro com envio incerto só pode ser corrigido depois da próxima sincronização |
+| J-02 | O gráfico "Receita por dia" do dashboard não somava o mesmo que o faturamento e podia mostrar a receita no dia errado por causa do fuso | `MetricasRepository.cs`, `web/src/pages/Dashboard.tsx` | Feito (PR #221, 17/11): a API manda `receitaPorDia` com a mesma base do faturamento (atendimentos concluídos), pelo dia de Brasília, e o web lê a data sem deslocar. Se o web for publicado antes da API, o gráfico fica vazio até a API nova subir |
+
+---
+
 ## Achados altos da auditoria de 10/11/2026 — em aberto
 
 > Auditoria em modo rápido da `develop` `4da57dc`, com API local e PostgreSQL descartável (relatório local do Davi, fora do repositório). Os quatro de estoque e conversão e o SEG-01 foram reproduzidos por um verificador independente, por HTTP contra Postgres real; PAG-01, PAG-02 e PERF-01 foram confirmados pela leitura do código. Conferidos de novo na `develop` `c58b44e` (11/11): continuam abertos. O COD-01 (exclusão física de usuário) foi resolvido pelo PR #133. O COD-03 (médio: vendas simultâneas do mesmo produto em atendimentos diferentes se sobrescreviam) foi resolvido junto com o E2E-01 pelo PR #143, release #144 (11/11): `Produto.QuantidadeEstoque` virou token de concorrência, e a gravação que perde a corrida recebe 409 no web ou fica pendente no app. Responsável e prioridade dependem do Davi.
