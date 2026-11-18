@@ -12,6 +12,10 @@ internal static class FusoBrasilia
         return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local.Date, DateTimeKind.Unspecified), Info);
     }
 
+    /// <summary>Dia do calendário de Brasília em que caiu um instante UTC.</summary>
+    public static DateOnly DiaLocal(DateTime utc) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Info));
+
     private static TimeZoneInfo Resolver()
     {
         foreach (var id in new[] { "America/Sao_Paulo", "E. South America Standard Time" })

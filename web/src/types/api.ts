@@ -135,6 +135,13 @@ export interface MetricasRentabilidade {
   margemPercentual: number
   atendimentos: number
   ticketMedio: number
+  /** Faturamento de cada dia em Brasília (J-02). Opcional: API anterior não manda. */
+  receitaPorDia?: ReceitaDiaPonto[]
+}
+
+export interface ReceitaDiaPonto {
+  dia: string // "2026-11-17", dia de Brasília
+  valor: number
 }
 
 export interface ProdutoRankingItem {
