@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import { brl } from './ui/brl'
-import { dataCurta, MES_CURTO as MES, SEMANA_CURTA as SEM } from '../lib/format'
+import { dataCurta, paraData, MES_CURTO as MES, SEMANA_CURTA as SEM } from '../lib/format'
 
 export type BarPoint = { data: string; valor: number }
 
@@ -25,7 +25,7 @@ export function BarsChart({ pontos, label }: { pontos: BarPoint[]; label: string
   const [hoje] = useState(() => new Date())
 
   const porMes = pontos.length > 62
-  const serie = porMes ? agruparPorMes(pontos) : pontos.map((p) => ({ d: new Date(p.data), valor: p.valor }))
+  const serie = porMes ? agruparPorMes(pontos) : pontos.map((p) => ({ d: paraData(p.data), valor: p.valor }))
   const max = teto(Math.max(0, ...serie.map((s) => s.valor)))
   const ultimo = serie.length - 1
   const temHoje = !porMes && ultimo >= 0 && mesmoDia(serie[ultimo]!.d, hoje)
@@ -97,7 +97,7 @@ export function BarsChart({ pontos, label }: { pontos: BarPoint[]; label: string
 function agruparPorMes(pontos: BarPoint[]): { d: Date; valor: number }[] {
   const meses = new Map<string, { d: Date; valor: number }>()
   for (const p of pontos) {
-    const d = new Date(p.data)
+    const d = paraData(p.data)
     const k = d.getFullYear() + '-' + d.getMonth()
     const m = meses.get(k) ?? { d: new Date(d.getFullYear(), d.getMonth(), 1), valor: 0 }
     m.valor += p.valor
