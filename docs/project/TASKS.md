@@ -1,484 +1,484 @@
-# Agesto — Tasks e Roadmap
+# Agesto — Tasks and Roadmap
 
-> Espelho simplificado do Jira (projeto KAN). Para status detalhado, acessar o board em `gomesdavi731.atlassian.net`.
-> Atualizar este arquivo sempre que uma task mudar de status ou uma nova decisão impactar o roadmap.
-> **Nota:** este arquivo está em reconciliação com código e Git. O Jira deve ser sincronizado somente depois dessa auditoria.
+> Simplified mirror of Jira (KAN project). For detailed status, open the board at `gomesdavi731.atlassian.net`.
+> Update this file whenever a task changes status or a new decision affects the roadmap.
+> **Note:** this file is being reconciled with code and Git. Jira should only be synced after this audit.
 
-## Transição para trabalho em equipe — 18/08/2026
+## Transition to team work — 18/08/2026
 
-| Item | Estado |
+| Item | State |
 |---|---|
-| Centralizar documentação em `docs/project/` | 🟢 Concluído |
-| Definir integrantes, papéis e focos iniciais | 🟢 Concluído — revisto em 22/10/2026: Davi Gomes (mobile e geral), Davi Oliveira/`ghzpro034` (web e geral), Diego/`Depowo` (infra e redesign) |
-| Criar organização GitHub e transferir para `Agesto-Platform/Agesto` | 🟢 Concluído |
-| Configurar time `Core`, acessos mínimos e segundo Owner | 🟢 Concluído — Davi e Depowo são Owners |
-| Proteger `develop` e `main` com PR, revisão e status checks | 🟢 Concluído — ruleset exige PR e os checks Backend, Web e Mobile; sem aprovação obrigatória (decisão de 10/10/2026) |
-| Adicionar CI para backend, web e mobile | 🟢 Concluído — validado na promoção de governança |
-| Auditar `REQUIREMENTS.md` reconstruído | 🟡 Em andamento — Davi Gomes, depois do lançamento |
-| Publicar a linha local consolidada em `main` | 🟢 Concluído — merge `72b021b` |
+| Centralize documentation in `docs/project/` | 🟢 Done |
+| Define members, roles and initial focus | 🟢 Done — revised on 22/10/2026: Davi Gomes (mobile and general), Davi Oliveira/`ghzpro034` (web and general), Diego/`Depowo` (infra and redesign) |
+| Create the GitHub organization and transfer to `Agesto-Platform/Agesto` | 🟢 Done |
+| Set up the `Core` team, minimal access and a second Owner | 🟢 Done — Davi and Depowo are Owners |
+| Protect `develop` and `main` with PR, review and status checks | 🟢 Done — ruleset requires a PR and the Backend, Web and Mobile checks; no required approval (decision of 10/10/2026) |
+| Add CI for backend, web and mobile | 🟢 Done — validated in the governance promotion |
+| Audit the rebuilt `REQUIREMENTS.md` | 🟡 In progress — Davi Gomes, after the launch |
+| Publish the consolidated local line to `main` | 🟢 Done — merge `72b021b` |
 
 ---
 
-## Lançamento do MVP (até 15/12/2026) — DEC-46
+## MVP launch (Lançamento do MVP, by 15/12/2026) — DEC-46
 
-> Prioridade da equipe. Ensaio geral em 03/11, piloto de 04/11 a 28/11, revisão em 01/12 e lançamento em 15/12. Cada tarefa tem um responsável; quando outra pessoa participa, ela aparece entre parênteses. Ao terminar uma tarefa, troque o status aqui e no documento "Agesto: plano de lançamento do MVP" (aba "Tarefas por pessoa"). Origem: B = bloqueador do piloto, I = melhoria do piloto, L = lançamento, D = decisão do plano.
+> Team priority. Dress rehearsal on 03/11, pilot from 04/11 to 28/11, review on 01/12 and launch on 15/12. Each task has one owner; when someone else takes part, they appear in parentheses. When you finish a task, change the status here and in the document "Agesto: plano de lançamento do MVP" (tab "Tarefas por pessoa"). Origin: B = pilot blocker, I = pilot improvement, L = launch, D = plan decision.
 
-### Davi Gomes — mobile e geral
+### Davi Gomes — mobile and general
 
-| Prazo | Tarefa | Origem | Status |
+| Deadline | Task | Origin | Status |
 |-------|--------|--------|--------|
-| 24/10 | Escolher o cliente piloto e confirmar que os agentes usam Android. Enquanto não há cliente, a validação segue com um usuário de teste (Diego, 28/10) | D1 | A fazer |
-| 24/10 | CPF com dígito verificador no app e cliente ainda não enviado editável | B5 | Feito (PR #107, 28/10) |
-| 27/10 | APK: `mobile/eas.json`, `android.package` = `br.com.agesto.app`, `expo-updates` e aviso de versão nova (DEC-47; ícone vem do Diego) | B1 | Feito (PR #108, 28/10); o primeiro `eas build` é do Diego |
-| 31/10 | Sessão de 30 dias na API e no app, com revogação ao desativar (DEC-50) | B4, D7 | Feito (PR #109, 28/10) |
-| 31/10 | Texto dos termos de uso e da política de privacidade, com revisão jurídica | B6, D8 | Em andamento: rascunho pronto, falta a revisão jurídica. As páginas públicas `/termos` e `/privacidade` já existem no web (PR #115) e recebem o texto em `web/src/pages/legal/textos.ts` |
-| 31/10 | Tela de aceite dos termos no app | B6 | Feito (PR #110, 28/10); migration `AddUsuarioAceiteTermos` aplicada no Supabase em 28/10 |
-| 31/10 | Acordo do piloto por escrito: período grátis ou com desconto, uso dos dados | D9 | Em andamento: rascunho pronto, falta fechar com o cliente piloto |
-| 04/11 | Conta do Dono piloto, catálogo, clientes, agentes e treino presencial | Piloto | A fazer |
-| 10/11 | Página de download do APK com passo a passo de instalação (`/baixar` no web) | L3 | Feito (PR #111, 28/10) |
-| 14/11 | Busca no app, motivo da recusa e cancelar atendimento no app | I1 a I3 | Feito (PR #112, 28/10) |
-| 28/11 | Sincronizar ao abrir o app e quando a internet volta | I5 | Feito (PR #113, 28/10) |
-| 28/11 | Retomar ou descartar o lote de outubro (PRs #98 a #102: paginação, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço) | DEC-42 a 45 | Feito: paginação (PR #98, DEC-42, 28/10); bloqueio da conta, exclusão de usuário e duração do serviço integrados por Davi Oliveira em 11/11 (PR #133, release #134, DEC-43 a 45), migration aplicada no Supabase |
-| 01/12 | Revisão do piloto e preço da assinatura (todos participam) | D10 | A fazer |
-| 12/12 | CNPJ e nota da assinatura; formalizar a propriedade das contribuições (DEC-29) e decidir se o repositório segue público (DEC-24) | Legal | A fazer |
+| 24/10 | Choose the pilot customer and confirm the agents use Android. While there is no customer, validation goes on with a test user (Diego, 28/10) | D1 | To do |
+| 24/10 | CPF with check digit in the app and a client not yet sent still editable | B5 | Done (PR #107, 28/10) |
+| 27/10 | APK: `mobile/eas.json`, `android.package` = `br.com.agesto.app`, `expo-updates` and new version warning (DEC-47; the icon comes from Diego) | B1 | Done (PR #108, 28/10); the first `eas build` is Diego's |
+| 31/10 | 30-day session in the API and the app, with revocation on deactivation (DEC-50) | B4, D7 | Done (PR #109, 28/10) |
+| 31/10 | Text of the terms of use and privacy policy, with legal review | B6, D8 | In progress: draft ready, legal review missing. The public pages `/termos` and `/privacidade` already exist on the web (PR #115) and get the text from `web/src/pages/legal/textos.ts` |
+| 31/10 | Terms acceptance screen in the app | B6 | Done (PR #110, 28/10); migration `AddUsuarioAceiteTermos` applied on Supabase on 28/10 |
+| 31/10 | Written pilot agreement: free or discounted period, data usage | D9 | In progress: draft ready, still to close with the pilot customer |
+| 04/11 | Pilot Dono account, catalog, clients, agents and in-person training | Pilot | To do |
+| 10/11 | APK download page with step-by-step installation (`/baixar` on the web) | L3 | Done (PR #111, 28/10) |
+| 14/11 | Search in the app, refusal reason and cancel atendimento in the app | I1 to I3 | Done (PR #112, 28/10) |
+| 28/11 | Sync when the app opens and when the internet comes back | I5 | Done (PR #113, 28/10) |
+| 28/11 | Resume or discard the October batch (PRs #98 to #102: pagination, account lockout, user deletion with anonymization and service duration) | DEC-42 to 45 | Done: pagination (PR #98, DEC-42, 28/10); account lockout, user deletion and service duration integrated by Davi Oliveira on 11/11 (PR #133, release #134, DEC-43 to 45), migration applied on Supabase |
+| 01/12 | Pilot review and subscription price (everyone takes part) | D10 | To do |
+| 12/12 | CNPJ and subscription invoice; formalize the ownership of contributions (DEC-29) and decide whether the repository stays public (DEC-24) | Legal | To do |
 
-### Davi Oliveira — web e geral
+### Davi Oliveira — web and general
 
-| Prazo | Tarefa | Origem | Status |
+| Deadline | Task | Origin | Status |
 |-------|--------|--------|--------|
-| 24/10 | CPF com dígito verificador no web | B5 | Feito (PR #117, 28/10) |
-| 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
-| 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
-| 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Em `main` desde 12/11 (release #163); Brevo configurado no Render e envio testado em produção. Desde a DEC-55 vale também para o Agente, no app e no web. Update 17/11/2026: since DEC-59 the email link is for the Dono only; the Dono sets the agent's new password in the panel |
-| ~~17/11~~ | ~~Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48)~~ | D11 | Cancelado (12/11): sem cadastro aberto, a venda é por contato (DEC-57) |
-| ~~28/11~~ | ~~Cadastro aberto no ar com verificação de email e período de teste~~ | L1 | Cancelado (12/11, DEC-57). A conta nova é criada pela equipe no superadmin, com convite por email (DEC-55) |
-| 01/12 | Canal de suporte: WhatsApp Business e email | D14 | Em parte: a aba Suporte no painel do Dono está em `main` desde 17/11 (PR #216, release #217; DEC-60). O Dono abre chamados com até 3 anexos, a equipe responde no superadmin e os dois recebem email. Migration `AddTicketsSuporte` e bucket privado `suporte-anexos` no Supabase em 17/11. Falta o WhatsApp Business |
-| 08/12 | Cobrança mínima no web: atendimento pago ou em aberto, forma e data do pagamento | L5 | Feito (PR #188, release #189, 13/11): aba "A receber" com total, selo Pago/A receber na lista e registro de data e forma no detalhe (`PUT /api/atendimento/{id}/recebimento`, só Dono). Migration `AddRecebimentoEDesfazerPagamento` aplicada no Supabase em 13/11 |
-| 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | A fazer |
-| 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | Feito (PR #184, release #185, 13/11; DEC-58): pagamento registrado no superadmin, bloqueio manual e automático após 10 dias de carência, aviso ao Dono e trava de licenças. Desfazer o último pagamento registrado por engano: PR #188, release #189 (13/11). Migrations `AddAssinatura` e `AddRecebimentoEDesfazerPagamento` aplicadas no Supabase |
-| 12/11 | Página de apresentação com preço, termos, download e contato | L4 | Feito (PR #172, release #173, 12/11; `/conheca` no PR #174, release #175, 13/11; testado pelo Davi): página de venda na raiz do web, com assinatura de R$ 49,90 (Dono e 1 funcionário) e R$ 19,90 por funcionário a mais; pagamento por cartão, boleto ou Pix, combinado no contato (DEC-57) |
-| 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render |
-| 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
-| — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | Feito (PR #182, release #183, 13/11): 5 senhas erradas bloqueiam 15 min; código de 6 dígitos por email no login. Migration `AddAdminLoginSeguro` aplicada no Supabase |
-| — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52, DEC-53) | Extra | Pronto no PR #155 (SEG-01), em espera: fora da `develop` por decisão do Davi (12/11). Ver o SEG-01 abaixo |
-| — | Encurtar a validade do token de admin (`Admin__ExpiresMinutes`) enquanto o web usar `localStorage` (DEC-53) | Extra | Feito (PR #188, release #189, 13/11): padrão de 24 horas (1440 min), decidido pelo Davi Oliveira; `Admin__ExpiresMinutes=1440` também no Render (13/11) |
-| — | Migrar o token do web para cookie httpOnly no primeiro gatilho da DEC-53 (domínio próprio, cliente pagante ou fim das contas de teste) | Extra | Aguardando gatilho |
-| 12/11 | Convites por email: acesso novo (pelo Dono ou pela equipe do Agesto) e convite de admin, com a pessoa criando a própria senha; fim da senha provisória (DEC-55) | Extra | Feito (PR #162, release #163, 12/11); migrations aplicadas no Supabase e envio testado em produção |
-| — | IA: registrar o consumo por empresa (`TenantUsage`) e limite por plano (DEC-21) | Extra | Feito (PR #176, release #177, 13/11; testado pelo Davi): tabela `UsosIa` (migration aplicada no Supabase) e 20 perguntas por empresa por dia. Limite por plano: não se aplica enquanto houver um plano só (decisão do Davi, 13/11) |
-| 12/11 | RLS nas tabelas do superadmin (`AdminsPlataforma`, `AuditoriasAdmin`), que ficaram de fora do `EnableRlsLockdown` (DEC-34, DEC-52) | Extra | Feito (PR #166, release #167, 12/11): migration `EnableRlsSuperadmin` aplicada no Supabase, com a policy do `agesto_api`. Não havia exposição (`anon` e `authenticated` sem privilégio, Data API desligada). Conferido em 13/11: as 18 tabelas com RLS |
-| 12/11 | WhatsApp por link `wa.me`: enviar o orçamento pelo WhatsApp e abrir a conversa com o cliente no web e no app (DEC-56) | Extra | Links feitos (PR #168, release #169, 12/11). Orçamento em PDF no lugar da mensagem: feito (PR #170, release #171, 12/11). Conversa dentro do Agesto fica para depois, pela API oficial (DEC-56) |
-| 14/11 | Agenda com histórico desde a criação da empresa e avisos do dia | Extra | Feito (PR #195, release #196, 14/11), sem migration. No web, a Agenda navega mês a mês desde a criação da empresa e mostra também os atendimentos sem data agendada; o seletor de período saiu da Agenda. O sino da barra de cima mostra os pendentes de hoje e os atrasados (`GET /api/atendimento/avisos`, só Dono). No app, aviso às 7h nos dias com atendimento pendente, que só chega aos celulares no próximo APK |
+| 24/10 | CPF with check digit on the web | B5 | Done (PR #117, 28/10) |
+| 31/10 | Terms acceptance screen on the web (the API exists since PR #110) | B6 | Done (PR #119, 28/10) |
+| 03/11 | Integrated tests with real web, app, API and PostgreSQL, as the dress rehearsal script (KAN-41) | Gate | To do |
+| 14/11 | Dono's "Esqueci a senha" (forgot password) by email (API and web) | I4 | Done in code (12/11, DEC-54): `/esqueci-senha` and `/redefinir-senha` screens, sending through Brevo. In `main` since 12/11 (release #163); Brevo configured on Render and sending tested in production. Since DEC-55 it also applies to the Agente, in the app and on the web. Update 17/11/2026: since DEC-59 the email link is for the Dono only; the Dono sets the agent's new password in the panel |
+| ~~17/11~~ | ~~Design the open sign-up flow: screen, verification email and trial period (DEC-48)~~ | D11 | Cancelled (12/11): no open sign-up, sales are by contact (DEC-57) |
+| ~~28/11~~ | ~~Open sign-up live with email verification and trial period~~ | L1 | Cancelled (12/11, DEC-57). The new account is created by the team in the superadmin, with an email invitation (DEC-55) |
+| 01/12 | Support channel: WhatsApp Business and email | D14 | Partly: the Suporte tab in the Dono's panel is in `main` since 17/11 (PR #216, release #217; DEC-60). The Dono opens tickets with up to 3 attachments, the team answers in the superadmin and both get an email. Migration `AddTicketsSuporte` and private bucket `suporte-anexos` on Supabase on 17/11. WhatsApp Business is still missing |
+| 08/12 | Minimal billing on the web: atendimento paid or open, payment method and date | L5 | Done (PR #188, release #189, 13/11): "A receber" (receivable) tab with total, Pago/A receber badge in the list and date and method recorded in the detail (`PUT /api/atendimento/{id}/recebimento`, Dono only). Migration `AddRecebimentoEDesfazerPagamento` applied on Supabase on 13/11 |
+| 08/12 | Short user manual for the Dono and the agent (KAN-42) | L4 | To do |
+| 12/12 | Subscription control: who paid and who is late | L5 | Done (PR #184, release #185, 13/11; DEC-58): payment recorded in the superadmin, manual and automatic blocking after a 10-day grace period, notice to the Dono and license lock. Undo the last payment recorded by mistake: PR #188, release #189 (13/11). Migrations `AddAssinatura` and `AddRecebimentoEDesfazerPagamento` applied on Supabase |
+| 12/11 | Presentation page with price, terms, download and contact | L4 | Done (PR #172, release #173, 12/11; `/conheca` in PR #174, release #175, 13/11; tested by Davi): sales page at the web root, with a R$ 49,90 subscription (Dono and 1 employee) and R$ 19,90 per additional employee; payment by card, boleto or Pix, agreed in the contact (DEC-57) |
+| 10/11 | AI: insights report and Agente panel chat (DEC-21), out of the launch scope | Extra | Done (PRs #126 to #130, 10/11); `Insights__AnthropicApiKey` key on Render |
+| 10/11 | Superadmin area at `/admin`: companies, users, team and auditing (DEC-52) | Extra | Done (PR #131, release #132, 10/11); first admin created |
+| — | Superadmin: per-account lockout on the admin login and two-step verification (DEC-52) | Extra | Done (PR #182, release #183, 13/11): 5 wrong passwords lock for 15 min; 6-digit code by email at login. Migration `AddAdminLoginSeguro` applied on Supabase |
+| — | Temporary password dropping the user's already open sessions (DEC-50, DEC-52, DEC-53) | Extra | Ready in PR #155 (SEG-01), on hold: kept out of `develop` by Davi's decision (12/11). See SEG-01 below |
+| — | Shorten the admin token validity (`Admin__ExpiresMinutes`) while the web uses `localStorage` (DEC-53) | Extra | Done (PR #188, release #189, 13/11): default of 24 hours (1440 min), decided by Davi Oliveira; `Admin__ExpiresMinutes=1440` also on Render (13/11) |
+| — | Migrate the web token to an httpOnly cookie at the first DEC-53 trigger (own domain, paying customer or end of the test accounts) | Extra | Waiting for trigger |
+| 12/11 | Email invitations: new access (by the Dono or by the Agesto team) and admin invitation, with the person creating their own password; end of the temporary password (DEC-55) | Extra | Done (PR #162, release #163, 12/11); migrations applied on Supabase and sending tested in production |
+| — | AI: record consumption per company (`TenantUsage`) and per-plan limit (DEC-21) | Extra | Done (PR #176, release #177, 13/11; tested by Davi): `UsosIa` table (migration applied on Supabase) and 20 questions per company per day. Per-plan limit: does not apply while there is only one plan (Davi's decision, 13/11) |
+| 12/11 | RLS on the superadmin tables (`AdminsPlataforma`, `AuditoriasAdmin`), which were left out of `EnableRlsLockdown` (DEC-34, DEC-52) | Extra | Done (PR #166, release #167, 12/11): migration `EnableRlsSuperadmin` applied on Supabase, with the `agesto_api` policy. There was no exposure (`anon` and `authenticated` without privilege, Data API off). Checked on 13/11: all 18 tables with RLS |
+| 12/11 | WhatsApp by `wa.me` link: send the quote through WhatsApp and open the conversation with the client on the web and in the app (DEC-56) | Extra | Links done (PR #168, release #169, 12/11). Quote as PDF instead of the message: done (PR #170, release #171, 12/11). Conversation inside Agesto comes later, through the official API (DEC-56) |
+| 14/11 | Schedule with history since the company was created, and the day's alerts | Extra | Done (PR #195, release #196, 14/11), no migration. On the web, the Agenda (schedule) moves month by month since the company was created and also shows atendimentos with no scheduled date; the period picker left the Agenda. The bell in the top bar shows today's pending and overdue items (`GET /api/atendimento/avisos`, Dono only). In the app, a 7 a.m. notification on days with a pending atendimento, which reaches phones only in the next APK |
 | 17/11 | App on Expo SDK 58, so it opens in Expo Go on the iPhone; also fixes the first open of the app ("no such table: agenda") | Extra | Done (PR #213, release #204, 17/11). Reaches phones only in the next APK |
 | 17/11 | Field agent signs in with the password set by the Dono, no email verification; the Dono resets it with "Definir senha" (DEC-59) | Extra | Done (PR #214, release #204, 17/11), no migration. Open: a new password does not sign out sessions already open (SEG-01); an agent with a made-up email promoted to Dono has no "Esqueci a senha"; the superadmin still creates agents through the email invite |
 
-### Diego — infra e redesign
+### Diego — infra and redesign
 
-| Prazo | Tarefa | Origem | Status |
+| Deadline | Task | Origin | Status |
 |-------|--------|--------|--------|
-| 24/10 | Render Starter para o piloto e o lançamento (DEC-49) | B2, D2 | A fazer. Não é mais para a API não dormir: desde 11/11 o Worker `agesto-keepalive` mantém a API e o banco acordados (DEC-32). O plano pago segue previsto na DEC-49 |
-| 24/10 | Organização `agesto` no expo.dev, com os dois Davis | D3 | A fazer. Update 17/11/2026: falkz-cmd's branch `chore/eas-projeto` (no PR yet) changes the `owner` in `mobile/app.json` to `agesto-platform` and adds the EAS `projectId`; the Expo accounts that open the app need to belong to that organization |
-| 24/10 | Monitor do `/health` com alerta e chave `Geocoding__OpenRouteServiceApiKey` no Render | B7, B9 | A fazer |
-| 24/10 | Acesso de push e merge para os Davis, ou o app do Claude no GitHub da organização | Operação | A fazer |
-| 27/10 | Ícone, ícone adaptativo e splash do Agesto para o APK | B1 | A fazer |
-| 31/10 | Backup diário com `pg_dump` (GitHub Actions) e um teste de restauração (DEC-49) | B3 | A fazer |
-| 31/10 | Primeiro `eas build` antes do ensaio | B1, B8 | A fazer. A promoção `develop → main` que fazia parte desta tarefa já acontece a cada release (a última foi a #189, em 13/11), e a migration `AddUsuarioAceiteTermos` está no Supabase desde 28/10. Update 17/11/2026: the app is now on Expo SDK 58 (PR #213, release #204); the build also depends on the EAS project link in `chore/eas-projeto` |
-| 03/11 | Ensaio geral com os dois Davis | Portão | A fazer |
-| 10/11 | Domínio próprio na web e na API, com CORS e CSP ajustados | L2, D12 | A fazer |
-| 10/11 | Conta no provedor de email por API e chave no Render | I4, L1 | Feito (12/11): conta no Brevo (DEC-54) e variáveis `Email__*` no Render; o passo a passo está em `deploy/README.md`, seção 11 |
-| 17/11 | Fechar o design system | D13 | A fazer |
-| 05/12 | Cópia da chave de assinatura do APK guardada fora do repositório e do Expo | B1 | A fazer |
-| 12/12 | Redesign do web (DEC-51): em `main` desde 25/10; falta o acabamento final | L6 | Em andamento. Update 17/11/2026: the Azul petróleo palette on the web (PR #201) and the app redesign with the Petróleo palette and the Geist font (PR #202) were merged straight into `main` and reached `develop` through PR #213 |
-| 12/12 | Supabase Pro antes do lançamento (DEC-49) | L2 | A fazer. Conferido em 13/11: organização no plano Free, que não tem backup diário; banco com 12 MB |
-| 12/12 | APK de produção no link de download e última promoção para a `main` | L3 | A fazer |
+| 24/10 | Render Starter for the pilot and the launch (DEC-49) | B2, D2 | To do. No longer to keep the API from sleeping: since 11/11 the `agesto-keepalive` Worker keeps the API and the database awake (DEC-32). The paid plan is still planned in DEC-49 |
+| 24/10 | `agesto` organization on expo.dev, with both Davis | D3 | To do. Update 17/11/2026: falkz-cmd's branch `chore/eas-projeto` (no PR yet) changes the `owner` in `mobile/app.json` to `agesto-platform` and adds the EAS `projectId`; the Expo accounts that open the app need to belong to that organization |
+| 24/10 | `/health` monitor with alert and `Geocoding__OpenRouteServiceApiKey` key on Render | B7, B9 | To do |
+| 24/10 | Push and merge access for the Davis, or the Claude app on the organization's GitHub | Operations | To do |
+| 27/10 | Agesto icon, adaptive icon and splash for the APK | B1 | To do |
+| 31/10 | Daily backup with `pg_dump` (GitHub Actions) and a restore test (DEC-49) | B3 | To do |
+| 31/10 | First `eas build` before the rehearsal | B1, B8 | To do. The `develop → main` promotion that was part of this task already happens at every release (the latest was #189, on 13/11), and the `AddUsuarioAceiteTermos` migration is on Supabase since 28/10. Update 17/11/2026: the app is now on Expo SDK 58 (PR #213, release #204); the build also depends on the EAS project link in `chore/eas-projeto` |
+| 03/11 | Dress rehearsal with both Davis | Gate | To do |
+| 10/11 | Own domain for the web and the API, with CORS and CSP adjusted | L2, D12 | To do |
+| 10/11 | Account with an email provider with an API and key on Render | I4, L1 | Done (12/11): Brevo account (DEC-54) and `Email__*` variables on Render; the step by step is in `deploy/README.md`, section 11 |
+| 17/11 | Close the design system | D13 | To do |
+| 05/12 | Copy of the APK signing key stored outside the repository and Expo | B1 | To do |
+| 12/12 | Web redesign (DEC-51): in `main` since 25/10; final polish missing | L6 | In progress. Update 17/11/2026: the Azul petróleo palette on the web (PR #201) and the app redesign with the Petróleo palette and the Geist font (PR #202) were merged straight into `main` and reached `develop` through PR #213 |
+| 12/12 | Supabase Pro before the launch (DEC-49) | L2 | To do. Checked on 13/11: organization on the Free plan, which has no daily backup; database at 12 MB |
+| 12/12 | Production APK on the download link and last promotion to `main` | L3 | To do |
 
 ---
 
-## Correções da auditoria de 17/11/2026
+## Fixes from the 17/11/2026 audit
 
-> Auditoria completa da `develop` `0be630f`, com API local e PostgreSQL descartável (relatório local do Davi, fora do repositório). Os três achados abaixo foram corrigidos em 17/11 a pedido do Davi; os demais seguem só no relatório. Nenhum está em `main` ainda: a API e o web entram na próxima release, e o app só chega aos celulares no próximo APK. As correções do app não foram testadas em aparelho.
+> Full audit of `develop` `0be630f`, with a local API and a throwaway PostgreSQL (Davi's local report, outside the repository). The three findings below were fixed on 17/11 at Davi's request; the others stay only in the report. None is in `main` yet: the API and the web go in the next release, and the app reaches phones only in the next APK. The app fixes were not tested on a device.
 
-| ID | Problema | Onde | Status |
+| ID | Problem | Where | Status |
 |----|----------|------|--------|
-| MOB-01 | Entrar com outra conta no app apagava sem aviso os registros ainda não enviados da conta anterior (por exemplo, depois de a sessão cair por 401). Os botões "Sair" de aceitar termos e de trocar senha também apagavam sem avisar, e a contagem de pendências ignorava os serviços criados no app | `mobile/src/auth/localData.ts` (`ensureLocalOwner`) | Feito (PR #220, 17/11): o login mostra o email da conta anterior e pede "Apagar e entrar" antes de apagar; todo "Sair" avisa das pendências |
-| MOB-03 | Uma correção feita enquanto a Descarga estava no ar, ou depois de um envio sem resposta, ficava marcada como enviada, mas o servidor a ignorava porque o uuid já estava gravado | `mobile/src/sync/sync.ts` | Feito (PR #220, 17/11): o registro fica travado para edição durante o envio e até uma sincronização com resposta (a trava fica gravada no aparelho), e salvar um registro enviado com a tela aberta é recusado. Sem internet, um registro com envio incerto só pode ser corrigido depois da próxima sincronização |
-| J-02 | O gráfico "Receita por dia" do dashboard não somava o mesmo que o faturamento e podia mostrar a receita no dia errado por causa do fuso | `MetricasRepository.cs`, `web/src/pages/Dashboard.tsx` | Feito (PR #221, 17/11): a API manda `receitaPorDia` com a mesma base do faturamento (atendimentos concluídos), pelo dia de Brasília, e o web lê a data sem deslocar. Se o web for publicado antes da API, o gráfico fica vazio até a API nova subir |
+| MOB-01 | Signing in with another account in the app silently deleted the previous account's records not yet sent (for example, after the session dropped with a 401). The "Sair" (sign out) buttons on the terms acceptance and password change screens also deleted without warning, and the pending count ignored services created in the app | `mobile/src/auth/localData.ts` (`ensureLocalOwner`) | Done (PR #220, 17/11): the login shows the previous account's email and asks for "Apagar e entrar" (delete and sign in) before deleting; every "Sair" warns about pending items |
+| MOB-03 | A correction made while the Descarga was in flight, or after a send with no response, was marked as sent, but the server ignored it because the uuid was already stored | `mobile/src/sync/sync.ts` | Done (PR #220, 17/11): the record is locked for editing during the send and until a sync with a response (the lock is stored on the device), and saving a sent record with the screen open is refused. Offline, a record with an uncertain send can only be corrected after the next sync |
+| J-02 | The dashboard's "Receita por dia" (revenue per day) chart did not add up to the same as the revenue total and could show revenue on the wrong day because of the time zone | `MetricasRepository.cs`, `web/src/pages/Dashboard.tsx` | Done (PR #221, 17/11): the API sends `receitaPorDia` on the same basis as the revenue (completed atendimentos), by Brasília day, and the web reads the date without shifting it. If the web is published before the API, the chart stays empty until the new API is up |
 
 ---
 
-## Achados altos da auditoria de 10/11/2026 — em aberto
+## High findings from the 10/11/2026 audit — open
 
-> Auditoria em modo rápido da `develop` `4da57dc`, com API local e PostgreSQL descartável (relatório local do Davi, fora do repositório). Os quatro de estoque e conversão e o SEG-01 foram reproduzidos por um verificador independente, por HTTP contra Postgres real; PAG-01, PAG-02 e PERF-01 foram confirmados pela leitura do código. Conferidos de novo na `develop` `c58b44e` (11/11): continuam abertos. O COD-01 (exclusão física de usuário) foi resolvido pelo PR #133. O COD-03 (médio: vendas simultâneas do mesmo produto em atendimentos diferentes se sobrescreviam) foi resolvido junto com o E2E-01 pelo PR #143, release #144 (11/11): `Produto.QuantidadeEstoque` virou token de concorrência, e a gravação que perde a corrida recebe 409 no web ou fica pendente no app. Responsável e prioridade dependem do Davi.
+> Quick-mode audit of `develop` `4da57dc`, with a local API and a disposable PostgreSQL (Davi's local report, outside the repository). The four stock and conversion findings and SEG-01 were reproduced by an independent verifier, over HTTP against a real Postgres; PAG-01, PAG-02 and PERF-01 were confirmed by reading the code. Checked again on `develop` `c58b44e` (11/11): still open. COD-01 (physical user deletion) was resolved by PR #133. COD-03 (medium: simultaneous sales of the same product in different atendimentos overwrote each other) was resolved together with E2E-01 by PR #143, release #144 (11/11): `Produto.QuantidadeEstoque` became a concurrency token, and the write that loses the race gets 409 on the web or stays pending in the app. Owner and priority depend on Davi.
 
-| ID | Problema | Onde | Decisão do Davi | Status |
+| ID | Problem | Where | Davi's decision | Status |
 |----|----------|------|-----------------|--------|
-| E2E-01 | Converter o mesmo orçamento em paralelo cria dois ou mais atendimentos e perde atualizações de estoque (5 chamadas simultâneas: 15 unidades lançadas, estoque caiu só 3) | `OrcamentoService.cs:159-171` (checagem de "já convertido" fora de trava), `ItemProdutoService.cs:63-73` (estoque gravado como valor absoluto) | — | Feito (PR #143, release #144, 11/11): reserva do orçamento com `UPDATE` condicional na transação; a segunda conversão recebe "Orçamento já foi convertido." |
-| E2E-02 | Serviço de empreitada com quantidade 2: o orçamento cobra 2 × valor, o atendimento convertido cobra 1 × valor | `OrcamentoService.cs` (subtotal sempre quantidade × preço) × `ItemServicoService.cs:59-60` (empreitada ignora a quantidade, DEC-04) | Travar a quantidade em 1 (11/11) | Feito (PR #149, 11/11): o orçamento recusa empreitada com quantidade diferente de 1, e o formulário do web trava o campo em 1; para cobrar de novo, outra linha. Nenhum orçamento em produção tinha empreitada com quantidade maior que 1 |
-| E2E-03 | Desligar e religar "Controla estoque" cria estoque fantasma: o item lançado com a chave desligada devolve unidades ao ser excluído | `ItemProdutoService.cs:66,161` e `AtendimentoService.cs:143` (a devolução consulta a chave atual, não a do lançamento) | — | Feito (PR #146, release #147, 11/11): cada item guarda se baixou o estoque (`ItemProduto.EstoqueBaixado`), e só esses devolvem ao serem excluídos; migration aplicada no Supabase marcou os itens antigos pela regra anterior |
-| E2E-04 | Cancelar o atendimento não devolve o estoque, e as métricas tratam o cancelado como se não tivesse consumido: as unidades somem | `AtendimentoService.cs` (o PUT só troca o status) × `MetricasRepository.cs` (filtra `Status != Cancelado`) | Cancelar devolve o estoque: sim (11/11) | Feito (PR #146, release #147, 11/11): cancelar devolve o estoque, inclusive pela conclusão do app; sair de Cancelado baixa de novo e é recusado sem saldo. As métricas, que já excluem o cancelado, ficam coerentes |
-| SEG-01 | Trocar ou redefinir a senha não derruba o token de 30 dias, e reativar o usuário faz o token antigo voltar a valer: não há como encerrar a sessão de uma conta comprometida | `TokenRevalidator.cs` (confere só ativo, removido, empresa, perfil) | Versão de sessão no usuário (migration) e comportamento ao reativar | Em espera (12/11): implementado e testado no PR #155 (branch `feature/fix-SEG-01`), aberto e **sem merge**; por decisão do Davi, não entra na `develop` agora. Conferido em 13/11: o PR agora tem conflito com a `develop` também no código (`Usuario.cs`, `UsuarioService.cs`, `AdminEmpresaService.cs`, testes de usuário e de admin) e em DECISIONS.md e TASKS.md; ao retomar, atualizar a branch e gerar de novo a migration `AddUsuarioVersaoSessao` depois das migrations de 13/11 (ainda não aplicada no Supabase). Update 17/11/2026: more relevant since DEC-59, because a password set by the Dono does not sign out the agent's open sessions |
-| PAG-01 | Web e app não usam a paginação da DEC-42: com 10 mil clientes, a lista vem com 3 MB; com 30 mil atendimentos, 9,5 MB, e tudo é desenhado de uma vez | `web/src` e `mobile/src` (nenhuma chamada com `?pagina=`) | Paginação obrigatória com teto depois da migração das telas; "Carregar mais" de 50 em 50, com busca e filtros no servidor (11/11). Em três fases: (1) telas Clientes e Atendimentos; (2) campos de escolha de cliente e produto com busca, e Dashboard; (3) paginação obrigatória com teto de 100 | Fase 1 feita (PR #153, 11/11). Fases 2 e 3 feitas (12/11): campos de cliente, produto e serviço com busca no servidor; Dashboard só com os 6 últimos; Orçamentos, Produtos e Serviços de 50 em 50, com busca; nomes de cliente e itens nas respostas; `GET /api/orcamento/resumo`; as cinco listas sempre paginadas (sem parâmetros, página 1 com 20). Ver DEC-42 |
-| PAG-02 | A agenda aceita qualquer período: a tela Atendimentos pede o ano inteiro (6,3 MB, p95 de 5,8 s com 10 usuários simultâneos, medido localmente) | `AtendimentoRepository.cs:36-44`, `web/src/lib/queries.ts:26` | Teto de 62 dias; tirar "Ano" da Agenda; a API manda o resumo na lista (11/11) | Feito (PR #150, 11/11): agenda acima de 62 dias volta 400; a Agenda do web tem só 7 dias e Mês; a lista de atendimentos traz o resumo, e Atendimentos e Clientes não pedem mais a agenda do ano |
-| PERF-01 | O app sempre pede a Carga completa (3,8 MB com o volume do teste) e regrava cada tabela inteira no SQLite; a API já aceita `ultimaSincronizacao` | `mobile/src/sync/sync.ts:28-33`, `mobile/src/db/sqliteDb.ts:17-24` | Carga incremental com exclusões (tombstones) | Feito (PR #151, 11/11): com Carga de menos de 7 dias, o app pede só o que mudou e apaga os ids excluídos; a completa volta na primeira vez, a cada 7 dias e com API sem `removidos`. Local: 3,7 MB na completa, 473 B na incremental sem mudanças |
+| E2E-01 | Converting the same quote in parallel creates two or more atendimentos and loses stock updates (5 simultaneous calls: 15 units recorded, stock dropped only 3) | `OrcamentoService.cs:159-171` ("already converted" check outside a lock), `ItemProdutoService.cs:63-73` (stock written as an absolute value) | — | Done (PR #143, release #144, 11/11): quote reserved with a conditional `UPDATE` in the transaction; the second conversion gets "Orçamento já foi convertido." |
+| E2E-02 | Empreitada service with quantity 2: the quote charges 2 × value, the converted atendimento charges 1 × value | `OrcamentoService.cs` (subtotal always quantity × price) × `ItemServicoService.cs:59-60` (empreitada ignores quantity, DEC-04) | Lock the quantity at 1 (11/11) | Done (PR #149, 11/11): the quote refuses an empreitada with quantity other than 1, and the web form locks the field at 1; to charge again, another line. No quote in production had an empreitada with quantity above 1 |
+| E2E-03 | Turning "Controla estoque" off and on again creates phantom stock: the item recorded with the switch off returns units when deleted | `ItemProdutoService.cs:66,161` and `AtendimentoService.cs:143` (the return checks the current switch, not the one at recording time) | — | Done (PR #146, release #147, 11/11): each item stores whether it deducted stock (`ItemProduto.EstoqueBaixado`), and only those return stock when deleted; the migration applied on Supabase marked the old items by the previous rule |
+| E2E-04 | Cancelling the atendimento does not return the stock, and the metrics treat the cancelled one as if it had not consumed anything: the units disappear | `AtendimentoService.cs` (the PUT only changes the status) × `MetricasRepository.cs` (filters `Status != Cancelado`) | Cancelling returns the stock: yes (11/11) | Done (PR #146, release #147, 11/11): cancelling returns the stock, including through the app's completion; leaving Cancelado deducts again and is refused without balance. The metrics, which already exclude cancelled ones, become consistent |
+| SEG-01 | Changing or resetting the password does not drop the 30-day token, and reactivating the user makes the old token valid again: there is no way to end the session of a compromised account | `TokenRevalidator.cs` (checks only active, removed, company, profile) | Session version on the user (migration) and behavior on reactivation | On hold (12/11): implemented and tested in PR #155 (branch `feature/fix-SEG-01`), open and **not merged**; by Davi's decision, it does not go into `develop` now. Checked on 13/11: the PR now conflicts with `develop` in the code too (`Usuario.cs`, `UsuarioService.cs`, `AdminEmpresaService.cs`, user and admin tests) and in DECISIONS.md and TASKS.md; when resuming, update the branch and regenerate the `AddUsuarioVersaoSessao` migration after the 13/11 migrations (not yet applied on Supabase). Update 17/11/2026: more relevant since DEC-59, because a password set by the Dono does not sign out the agent's open sessions |
+| PAG-01 | Web and app do not use the DEC-42 pagination: with 10 thousand clients, the list comes with 3 MB; with 30 thousand atendimentos, 9.5 MB, and everything is drawn at once | `web/src` and `mobile/src` (no call with `?pagina=`) | Mandatory pagination with a ceiling after migrating the screens; "Carregar mais" (load more) 50 at a time, with search and filters on the server (11/11). In three phases: (1) Clientes and Atendimentos screens; (2) client and product picker fields with search, and Dashboard; (3) mandatory pagination with a ceiling of 100 | Phase 1 done (PR #153, 11/11). Phases 2 and 3 done (12/11): client, product and service fields with server search; Dashboard with only the last 6; Orçamentos, Produtos and Serviços 50 at a time, with search; client names and items in the responses; `GET /api/orcamento/resumo`; the five lists always paginated (without parameters, page 1 with 20). See DEC-42 |
+| PAG-02 | The schedule accepts any period: the Atendimentos screen asks for the whole year (6.3 MB, p95 of 5.8 s with 10 simultaneous users, measured locally) | `AtendimentoRepository.cs:36-44`, `web/src/lib/queries.ts:26` | 62-day ceiling; remove "Ano" (year) from the Agenda; the API sends the summary in the list (11/11) | Done (PR #150, 11/11): a schedule above 62 days returns 400; the web Agenda has only 7 days and Month; the atendimentos list brings the summary, and Atendimentos and Clientes no longer ask for the year's schedule |
+| PERF-01 | The app always asks for the full Carga (3.8 MB with the test volume) and rewrites each whole table in SQLite; the API already accepts `ultimaSincronizacao` | `mobile/src/sync/sync.ts:28-33`, `mobile/src/db/sqliteDb.ts:17-24` | Incremental Carga with deletions (tombstones) | Done (PR #151, 11/11): with a Carga less than 7 days old, the app asks only for what changed and deletes the removed ids; the full one comes back the first time, every 7 days and with an API without `removidos`. Locally: 3.7 MB for the full one, 473 B for the incremental one without changes |
 
 ---
 
-## Status dos Épicos
+## Epic status
 
-| Épico | Descrição | Status |
+| Epic | Description | Status |
 |-------|-----------|--------|
-| KAN-11 | Infraestrutura & DevOps | 🟡 Em andamento |
-| KAN-19 | Backend Core (C# / ASP.NET) | 🟢 Essencialmente completo |
-| KAN-30 | Módulo IA/Insights (Python) | ⚫ Obsoleto — descartado (DEC-21 resolvida: IA roda em C# no backend) |
-| KAN-37 | Documentação & QA | 🟡 Em andamento |
-| KAN-44 | Frontend Web (React) — Módulo Dono | 🟢 Completo (web-01 a web-14, sidebar 100% funcional + testes base, ver DEC-25) — em produção contra a API real (DEC-32) |
-| KAN-69 | Domínio Prestador de Serviço (Orçamento, Agenda, Item genérico, valor editável) | 🟢 Backend essencialmente completo — migrations aplicadas e rota fase 1 entregue (DEC-37/38); falta descarga de orçamento no sync e "Otimizar dia" (fase 2) |
-| KAN-77 | Camada de Métricas & Dashboards | 🟡 Em andamento |
-| — | Mobile (React Native) — App do Agente | 🟢 Completo (mob-01 a mob-07, offline-first, ver DEC-26) — em produção contra a API real (DEC-32), atendimento no nível do web (DEC-39) |
+| KAN-11 | Infrastructure & DevOps | 🟡 In progress |
+| KAN-19 | Backend Core (C# / ASP.NET) | 🟢 Essentially complete |
+| KAN-30 | AI/Insights Module (Python) | ⚫ Obsolete — discarded (DEC-21 resolved: AI runs in C# in the backend) |
+| KAN-37 | Documentation & QA | 🟡 In progress |
+| KAN-44 | Web Frontend (React) — Dono Module | 🟢 Complete (web-01 to web-14, sidebar 100% functional + base tests, see DEC-25) — in production against the real API (DEC-32) |
+| KAN-69 | Service Provider domain (Orçamento, Agenda, generic item, editable value) | 🟢 Backend essentially complete — migrations applied and route phase 1 delivered (DEC-37/38); quote Descarga in sync and "Otimizar dia" (phase 2) still missing |
+| KAN-77 | Metrics & Dashboards layer | 🟡 In progress |
+| — | Mobile (React Native) — Agent App | 🟢 Complete (mob-01 to mob-07, offline-first, see DEC-26) — in production against the real API (DEC-32), atendimento on par with the web (DEC-39) |
 
 ---
 
-## Sprint Atual — Backend Core
+## Current sprint — Backend Core
 
-### ✅ Concluídas
+### ✅ Done
 
-| KAN | Descrição | Responsável |
+| KAN | Description | Owner |
 |-----|-----------|-------------|
-| KAN-20 | Entidade Usuario + AuthService (JWT) | Luan |
-| KAN-21 | Entidade Configuracao | Davi Gomes |
-| KAN-22 | CRUD Cliente | Davi Gomes |
-| KAN-23 | CRUD Produto + controle de estoque* | Davi Gomes |
-| KAN-24 | CRUD Servico | Luan |
+| KAN-20 | Usuario entity + AuthService (JWT) | Luan |
+| KAN-21 | Configuracao entity | Davi Gomes |
+| KAN-22 | Cliente CRUD | Davi Gomes |
+| KAN-23 | Produto CRUD + stock control* | Davi Gomes |
+| KAN-24 | Servico CRUD | Luan |
 | KAN-25 | Atendimento + calcularTotal() | Davi Gomes |
 | KAN-26 | ItemProduto + ItemServico | Luan |
-| KAN-27 | Filtros de Atendimento Híbrido | Davi Gomes |
-| KAN-28 | Testes unitários (xUnit + Moq) | Luan |
-| KAN-29 | Migration InitialCreate + Supabase | Diego |
-| KAN-56 | Entidade Empresa + refatoração multi-tenant | Davi Gomes |
-| KAN-57 | Campo Perfil no Usuario + claims JWT | Davi Gomes |
-| KAN-58 | Remover campos BYOK da Configuracao | Davi Gomes |
-| KAN-59 | Controller/Service/Repository da Configuracao | Davi Gomes |
-| KAN-62 | Cobrança por empreitada no Servico | Davi Gomes |
-| KAN-63 | Corrigir extração de empresaId nos controllers (bug multi-tenant) | Davi Gomes |
+| KAN-27 | Hybrid Atendimento filters | Davi Gomes |
+| KAN-28 | Unit tests (xUnit + Moq) | Luan |
+| KAN-29 | InitialCreate migration + Supabase | Diego |
+| KAN-56 | Empresa entity + multi-tenant refactor | Davi Gomes |
+| KAN-57 | Perfil field on Usuario + JWT claims | Davi Gomes |
+| KAN-58 | Remove BYOK fields from Configuracao | Davi Gomes |
+| KAN-59 | Configuracao Controller/Service/Repository | Davi Gomes |
+| KAN-62 | Empreitada billing on Servico | Davi Gomes |
+| KAN-63 | Fix empresaId extraction in the controllers (multi-tenant bug) | Davi Gomes |
 | KAN-55 | DELETE /api/usuario (LGPD) | Luan |
-| KAN-60 | Endpoints de sincronização Mobile (Carga e Descarga) | Davi Gomes |
-| KAN-64 | Migration `ConvertEnumsToString` (DEC-08) | Diego |
-| KAN-65 | Converter Uuid de string para Guid nativo (DEC-09) | Davi Gomes |
-| KAN-66 | Alinhar versões EF Core entre Api e Tests em 8.0.11 (DEC-13) | Diego |
-| KAN-67 | Padronizar exceções nos Services (NotFoundException + 404 tipado) | Davi Gomes |
-| KAN-68 | UpdatedAt automático via SaveChangesAsync override (ChangeTracker) | Davi Gomes |
-| KAN-61 | Validar CRUD Cliente para Mobile | Davi Gomes |
+| KAN-60 | Mobile sync endpoints (Carga and Descarga) | Davi Gomes |
+| KAN-64 | `ConvertEnumsToString` migration (DEC-08) | Diego |
+| KAN-65 | Convert Uuid from string to native Guid (DEC-09) | Davi Gomes |
+| KAN-66 | Align EF Core versions between Api and Tests at 8.0.11 (DEC-13) | Diego |
+| KAN-67 | Standardize exceptions in the Services (NotFoundException + typed 404) | Davi Gomes |
+| KAN-68 | Automatic UpdatedAt via SaveChangesAsync override (ChangeTracker) | Davi Gomes |
+| KAN-61 | Validate Cliente CRUD for Mobile | Davi Gomes |
 
-> *KAN-23: controle de estoque agora **integrado ao fluxo de vendas** via DEC-11 — fix commitado em 17/06/2026. Cascade soft delete de itens e devolução de estoque ao deletar atendimento também implementados (commit `1b8b433`), assim como o wrap da descarga de sincronização em transação DB (commit `35c0587`).
+> *KAN-23: stock control now **integrated into the sales flow** through DEC-11 — fix committed on 17/06/2026. Cascading soft delete of items and stock return when deleting an atendimento were also implemented (commit `1b8b433`), as well as wrapping the sync Descarga in a DB transaction (commit `35c0587`).
 
-### 🔴 Pendentes — Backend Core
+### 🔴 Pending — Backend Core
 
-| KAN | Descrição | Prioridade | Responsável | Depende de |
+| KAN | Description | Priority | Owner | Depends on |
 |-----|-----------|------------|-------------|------------|
-| — | ~~Paginação no GetAllAsync~~ ✅ PR #98 (paginação opcional, DEC-42), retomado e mesclado em 28/10/2026 | Baixa | Davi Gomes | — |
+| — | ~~Pagination in GetAllAsync~~ ✅ PR #98 (optional pagination, DEC-42), resumed and merged on 28/10/2026 | Low | Davi Gomes | — |
 
-> Backend Core está essencialmente completo: em 11/11/2026, build verde e 346 testes xUnit aprovados no .NET 10 (DEC-40). `TryGetEmpresaId` e `TryGetUsuarioId` estão em `ApiControllerBase`; CPF, multi-tenant e sincronização possuem cobertura automatizada. A API roda contra o PostgreSQL do Supabase em produção (DEC-32); os testes automatizados ainda não rodam contra um PostgreSQL real (KAN-14/KAN-41).
+> Backend Core is essentially complete: on 11/11/2026, green build and 346 xUnit tests passing on .NET 10 (DEC-40). `TryGetEmpresaId` and `TryGetUsuarioId` are in `ApiControllerBase`; CPF, multi-tenant and sync have automated coverage. The API runs against Supabase's PostgreSQL in production (DEC-32); the automated tests do not yet run against a real PostgreSQL (KAN-14/KAN-41).
 
 ---
 
-## Domínio Prestador de Serviço (KAN-69)
+## Service Provider domain (KAN-69)
 
-> Épico que reúne os refinamentos do pivô de produto (DEC-15 a DEC-19, DEC-22, DEC-23): Orçamento, Agenda/Rota e item de atendimento genérico. O batch está publicado nas linhas `develop` e `main` de `Agesto-Platform/Agesto`.
+> Epic that gathers the refinements of the product pivot (DEC-15 to DEC-19, DEC-22, DEC-23): Orçamento, Agenda/Rota and the generic atendimento item. The batch is published on the `develop` and `main` lines of `Agesto-Platform/Agesto`.
 
-### ✅ Concluídas
+### ✅ Done
 
-| KAN | Descrição | Responsável | Commit |
+| KAN | Description | Owner | Commit |
 |-----|-----------|-------------|--------|
-| KAN-72 | Item de atendimento genérico: `ItemProduto.ProdutoId` nullable + `Descricao` + `Custo` (DEC-18/DEC-19); `ItemServico.ServicoId` continua obrigatório — serviço fora do catálogo é cadastro rápido, não linha efêmera (DEC-22); valor de item (`PrecoUnitario`) digitável/editável nos dois, com catálogo como sugestão/default (DEC-23); baixa de estoque só quando há `ProdutoId` | Davi Gomes | `61a9c29` |
-| KAN-73 | Margem por atendimento: `ItemProduto.Custo` alimenta `Atendimento.CustoTotal`, exposto como `Margem = ValorTotal − CustoTotal` em `AtendimentoResponse` (DEC-19) | Davi Gomes | `61a9c29`, `2b0d253` |
-| — | Orçamento como entidade separada do Atendimento (DEC-16): entidade `Orcamento` + `ItemOrcamento`, CRUD e conversão transacional `POST /api/orcamento/{id}/converter` (só converte se `Aprovado`; baixa de estoque só na conversão) | Davi Gomes | `fffaba0` |
-| — | `Cliente.Endereco` (DEC-17, parte 1): campos `Logradouro`, `Numero`, `Bairro`, `Cidade`, `Cep` | Davi Gomes | `da828bc` |
-| — | Agendamento (DEC-17, parte 2): `Atendimento.DataAgendada` + `GET /api/atendimento/agenda` com filtro por perfil (Agente só a própria; Dono todas/filtra) via novo helper `TryGetPerfil` em `ApiControllerBase` | Davi Gomes | `7007361` |
+| KAN-72 | Generic atendimento item: nullable `ItemProduto.ProdutoId` + `Descricao` + `Custo` (DEC-18/DEC-19); `ItemServico.ServicoId` remains mandatory — a service outside the catalog is a quick registration, not an ephemeral line (DEC-22); item value (`PrecoUnitario`) typed/editable on both, with the catalog as suggestion/default (DEC-23); stock deduction only when there is a `ProdutoId` | Davi Gomes | `61a9c29` |
+| KAN-73 | Margin per atendimento: `ItemProduto.Custo` feeds `Atendimento.CustoTotal`, exposed as `Margem = ValorTotal − CustoTotal` in `AtendimentoResponse` (DEC-19) | Davi Gomes | `61a9c29`, `2b0d253` |
+| — | Orçamento as an entity separate from Atendimento (DEC-16): `Orcamento` + `ItemOrcamento` entity, CRUD and transactional conversion `POST /api/orcamento/{id}/converter` (only converts if `Aprovado`; stock deduction only at conversion) | Davi Gomes | `fffaba0` |
+| — | `Cliente.Endereco` (DEC-17, part 1): fields `Logradouro`, `Numero`, `Bairro`, `Cidade`, `Cep` | Davi Gomes | `da828bc` |
+| — | Scheduling (DEC-17, part 2): `Atendimento.DataAgendada` + `GET /api/atendimento/agenda` filtered by profile (Agente only their own; Dono all/filters) through the new `TryGetPerfil` helper in `ApiControllerBase` | Davi Gomes | `7007361` |
 
-### 🟡 Batch "insights do protótipo" — concluído
+### 🟡 "Prototype insights" batch — done
 
-> Lote de melhorias inspiradas no protótipo mobile aprovado, entregues após o batch principal do KAN-69, commit `5e82411`.
+> Batch of improvements inspired by the approved mobile prototype, delivered after the main KAN-69 batch, commit `5e82411`.
 
-| Item | Descrição | Commit |
+| Item | Description | Commit |
 |------|-----------|--------|
-| Agenda enriquecida | `GET /api/atendimento/agenda` passou a devolver `AgendaItemResponse` (nome/telefone/endereço do cliente + resumo do serviço), eliminando o N+1 no consumo mobile | `5e82411` |
-| Rentabilidade agregada | Novo `GET /api/metrics/rentabilidade` + bloco `Rentabilidade` no `DashboardResponse` (faturamento, custo, margem, margem %, ticket médio, nº de atendimentos — só `Concluido` no período). Alimenta os KPIs do painel Web do dono | `5e82411` |
-| Orçamentos na Carga do sync | `SyncCargaResponse.Orcamentos` — o agente vê propostas offline | `5e82411` |
+| Enriched schedule | `GET /api/atendimento/agenda` now returns `AgendaItemResponse` (client name/phone/address + service summary), removing the N+1 on mobile | `5e82411` |
+| Aggregated profitability | New `GET /api/metrics/rentabilidade` + `Rentabilidade` block in `DashboardResponse` (revenue, cost, margin, margin %, average ticket, number of atendimentos — only `Concluido` in the period). Feeds the KPIs of the owner's Web panel | `5e82411` |
+| Quotes in the sync Carga | `SyncCargaResponse.Orcamentos` — the agent sees proposals offline | `5e82411` |
 
-### 🔴 Pendências residuais do prestador
+### 🔴 Remaining provider items
 
-| Item | Descrição | Prioridade | Responsável | Depende de |
+| Item | Description | Priority | Owner | Depends on |
 |------|-----------|------------|-------------|------------|
-| Margem/hora por serviço | Parte restante do KAN-79 — a duração do serviço e a receita por hora já existem (DEC-45, 11/11); falta atribuir custo ao serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Atribuição de custo ao serviço (DEC-19/KAN-72) |
-| Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Davi Gomes | Decisão de produto |
-| ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, convite por email para criar a senha (DEC-55; antes, senha provisória), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
-| ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
-| Roteirização/geolocalização | Fase 1 (DEC-37 e DEC-38) em `develop` (PR #47), migration aplicada no Supabase: "Iniciar rota" no app abre o Google Maps pelo endereço; clientes geocodificados em segundo plano pelo OpenRouteService; aba Mapa na Agenda do web (Leaflet + OpenStreetMap). Falta: chave `Geocoding__OpenRouteServiceApiKey` no Render e "Otimizar dia" (fase 2); `Servico.DuracaoMinutos` já existe (DEC-45, 11/11) | Média | Diego (chave, antes do ensaio); Davi Gomes (fase 2, depois do lançamento) | Chave do OpenRouteService no Render |
-| ~~Aplicar migrations no banco novo~~ | ✅ `InitialCreate` única (DEC-31) aplicada no Supabase novo em 08/10/2026 | Alta | — | — |
-| ~~**Agenda na Carga do sync**~~ | Feito no código (13/11), branch `feature/app-agenda-e-historico`: a Carga traz a agenda de hoje até 14 dias à frente (do Agente, só a dele) e o histórico dos últimos 30 dias. O `syncAgenda` só roda com API antiga | Média | Davi Gomes | — |
-| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43): atendimento referencia cliente offline por `ClienteUuid`; clientes processados antes na mesma leva; resposta devolve `ClientesMapeados` | — | — | — |
+| Margin/hour per service | The remaining part of KAN-79 — service duration and revenue per hour already exist (DEC-45, 11/11); assigning cost to the service is missing. Owner's decision: in the prototype, "most profitable service" becomes "top-earning services" (revenue per service, already existing) while this is not prioritized | Low | Davi Gomes | Assigning cost to the service (DEC-19/KAN-72) |
+| Quote Descarga in sync | Create a quote from offline mobile — flow decision open (whether the agent creates proposals offline). Today the API sends the quotes in the Carga, but the app neither loads them nor has a quote screen (checked on 21/10/2026) | Medium | Davi Gomes | Product decision |
+| ~~User management (DEC-35)~~ | 🟢 Usuários tab on the web, email invitation to create the password (DEC-55; before, temporary password), deactivate/reactivate, atendimento's responsible person. In `develop` (PR #47); migration applied on Supabase | High | — | — |
+| ~~Service in the app (DEC-36)~~ | 🟢 Agent creates a service offline when recording; the Descarga creates it, reuses by description and returns `ServicosMapeados`; the web shows "a revisar" (to review) and the Dono reviews; switch in Parametrização. In `develop` (PR #47); migration applied on Supabase | High | — | — |
+| Routing/geolocation | Phase 1 (DEC-37 and DEC-38) in `develop` (PR #47), migration applied on Supabase: "Iniciar rota" in the app opens Google Maps by address; clients geocoded in the background by OpenRouteService; Mapa tab in the web Agenda (Leaflet + OpenStreetMap). Missing: `Geocoding__OpenRouteServiceApiKey` key on Render and "Otimizar dia" (phase 2); `Servico.DuracaoMinutos` already exists (DEC-45, 11/11) | Medium | Diego (key, before the rehearsal); Davi Gomes (phase 2, after the launch) | OpenRouteService key on Render |
+| ~~Apply migrations to the new database~~ | ✅ Single `InitialCreate` (DEC-31) applied to the new Supabase on 08/10/2026 | High | — | — |
+| ~~**Schedule in the sync Carga**~~ | Done in code (13/11), branch `feature/app-agenda-e-historico`: the Carga brings the schedule from today up to 14 days ahead (for the Agente, only theirs) and the history of the last 30 days. `syncAgenda` only runs with an old API | Medium | Davi Gomes | — |
+| ~~Map the client's uuid→id in the Descarga~~ | 🟢 Resolved in `develop` (DEC-33, PR #43): the atendimento references an offline client by `ClienteUuid`; clients processed first in the same batch; the response returns `ClientesMapeados` | — | — | — |
 
 ---
 
-## Infraestrutura & DevOps
+## Infrastructure & DevOps
 
-### ✅ Concluídas
+### ✅ Done
 
-| KAN | Descrição | Responsável |
+| KAN | Description | Owner |
 |-----|-----------|-------------|
-| KAN-12 | Repositório Git + Gitflow | Diego |
-| KAN-13 | Projeto ASP.NET Core .NET 8 | Davi Gomes |
-| KAN-35 | Testes de endpoints | Diego |
-| KAN-16 | CI para backend, web e mobile | Equipe Agesto |
-| KAN-15 | Provedores: API no Render, banco no Supabase, web na Cloudflare Pages (DEC-32) | Equipe Agesto |
-| KAN-17 | Deploy da API em produção (`agesto-api.onrender.com`) | Equipe Agesto |
-| KAN-18 | Processo de deploy documentado em `deploy/README.md` | Equipe Agesto |
-| — | Banco e API reais no ar; mocks desligados no Web e no Mobile | Equipe Agesto |
+| KAN-12 | Git repository + Gitflow | Diego |
+| KAN-13 | ASP.NET Core .NET 8 project | Davi Gomes |
+| KAN-35 | Endpoint tests | Diego |
+| KAN-16 | CI for backend, web and mobile | Agesto team |
+| KAN-15 | Providers: API on Render, database on Supabase, web on Cloudflare Pages (DEC-32) | Agesto team |
+| KAN-17 | API deploy to production (`agesto-api.onrender.com`) | Agesto team |
+| KAN-18 | Deploy process documented in `deploy/README.md` | Agesto team |
+| — | Real database and API online; mocks turned off on Web and Mobile | Agesto team |
 
-### 🔴 Pendentes
+### 🔴 Pending
 
-| KAN | Descrição | Prioridade | Responsável |
+| KAN | Description | Priority | Owner |
 |-----|-----------|------------|-------------|
-| KAN-14 | PostgreSQL de desenvolvimento + migrations — parcial: Postgres local via `docker-compose.yml` (DEC-41); falta rodar os testes automatizados contra ele | Alta | Diego |
-| KAN-54 | Agents de QA automatizados | Baixa | Diego |
-| — | ~~Instalar dotnet ef global na máquina~~ ✅ 21/10/2026 — `dotnet-ef` 10.0.13 | Média | — |
-| — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
-| — | Backup automático do banco (Supabase Free não faz) — DEC-34; `pg_dump` diário até 31/10 (DEC-49, ver Lançamento do MVP) | Alta | Diego |
-| — | ~~Migrar para .NET 10 (o .NET 8 perde suporte em 10/11/2026)~~ ✅ DEC-40 | Alta | — |
+| KAN-14 | Development PostgreSQL + migrations — partial: local Postgres via `docker-compose.yml` (DEC-41); running the automated tests against it is missing | High | Diego |
+| KAN-54 | Automated QA agents | Low | Diego |
+| — | ~~Install dotnet ef globally on the machine~~ ✅ 21/10/2026 — `dotnet-ef` 10.0.13 | Medium | — |
+| — | ~~Apply pending migrations to the new PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | High | — |
+| — | Automatic database backup (Supabase Free does not do it) — DEC-34; daily `pg_dump` by 31/10 (DEC-49, see MVP launch) | High | Diego |
+| — | ~~Migrate to .NET 10 (.NET 8 loses support on 10/11/2026)~~ ✅ DEC-40 | High | — |
 
 ---
 
-## Segurança (DEC-34)
+## Security (DEC-34)
 
-### ✅ Concluídas e validadas em produção — 10/10/2026
+### ✅ Done and validated in production — 10/10/2026
 
-| Item | Detalhe |
+| Item | Detail |
 |------|---------|
-| Auditoria de API, front, banco e infra | Achados e correções registrados na DEC-34 |
-| Rate limiting | Login, cadastro (por IP) e sync (por usuário) |
-| Cadastro fechado | `Auth__RegistrationKey` + header `X-Registration-Key`; ver `deploy/README.md` |
-| Perfis Dono/Agente no back | Policy `Dono` nas rotas de gestão, com teste de cobertura |
-| Revogação de token | JWT revalidado no banco a cada requisição |
-| JWT endurecido | HS256 fixo; issuer, audience e segredo ≥ 32 bytes obrigatórios |
-| Headers de segurança | API (HSTS, nosniff, frame-ancestors) e Web (CSP via `_headers`) |
-| LGPD de clientes | CPF mascarado para o Agente; anonimização na exclusão |
-| Banco | RLS em todas as tabelas (bloqueia `anon`/`authenticated`; a policy do `agesto_api` é `USING (true)`, então o isolamento entre empresas continua na API por `EmpresaId`); role `agesto_api` só com DML; TLS `VerifyFull` |
-| Mobile | Mock só em dev; dados locais apagados no logout e na troca de usuário; sem backup Android |
-| Web | Painel só para o Dono; cache limpo no logout |
+| Audit of API, front end, database and infra | Findings and fixes recorded in DEC-34 |
+| Rate limiting | Login, sign-up (per IP) and sync (per user) |
+| Closed sign-up | `Auth__RegistrationKey` + `X-Registration-Key` header; see `deploy/README.md` |
+| Dono/Agente profiles on the back end | `Dono` policy on the management routes, with a coverage test |
+| Token revocation | JWT revalidated against the database on every request |
+| Hardened JWT | Fixed HS256; issuer, audience and secret ≥ 32 bytes mandatory |
+| Security headers | API (HSTS, nosniff, frame-ancestors) and Web (CSP via `_headers`) |
+| Client LGPD | Masked CPF for the Agente; anonymization on deletion |
+| Database | RLS on all tables (blocks `anon`/`authenticated`; the `agesto_api` policy is `USING (true)`, so isolation between companies stays in the API by `EmpresaId`); `agesto_api` role with DML only; TLS `VerifyFull` |
+| Mobile | Mocks only in dev; local data deleted on logout and on user switch; no Android backup |
+| Web | Panel only for the Dono; cache cleared on logout |
 
-### 🔴 Pendentes
+### 🔴 Pending
 
-| Item | Descrição | Prioridade | Responsável |
+| Item | Description | Priority | Owner |
 |------|-----------|------------|-------------|
-| Verificação de email | Feita pelo convite: o email fica confirmado quando a pessoa cria a senha pelo link (DEC-55). Cadastro aberto cancelado (DEC-57) | Alta | Davi Oliveira |
-| ~~Lockout por conta~~ | 🟢 5 senhas erradas seguidas bloqueiam a conta por 15 minutos; criar a senha pelo link do email desbloqueia (DEC-55). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-43) | — | — |
-| ~~Exclusão de Usuario com LGPD~~ | 🟢 `DELETE /api/usuario` anonimiza o usuário com `DeletedAt` em vez de apagar a linha (corrige o erro 500 de quem tinha histórico). Em `main` desde 11/11/2026 (PR #133, release #134, DEC-44) | — | — |
+| Email verification | Done through the invitation: the email is confirmed when the person creates the password through the link (DEC-55). Open sign-up cancelled (DEC-57) | High | Davi Oliveira |
+| ~~Per-account lockout~~ | 🟢 5 wrong passwords in a row lock the account for 15 minutes; creating the password through the email link unlocks it (DEC-55). In `main` since 11/11/2026 (PR #133, release #134, DEC-43) | — | — |
+| ~~Usuario deletion with LGPD~~ | 🟢 `DELETE /api/usuario` anonymizes the user with `DeletedAt` instead of deleting the row (fixes the 500 error for users with history). In `main` since 11/11/2026 (PR #133, release #134, DEC-44) | — | — |
 
 ---
 
-## Módulo IA/Insights (Python) — ⚫ OBSOLETO
+## AI/Insights Module (Python) — ⚫ OBSOLETE
 
-> **DESCARTADO em 20/07/2026 (DEC-21 resolvida).** Decisão do dono (dev solo, Davi): a camada de IA roda dentro do backend C#, usando o SDK oficial da Anthropic, e NÃO num serviço Python/FastAPI separado. Motivo: elimina um codebase extra para um dev solo. As linhas abaixo ficam só como histórico; nenhum item deste épico será executado nesse formato.
+> **DISCARDED on 20/07/2026 (DEC-21 resolved).** Owner's decision (solo dev, Davi): the AI layer runs inside the C# backend, using the official Anthropic SDK, and NOT in a separate Python/FastAPI service. Reason: removes an extra codebase for a solo dev. The rows below stay only as history; no item of this epic will be done in this form.
 
-### ✅ Concluídas (histórico)
+### ✅ Done (history)
 
-| KAN | Descrição | Responsável |
+| KAN | Description | Owner |
 |-----|-----------|-------------|
-| KAN-31 | Projeto FastAPI base | Davi Bueno |
+| KAN-31 | Base FastAPI project | Davi Bueno |
 
-### 🔴 Pendentes (histórico — não serão mais feitas em Python)
+### 🔴 Pending (history — will no longer be done in Python)
 
-| KAN | Descrição | Prioridade | Responsável | Observação |
+| KAN | Description | Priority | Owner | Note |
 |-----|-----------|------------|-------------|------------|
-| KAN-32 | Endpoint de análise de vendas | Média | Davi Bueno | Obsoleto — refazer em C#, se necessário |
-| KAN-33 | Endpoint de sugestões de estoque | Média | Davi Bueno | Obsoleto — refazer em C#, se necessário |
-| KAN-34 | Integração com modelo de IA | Alta | Davi Bueno | Obsoleto — integração passa a ser via SDK Anthropic direto no backend C# |
-| KAN-36 | Deploy em Azure | Baixa | Davi Bueno | Obsoleto — sem serviço Python separado para deployar |
-| — | Integrar JWT do backend C# no módulo Python | Alta | Davi Bueno | Obsoleto — não há mais módulo Python separado |
-| — | Mover módulo Python para o repositório | Alta | Davi Bueno | Obsoleto — não há mais módulo Python separado |
+| KAN-32 | Sales analysis endpoint | Medium | Davi Bueno | Obsolete — redo in C#, if needed |
+| KAN-33 | Stock suggestions endpoint | Medium | Davi Bueno | Obsolete — redo in C#, if needed |
+| KAN-34 | Integration with the AI model | High | Davi Bueno | Obsolete — integration is now through the Anthropic SDK directly in the C# backend |
+| KAN-36 | Deploy on Azure | Low | Davi Bueno | Obsolete — no separate Python service to deploy |
+| — | Integrate the C# backend's JWT in the Python module | High | Davi Bueno | Obsolete — there is no longer a separate Python module |
+| — | Move the Python module into the repository | High | Davi Bueno | Obsolete — there is no longer a separate Python module |
 
 ---
 
-## Métricas & Dashboards (KAN-77)
+## Metrics & Dashboards (KAN-77)
 
-> Fase 1 da camada de métricas determinística (DEC-20), que alimenta tanto os dashboards quanto a futura interpretação por IA. Implementada no backend C#, commit `87f54e6`, build verde e 51 testes xUnit passando. Complementada depois pelo bloco de rentabilidade (commit `5e82411`, ver KAN-69).
+> Phase 1 of the deterministic metrics layer (DEC-20), which feeds both the dashboards and the future AI interpretation. Implemented in the C# backend, commit `87f54e6`, green build and 51 xUnit tests passing. Later complemented by the profitability block (commit `5e82411`, see KAN-69).
 
-### ✅ Concluídas
+### ✅ Done
 
-| KAN | Descrição | Responsável |
+| KAN | Description | Owner |
 |-----|-----------|-------------|
-| KAN-78 | Métricas de Vendas (`GET /api/metrics/vendas`) — produto mais vendido (qtd/receita), ticket médio, receita por período | Davi Gomes |
-| KAN-80 | Métricas de Estoque (`GET /api/metrics/estoque`) — giro, produtos parados >30 dias, ruptura iminente ≤7 dias | Davi Gomes |
-| KAN-81 | Endpoint agregador de Dashboard (`GET /api/metrics/dashboard`) | Davi Gomes |
-| — | Rentabilidade agregada (`GET /api/metrics/rentabilidade` + bloco `Rentabilidade` no `DashboardResponse`) — faturamento, custo, margem, margem %, ticket médio, nº de atendimentos concluídos no período | Davi Gomes (commit `5e82411`) |
+| KAN-78 | Sales Metrics (`GET /api/metrics/vendas`) — best-selling product (quantity/revenue), average ticket, revenue per period | Davi Gomes |
+| KAN-80 | Stock Metrics (`GET /api/metrics/estoque`) — turnover, products idle >30 days, imminent stockout ≤7 days | Davi Gomes |
+| KAN-81 | Dashboard aggregator endpoint (`GET /api/metrics/dashboard`) | Davi Gomes |
+| — | Aggregated profitability (`GET /api/metrics/rentabilidade` + `Rentabilidade` block in `DashboardResponse`) — revenue, cost, margin, margin %, average ticket, number of atendimentos completed in the period | Davi Gomes (commit `5e82411`) |
 
-### 🟡 Parcial
+### 🟡 Partial
 
-| KAN | Descrição | Responsável | Observação |
+| KAN | Description | Owner | Note |
 |-----|-----------|-------------|------------|
-| KAN-79 | Métricas de Serviços (`GET /api/metrics/servicos`) | Davi Gomes | Receita por tipo de serviço, margem por atendimento (via rentabilidade) e, desde 11/11, horas e receita por hora por serviço (DEC-45) já entregues. Margem/hora e tempo médio por serviço seguem pendentes — dependem da atribuição de custo ao serviço. |
+| KAN-79 | Service Metrics (`GET /api/metrics/servicos`) | Davi Gomes | Revenue per service type, margin per atendimento (through profitability) and, since 11/11, hours and revenue per hour per service (DEC-45) already delivered. Margin/hour and average time per service are still pending — they depend on assigning cost to the service. |
 
-> Multi-tenant aplicado via `EmpresaId` + `DeletedAt == null` em todas as queries (join via `Atendimento`, já que `ItemProduto`/`ItemServico` não têm `EmpresaId` próprio). Receita conta só atendimentos `Concluido`; movimentação de estoque conta itens de atendimentos não-`Cancelado`. Bloco Vendas soma `ItemProduto.Subtotal`; bloco Serviços soma `ItemServico.Subtotal` — nunca o `ValorTotal` do atendimento, para não duplicar receita entre os blocos (concretiza a separação venda/serviço da DEC-15). Revisão do @revisor corrigiu, antes do commit, um bug em que os joins com `Produtos`/`Servicos` não filtravam `DeletedAt == null` (produtos/serviços soft-deletados entrariam nas somas) — coberto pelo teste `GetVendas_IgnoraProdutoSoftDeletado`.
+> Multi-tenant applied through `EmpresaId` + `DeletedAt == null` in every query (joining through `Atendimento`, since `ItemProduto`/`ItemServico` have no `EmpresaId` of their own). Revenue counts only `Concluido` atendimentos; stock movement counts items of non-`Cancelado` atendimentos. The Sales block sums `ItemProduto.Subtotal`; the Services block sums `ItemServico.Subtotal` — never the atendimento's `ValorTotal`, so revenue is not duplicated between the blocks (makes the DEC-15 sales/service split concrete). The @revisor review fixed, before the commit, a bug where the joins with `Produtos`/`Servicos` did not filter `DeletedAt == null` (soft-deleted products/services would enter the sums) — covered by the `GetVendas_IgnoraProdutoSoftDeletado` test.
 
 ---
 
-## Documentação & QA
+## Documentation & QA
 
-### ✅ Concluídas
+### ✅ Done
 
-| KAN | Descrição | Responsável |
+| KAN | Description | Owner |
 |-----|-----------|-------------|
-| KAN-38 | Diagrama de Classes | Richard |
+| KAN-38 | Class Diagram | Richard |
 
-### 🔴 Pendentes
+### 🔴 Pending
 
-| KAN | Descrição | Prioridade | Responsável |
+| KAN | Description | Priority | Owner |
 |-----|-----------|------------|-------------|
-| KAN-39 | Documentação de API (Swagger/OpenAPI) — parcial: Swashbuckle configurado, UI só em Development; sem documentação publicada | Baixa | Davi Oliveira (depois do lançamento) |
-| KAN-40 | ~~Documentação de deploy~~ ✅ `deploy/README.md` (ver KAN-18) | Baixa | — |
-| KAN-41 | Testes de integração ponta-a-ponta — roteiro do ensaio geral até 03/11 | Alta | Davi Oliveira |
-| KAN-42 | Manual do usuário — versão curta até 08/12 | Média | Davi Oliveira |
-| KAN-43 | ~~Atualizar README~~ ✅ 21/10/2026 (PR #56) | Média | — |
-| — | Diagrama de Arquitetura (componentes) | Baixa | Davi Gomes (depois do lançamento) |
-| — | Diagrama de Sequência (Atendimento Híbrido) | Baixa | Davi Gomes (depois do lançamento) |
+| KAN-39 | API documentation (Swagger/OpenAPI) — partial: Swashbuckle configured, UI only in Development; no published documentation | Low | Davi Oliveira (after the launch) |
+| KAN-40 | ~~Deploy documentation~~ ✅ `deploy/README.md` (see KAN-18) | Low | — |
+| KAN-41 | End-to-end integration tests — dress rehearsal script by 03/11 | High | Davi Oliveira |
+| KAN-42 | User manual — short version by 08/12 | Medium | Davi Oliveira |
+| KAN-43 | ~~Update README~~ ✅ 21/10/2026 (PR #56) | Medium | — |
+| — | Architecture Diagram (components) | Low | Davi Gomes (after the launch) |
+| — | Sequence Diagram (Hybrid Atendimento) | Low | Davi Gomes (after the launch) |
 
 ---
 
-## Frontend Web (React) — Módulo Dono
+## Web Frontend (React) — Dono Module
 
-**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (tokens do protótipo) · React Router · TanStack Query · MSW (mock só para desenvolvimento local) · Recharts · Leaflet (mapa da agenda). Vive em `web/` no monorepo (`Agesto-Platform/Agesto`). Rodar: `cd web && npm install && npm run dev` (mock ligado via `.env`: `VITE_USE_MOCKS=true`). Login demo (mock): `dono@agesto.app` / `agesto123`. Decisões de stack e arquitetura registradas em DEC-25 (`DECISIONS.md`) e na seção 10 do `DESIGN.md`.
+**Stack:** Vite + React 19 + TypeScript · Tailwind v4 (prototype tokens) · React Router · TanStack Query · MSW (mocks only for local development) · Recharts · Leaflet (schedule map). Lives in `web/` in the monorepo (`Agesto-Platform/Agesto`). Run: `cd web && npm install && npm run dev` (mocks on through `.env`: `VITE_USE_MOCKS=true`). Demo login (mock): `dono@agesto.app` / `agesto123`. Stack and architecture decisions recorded in DEC-25 (`DECISIONS.md`) and in section 10 of `DESIGN.md`.
 
-### ✅ Concluídas — fatia inicial navegável (integrada na `main`)
+### ✅ Done — initial navigable slice (integrated into `main`)
 
-Tracking local (Jira offline); numeração `web-0x` mapeada aos KANs existentes.
+Local tracking (Jira offline); `web-0x` numbering mapped to the existing KANs.
 
-| Task | KAN | Descrição | Commit |
+| Task | KAN | Description | Commit |
 |------|-----|-----------|--------|
-| web-01 | KAN-45 | Scaffold (Vite+React+TS, Tailwind v4 + tokens do protótipo) | `ba21b1c` |
-| web-02 | KAN-46 | App shell (sidebar, topbar, roteamento, design system base) | `65255bc` |
-| web-03 | KAN-52 | Cliente de API tipado + React Query + camada de mock MSW | `3d1ae35` |
-| web-04 | KAN-47 | Autenticação JWT (login, rota protegida, logout) | `68abfd1` |
-| web-05 | KAN-48 | Dashboard "Visão geral" (KPIs, gráfico, rankings, alertas, tabela) | `46a3820` |
-| web-06 | — | Fundação de CRUD (Drawer, DataTable, ConfirmDialog, fields, Toast, resource, MSW stateful) + **Clientes** | `00af71d` |
-| web-07 | KAN-50 | CRUD de **Produtos** | `923a24f` |
-| web-08 | KAN-51 | CRUD de **Serviços** (toggle TipoCobranca) | `a52ab55` |
-| web-09 | — | **Agenda** — timeline agrupada por dia (endpoint enriquecido) | `bdf4c79` |
-| web-10 | KAN-16* | **Orçamentos** — editor de itens, status, conversão em atendimento | `ae2f969` |
-| web-11 | — | **Atendimentos** — itens/estoque/margem + dashboard honesto | `6c0e700` |
-| web-12 | KAN-49 | **Parametrização** — modo de operação (TipoOperacao) | `d922b61` |
-| web-13 | — | **Relatórios** — abas Rentabilidade/Serviços/Produtos/Estoque | `4576e25` |
-| web-14 | KAN-53 | **Testes** — Vitest + Testing Library; suíte ampliada posteriormente; 80 testes em 11/11/2026 | `cee7fb9` + evoluções posteriores |
+| web-01 | KAN-45 | Scaffold (Vite+React+TS, Tailwind v4 + prototype tokens) | `ba21b1c` |
+| web-02 | KAN-46 | App shell (sidebar, topbar, routing, base design system) | `65255bc` |
+| web-03 | KAN-52 | Typed API client + React Query + MSW mock layer | `3d1ae35` |
+| web-04 | KAN-47 | JWT authentication (login, protected route, logout) | `68abfd1` |
+| web-05 | KAN-48 | "Visão geral" (overview) dashboard (KPIs, chart, rankings, alerts, table) | `46a3820` |
+| web-06 | — | CRUD foundation (Drawer, DataTable, ConfirmDialog, fields, Toast, resource, stateful MSW) + **Clientes** | `00af71d` |
+| web-07 | KAN-50 | **Produtos** CRUD | `923a24f` |
+| web-08 | KAN-51 | **Serviços** CRUD (TipoCobranca toggle) | `a52ab55` |
+| web-09 | — | **Agenda** — timeline grouped by day (enriched endpoint) | `bdf4c79` |
+| web-10 | KAN-16* | **Orçamentos** — item editor, status, conversion into atendimento | `ae2f969` |
+| web-11 | — | **Atendimentos** — items/stock/margin + honest dashboard | `6c0e700` |
+| web-12 | KAN-49 | **Parametrização** — operation mode (TipoOperacao) | `d922b61` |
+| web-13 | — | **Relatórios** — Rentabilidade/Serviços/Produtos/Estoque tabs | `4576e25` |
+| web-14 | KAN-53 | **Tests** — Vitest + Testing Library; suite expanded later; 80 tests on 11/11/2026 | `cee7fb9` + later changes |
 
-> \*Épico Operação: numeração KAN a atribuir no Jira quando reconectar.
+> \*Operação epic: KAN numbering to be assigned in Jira when it reconnects.
 
-**Sidebar 100% funcional — nenhuma rota é mais placeholder.** Fluxo git: `feature/*` → `develop` → `main` (marcos).
+**Sidebar 100% functional — no route is a placeholder anymore.** Git flow: `feature/*` → `develop` → `main` (milestones).
 
-### 🔴 Pendentes
+### 🔴 Pending
 
-| KAN | Descrição | Prioridade | Responsável |
+| KAN | Description | Priority | Owner |
 |-----|-----------|------------|-------------|
-| — | Ampliar cobertura de testes (só a base foi coberta) | Baixa | Davi Oliveira |
-| — | Lazy-load do Recharts (bundle ~640kB) | Baixa | Davi Oliveira |
-| — | ~~Trocar mocks pela API real (`VITE_USE_MOCKS=false`)~~ ✅ em produção contra a API real (DEC-32) | Alta | — |
-| — | ~~Redesign do painel do Dono~~ ✅ PRs #80 a #95 (DEC-51) | Alta | Diego |
+| — | Expand test coverage (only the base was covered) | Low | Davi Oliveira |
+| — | Lazy-load Recharts (bundle ~640kB) | Low | Davi Oliveira |
+| — | ~~Swap mocks for the real API (`VITE_USE_MOCKS=false`)~~ ✅ in production against the real API (DEC-32) | High | — |
+| — | ~~Redesign of the Dono panel~~ ✅ PRs #80 to #95 (DEC-51) | High | Diego |
 
-### ✅ Deltas de backend resolvidos / pendentes
+### ✅ Backend deltas resolved / pending
 
-- **Últimos atendimentos** (dashboard): resolvido — o Dashboard pede só os 6 últimos (`GET /api/atendimento?pagina=1&tamanho=6&ordem=registro`), já com o nome do cliente (PAG-01).
-- **Nome do cliente** em Orçamento/Atendimento: resolvido no backend (PAG-01) — as respostas trazem `clienteNome`; o web não junta mais com a lista de clientes.
+- **Latest atendimentos** (dashboard): resolved — the Dashboard asks only for the last 6 (`GET /api/atendimento?pagina=1&tamanho=6&ordem=registro`), already with the client name (PAG-01).
+- **Client name** in Orçamento/Atendimento: resolved in the backend (PAG-01) — the responses bring `clienteNome`; the web no longer joins with the client list.
 
-> O frontend improvisado da apresentação foi **descartado**. Este é o front novo, com design original aprovado (protótipo `web-dono.html`), consumindo a API real em produção (o MSW fica para desenvolvimento local). **Módulo Dono (web) essencialmente completo:** dashboard, auth, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) e Análise (Relatórios/Parametrização).
+> The improvised front end from the presentation was **discarded**. This is the new front end, with the approved original design (prototype `web-dono.html`), consuming the real API in production (MSW stays for local development). **Dono Module (web) essentially complete:** dashboard, auth, Cadastros (Clientes/Produtos/Serviços), Operação (Agenda/Orçamentos/Atendimentos) and Análise (Relatórios/Parametrização).
 
 ---
 
-## Mobile (React Native) — App do Agente
+## Mobile (React Native) — Agent App
 
-**Status:** 🟢 Completo (mob-01 a mob-07, com evoluções das DEC-33, DEC-36, DEC-37 e DEC-39) — contra a API real, no monorepo `Agesto-Platform/Agesto`, em `mobile/`. Offline-first, action-first. Decisões de stack e arquitetura registradas em DEC-26 (`DECISIONS.md`) e na seção 11 do `DESIGN.md`.
+**Status:** 🟢 Complete (mob-01 to mob-07, with the changes from DEC-33, DEC-36, DEC-37 and DEC-39) — against the real API, in the `Agesto-Platform/Agesto` monorepo, in `mobile/`. Offline-first, action-first. Stack and architecture decisions recorded in DEC-26 (`DECISIONS.md`) and in section 11 of `DESIGN.md`.
 
-**Stack:** React Native + TypeScript via Expo (prebuild) · Expo Router · tokens do protótipo (azul `#243FA6` + verde `#12B886`, tema claro) · tema + StyleSheet (não NativeWind) · `expo-sqlite` (device) / adapter em memória (Web/testes) atrás da interface `LocalDb` · cliente de API com camada de mock em código (`config.useMocks`) · JWT via `expo-secure-store`/`localStorage`. Login demo (mock): `agente@agesto.app` / `agesto123`.
+**Stack:** React Native + TypeScript via Expo (prebuild) · Expo Router · prototype tokens (blue `#243FA6` + green `#12B886`, light theme) · theme + StyleSheet (not NativeWind) · `expo-sqlite` (device) / in-memory adapter (Web/tests) behind the `LocalDb` interface · API client with an in-code mock layer (`config.useMocks`) · JWT via `expo-secure-store`/`localStorage`. Demo login (mock): `agente@agesto.app` / `agesto123`.
 
-### ✅ Concluídas — integradas na `main`
+### ✅ Done — integrated into `main`
 
-Tracking local (Jira offline); numeração `mob-0x`.
+Local tracking (Jira offline); `mob-0x` numbering.
 
-| Task | Descrição | Observação |
+| Task | Description | Note |
 |------|-----------|------------|
-| mob-01 | Scaffold Expo (prebuild) + RN + TypeScript + Expo Router; tokens do protótipo; tab bar (Início/Agenda/Atend./Clientes/Mais); estilo via theme + StyleSheet | — |
-| mob-02 | Camada de dados offline: interface `LocalDb` (`src/db/types.ts`) com dois adapters — `expo-sqlite` (`index.native.ts`, device) e memória (`index.ts`, web/testes); guarda dados de referência + entidades offline com `SyncedAt` | — |
-| mob-03 | Cliente de API (envelope + 401) com camada de mock em código (`config.useMocks`); login JWT com token via `expo-secure-store`/`localStorage`; guarda de rota; Carga popula o banco | — |
-| mob-04 | Home action-first (CTA Registrar + agenda do dia Próximo/Ainda hoje) | Delta de backend: Carga não inclui a agenda — contornado com passo `syncAgenda` (`GET /api/atendimento/agenda` cacheado). Ver pendências abaixo |
-| mob-05 | Registrar atendimento (núcleo): cliente + itens de catálogo por quantidade (contrato enxuto) + status → salva offline (pendente) | — |
-| mob-06 | Clientes: lista referência + pendentes; cadastro rápido offline (`PendingCliente`) | Delta/limitação: atendimento offline não referencia cliente criado offline (sem id de servidor). Ver pendências abaixo |
-| mob-07 | Descarga: empurra clientes/atendimentos pendentes → marca sincronizado; aba "Mais" com status de sync (pendentes, última sync, botão Sincronizar) + logout | — |
-| — | Revisão própria (agente `revisor-frontend`, criado em `micro-erp-auto/.claude/agents/` para próximas sessões): corrigida invalidação de auth em 401 da API real (`src/lib/session.ts`) e guarda de desmontagem | — |
+| mob-01 | Expo (prebuild) + RN + TypeScript + Expo Router scaffold; prototype tokens; tab bar (Início/Agenda/Atend./Clientes/Mais); styling via theme + StyleSheet | — |
+| mob-02 | Offline data layer: `LocalDb` interface (`src/db/types.ts`) with two adapters — `expo-sqlite` (`index.native.ts`, device) and memory (`index.ts`, web/tests); stores reference data + offline entities with `SyncedAt` | — |
+| mob-03 | API client (envelope + 401) with an in-code mock layer (`config.useMocks`); JWT login with the token via `expo-secure-store`/`localStorage`; route guard; the Carga fills the database | — |
+| mob-04 | Action-first Home (Registrar CTA + the day's schedule Próximo/Ainda hoje) | Backend delta: the Carga does not include the schedule — worked around with a `syncAgenda` step (cached `GET /api/atendimento/agenda`). See open items below |
+| mob-05 | Record atendimento (core): client + catalog items by quantity (lean contract) + status → saved offline (pending) | — |
+| mob-06 | Clientes: reference list + pending; quick offline registration (`PendingCliente`) | Delta/limitation: an offline atendimento does not reference a client created offline (no server id). See open items below |
+| mob-07 | Descarga: pushes pending clients/atendimentos → marks as synced; "Mais" tab with sync status (pending, last sync, Sincronizar button) + logout | — |
+| — | Self-review (`revisor-frontend` agent, created in `micro-erp-auto/.claude/agents/` for future sessions): fixed auth invalidation on a 401 from the real API (`src/lib/session.ts`) and an unmount guard | — |
 
-**Ciclo offline verificado no último marco:** login → Carga + syncAgenda → registrar atendimento offline → Descarga → sincronizado. A suíte cresceu para 119 testes Jest (11/11/2026); typecheck e lint verdes. A validação em dispositivo Android/iOS físico continua pendente.
+**Offline cycle verified at the last milestone:** login → Carga + syncAgenda → record atendimento offline → Descarga → synced. The suite grew to 119 Jest tests (11/11/2026); typecheck and lint green. Validation on a physical Android/iOS device is still pending.
 
-### 🔴 Pendências de backend geradas pelo Mobile
+### 🔴 Backend items raised by Mobile
 
-| Item | Descrição | Prioridade | Responsável |
+| Item | Description | Priority | Owner |
 |------|-----------|------------|-------------|
-| ~~Agenda na Carga do sync~~ | Feito no código (13/11), branch `feature/app-agenda-e-historico`. A tela Início passou a mostrar só o dia de hoje (antes mostrava a agenda inteira guardada) | Média | — |
-| ~~Mapear uuid→id do cliente na Descarga~~ | 🟢 Resolvido em `develop` (DEC-33, PR #43) | — | — |
+| ~~Schedule in the sync Carga~~ | Done in code (13/11), branch `feature/app-agenda-e-historico`. The Início screen now shows only today (before, it showed the whole stored schedule) | Medium | — |
+| ~~Map the client's uuid→id in the Descarga~~ | 🟢 Resolved in `develop` (DEC-33, PR #43) | — | — |
 
-### 🔴 Pendências do próprio Mobile
+### 🔴 Mobile's own open items
 
-| Item | Descrição | Prioridade | Responsável |
+| Item | Description | Priority | Owner |
 |------|-----------|------------|-------------|
-| ~~APK e atualização OTA~~ | ✅ `eas.json`, pacote `br.com.agesto.app`, `expo-updates` e aviso de versão em `develop` (DEC-47, PR #108). Falta o primeiro `eas build` (Diego, ver Lançamento do MVP) | Alta | — |
-| ~~Histórico de atendimentos próprios~~ | Feito (PR #180, 13/11): a aba Atend. junta o que está no aparelho com os atendimentos do servidor dos últimos 30 dias, sem repetir | Baixa | — |
-| Roteirização/geolocalização | Fase 1 entregue (DEC-37): "Iniciar rota" abre o Google Maps pelo endereço. Falta "Otimizar dia" (fase 2, depois do lançamento) | Baixa | Davi Gomes |
-| Teste de componente RN | A base funciona: `@testing-library/react-native` v14 já roda na `develop` (`esqueciSenha.test.tsx` renderiza a tela; `AuthProvider.test.tsx` usa `renderHook`). Falta ampliar para as outras telas; a branch `feature/tasks-davi-gomes` tem mais testes de componente, sem PR | Baixa | Davi Gomes |
-| ~~Trocar mock pela API real~~ | ✅ em produção contra a API real (DEC-32); mock só em dev | Alta | — |
-| ~~Sincronização automática~~ | ✅ em `develop` (I5, PR #113): sincroniza ao abrir o app, ao voltar para ele e quando a internet volta, nunca com uma tela de cadastro aberta | Média | — |
-| Redesign do app | Mesmo visual do web, depois do lançamento (DEC-46) | Baixa | Diego |
+| ~~APK and OTA update~~ | ✅ `eas.json`, package `br.com.agesto.app`, `expo-updates` and version warning in `develop` (DEC-47, PR #108). The first `eas build` is missing (Diego, see MVP launch) | High | — |
+| ~~History of one's own atendimentos~~ | Done (PR #180, 13/11): the Atend. tab joins what is on the device with the server's atendimentos of the last 30 days, without repeating | Low | — |
+| Routing/geolocation | Phase 1 delivered (DEC-37): "Iniciar rota" opens Google Maps by address. "Otimizar dia" is missing (phase 2, after the launch) | Low | Davi Gomes |
+| RN component test | The base works: `@testing-library/react-native` v14 already runs on `develop` (`esqueciSenha.test.tsx` renders the screen; `AuthProvider.test.tsx` uses `renderHook`). Expanding it to the other screens is missing; the `feature/tasks-davi-gomes` branch has more component tests, without a PR | Low | Davi Gomes |
+| ~~Swap mocks for the real API~~ | ✅ in production against the real API (DEC-32); mocks only in dev | High | — |
+| ~~Automatic sync~~ | ✅ in `develop` (I5, PR #113): syncs when the app opens, when the user returns to it and when the internet comes back, never with a registration screen open | Medium | — |
+| App redesign | Same look as the web, after the launch (DEC-46) | Low | Diego |
 
 ---
 
-## Planos futuros — ideias de 13/11/2026
+## Future plans — ideas from 13/11/2026
 
-> Ideias do Davi Oliveira, avaliadas contra o código em 13/11/2026. São **planos futuros, sem prazo e fora do escopo do lançamento**: nenhuma vira requisito antes de o Davi decidir quando e como. Esforço: P = pequeno, M = médio, G = grande.
+> Davi Oliveira's ideas, evaluated against the code on 13/11/2026. They are **future plans, with no deadline and out of the launch scope**: none becomes a requirement before Davi decides when and how. Effort: S = small, M = medium, L = large.
 
-| Ideia | O que envolve | Esforço | Depende de / atenção |
+| Idea | What it involves | Effort | Depends on / watch out |
 |---|---|---|---|
-| Pix no fim do atendimento | QR Code Pix estático com a chave do Dono (chave, nome e cidade na Parametrização); código "copia e cola" gerado no navegador; QR no detalhe do atendimento e no PDF. Completa a cobrança do atendimento (PR #188) | P | O Pix estático não confirma o pagamento: o Dono continua marcando "Pago". No app, o QR precisa de módulo nativo (novo `eas build`) |
-| Garantia do serviço | Prazo padrão no serviço; "na garantia até…" gravado ao concluir o atendimento e mostrado no histórico do cliente | P | Campo novo também na sincronização do app |
-| Lembrete de manutenção recorrente | "Repetir a cada X meses" no serviço; lista "Manutenções a vencer" no painel do Dono, com a mensagem de WhatsApp pronta pelo `wa.me` (DEC-56) | P a M | Não precisa da API do WhatsApp: o Dono clica para enviar |
-| Aceite do orçamento por link | Página pública, sem login, com código aleatório no link; "Aprovar" muda o orçamento para `Aprovado`, gera o atendimento (`ConverterAsync`) e avisa o Dono. Aproveita o PDF do orçamento (DEC-56) | M | Primeira rota pública que mexe em dados: código que expira, limite de tentativas e mínimo de dados do cliente na página. Sem domínio próprio, o link sai como `agesto.pages.dev` |
-| Resumo diário para o Dono | Rotina de manhã com os números do dia (atendimentos, valor, orçamentos parados), montados por consulta, sem gastar IA | P por email (Brevo, DEC-54); M a G pelo WhatsApp | Pelo WhatsApp não dá com `wa.me`: precisa da API oficial da Meta (verificação da empresa, modelo de mensagem aprovado e custo por mensagem), já adiada na DEC-56 |
-| Produtividade e comissão por técnico | Agrupar receita, margem e horas por técnico (`UsuarioId`) e uma tela de fechamento do mês. Hoje a receita por hora é por serviço, em `MetricasRepository` | M | As horas são estimadas pela duração do serviço, não cronometradas. A regra da comissão (% do valor, da margem ou da mão de obra) depende do Davi |
-| Avaliação depois do serviço | Link curto com nota de 1 a 5, guardada no Agesto, e link para a avaliação no Google | P a M | A política do Google proíbe pedir avaliação só a quem deu nota alta: oferecer o link do Google a todos e usar a nota interna só para o Dono acompanhar |
-| Comprovante do serviço | Fotos de antes e depois e assinatura do cliente no app, mesmo offline; fila de envio de fotos separada da sincronização atual; Supabase Storage com bucket privado e envio autorizado pela API; PDF no app enviado pelo WhatsApp | G | Depende do primeiro `eas build` (câmera, arquivos, assinatura e PDF são módulos nativos), do Supabase Pro (o Free tem pouco espaço e tráfego para fotos) e da política de privacidade revisada (fotos e assinatura são dados pessoais) |
+| Pix at the end of the atendimento | Static Pix QR Code with the Dono's key (key, name and city in Parametrização); "copia e cola" (copy and paste) code generated in the browser; QR in the atendimento detail and in the PDF. Completes the atendimento billing (PR #188) | S | Static Pix does not confirm the payment: the Dono still marks "Pago". In the app, the QR needs a native module (new `eas build`) |
+| Service warranty | Default period on the service; "na garantia até…" (under warranty until…) recorded when completing the atendimento and shown in the client's history | S | New field in the app's sync too |
+| Recurring maintenance reminder | "Repetir a cada X meses" (repeat every X months) on the service; "Manutenções a vencer" (maintenance due) list in the Dono panel, with the WhatsApp message ready through `wa.me` (DEC-56) | S to M | Does not need the WhatsApp API: the Dono clicks to send |
+| Quote acceptance by link | Public page, no login, with a random code in the link; "Aprovar" (approve) changes the quote to `Aprovado`, generates the atendimento (`ConverterAsync`) and notifies the Dono. Reuses the quote PDF (DEC-56) | M | First public route that changes data: expiring code, attempt limit and minimal client data on the page. Without an own domain, the link comes out as `agesto.pages.dev` |
+| Daily summary for the Dono | Morning routine with the day's numbers (atendimentos, amount, stalled quotes), built by query, without spending AI | S by email (Brevo, DEC-54); M to L through WhatsApp | Through WhatsApp it cannot be done with `wa.me`: it needs Meta's official API (company verification, approved message template and per-message cost), already postponed in DEC-56 |
+| Productivity and commission per technician | Group revenue, margin and hours per technician (`UsuarioId`) and a month-closing screen. Today revenue per hour is per service, in `MetricasRepository` | M | Hours are estimated from the service duration, not timed. The commission rule (% of the amount, the margin or the labor) depends on Davi |
+| Rating after the service | Short link with a 1 to 5 score, stored in Agesto, and a link to the Google review | S to M | Google's policy forbids asking for reviews only from those who gave a high score: offer the Google link to everyone and use the internal score only for the Dono to follow |
+| Proof of service | Before and after photos and the client's signature in the app, even offline; photo upload queue separate from the current sync; Supabase Storage with a private bucket and upload authorized by the API; PDF in the app sent through WhatsApp | L | Depends on the first `eas build` (camera, files, signature and PDF are native modules), on Supabase Pro (Free has little space and traffic for photos) and on the revised privacy policy (photos and signature are personal data) |
 
-Ordem sugerida, se o Davi aprovar: Pix e garantia; lembrete de manutenção; aceite do orçamento por link; resumo diário por email; produtividade por técnico; avaliação; comprovante com fotos e assinatura por último.
-
----
-
-## Ordem de execução recomendada (próximas sprints)
-
-> O MVP possui backend, Web e Mobile publicados em `Agesto-Platform/Agesto` e rodando contra a API real (Render + Supabase, DEC-32), com mocks desligados. Organização, time `Core`, CI, linha principal e ruleset já estão configurados.
-
-### Até 15/12/2026
-1. Seção **Lançamento do MVP** acima, na ordem dos prazos: primeiro o portão do piloto (até 03/11), depois as melhorias do piloto e o que o lançamento exige.
-
-### Depois do lançamento
-2. Auditoria de `REQUIREMENTS.md` e remoção da documentação legada (Davi Gomes)
-3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
-4. Planos futuros de 13/11/2026 (seção acima), quando o Davi decidir quais entram e em que ordem
+Suggested order, if Davi approves: Pix and warranty; maintenance reminder; quote acceptance by link; daily summary by email; productivity per technician; rating; proof with photos and signature last.
 
 ---
 
-## Convenções de commit
+## Recommended execution order (next sprints)
+
+> The MVP has backend, Web and Mobile published in `Agesto-Platform/Agesto` and running against the real API (Render + Supabase, DEC-32), with mocks turned off. Organization, `Core` team, CI, main line and ruleset are already configured.
+
+### By 15/12/2026
+1. **MVP launch** section above, in deadline order: first the pilot gate (by 03/11), then the pilot improvements and what the launch requires.
+
+### After the launch
+2. `REQUIREMENTS.md` audit and removal of the legacy documentation (Davi Gomes)
+3. Remaining debt: KAN-79 margin/hour, "Otimizar dia" (route phase 2, DEC-37/38), quote Descarga in sync (Davi Gomes); Recharts lazy-load, web tests and API documentation (Davi Oliveira); app redesign and tests against a real PostgreSQL in CI (Diego)
+4. Future plans from 13/11/2026 (section above), when Davi decides which ones go in and in what order
+
+---
+
+## Commit conventions
 
 ```
-feat(escopo): descrição curta (KAN-XX)
-fix(escopo): descrição curta (KAN-XX)
-docs(escopo): descrição curta
-chore(escopo): descrição curta
-test(escopo): descrição curta
-refactor(escopo): descrição curta
+feat(scope): short description (KAN-XX)
+fix(scope): short description (KAN-XX)
+docs(scope): short description
+chore(scope): short description
+test(scope): short description
+refactor(scope): short description
 ```
 
-Exemplos reais do projeto:
+Real examples from the project:
 ```
 feat(empresa): add Empresa entity + multi-tenant refactor (KAN-56)
 feat(config): remove BYOK fields from Configuracao (KAN-58)
