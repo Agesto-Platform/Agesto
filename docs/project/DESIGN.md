@@ -1,8 +1,8 @@
-# Agesto — Design e Arquitetura
+# Agesto — Design and Architecture
 
-## 1. Arquitetura Geral
+## 1. Overall Architecture
 
-O sistema segue uma arquitetura em camadas clássica no backend, com separação clara entre módulos:
+The system follows a classic layered architecture on the backend, with a clear separation between modules:
 
 ```
 ┌─────────────────┐     ┌─────────────────┐
@@ -27,30 +27,30 @@ O sistema segue uma arquitetura em camadas clássica no backend, com separação
         └──────────────────────┘
 ```
 
-> A IA nativa está implementada dentro do backend C# (DEC-21), via SDK oficial da Anthropic: `POST /api/insights` e o chat `POST /api/agente/perguntar`, em produção desde 10/11/2026. O design original em Python permanece apenas como histórico na seção 6. O Mobile offline-first foi implementado — ver seção 11.
+> The native AI is implemented inside the C# backend (DEC-21), through the official Anthropic SDK: `POST /api/insights` and the `POST /api/agente/perguntar` chat, in production since 10/11/2026. The original Python design remains only as history in section 6. The offline-first Mobile was implemented — see section 11.
 
 ---
 
-## 2. Arquitetura em Camadas (Backend C#)
+## 2. Layered Architecture (C# Backend)
 
-### Responsabilidades
+### Responsibilities
 
-| Camada | Responsabilidade | Regra |
+| Layer | Responsibility | Rule |
 |--------|-----------------|-------|
-| `Controllers` | Receber HTTP, extrair JWT, devolver resposta | Não contém regra de negócio |
-| `Services` | Regras de negócio, validações, mapeamento DTO↔Entidade | Não acessa banco diretamente |
-| `Repositories` | Queries ao banco via EF Core | Não contém regra de negócio |
-| `AppDbContext` | Configuração do modelo, relacionamentos, índices | — |
+| `Controllers` | Receive HTTP, extract the JWT, return the response | Contains no business rules |
+| `Services` | Business rules, validation, DTO↔Entity mapping | Does not access the database directly |
+| `Repositories` | Database queries through EF Core | Contains no business rules |
+| `AppDbContext` | Model configuration, relationships, indexes | — |
 
-### Padrões obrigatórios
-- Toda dependência injetada via interface (`IClienteService`, `IClienteRepository`, etc.)
-- Registradas como `AddScoped` no `Program.cs`
-- `usuarioId` e `empresaId` sempre extraídos do JWT no Controller, nunca do body
-- Entidades nunca saem pelos Controllers — sempre DTOs
-- Soft delete via `DeletedAt` — nunca `DELETE` físico nas entidades operacionais
+### Mandatory patterns
+- Every dependency injected through an interface (`IClienteService`, `IClienteRepository`, etc.)
+- Registered as `AddScoped` in `Program.cs`
+- `usuarioId` and `empresaId` always extracted from the JWT in the Controller, never from the body
+- Entities never leave through the Controllers — always DTOs
+- Soft delete through `DeletedAt` — never a physical `DELETE` on operational entities
 
-### Extração do JWT nos Controllers
-Todos os controllers autenticados usam o método `TryGetUsuarioId`:
+### JWT extraction in the Controllers
+All authenticated controllers use the `TryGetUsuarioId` method:
 
 ```csharp
 private bool TryGetUsuarioId(out long usuarioId)
@@ -62,13 +62,13 @@ private bool TryGetUsuarioId(out long usuarioId)
 }
 ```
 
-> **Débito resolvido:** os métodos `TryGetEmpresaId`, `TryGetUsuarioId` e `TryGetPerfil` vivem na classe base `ApiControllerBase`. A área de superadmin usa `AdminControllerBase`, com `TryGetAdminId` (DEC-52).
+> **Debt resolved:** the `TryGetEmpresaId`, `TryGetUsuarioId` and `TryGetPerfil` methods live in the `ApiControllerBase` base class. The superadmin area uses `AdminControllerBase`, with `TryGetAdminId` (DEC-52).
 
 ---
 
-## 3. Modelo de Dados
+## 3. Data Model
 
-### 3.1 Entidades e Relações
+### 3.1 Entities and Relationships
 
 ```
 Empresa 1 ──── * Usuario
@@ -78,7 +78,7 @@ Empresa 1 ──── * Produto
 Empresa 1 ──── * Servico
 Empresa 1 ──── * Atendimento
 
-Usuario  1 ──── * Atendimento   (agente que registrou)
+Usuario  1 ──── * Atendimento   (agent who recorded it)
 Cliente  1 ──── * Atendimento
 
 Atendimento 1 ──── * ItemProduto
@@ -87,32 +87,32 @@ Produto     1 ──── * ItemProduto
 Servico     1 ──── * ItemServico
 ```
 
-### 3.2 Entidades
+### 3.2 Entities
 
-> Modelo resumido. A fonte é `MicroERP.Api/Models/` e `AppDbContext`, que já têm entidades e campos que não aparecem aqui: `Orcamento`/`ItemOrcamento` (DEC-16), `ServicoItemSugerido` (DEC-28), `AdminPlataforma`/`AuditoriaAdmin` e `Empresa.Ativa` (DEC-52), `Usuario.Ativo`, `DeletedAt`, `BloqueadoAte` e `TentativasLoginFalhas` (DEC-35, DEC-43, DEC-44) e `Servico.DuracaoMinutos` (DEC-45).
+> Summarized model. The source is `MicroERP.Api/Models/` and `AppDbContext`, which already have entities and fields that do not show up here: `Orcamento`/`ItemOrcamento` (DEC-16), `ServicoItemSugerido` (DEC-28), `AdminPlataforma`/`AuditoriaAdmin` and `Empresa.Ativa` (DEC-52), `Usuario.Ativo`, `DeletedAt`, `BloqueadoAte` and `TentativasLoginFalhas` (DEC-35, DEC-43, DEC-44) and `Servico.DuracaoMinutos` (DEC-45).
 
 #### `Empresa`
 ```
 Id, Nome, Documento?, CreatedAt, UpdatedAt
-Navegações: Usuarios[]
+Navigations: Usuarios[]
 ```
 
 #### `Usuario`
 ```
-Id, Nome, Email (único), Senha (hash), EmpresaId (FK),
+Id, Nome, Email (unique), Senha (hash), EmpresaId (FK),
 Perfil (enum: Dono|Agente), CreatedAt, UpdatedAt
 ```
 
 #### `Configuracao`
 ```
-Id, EmpresaId (FK único — 1:1 com Empresa),
-TipoOperacao (enum string: Venda|Servico|Hibrido),
+Id, EmpresaId (unique FK — 1:1 with Empresa),
+TipoOperacao (string enum: Venda|Servico|Hibrido),
 CreatedAt, UpdatedAt
 ```
 
 #### `Cliente`
 ```
-Id, Uuid, Nome, Telefone?, Cpf (único por EmpresaId),
+Id, Uuid, Nome, Telefone?, Cpf (unique per EmpresaId),
 EmpresaId (FK), CreatedAt, UpdatedAt, SyncedAt?, DeletedAt?
 ```
 
@@ -125,17 +125,17 @@ EmpresaId (FK), CreatedAt, UpdatedAt, SyncedAt?, DeletedAt?
 #### `Servico`
 ```
 Id, Uuid, Descricao,
-TipoCobranca (enum string: PorHora|Empreitada),
+TipoCobranca (string enum: PorHora|Empreitada),
 ValorHora? (decimal 12,2), ValorEmpreitada? (decimal 12,2),
 EmpresaId (FK), CreatedAt, UpdatedAt, SyncedAt?, DeletedAt?
-Regra: TipoCobranca=PorHora exige ValorHora; Empreitada exige ValorEmpreitada
+Rule: TipoCobranca=PorHora requires ValorHora; Empreitada requires ValorEmpreitada
 ```
 
 #### `Atendimento`
 ```
-Id, Uuid, DataRegistro, Status (enum string: Pendente|Concluido|Cancelado),
-ValorTotal (decimal 12,2 — calculado),
-EmpresaId (FK), UsuarioId (FK — agente que registrou), ClienteId (FK),
+Id, Uuid, DataRegistro, Status (string enum: Pendente|Concluido|Cancelado),
+ValorTotal (decimal 12,2 — computed),
+EmpresaId (FK), UsuarioId (FK — agent who recorded it), ClienteId (FK),
 CreatedAt, UpdatedAt, SyncedAt?, DeletedAt?
 ```
 
@@ -152,71 +152,71 @@ Subtotal = Quantidade × PrecoUnitario
 Id, Uuid, Quantidade, PrecoUnitario (snapshot), Subtotal,
 AtendimentoId (FK), ServicoId (FK),
 CreatedAt, UpdatedAt, SyncedAt?, DeletedAt?
-Subtotal = ValorEmpreitada (se Empreitada) | Quantidade × ValorHora (se PorHora)
+Subtotal = ValorEmpreitada (if Empreitada) | Quantidade × ValorHora (if PorHora)
 ```
 
-### 3.3 Índices relevantes
+### 3.3 Relevant indexes
 
-| Tabela | Índice | Tipo |
+| Table | Index | Type |
 |--------|--------|------|
-| Usuarios | Email | Único |
-| Clientes | (EmpresaId, Cpf) | Único composto |
-| Clientes | Uuid | Único |
-| Configuracoes | EmpresaId | Único |
-| Produtos | Uuid | Único |
-| Servicos | Uuid | Único |
-| Atendimentos | Uuid | Único |
-| ItemProdutos | Uuid | Único |
-| ItemServicos | Uuid | Único |
+| Usuarios | Email | Unique |
+| Clientes | (EmpresaId, Cpf) | Composite unique |
+| Clientes | Uuid | Unique |
+| Configuracoes | EmpresaId | Unique |
+| Produtos | Uuid | Unique |
+| Servicos | Uuid | Unique |
+| Atendimentos | Uuid | Unique |
+| ItemProdutos | Uuid | Unique |
+| ItemServicos | Uuid | Unique |
 
-### 3.4 Campos offline-first
-Entidades manipuladas pelo Mobile possuem:
-- `Uuid` — gerado no dispositivo, identifica o registro antes da sincronização
-- `SyncedAt?` — null = ainda não sincronizado
-- `DeletedAt?` — soft delete, necessário para comunicar deleções na sincronização
+### 3.4 Offline-first fields
+Entities handled by Mobile have:
+- `Uuid` — generated on the device, identifies the record before sync
+- `SyncedAt?` — null = not synced yet
+- `DeletedAt?` — soft delete, needed to communicate deletions during sync
 
 ---
 
-## 4. Autenticação e Autorização
+## 4. Authentication and Authorization
 
 ### JWT
 ```
-Claims: sub (usuarioId), email, jti (único por token),
+Claims: sub (usuarioId), email, jti (unique per token),
         empresaId, perfil
-Algoritmo: HMAC-SHA256
-Expiração: 30 dias (43200 minutos, DEC-50); desativar o usuário revoga antes
-ClockSkew: 2 minutos
+Algorithm: HMAC-SHA256
+Expiration: 30 days (43200 minutes, DEC-50); deactivating the user revokes it earlier
+ClockSkew: 2 minutes
 ```
 
-### Fluxo de registro (Opção A — MVP)
+### Sign-up flow (Option A — MVP)
 ```
 POST /api/auth/register
-  → Cria Empresa (com NomeEmpresa do request)
-  → Cria Usuario (Perfil=Dono, EmpresaId)
-  → Cria Configuracao padrão (TipoOperacao=Servico, EmpresaId — DEC-15)
+  → Creates Empresa (with NomeEmpresa from the request)
+  → Creates Usuario (Perfil=Dono, EmpresaId)
+  → Creates default Configuracao (TipoOperacao=Servico, EmpresaId — DEC-15)
 ```
 
 ---
 
-## 5. Padrões de Código
+## 5. Code Patterns
 
-### Nomenclatura
-- Entidades: singular PascalCase (`Cliente`, `ItemProduto`)
+### Naming
+- Entities: singular PascalCase (`Cliente`, `ItemProduto`)
 - DbSets: plural (`Clientes`, `ItemProdutos`)
-- Interfaces: prefixo `I` (`IClienteService`, `IClienteRepository`)
-- Enums: em pasta `Enums/`, salvos como string no banco via `HasConversion<string>()`
-- DTOs: sufixo do propósito (`ClienteCreateRequest`, `ClienteResponse`)
+- Interfaces: `I` prefix (`IClienteService`, `IClienteRepository`)
+- Enums: in the `Enums/` folder, saved as strings in the database through `HasConversion<string>()`
+- DTOs: purpose suffix (`ClienteCreateRequest`, `ClienteResponse`)
 
-### Enums existentes
+### Existing enums
 ```csharp
 // Enums/PerfilUsuario.cs
-public enum PerfilUsuario { Nenhum, Dono, Agente } // Nenhum = 0 evita cair em Dono por engano
+public enum PerfilUsuario { Nenhum, Dono, Agente } // Nenhum = 0 avoids falling into Dono by mistake
 
 // Enums/TipoCobranca.cs
 public enum TipoCobranca { PorHora, Empreitada }
 ```
 
-### Outros enums (já existentes, persistidos como string)
+### Other enums (already existing, persisted as strings)
 ```csharp
 // Enums/TipoOperacao.cs — Configuracao.TipoOperacao (DEC-08)
 public enum TipoOperacao { Venda, Servico, Hibrido }
@@ -224,10 +224,10 @@ public enum TipoOperacao { Venda, Servico, Hibrido }
 // Enums/StatusAtendimento.cs — Atendimento.Status (DEC-08)
 public enum StatusAtendimento { Pendente, Concluido, Cancelado }
 
-// Também em Enums/: ModoAgendaAgente (DEC-27) e StatusOrcamento (DEC-16)
+// Also in Enums/: ModoAgendaAgente (DEC-27) and StatusOrcamento (DEC-16)
 ```
 
-### Resposta padrão da API
+### Standard API response
 ```csharp
 public sealed class ApiResponse
 {
@@ -238,7 +238,7 @@ public sealed class ApiResponse
 }
 ```
 
-### Estrutura de pastas (Backend)
+### Folder structure (Backend)
 ```
 MicroERP.Api/
 ├── Controllers/
@@ -257,71 +257,71 @@ MicroERP.Api/
 
 ---
 
-## 6. Módulo de IA (Python + FastAPI) — design original, obsoleto (ver DEC-21)
+## 6. AI Module (Python + FastAPI) — original design, obsolete (see DEC-21)
 
-> **Obsoleto:** esta seção descreve o design original planejado. A DEC-21 resolveu essa decisão em favor de a IA rodar **dentro do backend C#**, via SDK oficial da Anthropic — não como serviço Python/FastAPI separado. Mantida como histórico.
+> **Obsolete:** this section describes the original planned design. DEC-21 resolved this decision in favor of the AI running **inside the C# backend**, through the official Anthropic SDK — not as a separate Python/FastAPI service. Kept as history.
 
-### Princípios
-- IA nativa ao produto — não configurável pelo cliente
-- Isolamento via `empresaId` em toda query — nunca mistura dados
-- Somente leitura no MVP — nunca altera dados
-- Dados sensíveis mascarados antes de enviar ao modelo (CPF, etc.)
-- SQL livre gerado pelo modelo não é permitido — apenas funções controladas
+### Principles
+- AI native to the product — not configurable by the customer
+- Isolation through `empresaId` in every query — never mixes data
+- Read-only in the MVP — never changes data
+- Sensitive data masked before being sent to the model (CPF, etc.)
+- Free-form SQL generated by the model is not allowed — only controlled functions
 
-### Integração com Backend C# (planejada, obsoleta)
-- Valida o mesmo JWT gerado pelo backend C#
-- `empresaId` sempre extraído do token, nunca do body
-- Comunicação via HTTP direto com Anthropic Claude (sem SDK comunitário)
+### Integration with the C# Backend (planned, obsolete)
+- Validates the same JWT generated by the C# backend
+- `empresaId` always extracted from the token, never from the body
+- Direct HTTP communication with Anthropic Claude (no community SDK)
 
-### Arquitetura interna (planejada, obsoleta)
+### Internal architecture (planned, obsolete)
 ```
 FastAPI → AgentRunner → ILLMProvider (Anthropic)
-                     → IToolRegistry (funções de leitura controladas)
+                     → IToolRegistry (controlled read functions)
                      → SystemPromptBuilder
                      → ITokenBudgetGuard
 ```
 
 ---
 
-## 7. Sincronização Mobile
+## 7. Mobile Synchronization
 
-### Endpoints (KAN-60, implementados)
+### Endpoints (KAN-60, implemented)
 ```
 GET  /api/sync/carga?ultimaSincronizacao={datetime}
-     → Retorna: clientes, produtos, serviços atualizados desde a data
-       (o mobile chama sem o parâmetro — Carga completa, DEC-33),
-       configuração da empresa, e orçamentos (SyncCargaResponse.Orcamentos,
+     → Returns: clients, products, services updated since the date
+       (mobile calls it without the parameter — full Carga, DEC-33),
+       the company's configuration, and quotes (SyncCargaResponse.Orcamentos,
        commit 5e82411)
-     → Não inclui a agenda — ver delta abaixo
+     → Does not include the schedule — see the delta below
 
 POST /api/sync/descarga
-     → Recebe: atendimentos offline, novos clientes e serviços (com Uuid do
-       device) e conclusões de atendimentos agendados (DEC-36, DEC-39);
-       atendimento referencia cliente por ClienteId ou ClienteUuid
-     → Retorna: ClientesSincronizados/AtendimentosSincronizados (uuids
-       aceitos), ClientesMapeados (uuid → id) e Erros. Cada atendimento é
-       tudo-ou-nada; rejeitados seguem pendentes no device (DEC-33)
+     → Receives: offline atendimentos, new clients and services (with the
+       device Uuid) and completions of scheduled atendimentos (DEC-36, DEC-39);
+       an atendimento references a client by ClienteId or ClienteUuid
+     → Returns: ClientesSincronizados/AtendimentosSincronizados (accepted
+       uuids), ClientesMapeados (uuid → id) and Erros. Each atendimento is
+       all-or-nothing; rejected ones stay pending on the device (DEC-33)
 ```
 
-### Consumo pelo app mobile (ver seção 11)
-O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois deltas de backend identificados durante a construção (DEC-26, ver TASKS.md):
-- A Carga não inclui a agenda — contornado no app com um passo `syncAgenda` separado (`GET /api/atendimento/agenda`).
-- ~~Atendimento offline não referencia cliente criado offline~~ — resolvido pela DEC-33 (`ClienteUuid` + `ClientesMapeados`).
+### Use by the mobile app (see section 11)
+The mobile app implemented the Carga/Descarga cycle against these endpoints, with two backend deltas found during the build (DEC-26, see TASKS.md):
+- The Carga does not include the schedule — worked around in the app with a separate `syncAgenda` step (`GET /api/atendimento/agenda`).
+- ~~An offline atendimento does not reference a client created offline~~ — resolved by DEC-33 (`ClienteUuid` + `ClientesMapeados`).
 
-### Resolução de conflitos
-- **Cliente:** última escrita por `UpdatedAt` prevalece
-- **Atendimento:** Mobile é sempre fonte da verdade (criado offline)
-- **Produto/Serviço:** servidor é sempre fonte da verdade (gerenciado pelo Web)
+### Conflict resolution
+- **Cliente:** the last write by `UpdatedAt` prevails
+- **Atendimento:** Mobile is always the source of truth (created offline)
+- **Produto/Servico:** the server is always the source of truth (managed by the Web)
 
 ---
 
-## 8. Banco de Dados
+## 8. Database
 
-- **Provedor:** PostgreSQL no Supabase (plano Free, região East US / N. Virginia), ver DEC-32
-- **ORM:** Entity Framework Core 10.0.14 (provider Npgsql 10.0.3), ver DEC-40
-- **Migrations:** controladas via `dotnet ef migrations`
-- **Estado:** `InitialCreate` única aplicada em 08/10/2026 (DEC-31); todas as migrations de `MicroERP.Api/Migrations` aplicadas no Supabase (última: `AddBloqueioLoginExclusaoLgpdDuracaoServico`, 11/11/2026)
-- **Secrets:** connection string em `appsettings.Development.json` (gitignored)
+- **Provider:** PostgreSQL on Supabase (Free plan, East US / N. Virginia region), see DEC-32
+- **ORM:** Entity Framework Core 10.0.14 (Npgsql provider 10.0.3), see DEC-40
+- **Migrations:** controlled through `dotnet ef migrations`
+- **State:** single `InitialCreate` applied on 08/10/2026 (DEC-31); all migrations in `MicroERP.Api/Migrations` applied on Supabase (latest: `AddBloqueioLoginExclusaoLgpdDuracaoServico`, 11/11/2026)
+- **Secrets:** connection string in `appsettings.Development.json` (gitignored)
 
 ### DeleteBehavior
 - `Empresa → Usuario`: Cascade
@@ -333,120 +333,120 @@ O app mobile implementou o ciclo Carga/Descarga contra esses endpoints, com dois
 
 ---
 
-## 9. Camada de Métricas (DEC-20)
+## 9. Metrics Layer (DEC-20)
 
-Camada determinística de agregações (C#/SQL, sem IA), implementada como parte do backend Controllers → Services → Repositories descrito na seção 2. É a mesma fonte de dados usada tanto pelos dashboards/gráficos quanto pela futura interpretação da IA (seção 6) — nunca dados brutos enviados ao modelo.
+Deterministic aggregation layer (C#/SQL, no AI), implemented as part of the Controllers → Services → Repositories backend described in section 2. It is the same data source used both by the dashboards/charts and by the future AI interpretation (section 6) — never raw data sent to the model.
 
-### Endpoints (Fase 1 — KAN-77, commit `87f54e6`)
+### Endpoints (Phase 1 — KAN-77, commit `87f54e6`)
 ```
 GET /api/metrics/vendas
-     → Produto mais vendido (qtd e receita), ticket médio, receita por período
-     → KAN-78 — concluído
+     → Best-selling product (quantity and revenue), average ticket, revenue per period
+     → KAN-78 — done
 
 GET /api/metrics/servicos
-     → Receita por tipo de serviço
-     → Horas e receita por hora por serviço (`Servico.DuracaoMinutos`, DEC-45)
-     → KAN-79 — parcial: margem/hora e tempo médio adiados (dependem de
+     → Revenue per service type
+     → Hours and revenue per hour per service (`Servico.DuracaoMinutos`, DEC-45)
+     → KAN-79 — partial: margin/hour and average time postponed (depend on
        Custo/DEC-19/KAN-72)
 
 GET /api/metrics/estoque
-     → Giro de estoque, produtos parados (>30 dias), ruptura iminente (≤7 dias)
-     → KAN-80 — concluído
+     → Stock turnover, idle products (>30 days), imminent stockout (≤7 days)
+     → KAN-80 — done
 
 GET /api/metrics/dashboard
-     → Agregador dos três blocos acima num único payload
-     → KAN-81 — concluído
+     → Aggregator of the three blocks above in a single payload
+     → KAN-81 — done
 ```
 
-### Camadas envolvidas
-`MetricasController` → `MetricasService`/`IMetricasService` → `MetricasRepository`/`IMetricasRepository`, com DTOs próprios (`MetricasVendasResponse`, `MetricasServicosResponse`, `MetricasEstoqueResponse`, `DashboardResponse`). Segue os mesmos padrões da seção 2 (DI via interface, `AddScoped`).
+### Layers involved
+`MetricasController` → `MetricasService`/`IMetricasService` → `MetricasRepository`/`IMetricasRepository`, with their own DTOs (`MetricasVendasResponse`, `MetricasServicosResponse`, `MetricasEstoqueResponse`, `DashboardResponse`). Follows the same patterns as section 2 (DI through an interface, `AddScoped`).
 
-### Regras de negócio aplicadas
-- Multi-tenant: toda query filtra por `EmpresaId` + `DeletedAt == null`, com join via `Atendimento` (pois `ItemProduto`/`ItemServico` não têm `EmpresaId` próprio).
-- Receita conta apenas atendimentos com `Status = Concluido`; movimentação de estoque conta itens de atendimentos com `Status != Cancelado`.
-- Bloco Vendas soma `ItemProduto.Subtotal`; bloco Serviços soma `ItemServico.Subtotal` — nunca o `ValorTotal` do `Atendimento`, para não duplicar receita entre os blocos (concretiza a separação venda/serviço da DEC-15).
-- Joins com `Produtos`/`Servicos` também filtram `DeletedAt == null`, evitando que catálogo soft-deletado entre nas somas.
+### Business rules applied
+- Multi-tenant: every query filters by `EmpresaId` + `DeletedAt == null`, joining through `Atendimento` (since `ItemProduto`/`ItemServico` have no `EmpresaId` of their own).
+- Revenue counts only atendimentos with `Status = Concluido`; stock movement counts items of atendimentos with `Status != Cancelado`.
+- The Sales block sums `ItemProduto.Subtotal`; the Services block sums `ItemServico.Subtotal` — never the `Atendimento`'s `ValorTotal`, so revenue is not duplicated between the blocks (makes the DEC-15 sales/service split concrete).
+- Joins with `Produtos`/`Servicos` also filter `DeletedAt == null`, so soft-deleted catalog items do not enter the sums.
 
 ---
 
-## 10. Frontend Web (Módulo Dono)
+## 10. Web Frontend (Dono Module)
 
-Front web do perfil Dono, em `web/` no monorepo `Agesto-Platform/Agesto`. Consome a API C# via HTTPS+JWT (seção 1). Design original aprovado a partir do protótipo `web-dono.html` — web é a plataforma **analítica** (gráficos, margem, rankings), em contraste com o mobile, que é **action-first** para o agente em campo (ver identidade de design: azul `#2B4ACB` para marca/ação, verde `#0E9E63` para sucesso/margem/lucro, tema claro, serif Georgia opcional só nos números de dinheiro).
+Web front end for the Dono profile, in `web/` in the `Agesto-Platform/Agesto` monorepo. Consumes the C# API through HTTPS+JWT (section 1). Original design approved from the `web-dono.html` prototype — the web is the **analytical** platform (charts, margin, rankings), in contrast with mobile, which is **action-first** for the agent in the field (see the design identity: blue `#2B4ACB` for brand/action, green `#0E9E63` for success/margin/profit, light theme, optional Georgia serif only on money figures).
 
 ### Stack
 - **Vite + React 19 + TypeScript**
-- **Tailwind CSS v4** — config CSS-first via `@theme` em `src/styles/tokens.css`, tokens portados do protótipo aprovado
-- **React Router** (`react-router-dom` em `7.18.5` por segurança — advisory de modo RSC aceito, não usado no projeto)
-- **TanStack Query** — todo dado de servidor (fetch, cache, invalidação)
-- **MSW (Mock Service Worker)** — mock stateful da API para desenvolvimento local sem backend; liga/desliga via `VITE_USE_MOCKS` (`false` em produção)
-- **Leaflet** — mapa da agenda, carregado sob demanda (DEC-38)
-- **Recharts** — gráficos do dashboard
+- **Tailwind CSS v4** — CSS-first config via `@theme` in `src/styles/tokens.css`, tokens ported from the approved prototype
+- **React Router** (`react-router-dom` at `7.18.5` for security — RSC mode advisory accepted, not used in the project)
+- **TanStack Query** — all server data (fetch, cache, invalidation)
+- **MSW (Mock Service Worker)** — stateful API mock for local development without a backend; turned on/off through `VITE_USE_MOCKS` (`false` in production)
+- **Leaflet** — schedule map, loaded on demand (DEC-38)
+- **Recharts** — dashboard charts
 - **oxlint** — lint
 
-### Arquitetura de pastas e camadas
+### Folder and layer architecture
 ```
 web/src/
-├── features/<nome>/     → cada recurso de negócio (Clientes, Produtos, Serviços,
+├── features/<name>/     → each business resource (Clientes, Produtos, Serviços,
 │                           Agenda, Orçamentos, Atendimentos, Configuração)
-├── components/ui/       → kit reutilizável: Drawer (slide-over), DataTable,
+├── components/ui/       → reusable kit: Drawer (slide-over), DataTable,
 │                           ConfirmDialog, TextField/NumberField/SelectField,
 │                           Toast, Card, Kpi, Money, Pill, RankBar, Alert
-├── lib/api.ts            → desembrulha o envelope ApiResponse, injeta Bearer, trata 401
-├── lib/resource.ts       → fábrica createResource (list/create/update/delete
-│                           com invalidação automática do TanStack Query)
-├── types/api.ts          → tipos espelhando os DTOs reais da API (camelCase)
-└── mocks/lib/http.ts     → mock stateful (makeStore + crudHandlers)
+├── lib/api.ts            → unwraps the ApiResponse envelope, injects Bearer, handles 401
+├── lib/resource.ts       → createResource factory (list/create/update/delete
+│                           with automatic TanStack Query invalidation)
+├── types/api.ts          → types mirroring the API's real DTOs (camelCase)
+└── mocks/lib/http.ts     → stateful mock (makeStore + crudHandlers)
 ```
 
-### Decisões de UX/arquitetura
-- **Formulários em drawer lateral (slide-over)**, não modal central nem página cheia — mantém a lista visível durante a edição.
-- **Costura mock↔API real:** `VITE_USE_MOCKS=true|false` liga/desliga o MSW; desligar aponta para a API real via `VITE_API_BASE_URL`, sem mudar código de feature.
-- **Delta do Atendimento resolvido no front:** `GET /api/atendimento` devolve o `AtendimentoResponse` real (só `clienteId`, sem nome); o nome do cliente é resolvido no front juntando com a lista de clientes já carregada. Encerrou o formato fictício "AtendimentoResumo" que existia na apresentação.
+### UX/architecture decisions
+- **Forms in a side drawer (slide-over)**, not a central modal or a full page — keeps the list visible while editing.
+- **Mock↔real API seam:** `VITE_USE_MOCKS=true|false` turns MSW on/off; turning it off points to the real API through `VITE_API_BASE_URL`, without changing feature code.
+- **Atendimento delta solved in the front end:** `GET /api/atendimento` returns the real `AtendimentoResponse` (only `clienteId`, no name); the client name is resolved in the front end by joining with the already loaded client list. It ended the fictitious "AtendimentoResumo" format that existed in the presentation.
 
-Ver DEC-25 em `DECISIONS.md` para o histórico completo da decisão, e TASKS.md (seção "Frontend Web") para a tabela de tasks/commits e pendências (testes de componente, lazy-load do Recharts).
+See DEC-25 in `DECISIONS.md` for the full history of the decision, and TASKS.md (section "Web Frontend") for the table of tasks/commits and open items (component tests, Recharts lazy-load).
 
 ---
 
-## 11. Mobile (App do Agente)
+## 11. Mobile (Agent App)
 
-App mobile do agente de campo, em `mobile/` no monorepo `Agesto-Platform/Agesto`. Consome a API C# via HTTPS+JWT (seção 1), com camada de persistência offline local. Design **action-first** — em contraste com o Web (seção 10), que é a plataforma analítica do dono — usando a mesma identidade visual base (azul `#243FA6`/`#2B4ACB`, verde `#12B886`/`#0E9E63`, tema claro). Ver DEC-26 em `DECISIONS.md` para o histórico completo da decisão.
+Mobile app for the field agent, in `mobile/` in the `Agesto-Platform/Agesto` monorepo. Consumes the C# API through HTTPS+JWT (section 1), with a local offline persistence layer. **Action-first** design — in contrast with the Web (section 10), which is the owner's analytical platform — using the same base visual identity (blue `#243FA6`/`#2B4ACB`, green `#12B886`/`#0E9E63`, light theme). See DEC-26 in `DECISIONS.md` for the full history of the decision.
 
 ### Stack
 - **React Native + TypeScript**, via **Expo (prebuild)**
-- **Expo Router** — navegação, incluindo tab bar (Início/Agenda/Atendimentos/Clientes/Mais)
-- **theme + StyleSheet** — estilização tipada, tokens do protótipo (não NativeWind)
-- **expo-sqlite** — persistência offline no device, atrás da interface `LocalDb`, com adapter em memória para Web/testes
-- **expo-secure-store** (device) / `localStorage` (web) — armazenamento do token JWT, com split por plataforma
-- **Camada de mock em código** (`config.useMocks`) — análoga ao `VITE_USE_MOCKS` do web (DEC-25)
-- **Jest (jest-expo)** — 119 testes no CI da `develop` (11/11/2026), cobrindo dados, sincronização e regras do app
+- **Expo Router** — navigation, including the tab bar (Início/Agenda/Atendimentos/Clientes/Mais)
+- **theme + StyleSheet** — typed styling, prototype tokens (not NativeWind)
+- **expo-sqlite** — offline persistence on the device, behind the `LocalDb` interface, with an in-memory adapter for Web/tests
+- **expo-secure-store** (device) / `localStorage` (web) — JWT token storage, split by platform
+- **In-code mock layer** (`config.useMocks`) — analogous to the web's `VITE_USE_MOCKS` (DEC-25)
+- **Jest (jest-expo)** — 119 tests in the `develop` CI (11/11/2026), covering data, sync and app rules
 
-### Arquitetura de pastas e camadas
+### Folder and layer architecture
 ```
 mobile/src/
 ├── db/
-│   ├── types.ts          → interface LocalDb (contrato único de persistência)
-│   ├── index.native.ts   → adapter expo-sqlite (device)
-│   └── index.ts          → adapter em memória (Expo Web / Jest)
-├── sync/                 → Carga e Descarga (POST/GET contra /api/sync/*),
-│                           incluindo o passo syncAgenda (ver seção 7)
-├── lib/                  → cliente de API (envelope + 401), utilidades
-├── auth/                 → login, guarda de rota, sessão (src/lib/session.ts)
-├── app/                  → rotas do Expo Router
-├── features/             → telas de negócio (Home, Agenda, Registrar Atendimento,
+│   ├── types.ts          → LocalDb interface (single persistence contract)
+│   ├── index.native.ts   → expo-sqlite adapter (device)
+│   └── index.ts          → in-memory adapter (Expo Web / Jest)
+├── sync/                 → Carga and Descarga (POST/GET against /api/sync/*),
+│                           including the syncAgenda step (see section 7)
+├── lib/                  → API client (envelope + 401), utilities
+├── auth/                 → login, route guard, session (src/lib/session.ts)
+├── app/                  → Expo Router routes
+├── features/             → business screens (Home, Agenda, Registrar Atendimento,
 │                           Clientes, Mais)
-└── ui/                   → tema (cores, tipografia) + componentes StyleSheet
+└── ui/                   → theme (colors, typography) + StyleSheet components
 ```
 
-### Ciclo offline Carga/Descarga
-1. **Login** — autenticação JWT contra `/api/auth/login`; token guardado via `expo-secure-store`/`localStorage`.
-2. **Carga** — sempre completa (DEC-33); popula o banco local com clientes, produtos, serviços e configuração (`GET /api/sync/carga`), mais orçamentos (`SyncCargaResponse.Orcamentos`), que o app ainda não armazena nem exibe. Um passo adicional `syncAgenda` busca e cacheia `GET /api/atendimento/agenda` separadamente, pois a Carga não inclui a agenda (delta de backend, ver seção 7 e DEC-17).
-3. **Uso offline** — Home action-first (CTA Registrar + agenda do dia Próximo/Ainda hoje); registrar atendimento (cliente + itens de catálogo por quantidade + status) grava localmente como pendente; cadastro rápido de cliente offline grava como `PendingCliente`.
-4. **Descarga** — empurra clientes e atendimentos pendentes para `POST /api/sync/descarga`; marca como sincronizados só os uuids que o servidor confirmou (os rejeitados seguem pendentes) e religa atendimentos de clientes criados offline ao id do servidor (DEC-33). O botão Sincronizar faz Descarga seguida de Carga + agenda. O app também sincroniza sozinho ao abrir, ao voltar para ele e quando a internet volta (I5): com algo pendente envia logo, sem nada pendente só se a última foi há mais de 5 minutos, e nunca com a tela de registrar ou de cliente aberta, para não enviar uma correção pela metade. Uma sincronização por vez (`sincronizarUmaVez`), e as telas abertas recarregam ao terminar. Aba "Mais" mostra status de sync (pendentes, última sincronização, botão Sincronizar) e logout.
+### Offline Carga/Descarga cycle
+1. **Login** — JWT authentication against `/api/auth/login`; token stored via `expo-secure-store`/`localStorage`.
+2. **Carga** — always full (DEC-33); fills the local database with clients, products, services and configuration (`GET /api/sync/carga`), plus quotes (`SyncCargaResponse.Orcamentos`), which the app does not store or show yet. An additional `syncAgenda` step fetches and caches `GET /api/atendimento/agenda` separately, because the Carga does not include the schedule (backend delta, see section 7 and DEC-17).
+3. **Offline use** — action-first Home (Registrar CTA + the day's schedule Próximo/Ainda hoje); recording an atendimento (client + catalog items by quantity + status) saves it locally as pending; quick offline client registration saves it as `PendingCliente`.
+4. **Descarga** — pushes pending clients and atendimentos to `POST /api/sync/descarga`; marks as synced only the uuids the server confirmed (rejected ones stay pending) and relinks atendimentos of clients created offline to the server id (DEC-33). The Sincronizar button does a Descarga followed by Carga + schedule. The app also syncs on its own when it opens, when the user returns to it and when the internet comes back (I5): with something pending it sends right away, with nothing pending only if the last one was more than 5 minutes ago, and never with the record or client screen open, so as not to send a half-done correction. One sync at a time (`sincronizarUmaVez`), and open screens reload when it finishes. The "Mais" tab shows sync status (pending items, last sync, Sincronizar button) and logout.
 
-### Limitações conhecidas (ver DEC-26 e TASKS.md)
-- Consulta de histórico de atendimentos próprios não foi implementada nesta fase (fora do escopo de mob-01 a mob-07).
-- Rota do dia pelo endereço já existe (DEC-37); a otimização por proximidade ("Otimizar dia") ainda não.
-- Teste de componente React Native (`@testing-library/react-native`) foi adiado por incompatibilidade de versão (lib v14 + jest-expo + React 19).
+### Known limitations (see DEC-26 and TASKS.md)
+- Lookup of the history of one's own atendimentos was not implemented in this phase (out of the scope of mob-01 to mob-07).
+- The day's route by address already exists (DEC-37); optimization by proximity ("Otimizar dia") does not yet.
+- React Native component testing (`@testing-library/react-native`) was postponed due to version incompatibility (lib v14 + jest-expo + React 19).
 
-### Verificação
-O ciclo foi validado no **Expo Web**, sem device Android/iOS físico nesta fase. O `LocalDb` atrás de interface permite usar adapter em memória no Web/testes. No CI da `develop` (11/11/2026): typecheck, lint e 119 testes Jest verdes. A validação em dispositivo físico permanece pendente.
+### Verification
+The cycle was validated on **Expo Web**, without a physical Android/iOS device in this phase. The `LocalDb` behind an interface allows using an in-memory adapter on Web/tests. In the `develop` CI (11/11/2026): typecheck, lint and 119 green Jest tests. Validation on a physical device remains pending.
