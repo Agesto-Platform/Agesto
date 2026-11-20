@@ -1,59 +1,59 @@
-# Agesto — Web (Módulo Dono)
+# Agesto — Web (Dono Module)
 
-Painel analítico de gestão do Agesto. Contraparte web (visão do dono) do app
-mobile action-first do agente de campo.
+Agesto's analytical management panel. The web counterpart (owner's view) of the
+field agent's action-first mobile app.
 
 ## Stack
 
 - **Vite + React 19 + TypeScript**
-- **Tailwind CSS v4** (config CSS-first via `@theme`) — tokens em `src/styles/tokens.css`
-- **React Router** (roteamento)
-- **TanStack Query** (dados de servidor)
-- **MSW** (mock para desenvolvimento local sem backend)
-- **Recharts** (gráficos)
+- **Tailwind CSS v4** (CSS-first config via `@theme`) — tokens in `src/styles/tokens.css`
+- **React Router** (routing)
+- **TanStack Query** (server data)
+- **MSW** (mocks for local development without a backend)
+- **Recharts** (charts)
 - Lint: **oxlint**
 
 ## Scripts
 
 ```bash
 npm install
-npm run dev      # servidor de desenvolvimento
-npm run build    # type-check + build de produção
+npm run dev      # development server
+npm run build    # type-check + production build
 npm run lint     # oxlint
-npm test         # vitest (o CI roda lint, testes e build)
+npm test         # vitest (CI runs lint, tests and build)
 ```
 
-## Configuração
+## Configuration
 
-Copie `.env.example` para `.env.local` e ajuste:
+Copy `.env.example` to `.env.local` and adjust:
 
-- `VITE_API_BASE_URL` — base da API backend. A API local roda em `http://localhost:5216` (`deploy/README.md`, seção 8).
-- `VITE_USE_MOCKS` — `true` usa o MSW (dev sem backend); `false` consome a API real.
+- `VITE_API_BASE_URL` — backend API base. The local API runs at `http://localhost:5216` (`deploy/README.md`, section 8).
+- `VITE_USE_MOCKS` — `true` uses MSW (dev without a backend); `false` consumes the real API.
 
-No modo de demonstração (`VITE_USE_MOCKS=true`), os logins de exemplo já vêm preenchidos em `/login` e em `/admin/login`.
+In demo mode (`VITE_USE_MOCKS=true`), the example logins are already filled in at `/login` and at `/admin/login`.
 
-## Estrutura
+## Structure
 
 ```
 src/
-  styles/tokens.css   design tokens (@theme) portados do protótipo aprovado
-  lib/                cliente de API + React Query
-  auth/               contexto de autenticação e rota protegida
+  styles/tokens.css   design tokens (@theme) ported from the approved prototype
+  lib/                API client + React Query
+  auth/               authentication context and protected route
   mocks/              MSW (handlers)
-  types/              tipos TS espelhando os DTOs do backend
-  components/ui/      componentes base (Card, Kpi, Pill, ...)
+  types/              TS types mirroring the backend DTOs
+  components/ui/      base components (Card, Kpi, Pill, ...)
   layout/             AppShell (Sidebar, Topbar)
-  pages/              telas (Login, Dashboard, ...)
-  features/           telas por domínio (clientes, agenda, usuarios, ...)
-  admin/              área de superadmin da equipe do Agesto (/admin, DEC-52)
-  theme/              paletas e tema claro/escuro
-  test/               setup do Vitest
+  pages/              screens (Login, Dashboard, ...)
+  features/           screens per domain (clientes, agenda, usuarios, ...)
+  admin/              Agesto team's superadmin area (/admin, DEC-52)
+  theme/              palettes and light/dark theme
+  test/               Vitest setup
 ```
 
-## Nota de segurança (dependências)
+## Security note (dependencies)
 
-`npm audit` reporta um advisory de **react-router** (RSC Mode CSRF, faixa
-`>=7.12.0 <8.3.0`). Ele afeta apenas o **modo RSC** do React Router, que este
-app **não usa** (SPA client-side declarativa). A versão em uso (7.18.5) é a mais
-recente estável e corrige todos os advisories que de fato afetam SPA; ainda não
-há release estável que zere o aviso do modo RSC. Risco aceito e documentado.
+`npm audit` reports a **react-router** advisory (RSC Mode CSRF, range
+`>=7.12.0 <8.3.0`). It only affects React Router's **RSC mode**, which this
+app **does not use** (declarative client-side SPA). The version in use (7.18.5) is the
+latest stable and fixes every advisory that actually affects an SPA; there is no
+stable release yet that clears the RSC mode warning. Risk accepted and documented.

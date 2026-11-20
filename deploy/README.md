@@ -1,238 +1,238 @@
 # Deploy — Render + Supabase + Cloudflare Pages
 
-Passo a passo para subir o Agesto nos tiers gratuitos (DEC-32).
+Step by step to bring Agesto up on the free tiers (DEC-32).
 
 ```
-Navegador / App ──HTTPS──> Render (API .NET, Virginia) ──> Supabase (Postgres, N. Virginia)
-Navegador ──HTTPS──> Cloudflare Pages (web)
+Browser / App ──HTTPS──> Render (.NET API, Virginia) ──> Supabase (Postgres, N. Virginia)
+Browser ──HTTPS──> Cloudflare Pages (web)
 ```
 
 ## 1. Supabase
 
-1. Crie o projeto na região **East US (North Virginia)**, a mesma da API no Render.
-2. Em *Project Settings → Data API*, **desative a Data API**. O Agesto acessa o banco só pela própria API .NET; com a Data API ligada, as tabelas do schema `public` ficam expostas pela API REST do Supabase usando a chave `anon`, que é pública.
-3. Em *Connect*, copie a connection string do **Session pooler**. A conexão direta do plano Free é só IPv6; o pooler funciona em IPv4.
-4. Converta para o formato Npgsql:
+1. Create the project in the **East US (North Virginia)** region, the same as the API on Render.
+2. In *Project Settings → Data API*, **turn off the Data API**. Agesto accesses the database only through its own .NET API; with the Data API on, the tables of the `public` schema are exposed through Supabase's REST API using the `anon` key, which is public.
+3. In *Connect*, copy the **Session pooler** connection string. The Free plan's direct connection is IPv6 only; the pooler works over IPv4.
+4. Convert it to the Npgsql format:
 
    ```
-   Host=<host do pooler>;Port=5432;Database=postgres;Username=postgres.<ref-do-projeto>;Password=<senha>;SSL Mode=Require;Trust Server Certificate=true
+   Host=<pooler host>;Port=5432;Database=postgres;Username=postgres.<project-ref>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true
    ```
 
-   Se a senha tiver `;` ou `"`, coloque-a entre aspas simples: `Password='minha;senha'`.
+   If the password has `;` or `"`, put it in single quotes: `Password='my;password'`.
 
 ## 2. Migrations
 
-A aplicação de migrations **depende de autorização do Davi** (AGENTS.md). A API não aplica migrations sozinha ao subir.
+Applying migrations **depends on Davi's authorization** (AGENTS.md). The API does not apply migrations on its own at startup.
 
-Gere um script idempotente na máquina de desenvolvimento, revise e rode no **SQL Editor** do Supabase:
+Generate an idempotent script on the development machine, review it and run it in Supabase's **SQL Editor**:
 
 ```bash
-# na raiz do repositório, com a branch atualizada
-dotnet ef migrations has-pending-model-changes --project MicroERP.Api   # deve dizer que não há mudanças
+# at the repository root, with the branch up to date
+dotnet ef migrations has-pending-model-changes --project MicroERP.Api   # must say there are no changes
 dotnet ef migrations script --idempotent --project MicroERP.Api -o deploy/migrate.sql
 sed -i '1s/^\xEF\xBB\xBF//' deploy/migrate.sql
 ```
 
-- O `migrate.sql` **não vai para o Git** (está no `.gitignore`). Gere de novo sempre que for aplicar.
-- O aviso `IDX10703 ... key length is zero` durante a geração é esperado: sem o segredo JWT, a ferramenta segue sem o host da aplicação.
-- O `dotnet ef` grava o arquivo com BOM UTF-8; o `sed` acima remove.
-- Cada migration roda na própria transação e só se ainda não estiver em `__EFMigrationsHistory`, então rodar de novo é seguro.
+- `migrate.sql` **does not go into Git** (it is in `.gitignore`). Generate it again every time you apply.
+- The `IDX10703 ... key length is zero` warning during generation is expected: without the JWT secret, the tool carries on without the application host.
+- `dotnet ef` writes the file with a UTF-8 BOM; the `sed` above removes it.
+- Each migration runs in its own transaction and only if it is not yet in `__EFMigrationsHistory`, so running it again is safe.
 
-Confira depois de aplicar:
+Check after applying:
 
 ```sql
 SELECT "MigrationId" FROM "__EFMigrationsHistory" ORDER BY 1;
 SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY 1;
 ```
 
-A primeira deve listar todas as migrations de `MicroERP.Api/Migrations`; a segunda, as tabelas do modelo mais `__EFMigrationsHistory`.
+The first must list all migrations in `MicroERP.Api/Migrations`; the second, the model's tables plus `__EFMigrationsHistory`.
 
-A migration `EnableRlsLockdown` liga o RLS em todas as tabelas e revoga o acesso dos roles `anon` e `authenticated`. É uma segunda camada além da Data API desligada; a API não é afetada porque conecta como dona das tabelas. Para conferir:
+The `EnableRlsLockdown` migration turns on RLS on all tables and revokes access from the `anon` and `authenticated` roles. It is a second layer on top of the Data API being off; the API is not affected because it connects as the tables' owner. To check:
 
 ```sql
-SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER BY 1;  -- todas true
+SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public' ORDER BY 1;  -- all true
 ```
 
-## 3. API no Render
+## 3. API on Render
 
-1. Em render.com, entre com o GitHub e autorize o acesso ao repositório `Agesto-Platform/Agesto`.
-2. *New → Blueprint* → selecione o repositório. O Render lê o `render.yaml` da raiz e cria o serviço `agesto-api` (plano Free, região Virginia).
-3. Preencha as variáveis pedidas:
-   - `ConnectionStrings__DefaultConnection`: a connection string do passo 1.
-   - `Cors__AllowedOrigins__0`: a URL da web na Cloudflare Pages (passo 4). Se ainda não existir, use um valor provisório e troque depois. Aceita várias origens separadas por vírgula; a `/` final é ignorada.
-   - `Jwt__Secret` é gerado pelo próprio Render. A API não sobe com segredo menor que 32 bytes.
-   - `Termos__Versao`, `Termos__UrlTermos` e `Termos__UrlPrivacidade` (opcionais): versão vigente dos termos de uso e da política de privacidade (ex.: `2026-11`) e os links dos textos. Com a versão definida, quem ainda não aceitou essa versão vê a tela de aceite no próximo login; trocar a versão pede o aceite de novo a todos. Sem ela, ninguém precisa aceitar.
-   - `Auth__RegistrationKey` (opcional): ver "Cadastrar uma empresa" abaixo. Sem ela, o cadastro fica fechado.
-   - `Geocoding__OpenRouteServiceApiKey` (opcional): chave gratuita criada em openrouteservice.org (*Dashboard → Tokens*, plano Standard). Liga a geocodificação dos endereços dos clientes para o mapa da agenda (DEC-38); a API envia ao serviço só o endereço, nunca nome ou CPF. Sem ela, o mapa mostra que os clientes ainda não têm localização.
-   - `App__VersaoMinimaAndroid` e `App__UrlDownload` (opcionais): versão mínima do APK e link para baixá-lo. Ver "APK" no passo 5.
-   - `Insights__AnthropicApiKey` (opcional): chave da Anthropic para a IA (DEC-21). Sem ela, `/api/insights` e `/api/agente/perguntar` respondem 503 e o resto da API segue normal. `Insights__Modelo` troca o modelo (padrão `claude-haiku-5-5`). `Insights__PerguntasPorDia` muda o limite diário de perguntas ao Agente por empresa (padrão 20).
-   - `Admin__SetupKey` (temporária): libera a criação do primeiro admin da área de superadmin. Ver a seção 10.
-   - `Email__BrevoApiKey`, `Email__RemetenteEmail`, `Email__RemetenteNome` e `Email__UrlWeb` (opcionais): envio do "Esqueci a senha" e dos convites de acesso pelo Brevo (DEC-54 e DEC-55). Ver a seção 11. Sem a chave e o remetente, o envio fica desligado e a tela responde igual.
-4. O serviço publica a branch `main` (DEC-41), e só depois que o CI do GitHub passa no commit (`autoDeployTrigger: checksPass`). A `develop` não vai para a nuvem: é testada localmente (ver "Ambiente local" abaixo).
-5. Teste: `curl https://agesto-api.onrender.com/health` deve responder `Healthy`. A URL exata aparece no painel.
+1. On render.com, sign in with GitHub and authorize access to the `Agesto-Platform/Agesto` repository.
+2. *New → Blueprint* → select the repository. Render reads the `render.yaml` at the root and creates the `agesto-api` service (Free plan, Virginia region).
+3. Fill in the requested variables:
+   - `ConnectionStrings__DefaultConnection`: the connection string from step 1.
+   - `Cors__AllowedOrigins__0`: the web URL on Cloudflare Pages (step 4). If it does not exist yet, use a temporary value and change it later. Accepts several origins separated by commas; a trailing `/` is ignored.
+   - `Jwt__Secret` is generated by Render itself. The API does not start with a secret shorter than 32 bytes.
+   - `Termos__Versao`, `Termos__UrlTermos` and `Termos__UrlPrivacidade` (optional): current version of the terms of use and privacy policy (e.g. `2026-11`) and the links to the texts. With the version set, anyone who has not yet accepted that version sees the acceptance screen at the next login; changing the version asks everyone to accept again. Without it, nobody needs to accept.
+   - `Auth__RegistrationKey` (optional): see "Registering a company" below. Without it, sign-up stays closed.
+   - `Geocoding__OpenRouteServiceApiKey` (optional): free key created at openrouteservice.org (*Dashboard → Tokens*, Standard plan). Turns on geocoding of the clients' addresses for the schedule map (DEC-38); the API sends only the address to the service, never name or CPF. Without it, the map shows that the clients do not have a location yet.
+   - `App__VersaoMinimaAndroid` and `App__UrlDownload` (optional): minimum APK version and the link to download it. See "APK" in step 5.
+   - `Insights__AnthropicApiKey` (optional): Anthropic key for the AI (DEC-21). Without it, `/api/insights` and `/api/agente/perguntar` answer 503 and the rest of the API works normally. `Insights__Modelo` changes the model (default `claude-haiku-5-5`). `Insights__PerguntasPorDia` changes the daily limit of questions to the Agente per company (default 20).
+   - `Admin__SetupKey` (temporary): allows creating the first admin of the superadmin area. See section 10.
+   - `Email__BrevoApiKey`, `Email__RemetenteEmail`, `Email__RemetenteNome` and `Email__UrlWeb` (optional): sending "Esqueci a senha" (forgot password) and access invitations through Brevo (DEC-54 and DEC-55). See section 11. Without the key and the sender, sending is off and the screen answers the same.
+4. The service deploys the `main` branch (DEC-41), and only after GitHub CI passes on the commit (`autoDeployTrigger: checksPass`). `develop` does not go to the cloud: it is tested locally (see "Local environment" below).
+5. Test: `curl https://agesto-api.onrender.com/health` must answer `Healthy`. The exact URL shows up in the dashboard.
 
-### Cadastrar uma empresa
+### Registering a company
 
-O cadastro público é fechado. `POST /api/auth/register` responde 404 enquanto `Auth__RegistrationKey` não estiver definida no Render. Para criar uma empresa:
+Public sign-up is closed. `POST /api/auth/register` answers 404 while `Auth__RegistrationKey` is not set on Render. To create a company:
 
-1. No painel do Render, defina `Auth__RegistrationKey` com um valor aleatório longo (ex.: `openssl rand -base64 32`).
-2. Chame o cadastro enviando a chave no header:
+1. In the Render dashboard, set `Auth__RegistrationKey` to a long random value (e.g. `openssl rand -base64 32`).
+2. Call sign-up sending the key in the header:
 
    ```bash
-   curl -X POST https://agesto-api.onrender.com/api/auth/register      -H "Content-Type: application/json"      -H "X-Registration-Key: <a chave>"      -d '{"nomeEmpresa":"...","nome":"...","email":"...","senha":"..."}'
+   curl -X POST https://agesto-api.onrender.com/api/auth/register      -H "Content-Type: application/json"      -H "X-Registration-Key: <the key>"      -d '{"nomeEmpresa":"...","nome":"...","email":"...","senha":"..."}'
    ```
 
-3. Apague a variável depois, para fechar o cadastro de novo.
+3. Delete the variable afterwards, to close sign-up again.
 
-O endpoint aceita 5 tentativas por hora por IP; o login, 10 a cada 5 minutos por IP.
+The endpoint accepts 5 attempts per hour per IP; login, 10 every 5 minutes per IP.
 
-### Limites do plano Free
+### Free plan limits
 
-- **Dorme após 15 min sem tráfego** e leva cerca de 1 minuto para acordar.
-- **750 horas por mês** por workspace: dá para **um** serviço ligado 24h, não dois.
-- 512 MB de RAM e 0,1 CPU.
-- Sem disco persistente: tudo que for gravado no sistema de arquivos se perde a cada deploy ou reinício.
-- Saída por SMTP (portas 25, 465, 587) bloqueada: envio de e-mail precisa de uma API HTTP.
+- **Sleeps after 15 min without traffic** and takes about 1 minute to wake up.
+- **750 hours per month** per workspace: enough for **one** service on 24h, not two.
+- 512 MB of RAM and 0.1 CPU.
+- No persistent disk: everything written to the file system is lost on every deploy or restart.
+- Outbound SMTP (ports 25, 465, 587) blocked: sending email needs an HTTP API.
 
-## 4. Web na Cloudflare Pages
+## 4. Web on Cloudflare Pages
 
-Conecte o repositório e configure:
+Connect the repository and configure:
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
 | Production branch | `main` (DEC-41) |
-| Preview deployments | desligados (*Settings → Builds → Branch control → Preview branch: None*) |
+| Preview deployments | off (*Settings → Builds → Branch control → Preview branch: None*) |
 | Root directory | `web` |
 | Build command | `npm run build` |
 | Output directory | `dist` |
-| `VITE_API_BASE_URL` | URL da API no Render |
+| `VITE_API_BASE_URL` | API URL on Render |
 | `VITE_USE_MOCKS` | `false` |
 
-Depois, coloque a URL final da Pages em `Cors__AllowedOrigins__0` no painel do Render. O serviço reinicia sozinho ao salvar.
+Then put the final Pages URL in `Cors__AllowedOrigins__0` in the Render dashboard. The service restarts on its own when you save.
 
 ## 5. Mobile
 
-No `mobile/.env`:
+In `mobile/.env`:
 
 ```
-EXPO_PUBLIC_API_BASE_URL=<URL da API no Render>
+EXPO_PUBLIC_API_BASE_URL=<API URL on Render>
 EXPO_PUBLIC_USE_MOCKS=false
 ```
 
 ### APK (DEC-47)
 
-O app do agente sai só como APK, fora das lojas. Preparação, uma vez, dentro de `mobile/`:
+The agent app ships only as an APK, outside the stores. Preparation, once, inside `mobile/`:
 
-1. `npx eas-cli login` com uma conta que seja membro da organização `agesto` no expo.dev.
-2. `npx eas-cli init`: liga o projeto à organização e grava `extra.eas.projectId` no `app.json`.
-3. `npx eas-cli update:configure`: grava a URL de atualização e o `runtimeVersion` no `app.json`. Confira que o `runtimeVersion` usa a política `appVersion`, porque é esse número que o aviso de APK novo compara.
-4. No projeto do expo.dev, crie a variável `EXPO_PUBLIC_API_BASE_URL` com a URL da API, nos ambientes *preview* e *production*, com visibilidade *Plain text*. O build lê a URL do `eas.json`, mas o `eas update` só lê essas variáveis; sem ela, o app atualizado não abre.
-5. Faça commit das mudanças no `app.json`.
+1. `npx eas-cli login` with an account that is a member of the `agesto` organization on expo.dev.
+2. `npx eas-cli init`: links the project to the organization and writes `extra.eas.projectId` to `app.json`.
+3. `npx eas-cli update:configure`: writes the update URL and the `runtimeVersion` to `app.json`. Check that `runtimeVersion` uses the `appVersion` policy, because that is the number the new APK warning compares.
+4. In the expo.dev project, create the `EXPO_PUBLIC_API_BASE_URL` variable with the API URL, in the *preview* and *production* environments, with *Plain text* visibility. The build reads the URL from `eas.json`, but `eas update` only reads these variables; without it, the updated app does not open.
+5. Commit the changes to `app.json`.
 
-Gerar o APK: `npx eas-cli build --platform android --profile preview` para teste, ou `--profile production`. No primeiro build, deixe o EAS gerar a chave de assinatura e guarde uma cópia dela fora do repositório e do Expo (*Credentials → Download*). Todo APK precisa da mesma chave para instalar por cima do anterior sem perder os dados do aparelho.
+Build the APK: `npx eas-cli build --platform android --profile preview` for testing, or `--profile production`. On the first build, let EAS generate the signing key and keep a copy of it outside the repository and Expo (*Credentials → Download*). Every APK needs the same key to install over the previous one without losing the device's data.
 
-Correção só de JavaScript: `npx eas-cli update --channel production --environment production --message "<o que mudou>"`. Mudança nativa (biblioteca nova, SDK novo) exige APK novo com `expo.version` maior.
+JavaScript-only fix: `npx eas-cli update --channel production --environment production --message "<what changed>"`. A native change (new library, new SDK) requires a new APK with a higher `expo.version`.
 
-Aviso de APK novo: depois de publicar um APK com `expo.version` maior, defina no Render `App__VersaoMinimaAndroid` (ex.: `1.1.0`) e `App__UrlDownload` (link do APK). O app compara com a versão instalada e mostra o aviso no Início.
+New APK warning: after publishing an APK with a higher `expo.version`, set `App__VersaoMinimaAndroid` (e.g. `1.1.0`) and `App__UrlDownload` (APK link) on Render. The app compares them with the installed version and shows the warning on Início.
 
-## 6. Manter API e Supabase acordados
+## 6. Keeping the API and Supabase awake
 
-Uma chamada a `https://<URL da API>/health` **a cada 5 minutos**:
+A call to `https://<API URL>/health` **every 5 minutes**:
 
-- evita que a API durma (o Render Free dorme após 15 minutos sem tráfego e leva cerca de 1 minuto para acordar; o ping consome ~744 das 750 horas mensais);
-- gera atividade real no banco (`SELECT 1`) e evita a pausa do Supabase Free após 7 dias sem uso.
+- keeps the API from sleeping (Render Free sleeps after 15 minutes without traffic and takes about 1 minute to wake up; the ping uses ~744 of the 750 monthly hours);
+- generates real activity in the database (`SELECT 1`) and avoids the Supabase Free pause after 7 days without use.
 
-Quem faz o ping é o Worker `agesto-keepalive` da Cloudflare, versionado em `deploy/keepalive/` (Cron Trigger a cada 5 minutos, grátis no plano Free da Cloudflare). Ele substitui o cron-job.org.
+The ping is done by the Cloudflare Worker `agesto-keepalive`, versioned in `deploy/keepalive/` (Cron Trigger every 5 minutes, free on Cloudflare's Free plan). It replaces cron-job.org.
 
-**Publicar ou atualizar o Worker** (conta Cloudflare do Agesto):
+**Publish or update the Worker** (Agesto's Cloudflare account):
 
 ```bash
 cd deploy/keepalive
-npm test                 # testes do Worker, sem dependências
-npx wrangler login       # uma vez por máquina
+npm test                 # Worker tests, no dependencies
+npx wrangler login       # once per machine
 npx wrangler deploy
 ```
 
-**Conferir:**
-- No painel da Cloudflare, em *Workers & Pages → agesto-keepalive → Logs*, cada execução registra `health 200 em N ms`. Uma falha aparece como execução com erro.
-- Ao vivo, pelo terminal: `npx wrangler tail`.
-- Depois de 30 minutos, o `/health` deve responder em menos de 1 segundo, sem a espera da API acordando.
+**Check:**
+- In the Cloudflare dashboard, under *Workers & Pages → agesto-keepalive → Logs*, each run logs `health 200 em N ms`. A failure shows up as a run with an error.
+- Live, from the terminal: `npx wrangler tail`.
+- After 30 minutes, `/health` must answer in less than 1 second, without waiting for the API to wake up.
 
-O Worker foi publicado e conferido em 11/11/2026, e o monitor antigo do cron-job.org foi desligado no mesmo dia.
+The Worker was published and checked on 11/11/2026, and the old cron-job.org monitor was turned off the same day.
 
-**Alerta:** o Worker mantém tudo acordado, mas não avisa ninguém. Para receber aviso quando a API cair, cadastre o mesmo `/health` num monitor grátis com alerta (UptimeRobot, a cada 5 minutos, ou Better Stack, a cada 3 minutos). Ele também serve de segundo ping.
+**Alert:** the Worker keeps everything awake, but does not notify anyone. To be notified when the API goes down, register the same `/health` in a free monitor with alerts (UptimeRobot, every 5 minutes, or Better Stack, every 3 minutes). It also works as a second ping.
 
-Não use o GitHub Actions para isso: o agendamento atrasa em horários de pico, o bastante para a API dormir.
+Do not use GitHub Actions for this: scheduling is delayed at peak times, enough for the API to fall asleep.
 
-A solução definitiva é o Render Starter, sem sono, e o Supabase Pro, sem pausa e com backup (DEC-49). Com eles, o Worker vira só uma camada extra.
+The definitive solution is Render Starter, with no sleep, and Supabase Pro, with no pause and with backup (DEC-49). With them, the Worker becomes just an extra layer.
 
-## 7. Usuário dedicado e TLS verificado (DEC-34)
+## 7. Dedicated user and verified TLS (DEC-34)
 
-A API não deve conectar como `postgres`. Depois de aplicar as migrations:
+The API must not connect as `postgres`. After applying the migrations:
 
-1. Rode `deploy/api-role.sql` no SQL Editor, trocando `<SENHA>` por uma senha aleatória longa.
-2. No Render, troque a connection string para o novo usuário e TLS verificado:
+1. Run `deploy/api-role.sql` in the SQL Editor, replacing `<SENHA>` with a long random password.
+2. On Render, change the connection string to the new user and verified TLS:
 
    ```
-   Host=<host do pooler>;Port=5432;Database=postgres;Username=agesto_api.<ref-do-projeto>;Password=<senha do agesto_api>;SSL Mode=VerifyFull;Root Certificate=/app/certs/supabase-ca.crt
+   Host=<pooler host>;Port=5432;Database=postgres;Username=agesto_api.<project-ref>;Password=<agesto_api password>;SSL Mode=VerifyFull;Root Certificate=/app/certs/supabase-ca.crt
    ```
 
-   O certificado `MicroERP.Api/certs/supabase-ca.crt` é a CA pública do Supabase (*Database → Settings → SSL Configuration*) e vai junto na imagem.
-3. Confira `/health` e um login. Se falhar, volte a connection string anterior no Render e veja o log.
+   The certificate `MicroERP.Api/certs/supabase-ca.crt` is Supabase's public CA (*Database → Settings → SSL Configuration*) and ships in the image.
+3. Check `/health` and a login. If it fails, put the previous connection string back on Render and look at the log.
 
-Sempre que uma migration criar tabela nova, rode de novo o último bloco de `deploy/api-role.sql` (policies do RLS).
+Whenever a migration creates a new table, run the last block of `deploy/api-role.sql` again (RLS policies).
 
-## 8. Ambiente local (testar a `develop`)
+## 8. Local environment (testing `develop`)
 
-A `develop` é testada na máquina, contra um Postgres local, nunca contra o banco de produção.
+`develop` is tested on the machine, against a local Postgres, never against the production database.
 
-1. Suba o Postgres de desenvolvimento (precisa de Docker): `docker compose up -d` na raiz. Ele escuta em `localhost:5433` (usuário, senha e banco `agesto`).
-2. Em `MicroERP.Api`, copie `appsettings.Development.json.example` para `appsettings.Development.json` (a connection string do exemplo já aponta para esse Postgres) e gere o `Jwt.Secret`.
-3. `dotnet ef database update --project MicroERP.Api` cria o schema local. Aqui pode, porque é o banco local; em produção continua valendo o passo 2 (script revisado + autorização).
-4. `dotnet run --project MicroERP.Api --launch-profile http` sobe a API em `http://localhost:5216`. Para o app no celular, use `--urls http://0.0.0.0:5216` e o IP da máquina na rede.
-5. Web: `web/.env.local` com `VITE_API_BASE_URL=http://localhost:5216` e `VITE_USE_MOCKS=false`, depois `npm run dev`.
-6. Mobile: `mobile/.env` com `EXPO_PUBLIC_API_BASE_URL=http://<IP da máquina>:5216` e `EXPO_PUBLIC_USE_MOCKS=false`, depois `npx expo start --go`.
+1. Bring up the development Postgres (needs Docker): `docker compose up -d` at the root. It listens on `localhost:5433` (user, password and database `agesto`).
+2. In `MicroERP.Api`, copy `appsettings.Development.json.example` to `appsettings.Development.json` (the example's connection string already points to this Postgres) and generate the `Jwt.Secret`.
+3. `dotnet ef database update --project MicroERP.Api` creates the local schema. It is fine here, because it is the local database; in production step 2 still applies (reviewed script + authorization).
+4. `dotnet run --project MicroERP.Api --launch-profile http` brings up the API at `http://localhost:5216`. For the app on the phone, use `--urls http://0.0.0.0:5216` and the machine's IP on the network.
+5. Web: `web/.env.local` with `VITE_API_BASE_URL=http://localhost:5216` and `VITE_USE_MOCKS=false`, then `npm run dev`.
+6. Mobile: `mobile/.env` with `EXPO_PUBLIC_API_BASE_URL=http://<machine IP>:5216` and `EXPO_PUBLIC_USE_MOCKS=false`, then `npx expo start --go`.
 
-Para criar a primeira empresa local, defina `Auth__RegistrationKey` no `appsettings.Development.json` e use o `curl` de "Cadastrar uma empresa" trocando a URL.
+To create the first local company, set `Auth__RegistrationKey` in `appsettings.Development.json` and use the `curl` from "Registering a company", changing the URL.
 
-## 9. Lançar uma versão (develop → main)
+## 9. Releasing a version (develop → main)
 
-1. Confirme que a `develop` está verde no CI e foi testada localmente.
-2. Se houver migration nova, gere o `migrate.sql` (passo 2) e aplique no Supabase **antes** do merge, com autorização do Davi. Migrations precisam ser compatíveis com a versão anterior da API, porque a API antiga segue no ar até o deploy terminar.
-3. Abra o PR `develop → main` (https://github.com/Agesto-Platform/Agesto/compare/main...develop) e faça o merge com **Create a merge commit**. Nunca squash ou rebase: a `main` e a `develop` precisam continuar com o mesmo histórico.
-4. O Render e a Cloudflare publicam a `main` sozinhos depois do CI. Confira `/health`, um login na web e uma sincronização no app.
-5. Rollback: no Render, *Events → Rollback* para o deploy anterior; na Cloudflare, *Deployments → Rollback*. Migration não tem rollback automático.
+1. Make sure `develop` is green in CI and was tested locally.
+2. If there is a new migration, generate `migrate.sql` (step 2) and apply it on Supabase **before** the merge, with Davi's authorization. Migrations must be compatible with the previous API version, because the old API stays online until the deploy finishes.
+3. Open the `develop → main` PR (https://github.com/Agesto-Platform/Agesto/compare/main...develop) and merge it with **Create a merge commit**. Never squash or rebase: `main` and `develop` must keep the same history.
+4. Render and Cloudflare deploy `main` on their own after CI. Check `/health`, a login on the web and a sync in the app.
+5. Rollback: on Render, *Events → Rollback* to the previous deploy; on Cloudflare, *Deployments → Rollback*. Migrations have no automatic rollback.
 
-## 10. Área de superadmin (equipe do Agesto)
+## 10. Superadmin area (Agesto team)
 
-A equipe gerencia as empresas clientes em `https://<web>/admin`: listar, ver detalhes, criar empresa com dono, bloquear e desbloquear, criar acessos e desativar usuários, e enviar o link de senha por email (DEC-55). Toda ação fica na auditoria. As contas de admin são separadas das contas de cliente e o token delas tem outra audiência, então um não abre a área do outro.
+The team manages customer companies at `https://<web>/admin`: list, see details, create a company with an owner, block and unblock, create accesses and deactivate users, and send the password link by email (DEC-55). Every action goes to the audit log. Admin accounts are separate from customer accounts and their token has another audience, so neither opens the other's area.
 
-Para criar o **primeiro** admin:
+To create the **first** admin:
 
-1. No Render, defina `Admin__SetupKey` com um valor longo e aleatório (`openssl rand -base64 32`).
-2. Chame o setup uma vez (senha com pelo menos 12 caracteres):
+1. On Render, set `Admin__SetupKey` to a long random value (`openssl rand -base64 32`).
+2. Call the setup once (password with at least 12 characters):
    ```bash
    curl -X POST https://agesto-api.onrender.com/api/admin/auth/setup \
      -H "Content-Type: application/json" \
-     -H "X-Admin-Setup-Key: <a chave>" \
+     -H "X-Admin-Setup-Key: <the key>" \
      -d '{"nome":"...","email":"...","senha":"..."}'
    ```
-3. Apague `Admin__SetupKey` no Render. O setup só funciona enquanto não existe nenhum admin; os próximos são convidados pela tela **Equipe** e criam a própria senha pelo link do email (DEC-55).
+3. Delete `Admin__SetupKey` on Render. The setup only works while there is no admin; the next ones are invited through the **Equipe** (team) screen and create their own password through the email link (DEC-55).
 
-Opcional: `Admin__ExpiresMinutes` define quanto tempo o login de admin vale (padrão 1440, 24 horas, DEC-53). Se essa variável estiver no Render com 43200, apague-a para valer o padrão.
+Optional: `Admin__ExpiresMinutes` sets how long the admin login lasts (default 1440, 24 hours, DEC-53). If this variable is on Render with 43200, delete it so the default applies.
 
-O login de admin tem duas etapas (DEC-52): depois da senha, chega um código de 6 dígitos no email do admin pelo Brevo (seção 11). Só em emergência, como o Brevo fora do ar, `Admin__DoisFatores=false` desliga a segunda etapa; volte a apagar a variável assim que o envio voltar.
+The admin login has two steps (DEC-52): after the password, a 6-digit code arrives in the admin's email through Brevo (section 11). Only in an emergency, such as Brevo being down, `Admin__DoisFatores=false` turns off the second step; delete the variable again as soon as sending is back.
 
-## 11. Email pelo Brevo ("Esqueci a senha" e convites, DEC-54 e DEC-55)
+## 11. Email through Brevo ("Esqueci a senha" and invitations, DEC-54 and DEC-55)
 
-1. Crie a conta em brevo.com (o plano gratuito envia até 300 emails por dia).
-2. Em *Senders, domains & dedicated IPs → Senders*, cadastre e confirme o remetente (ex.: `nao-responda@seudominio`). Com domínio próprio, autentique o domínio (SPF e DKIM) para os emails não caírem no spam.
-3. Em *SMTP & API → API keys*, gere uma chave.
-4. No Render, defina:
-   - `Email__BrevoApiKey`: a chave do passo 3;
-   - `Email__RemetenteEmail`: o remetente confirmado no passo 2;
-   - `Email__RemetenteNome` (opcional, padrão `Agesto`);
-   - `Email__UrlWeb`: o endereço do web, base do link enviado (ex.: `https://agesto.pages.dev`);
+1. Create the account at brevo.com (the free plan sends up to 300 emails per day).
+2. In *Senders, domains & dedicated IPs → Senders*, register and confirm the sender (e.g. `nao-responda@yourdomain`). With an own domain, authenticate the domain (SPF and DKIM) so the emails do not land in spam.
+3. In *SMTP & API → API keys*, generate a key.
+4. On Render, set:
+   - `Email__BrevoApiKey`: the key from step 3;
+   - `Email__RemetenteEmail`: the sender confirmed in step 2;
+   - `Email__RemetenteNome` (optional, default `Agesto`);
+   - `Email__UrlWeb`: the web address, base of the link sent (e.g. `https://agesto.pages.dev`);
    - `Email__SuporteEmail`: the Agesto team inbox that receives the support tickets from the Suporte tab (DEC-60). Without it, tickets still show up in the superadmin and only the Dono's copy is sent.
 
    Ticket attachments (DEC-60) use a private Supabase Storage bucket named `suporte-anexos` (create it in Supabase → Storage → New bucket, with "Public bucket" off). On Render:
@@ -240,12 +240,12 @@ O login de admin tem duas etapas (DEC-52): depois da senha, chega um código de 
    - `Storage__ChaveSecreta`: the project's secret key (Supabase → Project Settings → API Keys → `secret`, or the legacy `service_role` key). It bypasses RLS: keep it only on Render, never in the web, the app or Git;
    - `Storage__BucketSuporte` (optional, default `suporte-anexos`).
    Without the URL and the key, tickets still work, but attachments are refused.
-5. Teste: em `/esqueci-senha`, peça o link para o email de um Dono e confira a caixa de entrada. Falhas de envio aparecem no log do Render como "Falha ao enviar email", sem o destinatário nem o link.
+5. Test: at `/esqueci-senha`, ask for the link for a Dono's email and check the inbox. Sending failures show up in the Render log as "Falha ao enviar email", without the recipient or the link.
 
-O link de redefinição vale 15 minutos; o convite, 72 horas. Os dois valem uma vez só. Em desenvolvimento (`ASPNETCORE_ENVIRONMENT=Development`), o link também sai no log da API, para testar sem o Brevo; em produção, nunca.
+The reset link lasts 15 minutes; the invitation, 72 hours. Both work only once. In development (`ASPNETCORE_ENVIRONMENT=Development`), the link also goes to the API log, to test without Brevo; in production, never.
 
-## Pendências
+## Open items
 
-- Backup periódico com `pg_dump` (o Supabase Free não tem backup automático).
-- Verificação de email antes de reabrir o cadastro (DEC-34). O envio de email já existe (Brevo, seção 11).
-- ~~Migração para .NET 10 (o .NET 8 perde suporte em 10/11/2026).~~ Feita na DEC-40.
+- Periodic backup with `pg_dump` (Supabase Free has no automatic backup).
+- Email verification before reopening sign-up (DEC-34). Email sending already exists (Brevo, section 11).
+- ~~Migration to .NET 10 (.NET 8 loses support on 10/11/2026).~~ Done in DEC-40.

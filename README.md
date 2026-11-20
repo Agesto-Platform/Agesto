@@ -1,8 +1,8 @@
 # Agesto
 
-**ERP para prestadores de serviço autônomos** — orçamento, agenda, execução e cobrança em um fluxo só, feito para uso em campo.
+**ERP for self-employed service providers** — quote, schedule, execution and billing in a single flow, built for use in the field.
 
-> Nome de *agere* (agir/operar) + *gestio* (gestão). Antes chamado "Micro-ERP Auto".
+> Name from *agere* (to act/operate) + *gestio* (management). Formerly called "Micro-ERP Auto".
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![EF Core](https://img.shields.io/badge/EF%20Core-10.0-512BD4)
@@ -14,108 +14,109 @@
 
 ---
 
-## O problema
+## The problem
 
-A maioria dos ERPs é feita para média/grande empresa — cara e complexa. O prestador de serviço autônomo (técnico de ar-condicionado, instalador, eletricista) acaba gerindo o negócio no papel ou em planilhas. O Agesto entrega o essencial, pensado para quem trabalha **em campo, muitas vezes sem internet**.
+Most ERPs are made for medium/large companies — expensive and complex. The self-employed service provider (air conditioning technician, installer, electrician) ends up running the business on paper or in spreadsheets. Agesto delivers the essentials, designed for people who work **in the field, often without internet**.
 
-## Foco do produto
+## Product focus
 
-A espinha é o ciclo de vida do serviço:
+The backbone is the service life cycle:
 
 ```
 Orçamento  →  Agendamento  →  Atendimento (execução)  →  Cobrança
+(quote)       (scheduling)    (service visit)            (billing)
 ```
 
-Venda de produtos existe como recurso secundário ("plus"), habilitado conforme o modo de operação da empresa (Serviço, Venda ou Híbrido).
+Product sales exist as a secondary feature (a "plus"), enabled according to the company's operation mode (Service, Sales or Hybrid).
 
-## Destaques técnicos
+## Technical highlights
 
-- **Multi-tenant** — isolamento por `EmpresaId` derivado do JWT (nunca do body); toda query filtra por empresa.
-- **Offline-first** — o app de campo opera sem rede; sincronização por *Carga/Descarga* com resolução last-write-wins, envio por atendimento e pendências preservadas quando algo falha (DEC-33).
-- **Camada de métricas determinística** — números (receita, margem, estoque) são agregados no banco; a **IA nativa** apenas interpreta esses números, nunca os calcula.
-- **Margem por atendimento** — custo preenchível pelo prestador; `Margem = ValorTotal − CustoTotal`.
-- **Conversão transacional** de orçamento em atendimento (baixa de estoque só na conversão).
-- **Soft delete** em todo o domínio (`DeletedAt`), nunca DELETE físico.
+- **Multi-tenant** — isolation by `EmpresaId` derived from the JWT (never from the body); every query filters by company.
+- **Offline-first** — the field app works without a network; sync through *Carga/Descarga* (download/upload) with last-write-wins resolution, sending per atendimento and pending items preserved when something fails (DEC-33).
+- **Deterministic metrics layer** — numbers (revenue, margin, stock) are aggregated in the database; the **native AI** only interprets these numbers, never computes them.
+- **Margin per atendimento** — cost filled in by the provider; `Margem = ValorTotal − CustoTotal`.
+- **Transactional conversion** of a quote into an atendimento (stock deduction only at conversion).
+- **Soft delete** across the whole domain (`DeletedAt`), never a physical DELETE.
 
-## Arquitetura
+## Architecture
 
 ```
 Controller  →  Service (interface)  →  Repository (interface)  →  AppDbContext (EF Core)
 ```
 
-- Camadas `sealed`, injeção por interface (`AddScoped`).
-- Envelope de resposta padronizado `ApiResponse { Success, Message, Data, Errors }`.
-- Enums persistidos como string (`HasConversion<string>()`).
+- `sealed` layers, injection by interface (`AddScoped`).
+- Standardized response envelope `ApiResponse { Success, Message, Data, Errors }`.
+- Enums persisted as strings (`HasConversion<string>()`).
 
-| Camada | Tecnologia |
+| Layer | Technology |
 |--------|-----------|
 | Backend | C# ASP.NET Core .NET 10 + Entity Framework Core 10 |
-| Banco | PostgreSQL (Npgsql) |
-| IA | Embutida no backend C# (SDK oficial da Anthropic, Claude Haiku 5.5), em teste desde 10/11/2026 (DEC-21) |
-| Web (dono) | React 19 + TypeScript + Vite + Tailwind + TanStack Query |
-| Mobile (agente de campo) | React Native + Expo + SQLite, offline-first |
-| Auth | JWT multi-tenant (claims `empresaId`, `sub`, `perfil`), revalidado no banco a cada requisição |
-| Testes | xUnit + Moq + EF Core InMemory/Sqlite · Vitest (web) · Jest (mobile) |
-| Hospedagem | API no Render · PostgreSQL no Supabase (N. Virginia) · Web na Cloudflare Pages (DEC-32) |
+| Database | PostgreSQL (Npgsql) |
+| AI | Built into the C# backend (official Anthropic SDK, Claude Haiku 5.5), in testing since 10/11/2026 (DEC-21) |
+| Web (owner) | React 19 + TypeScript + Vite + Tailwind + TanStack Query |
+| Mobile (field agent) | React Native + Expo + SQLite, offline-first |
+| Auth | Multi-tenant JWT (claims `empresaId`, `sub`, `perfil`), revalidated against the database on every request |
+| Tests | xUnit + Moq + EF Core InMemory/Sqlite · Vitest (web) · Jest (mobile) |
+| Hosting | API on Render · PostgreSQL on Supabase (N. Virginia) · Web on Cloudflare Pages (DEC-32) |
 
 ## Status
 
-> MVP em produção: API, banco e web reais, com os mocks desligados no web e no app. A `main` é a produção: Render e Cloudflare Pages publicam a `main` depois que o CI passa; a `develop` é integração e teste local (DEC-41). A `main` só recebe mudanças por promoções da `develop` (PRs `release: … (develop → main)`).
+> MVP in production: real API, database and web, with mocks turned off on the web and in the app. `main` is production: Render and Cloudflare Pages deploy `main` after CI passes; `develop` is for integration and local testing (DEC-41). `main` only receives changes through promotions from `develop` (`release: … (develop → main)` PRs).
 
-| Área | Estado |
+| Area | State |
 |------|--------|
-| Backend (domínio do prestador) | 🟢 Em produção no .NET 10 (DEC-40) — **346 testes passando** (CI da `develop`, 11/11/2026) |
-| Infraestrutura | 🟢 Render + Supabase + Cloudflare Pages, deploy guiado pelo CI (DEC-32); processo em [`deploy/README.md`](deploy/README.md) |
-| Segurança | 🟢 Auditoria aplicada e validada em produção: rate limit, cadastro fechado, revogação de token, RLS e LGPD de clientes (DEC-34); bloqueio da conta após senhas erradas (DEC-43) e exclusão de conta com anonimização (DEC-44) |
-| Camada de métricas + rentabilidade | 🟢 Implementada |
-| Orçamento / Agendamento / Margem | 🟢 Implementados |
-| Usuários agentes e responsável do atendimento | 🟢 Gestão pelo Dono no web, convite por email para criar a senha (DEC-35, DEC-55) |
-| Serviço cadastrado pelo app | 🟢 Agente cria offline, Dono revisa no web (DEC-36) |
-| Rota e mapa | 🟢 Fase 1: rota do dia no Google Maps e mapa da agenda no web (DEC-37 e DEC-38) |
-| IA nativa (insights e chat do Agente) | 🟡 Em produção para teste, fora do lançamento (DEC-21, DEC-46) |
-| Área de superadmin (`/admin`) | 🟢 Equipe do Agesto gerencia empresas, usuários e equipe, com auditoria (DEC-52) |
-| Frontend Web | 🟢 Em produção contra a API real — **80 testes** |
-| Mobile | 🟢 Offline-first contra a API real, atendimento no nível do web (DEC-39) — **119 testes** |
+| Backend (provider domain) | 🟢 In production on .NET 10 (DEC-40) — **346 tests passing** (`develop` CI, 11/11/2026) |
+| Infrastructure | 🟢 Render + Supabase + Cloudflare Pages, deploy driven by CI (DEC-32); process in [`deploy/README.md`](deploy/README.md) |
+| Security | 🟢 Audit applied and validated in production: rate limit, closed sign-up, token revocation, RLS and client LGPD (DEC-34); account lockout after wrong passwords (DEC-43) and account deletion with anonymization (DEC-44) |
+| Metrics layer + profitability | 🟢 Implemented |
+| Quote / Scheduling / Margin | 🟢 Implemented |
+| Agent users and atendimento's responsible person | 🟢 Managed by the Dono on the web, email invitation to create the password (DEC-35, DEC-55) |
+| Service registered from the app | 🟢 Agent creates it offline, Dono reviews it on the web (DEC-36) |
+| Route and map | 🟢 Phase 1: the day's route in Google Maps and the schedule map on the web (DEC-37 and DEC-38) |
+| Native AI (insights and Agente chat) | 🟡 In production for testing, out of the launch (DEC-21, DEC-46) |
+| Superadmin area (`/admin`) | 🟢 The Agesto team manages companies, users and team, with auditing (DEC-52) |
+| Web Frontend | 🟢 In production against the real API — **80 tests** |
+| Mobile | 🟢 Offline-first against the real API, atendimento on par with the web (DEC-39) — **119 tests** |
 
-**Próximos passos:** backup automático do banco; verificação de email antes de reabrir o cadastro; "Otimizar dia" (fase 2 da rota). Lista completa em [`docs/project/TASKS.md`](docs/project/TASKS.md).
+**Next steps:** automatic database backup; email verification before reopening sign-up; "Otimizar dia" (route phase 2). Full list in [`docs/project/TASKS.md`](docs/project/TASKS.md).
 
-## Documentação e contribuição
+## Documentation and contributing
 
-- [Visão e documentação de produto](docs/project/README.md)
-- [Como contribuir](CONTRIBUTING.md)
-- [Regras para agentes e automações](AGENTS.md)
+- [Product vision and documentation](docs/project/README.md)
+- [How to contribute](CONTRIBUTING.md)
+- [Rules for agents and automations](AGENTS.md)
 
-O fluxo da equipe é `feature/* → develop → main`. Alterações entram por pull request e `main` recebe apenas marcos revisados com as verificações relevantes verdes.
+The team flow is `feature/* → develop → main`. Changes go in through pull requests and `main` only receives reviewed milestones with the relevant checks green.
 
-## Rodando o backend
+## Running the backend
 
-> Pré-requisitos: .NET 10 SDK e um PostgreSQL acessível.
+> Prerequisites: .NET 10 SDK and a reachable PostgreSQL.
 
 ```bash
 git clone https://github.com/Agesto-Platform/Agesto.git
 cd Agesto/MicroERP.Api
 
-# configurar segredos locais (NÃO versionados)
+# set up local secrets (NOT versioned)
 cp appsettings.Development.json.example appsettings.Development.json
-# editar: connection string do Postgres + uma chave JWT (mín. 32 bytes)
+# edit: Postgres connection string + a JWT key (min. 32 bytes)
 
-dotnet tool install -g dotnet-ef   # uma vez; versão 10.x
-dotnet ef database update   # cria o schema
-dotnet run                  # Swagger em http://localhost:5xxx/swagger
+dotnet tool install -g dotnet-ef   # once; version 10.x
+dotnet ef database update   # creates the schema
+dotnet run                  # Swagger at http://localhost:5xxx/swagger
 ```
 
-Rodar os testes:
+Run the tests:
 
 ```bash
 dotnet test MicroERP.sln
 ```
 
-## Licença
+## License
 
-**PolyForm Noncommercial 1.0.0** — o código pode ser lido, estudado e usado para fins **não comerciais** (estudo, pesquisa, avaliação). O uso comercial é reservado ao autor. Veja [`LICENSE`](LICENSE).
+**PolyForm Noncommercial 1.0.0** — the code can be read, studied and used for **noncommercial** purposes (study, research, evaluation). Commercial use is reserved to the author. See [`LICENSE`](LICENSE).
 
-> Os identificadores internos ainda usam o namespace `MicroERP.*` (nome anterior do projeto); a renomeação para `Agesto.*` é um refactor mecânico adiado de propósito.
+> Internal identifiers still use the `MicroERP.*` namespace (the project's previous name); renaming to `Agesto.*` is a mechanical refactor postponed on purpose.
 
-## Origem
+## Origin
 
-O projeto começou como um trabalho acadêmico e evoluiu para um produto em desenvolvimento pela equipe fundadora: **Davi Gomes Rocha** (Founder e Product Owner), **Depowo** (Cofounder, foco inicial em infraestrutura) e **ghzpro034** (Cofounder, atuação generalista). A governança técnica usa a organização [`Agesto-Platform`](https://github.com/Agesto-Platform) e o time `Core`.
+The project started as an academic assignment and evolved into a product developed by the founding team: **Davi Gomes Rocha** (Founder and Product Owner), **Depowo** (Cofounder, initial focus on infrastructure) and **ghzpro034** (Cofounder, generalist role). Technical governance uses the [`Agesto-Platform`](https://github.com/Agesto-Platform) organization and the `Core` team.
