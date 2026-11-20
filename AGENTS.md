@@ -1,52 +1,54 @@
-# Agesto — regras para agentes
+# Agesto — rules for agents
 
-Este arquivo é a fonte de regras compartilhadas para qualquer agente que trabalhe neste repositório.
+This file is the source of shared rules for any agent working in this repository.
 
-## Produto e arquitetura
+## Product and architecture
 
-- O Agesto é um SaaS multiempresa para prestadores de serviço solo e equipes.
-- Backend: ASP.NET Core .NET 10 + Entity Framework Core, na arquitetura Controller → Service → Repository → AppDbContext.
+- Agesto is a multi-tenant SaaS for solo service providers and teams.
+- Backend: ASP.NET Core .NET 10 + Entity Framework Core, using the Controller → Service → Repository → AppDbContext architecture.
 - Web: React 19 + TypeScript + Vite + Tailwind + TanStack Query.
-- Mobile: React Native + Expo + TypeScript + Expo Router + SQLite, com operação offline-first.
-- O produto ainda é um MVP. Prefira mudanças pequenas, reversíveis e entregues de ponta a ponta; evite abstrações prematuras.
+- Mobile: React Native + Expo + TypeScript + Expo Router + SQLite, working offline-first.
+- The product is still an MVP. Prefer small, reversible, end-to-end changes; avoid premature abstractions.
 
-## Invariantes obrigatórios
+## Mandatory invariants
 
-- `empresaId` e `usuarioId` são extraídos do JWT no backend, nunca recebidos do body.
-- Toda consulta de dados operacionais deve respeitar `EmpresaId`.
-- Entidades operacionais usam soft delete por `DeletedAt`; não faça DELETE físico.
-- Enums persistidos pelo EF Core usam `HasConversion<string>()`.
-- Dependências de aplicação são injetadas por interface e registradas como `AddScoped` no `Program.cs`.
-- Web e mobile consomem `ApiResponse { success, message, data, errors }`.
-- O mobile é offline-first: UUID nasce no dispositivo, SQLite é a fonte local e a sincronização precisa preservar pendências em falhas.
-- Nenhum segredo, token, chave, senha ou connection string pode entrar no Git.
+- `empresaId` and `usuarioId` are extracted from the JWT on the backend, never received from the body.
+- Every query on operational data must respect `EmpresaId`.
+- Operational entities use soft delete through `DeletedAt`; do not do a physical DELETE.
+- Enums persisted by EF Core use `HasConversion<string>()`.
+- Application dependencies are injected by interface and registered as `AddScoped` in `Program.cs`.
+- Web and mobile consume `ApiResponse { success, message, data, errors }`.
+- Mobile is offline-first: the UUID is born on the device, SQLite is the local source and synchronization must keep pending items when it fails.
+- No secret, token, key, password or connection string may go into Git.
 
-## Fluxo de trabalho
+## Workflow
 
-- Fluxo Git: `feature/*` → `develop` → `main`.
-- `main` é a produção (Render e Cloudflare publicam dela) e recebe apenas marcos revisados e com todas as suítes relevantes verdes. `develop` é integração e teste local.
-- Antes de commit de código: revisar o diff e executar as verificações proporcionais ao módulo alterado.
-- Backend estrutural: `dotnet build MicroERP.sln` e `dotnet test MicroERP.sln`.
-- Web: lint, testes e build definidos em `web/package.json`.
-- Mobile: lint, TypeScript e testes definidos em `mobile/package.json`.
-- Sempre pedir autorização de Davi antes de commit, push, promoção para `main`, aplicação de migration ou mudança externa.
-- Commits, títulos e descrições de pull request em português (pt-BR), citando a KAN/task quando existir, com uma linha curta explicando o resultado.
-- Não descarte nem sobrescreva alterações existentes do usuário.
+- Git flow: `feature/*` → `develop` → `main`.
+- `main` is production (Render and Cloudflare deploy from it) and only receives reviewed milestones with every relevant suite green. `develop` is for integration and local testing.
+- Before a code commit: review the diff and run the checks proportional to the module changed.
+- Structural backend changes: `dotnet build MicroERP.sln` and `dotnet test MicroERP.sln`.
+- Web: lint, tests and build defined in `web/package.json`.
+- Mobile: lint, TypeScript and tests defined in `mobile/package.json`.
+- Always ask Davi for authorization before a commit, push, promotion to `main`, applying a migration or an external change.
+- Commits, pull request titles and descriptions in English, citing the KAN/task when there is one, with a short line explaining the result.
+- Exception: Davi's own commits and pull requests (including those an agent writes for Davi) are in Portuguese (pt-BR). Do not translate them.
+- Repository documentation is written in English. User-facing text in the app and the web panel stays in Portuguese (pt-BR).
+- Do not discard or overwrite the user's existing changes.
 
-## Autoridade e decisões
+## Authority and decisions
 
-- Davi decide produto, prioridade, escopo e trade-offs.
-- Agentes podem propor alternativas com impacto e justificativa, mas não transformar proposta em requisito sem aprovação.
-- Verifique código, histórico Git e testes antes de afirmar que algo está implementado.
-- Se documentação e código divergirem, sinalize a divergência; não invente uma reconciliação.
-- Documentação deve ser alterada com patches pequenos, em arquivos versionados, e revisada por diff. Nunca reescreva um documento inteiro para “reconstruí-lo”.
+- Davi decides product, priority, scope and trade-offs.
+- Agents may propose alternatives with impact and rationale, but must not turn a proposal into a requirement without approval.
+- Check code, Git history and tests before stating that something is implemented.
+- If documentation and code diverge, flag the divergence; do not invent a reconciliation.
+- Documentation must be changed with small patches, in versioned files, and reviewed by diff. Never rewrite a whole document to "rebuild" it.
 
-## Entrega de qualquer agente
+## Delivery from any agent
 
-Toda entrega deve informar:
+Every delivery must state:
 
-1. escopo analisado ou alterado;
-2. arquivos relevantes;
-3. verificações executadas e resultados;
-4. riscos, pendências e decisões que ainda dependem de Davi;
-5. estado do Git quando aplicável.
+1. the scope analyzed or changed;
+2. the relevant files;
+3. the checks run and their results;
+4. risks, open items and decisions that still depend on Davi;
+5. the Git state when applicable.
