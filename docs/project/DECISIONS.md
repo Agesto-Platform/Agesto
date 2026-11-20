@@ -1,132 +1,132 @@
-# Agesto — Decisões Arquiteturais
+# Agesto — Architecture Decisions
 
-> Antes chamado "Micro-ERP Auto" (renomeado em 04/08/2026, ver DEC-24).
+> Formerly called "Micro-ERP Auto" (renamed on 04/08/2026, see DEC-24).
 
-> Este documento registra decisões importantes tomadas durante o desenvolvimento, o raciocínio por trás de cada uma, e o que foi descartado. O objetivo é evitar que decisões já tomadas sejam reabertas sem contexto.
-
----
-
-## DEC-01 — Entidade `Empresa` como tenant do sistema
-
-**Status:** Decidido — implementado (commit `c48dbca`)
-
-**Decisão:** O isolamento multi-tenant usa `EmpresaId`, não `UsuarioId`.
-
-**Contexto:** O modelo inicial usava `UsuarioId` como isolamento — cada usuário era um silo independente. Isso conflitava com o requisito de múltiplos agentes por microempreendedor: dois agentes da mesma empresa não conseguiam compartilhar clientes, estoque ou ver o dashboard consolidado.
-
-**Alternativas descartadas:**
-- Manter `UsuarioId` como tenant → inviabiliza o modelo de agentes em campo
-- Usar `Tenant` como nome → termo técnico em inglês, menos claro para o time brasileiro
-
-**Impacto:** Todas as entidades operacionais (`Cliente`, `Produto`, `Servico`, `Atendimento`, `Configuracao`) filtram por `EmpresaId`. `Atendimento` mantém `UsuarioId` adicionalmente para saber qual agente registrou.
+> This document records important decisions made during development, the reasoning behind each one, and what was discarded. The goal is to keep decisions already made from being reopened without context.
 
 ---
 
-## DEC-02 — Registro cria Empresa + Usuario + Configuracao automaticamente (Opção A)
+## DEC-01 — `Empresa` entity as the system tenant
 
-**Status:** Decidido — implementado
+**Status:** Decided — implemented (commit `c48dbca`)
 
-**Decisão:** O endpoint `POST /api/auth/register` cria os três recursos automaticamente. O primeiro usuário é sempre `Perfil = Dono`.
+**Decision:** Multi-tenant isolation uses `EmpresaId`, not `UsuarioId`.
 
-**Contexto:** Existiam duas opções:
-- **Opção A:** Registro cria tudo automaticamente (simples, sem tela extra)
-- **Opção B:** Fluxo separado — primeiro cria Empresa, depois cria Usuários
+**Context:** The initial model used `UsuarioId` for isolation — each user was an independent silo. This conflicted with the requirement of multiple agents per micro-entrepreneur: two agents of the same company could not share clients or stock, or see the consolidated dashboard.
 
-**Alternativa descartada:**
-- Opção B → mais robusto mas complexo demais para o MVP
+**Discarded alternatives:**
+- Keep `UsuarioId` as the tenant → makes the field agent model unworkable
+- Use `Tenant` as the name → technical English term, less clear for the Brazilian team
 
-**Consequência:** O nome da empresa é informado no momento do registro via campo `NomeEmpresa` no `AuthRegisterRequest`. O dono pode editar depois nas configurações.
-
----
-
-## DEC-03 — Módulo de IA nativo ao produto (não BYOK)
-
-**Status:** Decidido após reunião pós-CP III
-
-**Decisão:** A IA é uma feature nativa do produto. O sistema mantém a chave da API de IA (Anthropic Claude). O cliente não configura nem paga separadamente pela IA.
-
-**Contexto:** Houve conflito de visão entre dois membros do time:
-- **BYOK (Bring Your Own Key):** cliente traz o próprio token — adotado inicialmente pelo Tech Lead
-- **IA nativa:** sistema controla a chave, IA é parte do produto — proposto pelo Diego
-
-**Alternativa descartada:**
-- BYOK → descartado na reunião pós-CP III. Os campos `AiProvider`, `AiApiKey` e `AiEnabled` que foram commitados em `Configuracao` foram removidos no commit `3b5c540`.
-
-**Implicações:**
-- O time (como empresa) é o operador LGPD perante o provedor de IA
-- Requer controle de custo por empresa (futuro: `TenantUsage`)
-- Dados sensíveis devem ser mascarados antes de enviar ao modelo
-- Isolamento via `empresaId` obrigatório em todas as queries da IA
+**Impact:** All operational entities (`Cliente`, `Produto`, `Servico`, `Atendimento`, `Configuracao`) filter by `EmpresaId`. `Atendimento` also keeps `UsuarioId` to know which agent recorded it.
 
 ---
 
-## DEC-04 — Empreitada ignora Quantidade no cálculo do Subtotal
+## DEC-02 — Sign-up creates Empresa + Usuario + Configuracao automatically (Option A)
 
-**Status:** Decidido — implementado (commit `KAN-62`)
+**Status:** Decided — implemented
 
-**Decisão:** Serviços do tipo `Empreitada` têm `Subtotal = ValorEmpreitada` fixo. `Quantidade` é ignorada no cálculo.
+**Decision:** The `POST /api/auth/register` endpoint creates all three resources automatically. The first user is always `Perfil = Dono`.
 
-**Contexto:** Discutido se quantidade faria sentido em empreitada (ex: 2 instalações de AC). Conclusão: se o cliente quer múltiplas unidades, o agente adiciona múltiplos `ItemServico` separados — um por serviço. Usar quantidade em empreitada seria gambiarra.
+**Context:** There were two options:
+- **Option A:** Sign-up creates everything automatically (simple, no extra screen)
+- **Option B:** Separate flow — first create the Empresa, then create the Usuarios
 
-**Exemplo prático:**
+**Discarded alternative:**
+- Option B → more robust but too complex for the MVP
+
+**Consequence:** The company name is provided at sign-up through the `NomeEmpresa` field in `AuthRegisterRequest`. The owner can edit it later in the settings.
+
+---
+
+## DEC-03 — AI module native to the product (not BYOK)
+
+**Status:** Decided after the post-CP III meeting
+
+**Decision:** AI is a native feature of the product. The system holds the AI API key (Anthropic Claude). The customer neither configures nor pays separately for AI.
+
+**Context:** There was a conflict of vision between two team members:
+- **BYOK (Bring Your Own Key):** the customer brings their own token — initially adopted by the Tech Lead
+- **Native AI:** the system controls the key, AI is part of the product — proposed by Diego
+
+**Discarded alternative:**
+- BYOK → discarded at the post-CP III meeting. The `AiProvider`, `AiApiKey` and `AiEnabled` fields that had been committed to `Configuracao` were removed in commit `3b5c540`.
+
+**Implications:**
+- The team (as a company) is the LGPD operator towards the AI provider
+- Requires cost control per company (future: `TenantUsage`)
+- Sensitive data must be masked before being sent to the model
+- Isolation by `empresaId` is mandatory in every AI query
+
+---
+
+## DEC-04 — Empreitada (fixed-price job) ignores Quantidade in the Subtotal calculation
+
+**Status:** Decided — implemented (commit `KAN-62`)
+
+**Decision:** Services of type `Empreitada` have a fixed `Subtotal = ValorEmpreitada`. `Quantidade` is ignored in the calculation.
+
+**Context:** We discussed whether quantity made sense for an empreitada (e.g. 2 AC installations). Conclusion: if the client wants multiple units, the agent adds multiple separate `ItemServico` — one per service. Using quantity for an empreitada would be a hack.
+
+**Practical example:**
 ```
-Técnico instala 2 aparelhos de AC (R$600/máquina):
-→ Adiciona ItemServico "Instalação AC" × 1 → Subtotal: R$600
-→ Adiciona ItemServico "Instalação AC" × 1 → Subtotal: R$600
-→ ValorTotal do Atendimento: R$1.200
+Technician installs 2 AC units (R$600/unit):
+→ Adds ItemServico "Instalação AC" × 1 → Subtotal: R$600
+→ Adds ItemServico "Instalação AC" × 1 → Subtotal: R$600
+→ Atendimento ValorTotal: R$1.200
 ```
 
-> **Atualizado pela DEC-23:** o catálogo (`ValorEmpreitada`) passa a ser apenas o valor sugerido/pré-preenchido; o prestador pode ajustar no momento do atendimento. A regra de não multiplicar por `Quantidade` continua sendo o comportamento default.
+> **Updated by DEC-23:** the catalog (`ValorEmpreitada`) becomes only the suggested/pre-filled value; the provider can adjust it during the atendimento. The rule of not multiplying by `Quantidade` remains the default behavior.
 
 ---
 
-## DEC-05 — PrecoUnitario capturado no momento da venda (snapshot)
+## DEC-05 — PrecoUnitario captured at the time of sale (snapshot)
 
-**Status:** Decidido — implementado
+**Status:** Decided — implemented
 
-**Decisão:** `ItemProduto.PrecoUnitario` e `ItemServico.PrecoUnitario` armazenam o preço no momento da venda, não uma referência ao preço atual.
+**Decision:** `ItemProduto.PrecoUnitario` and `ItemServico.PrecoUnitario` store the price at the time of sale, not a reference to the current price.
 
-**Motivo:** Protege o histórico financeiro contra reajustes futuros. Se um produto custava R$10 e foi reajustado para R$15, vendas passadas continuam corretas.
+**Reason:** Protects the financial history against future price changes. If a product cost R$10 and was raised to R$15, past sales stay correct.
 
-**Atenção:** O `UpdateAsync` dos ItemServices **não deve** sobrescrever `PrecoUnitario` com o valor atual do produto/serviço. Apenas `Quantidade` e `Subtotal` são recalculados.
+**Warning:** The ItemServices' `UpdateAsync` **must not** overwrite `PrecoUnitario` with the current product/service value. Only `Quantidade` and `Subtotal` are recalculated.
 
-> **Atualizado pela DEC-23:** o snapshot continua valendo — o valor fica congelado no histórico — mas agora ele é **digitado/editável no momento do atendimento**, não apenas herdado do catálogo. O catálogo vira sugestão/default.
-
----
-
-## DEC-06 — Conflito de Cliente na sincronização: última escrita vence
-
-**Status:** Decidido
-
-**Decisão:** Quando o mesmo cliente é editado no Web e no Mobile offline simultaneamente, o registro com `UpdatedAt` mais recente prevalece.
-
-**Motivo:** Solução mais simples e suficiente para o MVP. Evita lógica complexa de merge de conflitos.
-
-**Limitação conhecida:** Em casos raros, uma edição válida pode ser sobrescrita. Aceitável para o público-alvo (microempreendedores com poucos agentes).
+> **Updated by DEC-23:** the snapshot still applies — the value stays frozen in the history — but it is now **typed/editable during the atendimento**, not just inherited from the catalog. The catalog becomes a suggestion/default.
 
 ---
 
-## DEC-07 — Configuracao é 1-para-1 com Empresa (não com Usuario)
+## DEC-06 — Cliente conflict during sync: last write wins
 
-**Status:** Decidido — implementado
+**Status:** Decided
 
-**Decisão:** A `Configuracao` pertence à `Empresa`, não ao `Usuario`. Todos os agentes da mesma empresa operam sob a mesma configuração.
+**Decision:** When the same client is edited on the Web and on offline Mobile at the same time, the record with the most recent `UpdatedAt` prevails.
 
-**Motivo:** `TipoOperacao` define como a empresa opera — não faz sentido cada agente ter uma configuração diferente.
+**Reason:** The simplest solution, and enough for the MVP. Avoids complex conflict-merging logic.
 
-**Futuro planejado:** Sistema de perfis por agente (ex: vendedor vs técnico), onde cada perfil pode ter permissões específicas. Não previsto para o MVP.
+**Known limitation:** In rare cases, a valid edit can be overwritten. Acceptable for the target audience (micro-entrepreneurs with few agents).
 
 ---
 
-## DEC-08 — TipoOperacao e StatusAtendimento ainda são strings livres
+## DEC-07 — Configuracao is 1-to-1 with Empresa (not with Usuario)
 
-**Status:** ✅ Resolvido — commit `2a7ad7f` (KAN-64)
+**Status:** Decided — implemented
 
-**Situação:** Enums `TipoOperacao` e `StatusAtendimento` foram criados e aplicados nas entidades, DTOs e AppDbContext (commit `refactor(enums)` em 17/06/2026). A migration `ConvertEnumsToString` ficou pendente por falta do `dotnet ef` instalado na máquina.
+**Decision:** `Configuracao` belongs to the `Empresa`, not to the `Usuario`. All agents of the same company work under the same configuration.
 
-**Resolução aplicada:** `dotnet ef` foi instalado e a migration `ConvertEnumsToString` foi gerada e aplicada (commit `2a7ad7f`), sincronizando o histórico do EF Core com o schema real.
+**Reason:** `TipoOperacao` defines how the company operates — it makes no sense for each agent to have a different configuration.
 
-**Enums criados:**
+**Planned future:** A system of per-agent profiles (e.g. salesperson vs technician), where each profile can have specific permissions. Not planned for the MVP.
+
+---
+
+## DEC-08 — TipoOperacao and StatusAtendimento are still free strings
+
+**Status:** ✅ Resolved — commit `2a7ad7f` (KAN-64)
+
+**Situation:** The `TipoOperacao` and `StatusAtendimento` enums were created and applied to the entities, DTOs and AppDbContext (commit `refactor(enums)` on 17/06/2026). The `ConvertEnumsToString` migration was left pending because `dotnet ef` was not installed on the machine.
+
+**Resolution applied:** `dotnet ef` was installed and the `ConvertEnumsToString` migration was generated and applied (commit `2a7ad7f`), syncing the EF Core history with the real schema.
+
+**Enums created:**
 ```csharp
 // Enums/TipoOperacao.cs
 public enum TipoOperacao { Venda, Servico, Hibrido }
@@ -137,967 +137,967 @@ public enum StatusAtendimento { Pendente, Concluido, Cancelado }
 
 ---
 
-## DEC-09 — Uuid como string (não Guid nativo)
+## DEC-09 — Uuid as a string (not a native Guid)
 
-**Status:** ✅ Resolvido — commit `3972f8d` (KAN-65)
+**Status:** ✅ Resolved — commit `3972f8d` (KAN-65)
 
-**Decisão temporária (histórico):** Campos `Uuid` nas entidades offline-first eram `string` (36 chars).
+**Temporary decision (history):** `Uuid` fields on the offline-first entities were `string` (36 chars).
 
-**Motivo original:** Implementado antes da decisão ser revisada. PostgreSQL tem tipo `uuid` nativo mais eficiente.
+**Original reason:** Implemented before the decision was revisited. PostgreSQL has a more efficient native `uuid` type.
 
-**Resolução aplicada:** Campos `Uuid` convertidos de `string` para `Guid` nativo (`Guid.NewGuid()` como valor padrão), removido `HasMaxLength(36)` do AppDbContext, migration correspondente gerada e aplicada.
-
----
-
-## DEC-10 — AuthService acessa DbContext diretamente (sem Repository)
-
-**Status:** Débito técnico — baixa prioridade. `IUsuarioRepository` já existe (usado pelo `AtendimentoService`, DEC-35), mas o `AuthService` ainda acessa o `AppDbContext` direto (conferido em 21/10/2026)
-
-**Decisão temporária:** `AuthService` é o único Service que acessa `AppDbContext` diretamente, sem passar por um Repository.
-
-**Motivo:** Auth tem particularidades (criação encadeada de Empresa + Usuario + Configuracao) que tornam o Repository menos natural aqui.
-
-**Ação planejada:** Criar `IUsuarioRepository` para padronizar com os demais Services. Baixa urgência.
+**Resolution applied:** `Uuid` fields converted from `string` to native `Guid` (`Guid.NewGuid()` as the default value), `HasMaxLength(36)` removed from AppDbContext, the matching migration generated and applied.
 
 ---
 
-## DEC-11 — Estoque integrado ao fluxo de vendas
+## DEC-10 — AuthService accesses the DbContext directly (no Repository)
 
-**Status:** ✅ Resolvido — commit `fix(stock)` em 17/06/2026
+**Status:** Technical debt — low priority. `IUsuarioRepository` already exists (used by `AtendimentoService`, DEC-35), but `AuthService` still accesses `AppDbContext` directly (checked on 21/10/2026)
 
-**Situação anterior:** `ItemProdutoService.CreateAsync` não verificava nem decrementava `QuantidadeEstoque`. Soft delete não devolvia estoque.
+**Temporary decision:** `AuthService` is the only Service that accesses `AppDbContext` directly, without going through a Repository.
 
-**Correção aplicada:**
-- `CreateAsync`: valida estoque suficiente (lança `EstoqueInsuficienteException`) e decrementa.
-- `UpdateAsync`: calcula diferença entre quantidade nova e antiga, ajusta estoque.
-- `DeleteAsync`: devolve quantidade ao estoque antes do soft delete.
-- `ItemProdutoController`: captura `EstoqueInsuficienteException` e retorna HTTP 400.
+**Reason:** Auth has particularities (chained creation of Empresa + Usuario + Configuracao) that make a Repository less natural here.
 
-**Complemento posterior:** cascade soft delete de itens e devolução de estoque ao deletar um `Atendimento` inteiro (commit `1b8b433`).
+**Planned action:** Create `IUsuarioRepository` to standardize with the other Services. Low urgency.
 
 ---
 
-## DEC-12 — GitHub Education para branch protection
+## DEC-11 — Stock integrated into the sales flow
 
-**Status:** ⚫ Obsoleto — superado pela DEC-29: o repositório é público na organização `Agesto-Platform` e o ruleset `Protected branches` está ativo em `develop` e `main` (conferido em 21/10/2026)
+**Status:** ✅ Resolved — commit `fix(stock)` on 17/06/2026
 
-**Situação:** Branch protection rules requerem plano pago para repositórios privados. Atualmente commits diretos em `develop` são possíveis sem PR.
+**Previous situation:** `ItemProdutoService.CreateAsync` neither checked nor decremented `QuantidadeEstoque`. Soft delete did not return stock.
 
-**Mitigação:** Acordo de processo — ninguém faz push direto em `develop` ou `main` sem aprovação de Davi Gomes ou Diego Mendes.
+**Fix applied:**
+- `CreateAsync`: validates there is enough stock (throws `EstoqueInsuficienteException`) and decrements it.
+- `UpdateAsync`: computes the difference between the new and old quantity and adjusts stock.
+- `DeleteAsync`: returns the quantity to stock before the soft delete.
+- `ItemProdutoController`: catches `EstoqueInsuficienteException` and returns HTTP 400.
 
-**Ação planejada:** Tech Lead solicitar GitHub Education Pack com email acadêmico da Uniube.
-
----
-
-## DEC-13 — Versões do EF Core inconsistentes entre Api e Tests
-
-**Status:** ✅ Resolvido — commit `29616ba` (KAN-66)
-
-**Situação:** `MicroERP.Api` usava EF Core `8.0.4`, `MicroERP.Tests` usava `8.0.26`. Gerava warning MSB3277 no build.
-
-**Risco:** Testes podiam esperar comportamento de `8.0.26` mas rodar com assembly `8.0.4`.
-
-**Resolução aplicada:** Versões dos três pacotes (`EntityFrameworkCore`, `Relational`, `InMemory`) alinhadas em `8.0.11` em ambos os projetos. Build atual: 0 warnings, 0 erros.
+**Later addition:** cascading soft delete of items and stock return when deleting a whole `Atendimento` (commit `1b8b433`).
 
 ---
 
-## DEC-14 — Bug multi-tenant nos controllers legados (KAN-63)
+## DEC-12 — GitHub Education for branch protection
 
-**Status:** ✅ Resolvido — commits `abbcfa9` e `8305606` (KAN-63)
+**Status:** ⚫ Obsolete — superseded by DEC-29: the repository is public in the `Agesto-Platform` organization and the `Protected branches` ruleset is active on `develop` and `main` (checked on 21/10/2026)
 
-**Situação:** Após o refactor multi-tenant (KAN-56), Services e Repositories passaram a filtrar por `EmpresaId`, mas os controllers legados continuavam extraindo `usuarioId` (claim `sub`) e passando esse valor como se fosse `empresaId`.
+**Situation:** Branch protection rules require a paid plan for private repositories. Currently direct commits to `develop` are possible without a PR.
 
-**Impacto:** Quebra de isolamento multi-tenant. Antes da correção, "funcionava" apenas por coincidência quando `usuarioId == empresaId` (cenário de empresa única em dev). Em produção com múltiplos usuários por empresa, os dados de uma empresa poderiam vazar para outra.
+**Mitigation:** Process agreement — nobody pushes directly to `develop` or `main` without approval from Davi Gomes or Diego Mendes.
 
-**Controllers afetados:** `ClienteController`, `ProdutoController`, `ServicoController`, `AtendimentoController`, `ItemProdutoController`, `ItemServicoController`.
-
-**Resolução aplicada:** Criado o helper `TryGetEmpresaId` (lendo a claim `empresaId`, emitida pelo `AuthService` no JWT) em `ApiControllerBase`, e todos os controllers afetados foram migrados para usá-lo no lugar de `TryGetUsuarioId`. O helper `TryGetUsuarioId` também foi extraído para `ApiControllerBase` (commit `0a9a74b`) e segue em uso onde o identificador do agente é necessário (ex: `Atendimento.UsuarioId`). `ConfiguracaoController` já nasceu correto e serviu de referência.
+**Planned action:** Tech Lead to request the GitHub Education Pack with the Uniube academic email.
 
 ---
 
-## DEC-15 — Novo foco: Prestador de Serviço em primeiro lugar
+## DEC-13 — Inconsistent EF Core versions between Api and Tests
 
-**Status:** Decidido — aprovado por Davi (pivô de produto)
+**Status:** ✅ Resolved — commit `29616ba` (KAN-66)
 
-**Decisão:** O produto muda de foco. Deixa de ser um ERP híbrido com peso igual entre venda e serviço, e passa a ser focado no Prestador de Serviço. A venda de produto vira secundária ("plus"), habilitada apenas conforme a `TipoOperacao` configurada pela empresa. O default de `TipoOperacao` passa de `Hibrido` para `Servico`. `Hibrido` e `Venda` continuam existindo para quem precisar deles.
+**Situation:** `MicroERP.Api` used EF Core `8.0.4`, `MicroERP.Tests` used `8.0.26`. It caused warning MSB3277 in the build.
 
-**Contexto:** O produto nasceu com foco em nicho (instalador de AC), evoluindo depois para um modelo híbrido genérico. A decisão do pivô é tornar a espinha do produto o ciclo de vida do serviço — Orçamento → Agendamento → Execução (Atendimento) → Cobrança — em vez de tratar venda e serviço como iguais. O app precisa ser flexível para qualquer tipo de prestador, não só instalador de AC.
+**Risk:** Tests could expect `8.0.26` behavior but run with the `8.0.4` assembly.
 
-**Implicações:**
-- O Kanban do protótipo mobile (Agendado → Hoje → Andamento → Concluído) deixa de ser apenas prototipagem visual e vira modelo de domínio real.
-- Novas prioridades de MVP: Orçamento, Agenda e Rota (ver DEC-16 e DEC-17).
-- `TipoOperacao = Venda` e `Hibrido` continuam suportados, mas não são mais o caminho principal do produto.
+**Resolution applied:** Versions of the three packages (`EntityFrameworkCore`, `Relational`, `InMemory`) aligned at `8.0.11` in both projects. Current build: 0 warnings, 0 errors.
 
 ---
 
-## DEC-16 — Orçamento como entidade separada do Atendimento
+## DEC-14 — Multi-tenant bug in the legacy controllers (KAN-63)
 
-**Status:** ✅ Resolvido — implementado (commit `fffaba0`)
+**Status:** ✅ Resolved — commits `abbcfa9` and `8305606` (KAN-63)
 
-**Decisão:** `Orcamento` é um documento próprio, distinto de `Atendimento`. Não afeta estoque. Quando aprovado pelo cliente, converte-se em `Atendimento`.
+**Situation:** After the multi-tenant refactor (KAN-56), Services and Repositories started filtering by `EmpresaId`, but the legacy controllers kept extracting `usuarioId` (claim `sub`) and passing that value as if it were `empresaId`.
 
-**Contexto:** Discutida a alternativa de usar uma única entidade (`OrdemServico`) com um status que percorre Orçamento → ... → Concluído. Essa alternativa foi descartada para manter os relatórios financeiros limpos — um orçamento rejeitado não deve poluir dados de venda/estoque.
+**Impact:** Broken multi-tenant isolation. Before the fix, it only "worked" by coincidence when `usuarioId == empresaId` (single-company scenario in dev). In production with multiple users per company, one company's data could leak to another.
 
-**Alternativas descartadas:**
-- Entidade única `OrdemServico` com status progressivo → misturaria documentos que nunca viraram venda/serviço real com dados financeiros reais, complicando relatórios.
+**Affected controllers:** `ClienteController`, `ProdutoController`, `ServicoController`, `AtendimentoController`, `ItemProdutoController`, `ItemServicoController`.
 
-**Observação:** O aumento no número de entidades foi considerado aceitável pelo dono do produto (Davi), desde que bem organizado. Preferiu a separação clara entre "intenção" (orçamento) e "execução" (atendimento).
-
-**Resolução aplicada:** Entidade `Orcamento` + `ItemOrcamento` criadas, com CRUD completo. Conversão transacional via `POST /api/orcamento/{id}/converter` — só converte se o orçamento estiver `Aprovado`, e a baixa de estoque acontece exclusivamente no momento da conversão (não na criação do orçamento). Commit `fffaba0`. `SyncCargaResponse.Orcamentos` também foi adicionado depois (commit `5e82411`), levando os orçamentos para o mobile na Carga do sync — a **descarga** (criar orçamento offline) segue em aberto, ver TASKS.md.
+**Resolution applied:** Created the `TryGetEmpresaId` helper (reading the `empresaId` claim, issued by `AuthService` in the JWT) in `ApiControllerBase`, and all affected controllers were migrated to use it instead of `TryGetUsuarioId`. The `TryGetUsuarioId` helper was also extracted to `ApiControllerBase` (commit `0a9a74b`) and is still used where the agent's identifier is needed (e.g. `Atendimento.UsuarioId`). `ConfiguracaoController` was correct from the start and served as the reference.
 
 ---
 
-## DEC-17 — Agenda e Rota como prioridade; Cliente ganha Endereço
+## DEC-15 — New focus: Service Provider first
 
-**Status:** 🟡 Parcialmente resolvido — endereço e agenda implementados (commits `da828bc`, `7007361`); lat/lng e rota do dia entregues depois pelas DEC-37 e DEC-38; falta "Otimizar dia" (fase 2)
+**Status:** Decided — approved by Davi (product pivot)
 
-**Decisão:** Agendamento de atendimentos e roteirização de campo passam a ser prioridades do MVP do prestador. A entidade `Cliente` precisa ganhar o campo `Endereco` (hoje só tem Nome, Telefone, CPF), com geolocalização (lat/lng) prevista para uma etapa futura.
+**Decision:** The product changes focus. It stops being a hybrid ERP with equal weight on sales and services, and becomes focused on the Service Provider. Product sales become secondary (a "plus"), enabled only according to the `TipoOperacao` configured by the company. The default `TipoOperacao` changes from `Hibrido` to `Servico`. `Hibrido` and `Venda` still exist for whoever needs them.
 
-**Contexto:** Um prestador de serviço de campo depende de saber onde e quando atender. Sem endereço estruturado no `Cliente`, não é possível montar agenda geolocalizada nem rota do dia.
+**Context:** The product was born focused on a niche (AC installer), later evolving into a generic hybrid model. The pivot decision makes the backbone of the product the service life cycle — Orçamento (quote) → Agendamento (scheduling) → Execution (Atendimento) → Cobrança (billing) — instead of treating sales and services as equal. The app must be flexible for any type of provider, not just AC installers.
 
-**Implicações:**
-- `Cliente.Endereco` precisa ser adicionado ao schema quando a feature for implementada.
-- Lat/lng fica marcado como etapa futura, não obrigatória no primeiro corte.
-
-**Resolução aplicada (parcial):**
-- `Cliente` ganhou os campos `Logradouro`, `Numero`, `Bairro`, `Cidade`, `Cep` (commit `da828bc`).
-- `Atendimento` ganhou `DataAgendada` e o endpoint `GET /api/atendimento/agenda`, com filtro por perfil (Agente vê só a própria agenda; Dono vê todas/filtra), viabilizado pelo novo helper `TryGetPerfil` em `ApiControllerBase` (commit `7007361`).
-- Depois, o endpoint de agenda foi enriquecido para devolver `AgendaItemResponse` com nome/telefone/endereço do cliente e resumo do serviço, eliminando N+1 no consumo mobile (commit `5e82411`).
-- **Pendente:** geolocalização e rota do dia foram entregues depois (DEC-37 e DEC-38); falta só a ordenação por proximidade ("Otimizar dia", fase 2).
-- **Delta identificado no mobile (mob-04, ver DEC-26):** a Carga da sincronização não inclui a agenda; o app mobile precisou de um passo `syncAgenda` separado (`GET /api/atendimento/agenda` cacheado) como contorno. Idealmente a agenda entraria na Carga.
+**Implications:**
+- The mobile prototype's Kanban (Agendado → Hoje → Andamento → Concluído) stops being just a visual prototype and becomes a real domain model.
+- New MVP priorities: Orçamento, Agenda and Rota (see DEC-16 and DEC-17).
+- `TipoOperacao = Venda` and `Hibrido` are still supported, but are no longer the main path of the product.
 
 ---
 
-## DEC-18 — Item de atendimento generalizado: catálogo vs avulso
+## DEC-16 — Orçamento as an entity separate from Atendimento
 
-**Status:** ✅ Resolvido — implementado (commit `61a9c29`)
+**Status:** ✅ Resolved — implemented (commit `fffaba0`)
 
-**Decisão:** O campo `ProdutoId` do item de atendimento passa a ser opcional (nullable). Se `ProdutoId` estiver preenchido, o item é de catálogo e **baixa estoque**. Se for nulo, o item é avulso — descrição livre (ex: "Cano PVC 50mm" comprado na hora na loja), **não baixa estoque**.
+**Decision:** `Orcamento` is a document of its own, distinct from `Atendimento`. It does not affect stock. When approved by the client, it is converted into an `Atendimento`.
 
-**Contexto:** Regra única e simples: o gatilho de baixa de estoque é a presença de `ProdutoId`, não o contexto de uso (venda ou serviço). Um produto de catálogo instalado num atendimento de serviço também baixa estoque, porque fisicamente saiu da prateleira — o mesmo vale tanto para venda quanto para serviço.
+**Context:** We discussed the alternative of using a single entity (`OrdemServico`) with a status that goes through Orçamento → ... → Concluído. That alternative was discarded to keep the financial reports clean — a rejected quote must not pollute sales/stock data.
 
-**Esclarecimento importante (para evitar confusão futura):** `Produto` está ligado a ESTOQUE, não a "venda". "Venda" é apenas um contexto de uso. São dois eixos independentes:
-- (a) origem do item = `ProdutoId` preenchido (catálogo) vs avulso (descrição livre)
-- (b) contexto de uso = `TipoOperacao` (Venda / Servico / Hibrido)
+**Discarded alternatives:**
+- Single `OrdemServico` entity with a progressive status → would mix documents that never became a real sale/service with real financial data, complicating reports.
 
-Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto no balcão é apenas uma capacidade habilitada pela `TipoOperacao`, não uma entidade diferente de produto.
+**Note:** The larger number of entities was considered acceptable by the product owner (Davi), as long as it is well organized. He preferred a clear separation between "intent" (quote) and "execution" (atendimento).
 
-**Implicações:**
-- `ProdutoId` no item deixa de ser obrigatório no schema.
-- A lógica de baixa/devolução de estoque (DEC-11) passa a checar `ProdutoId != null` como condição, e não mais assumir que todo item tem produto vinculado.
-
-> **Nota (DEC-22):** o item avulso efêmero (sem entidade de catálogo) vale só para **produtos**. Para serviços não existe equivalente — serviço fora do catálogo vira cadastro rápido no catálogo, ver DEC-22.
-
-**Resolução aplicada:** `ItemProduto.ProdutoId` tornado nullable, com novo campo `Descricao` para o item avulso; a regra de baixa/devolução de estoque passou a checar `ProdutoId != null`. Commit `61a9c29`.
+**Resolution applied:** `Orcamento` + `ItemOrcamento` entities created, with full CRUD. Transactional conversion through `POST /api/orcamento/{id}/converter` — it only converts if the quote is `Aprovado`, and stock deduction happens exclusively at conversion time (not when the quote is created). Commit `fffaba0`. `SyncCargaResponse.Orcamentos` was also added later (commit `5e82411`), taking quotes to mobile in the sync Carga — the **Descarga** (creating a quote offline) is still open, see TASKS.md.
 
 ---
 
-## DEC-19 — Rastreio de custo por item e margem por atendimento
+## DEC-17 — Agenda and Rota as priorities; Cliente gets an address
 
-**Status:** ✅ Resolvido — implementado (commits `61a9c29`, `2b0d253`)
+**Status:** 🟡 Partially resolved — address and schedule implemented (commits `da828bc`, `7007361`); lat/lng and the day's route delivered later by DEC-37 and DEC-38; "Otimizar dia" (optimize day, phase 2) is still missing
 
-**Decisão:** Cada item do atendimento ganha um campo `Custo` (opcional, preenchido livremente pelo prestador). `Subtotal` (o que entra no `ValorTotal`, o que o cliente paga) e `Custo` (o que o prestador pagou) são campos independentes — o prestador escolhe qual preencher: se cobra o material do cliente, preenche `Subtotal`; se absorve o custo, preenche só `Custo`.
+**Decision:** Scheduling atendimentos and field routing become priorities of the provider MVP. The `Cliente` entity needs an `Endereco` field (today it only has Nome, Telefone, CPF), with geolocation (lat/lng) planned for a future stage.
 
-**Contexto:** Filosofia deliberada: sem regra, sem markup automático, sem validação cruzada entre `Subtotal` e `Custo`. O prestador registra como quiser. Se não preencher `Custo`, nada quebra — o comportamento atual (DEC-05, snapshot de preço) continua válido.
+**Context:** A field service provider depends on knowing where and when to serve. Without a structured address on `Cliente`, it is not possible to build a geolocated schedule or the day's route.
 
-**Implicações:**
-- Habilita **margem por atendimento**: `Margem = ValorTotal − Σ Custos`.
-- Feature de valor direto para o prestador entender o lucro real de cada serviço, não só o faturamento.
-- Não há dependência entre DEC-19 e DEC-18 no schema — `Custo` se aplica tanto a itens de catálogo quanto avulsos.
+**Implications:**
+- `Cliente.Endereco` must be added to the schema when the feature is implemented.
+- Lat/lng is marked as a future stage, not mandatory in the first cut.
 
-> **Nota:** o campo `Custo` mora no `ItemProduto` (tanto de catálogo quanto avulso). Custo de material usado num serviço é registrado como uma **linha avulsa de produto** (ex: suporte de TV comprado na loja), não como campo no `ItemServico`.
-
-**Resolução aplicada:** Campo `ItemProduto.Custo` adicionado (commit `61a9c29`); `Atendimento.CustoTotal` passou a ser recalculado e `AtendimentoResponse` passou a expor `Margem = ValorTotal - CustoTotal` (commit `2b0d253`). Depois, a margem também foi agregada em nível de negócio no novo `GET /api/metrics/rentabilidade` e no bloco `Rentabilidade` do `DashboardResponse` (faturamento, custo, margem, margem %, ticket médio, nº de atendimentos concluídos no período) — commit `5e82411`.
-
----
-
-## DEC-20 — Camada de métricas separada da camada de IA
-
-**Status:** ✅ Fase 1 implementada — commit `87f54e6` (KAN-77: KAN-78, KAN-80, KAN-81 concluídas; KAN-79 parcial). A parte de margem/tempo continua adiada, dependente da DEC-19/KAN-72.
-
-**Decisão:** O sistema terá duas camadas distintas:
-1. **Camada de métricas (analytics)** — agregações determinísticas calculadas no backend (C#/SQL): `GROUP BY`, `SUM`, `AVG`, giro de estoque, margem, etc. Correta, barata, sem IA. Essa camada alimenta tanto os dashboards/gráficos quanto a IA.
-2. **Camada de IA** — recebe as métricas já calculadas e as interpreta em linguagem natural (resumos, destaques, alertas, recomendações).
-
-**Contexto:** "Produto X vende mais", "serviço Y deu mais lucro" são agregações, não trabalho de IA. Enviar linhas cruas ao modelo e pedir que ele calcule resulta em erros aritméticos (LLMs alucinam em matemática). A IA nunca faz a conta — ela recebe números prontos e os interpreta. Ex: recebe "Serviço A: R$4.200 receita, 12h, margem R$2.800" e responde "Serviço A é seu mais rentável por hora, priorize agenda para ele".
-
-**Sinergia importante:** a camada de métricas é a mesma coisa que o backend de relatórios/dashboards (antes adiado). Não é trabalho separado. E a margem por atendimento definida na DEC-19 é o que habilita as análises de lucro por serviço.
-
-**A IA não lê imagens de gráfico** — lê os mesmos dados que geram o gráfico. Mesma fonte de dados, dois consumidores (render do gráfico + insight da IA).
-
-**Alternativas descartadas:**
-- Enviar dados brutos (linhas de `Atendimento`/`ItemServico`) direto ao modelo e pedir para ele agregar → descartado por risco de erro aritmético e custo de tokens maior.
-
-**Implicações:**
-- Ordem de implementação: a camada de métricas (que já entrega os gráficos/dashboards) é implementada **primeiro**; a IA por cima vem depois.
-- Métricas base planejadas: produto mais vendido (qtd e receita), ticket médio, receita por período; receita por tipo de serviço, tempo médio, margem/hora; giro de estoque, produtos parados, ruptura iminente; margem por atendimento (DEC-19).
-- A IA interpreta essas métricas em quatro blocos: (1) resumo do período, (2) destaques (ex: serviço mais rentável/hora), (3) alertas (produto parado, estoque acabando), (4) recomendações (repor/promover). Um endpoint estruturado pode devolver os quatro.
-
-**Resolução aplicada (Fase 1):** implementados `MetricasController`, `MetricasService`/`IMetricasService`, `MetricasRepository`/`IMetricasRepository` e os endpoints `GET /api/metrics/vendas`, `/api/metrics/servicos`, `/api/metrics/estoque` e `/api/metrics/dashboard`, com DTOs próprios (`MetricasVendasResponse`, `MetricasServicosResponse`, `MetricasEstoqueResponse`, `DashboardResponse`) e testes `MetricasServiceTests` (DbContext InMemory). Todas as queries filtram por `EmpresaId` + `DeletedAt == null`, com join via `Atendimento` (já que `ItemProduto`/`ItemServico` não têm `EmpresaId` próprio). De KAN-79 (Métricas de Serviços), só a receita por tipo de serviço foi entregue nesta fase — margem/hora e tempo médio seguem pendentes, à espera do campo `Custo` (DEC-19/KAN-72) e de um campo de duração ainda não modelado.
-
-**Complemento posterior (commit `5e82411`):** com `Custo`/`Margem` já implementados (DEC-19), foi adicionado o `GET /api/metrics/rentabilidade` e o bloco `Rentabilidade` no `DashboardResponse` — faturamento, custo, margem, margem %, ticket médio e nº de atendimentos, considerando só `Concluido` no período. Margem/hora por serviço (parte restante da KAN-79) continua adiada — a duração do serviço e a receita por hora já existem (DEC-45, 11/11/2026), mas falta atribuir custo ao serviço; decisão do dono é substituir "serviço mais rentável/hora" por "serviços que mais faturam" no painel, métrica que já existe.
+**Resolution applied (partial):**
+- `Cliente` gained the fields `Logradouro`, `Numero`, `Bairro`, `Cidade`, `Cep` (commit `da828bc`).
+- `Atendimento` gained `DataAgendada` and the `GET /api/atendimento/agenda` endpoint, filtered by profile (Agente sees only their own schedule; Dono sees all/filters), made possible by the new `TryGetPerfil` helper in `ApiControllerBase` (commit `7007361`).
+- Later, the schedule endpoint was enriched to return `AgendaItemResponse` with the client's name/phone/address and a service summary, removing N+1 calls on mobile (commit `5e82411`).
+- **Pending:** geolocation and the day's route were delivered later (DEC-37 and DEC-38); only ordering by proximity ("Otimizar dia", phase 2) is left.
+- **Delta found on mobile (mob-04, see DEC-26):** the sync Carga does not include the schedule; the mobile app needed a separate `syncAgenda` step (cached `GET /api/atendimento/agenda`) as a workaround. Ideally the schedule would be part of the Carga.
 
 ---
 
-## DEC-21 — IA nativa paga por uso; interpreta métricas; controles de custo
+## DEC-18 — Generalized atendimento item: catalog vs ad hoc
 
-**Status:** Decidido. (Reafirma e detalha a DEC-03.) 🟢 Implementado e em produção desde 10/11/2026 (PRs #126 a #130), pedido por Davi Oliveira para teste com as contas de teste. A IA segue fora do escopo do lançamento (DEC-46) até nova decisão.
+**Status:** ✅ Resolved — implemented (commit `61a9c29`)
 
-**Decisão:** A IA é nativa e paga por uso pelo operador do SaaS (Davi), não BYOK. Uma única chave da API (Anthropic Claude) fica no servidor; todos os tenants usam essa chave; o custo por token é embutido na mensalidade do plano. Todo cliente que assina tem acesso à IA.
+**Decision:** The `ProdutoId` field of the atendimento item becomes optional (nullable). If `ProdutoId` is filled in, the item comes from the catalog and **deducts stock**. If it is null, the item is ad hoc (avulso) — free description (e.g. "Cano PVC 50mm" bought on the spot at the store), and **does not deduct stock**.
 
-**Alternativas descartadas:**
-- **BYOK** (cliente traz o próprio token) — descartado na DEC-03; quebra a proposta de "todo cliente tem IA".
-- **IA gratuita / modelo aberto self-hosted (Llama/Mistral via Ollama)** — descartado para o MVP: "grátis" desloca o custo para infra (servidor com GPU 24/7) e ops, inviável para dev solo, com qualidade menor. Pagar por uso é mais barato no volume de um micro-ERP (uma análise custa centavos com modelo econômico) e tem zero infra fixa.
+**Context:** A single, simple rule: what triggers stock deduction is the presence of `ProdutoId`, not the usage context (sale or service). A catalog product installed during a service atendimento also deducts stock, because it physically left the shelf — the same applies to sales and services.
 
-**Controles de custo (a IA gasta o dinheiro do operador):**
-- Modelo econômico (ex: Claude Haiku) para o comum; modelo mais capaz só onde precisa de raciocínio profundo.
-- Cache de prompt para contexto repetido.
-- Limite de uso por empresa por plano (free tier menor, plano pago maior).
-- Rastreio de uso por `EmpresaId` (o `TenantUsage` já previsto na DEC-03) para saber quem consome e cobrar de acordo.
+**Important clarification (to avoid future confusion):** `Produto` is tied to STOCK, not to "sales". "Sale" is just a usage context. They are two independent axes:
+- (a) item origin = `ProdutoId` filled in (catalog) vs ad hoc (free description)
+- (b) usage context = `TipoOperacao` (Venda / Servico / Hibrido)
 
-**Segurança (mantida da DEC-03):** chave só no servidor (nunca no front/mobile, nunca no `Configuracao` do tenant); mascarar CPF e dados sensíveis antes de enviar ao modelo; isolamento multi-tenant por `EmpresaId` em toda query que alimenta o prompt; read-only no MVP (a IA lê e sugere, nunca escreve).
+A catalog product can live in both contexts. An ad hoc over-the-counter product sale is just a capability enabled by `TipoOperacao`, not a different kind of product entity.
 
-**Ponto em aberto:** ✅ RESOLVIDO em 20/07/2026. Decisão do dono (dev solo, Davi): a camada de IA roda **dentro do backend C#**, usando o SDK oficial da Anthropic — não um serviço Python/FastAPI separado (design original, KAN-30). Motivo: elimina um codebase extra para um dev solo, reduzindo superfície operacional (ver `project_solo_dev`). Consequência: o épico "Módulo IA/Insights (Python)" (KAN-30) fica **obsoleto** — ver TASKS.md.
+**Implications:**
+- `ProdutoId` on the item is no longer mandatory in the schema.
+- The stock deduction/return logic (DEC-11) now checks `ProdutoId != null` as a condition, instead of assuming every item has a linked product.
 
-**Implementação (10/11/2026):**
-- `POST /api/insights`: relatório do período em quatro blocos (resumo, destaques, alertas e recomendações), com saída estruturada. `POST /api/agente/perguntar`: chat do painel Agente no web. Os dois só para o Dono.
-- Modelo padrão `claude-haiku-5-5` (o modelo econômico desta decisão), trocável por `Insights__Modelo` sem mudar código. Chave em `Insights__AnthropicApiKey` no Render; sem ela, os endpoints respondem 503.
-- O modelo recebe só as métricas já calculadas do período (DEC-20). No chat, recebe também a agenda dos próximos 7 dias sem nome, telefone nem endereço do cliente.
-- Só leitura: a IA não cria, altera nem apaga nada.
-- Controles de custo entregues: limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`. Pendentes: a tabela de consumo (`TenantUsage`) e o limite por plano.
-- **Limite diário e consumo (13/11/2026, pedido do Davi):** cada empresa tem até **20 perguntas por dia** ao Agente (dia de Brasília; `Insights__PerguntasPorDia` muda o número sem mexer no código). A tabela `UsosIa` é o `TenantUsage`: uma linha por empresa e dia, com perguntas, relatórios e tokens de entrada e saída. A pergunta é reservada antes de chamar o modelo, num único `INSERT ... ON CONFLICT` com a condição do limite, então perguntas simultâneas não passam de 20. Se o modelo falhar, a pergunta é devolvida. Acima do limite, a API responde 429 e o painel do Agente trava a caixa até o dia seguinte. `GET /api/agente/uso` mostra quantas restam, e o painel exibe o contador. Os relatórios de insights são registrados, mas não entram no limite de 20 (seguem com o limite por hora). Limite por plano: por decisão do Davi (13/11/2026), fica como está enquanto houver um plano só (DEC-57); todas as empresas têm 20. Em produção desde a release #177 (13/11/2026).
-- Testes manuais de segurança em produção (vazamento de dados, isolamento entre empresas, injeção por nome de produto, pedidos de escrita) passaram em 10/11/2026.
+> **Note (DEC-22):** the ephemeral ad hoc item (without a catalog entity) applies only to **products**. There is no equivalent for services — a service outside the catalog becomes a quick catalog entry, see DEC-22.
+
+**Resolution applied:** `ItemProduto.ProdutoId` made nullable, with a new `Descricao` field for the ad hoc item; the stock deduction/return rule now checks `ProdutoId != null`. Commit `61a9c29`.
 
 ---
 
-## DEC-22 — Serviço fora do catálogo = cadastro rápido (não linha efêmera)
+## DEC-19 — Cost tracking per item and margin per atendimento
 
-**Status:** ✅ Resolvido — implementado por design (commit `61a9c29`)
+**Status:** ✅ Resolved — implemented (commits `61a9c29`, `2b0d253`)
 
-**Decisão:** Quando um serviço aparece e não está no catálogo, o prestador faz um **cadastro rápido** que cria uma entidade `Servico` (catálogo) reutilizável, e então adiciona o item normalmente. NÃO existe "serviço avulso efêmero" (linha com `ServicoId` nulo). Portanto `ItemServico.ServicoId` continua **obrigatório**. Não há mudança de schema — reaproveita o `POST /api/servico` existente.
+**Decision:** Each atendimento item gets a `Custo` field (optional, filled in freely by the provider). `Subtotal` (what goes into `ValorTotal`, what the client pays) and `Custo` (what the provider paid) are independent fields — the provider chooses which one to fill: if they charge the client for the material, they fill `Subtotal`; if they absorb the cost, they fill only `Custo`.
 
-**Contexto:** Contraste proposital com o **produto avulso** (DEC-18): produto/material comprado na loja na hora (ex: suporte de TV) é genuinamente pontual e continua como linha efêmera (`ProdutoId` nulo + descrição livre), para não poluir o catálogo de produtos. Já serviços tendem a se repetir e precisam aparecer nas métricas (receita por tipo de serviço, margem/hora — camada DEC-20/KAN-77). Um serviço efêmero não entraria nesses rankings. Por isso serviço vira catálogo; produto avulso não.
+**Context:** Deliberate philosophy: no rule, no automatic markup, no cross-validation between `Subtotal` and `Custo`. The provider records it however they want. If they do not fill `Custo`, nothing breaks — the current behavior (DEC-05, price snapshot) still applies.
 
-**Alternativa descartada:** `ItemServico` com `ServicoId` nulo + descrição livre (linha de serviço efêmera) — descartada porque perderia o serviço nas métricas e impediria reuso/histórico de rentabilidade.
+**Implications:**
+- Enables **margin per atendimento**: `Margem = ValorTotal − Σ Custos`.
+- A feature of direct value for the provider to understand the real profit of each service, not just revenue.
+- There is no schema dependency between DEC-19 and DEC-18 — `Custo` applies to both catalog and ad hoc items.
 
-**Implicações:** assimetria intencional produto-avulso-efêmero vs serviço-sempre-catálogo. UX de "cadastro rápido de serviço" no fluxo do atendimento (frontend/mobile), mas sem backend novo.
+> **Note:** the `Custo` field lives on `ItemProduto` (both catalog and ad hoc). The cost of material used in a service is recorded as an **ad hoc product line** (e.g. a TV bracket bought at the store), not as a field on `ItemServico`.
 
-**Resolução aplicada:** nenhuma mudança de schema foi necessária — `ItemServico.ServicoId` permanece obrigatório, conforme decidido. Commit `61a9c29` (mesmo lote que entregou DEC-18/19/23) apenas confirma que o comportamento do backend já está alinhado com esta decisão; o cadastro rápido em si é responsabilidade de UX no frontend/mobile, ainda não construído.
-
----
-
-## DEC-23 — Valor do item é editável no atendimento; catálogo é só sugestão
-
-**Status:** ✅ Resolvido — implementado (commit `61a9c29`)
-
-**Decisão:** O valor de qualquer item de atendimento (produto ou serviço) passa a ser **digitável/editável no momento do atendimento**. O valor do catálogo (`Produto.Preco`, `Servico.ValorHora`, `Servico.ValorEmpreitada`) vira apenas **sugestão/pré-preenchimento**; o prestador pode sobrescrever conforme dificuldade/situação (ex: o mesmo serviço custa mais num caso difícil).
-
-**Contexto:** Um mesmo serviço pode ter preços diferentes conforme a situação; forçar o valor do catálogo engessava isso.
-
-**Relação com decisões anteriores:**
-- **DEC-05** (snapshot de PrecoUnitario) continua válida: o valor fica congelado no histórico do atendimento. A mudança é que agora ele é **entrado/editável**, não apenas herdado do catálogo.
-- **DEC-04** (Empreitada = ValorEmpreitada fixo, ignora quantidade): passa a ser "o catálogo pré-preenche esse valor, mas o prestador pode ajustar". A regra de não multiplicar por quantidade permanece como comportamento default.
-
-**Implicações:** `ItemProdutoService`/`ItemServicoService` deixam de derivar o `Subtotal` estritamente do catálogo — passam a aceitar o valor informado (com o catálogo como default). Aplica-se a itens de produto e de serviço.
-
-**Resolução aplicada:** `PrecoUnitario` passou a ser opcional nos requests de `ItemProduto` e `ItemServico`; quando informado, sobrescreve o default vindo do catálogo. Commit `61a9c29`.
+**Resolution applied:** `ItemProduto.Custo` field added (commit `61a9c29`); `Atendimento.CustoTotal` is now recalculated and `AtendimentoResponse` now exposes `Margem = ValorTotal - CustoTotal` (commit `2b0d253`). Later, margin was also aggregated at the business level in the new `GET /api/metrics/rentabilidade` and in the `Rentabilidade` block of `DashboardResponse` (revenue, cost, margin, margin %, average ticket, number of completed atendimentos in the period) — commit `5e82411`.
 
 ---
 
-## DEC-24 — Renomeação do produto para "Agesto" e repositório próprio público
+## DEC-20 — Metrics layer separate from the AI layer
 
-**Status:** ✅ Resolvido — 04/08/2026 (decisão do dono, dev solo)
+**Status:** ✅ Phase 1 implemented — commit `87f54e6` (KAN-77: KAN-78, KAN-80, KAN-81 done; KAN-79 partial). The margin/time part is still postponed, depending on DEC-19/KAN-72.
 
-**Decisão:** O produto passa a se chamar **Agesto** (antes "Micro-ERP Auto"). O código passa a viver em um **repositório novo, próprio e público**, separado do repositório acadêmico original (`Auto-academic-erp/micro-erp-auto`), que foi criado por outro integrante do grupo e é abandonado como legado.
+**Decision:** The system will have two distinct layers:
+1. **Metrics layer (analytics)** — deterministic aggregations computed in the backend (C#/SQL): `GROUP BY`, `SUM`, `AVG`, stock turnover, margin, etc. Correct, cheap, no AI. This layer feeds both the dashboards/charts and the AI.
+2. **AI layer** — receives the already computed metrics and interprets them in natural language (summaries, highlights, alerts, recommendations).
 
-**Atualização de governança — 19/08/2026:** o repositório foi transferido para a organização e renomeado para [`Agesto-Platform/Agesto`](https://github.com/Agesto-Platform/Agesto), preservando histórico, branches, pull requests e CI.
+**Context:** "Product X sells more", "service Y made more profit" are aggregations, not AI work. Sending raw rows to the model and asking it to compute leads to arithmetic errors (LLMs hallucinate at math). The AI never does the math — it receives ready numbers and interprets them. E.g. it receives "Serviço A: R$4.200 revenue, 12h, margin R$2.800" and answers "Serviço A is your most profitable per hour, prioritize your schedule for it".
 
-**Origem do nome:** marca coined a partir de raízes latinas — *agere* (agir, operar) + *gestio* (gerir, gestão) → **Agesto**. Escolhido por soar sério/internacional (evitando nomes em português, percebidos como informais) e por ser "ownable" (sem significado prévio, facilitando registro de marca). "Auto" foi descartado por ser genérico e provavelmente não registrável.
+**Important synergy:** the metrics layer is the same thing as the reports/dashboards backend (previously postponed). It is not separate work. And the margin per atendimento defined in DEC-19 is what enables profit-per-service analyses.
 
-**Estratégia comercial + portfólio (mesmo repo):**
-- **Repositório público** — serve de portfólio; o README é a peça-chave (problema, arquitetura, decisões, prints, testes verdes).
-- **Licença restritiva, não permissiva** — proprietária ("All Rights Reserved") ou source-available (BSL/PolyForm Noncommercial), para que o código possa ser lido mas não usado comercialmente por terceiros. **Nunca MIT/Apache** neste produto.
-- **Higiene de segredos (inegociável):** `.gitignore` de `appsettings.*.json`/`.env`; commitar apenas exemplos (`appsettings.Example.json`); nunca connection string do Postgres, chave do Supabase ou a `SymmetricSecurityKey` do JWT. Varredura do histórico antes de publicar.
-- Quando o produto amadurecer comercialmente (cliente pagante/sócio/investidor), o repositório pode virar **privado** com um clique, sem retrabalho.
+**The AI does not read chart images** — it reads the same data that generates the chart. Same data source, two consumers (chart rendering + AI insight).
 
-**Pendências de validação:** checar disponibilidade de domínio (`.com`/`.com.br`) e registro de marca no INPI antes de investir na identidade visual final.
+**Discarded alternatives:**
+- Sending raw data (`Atendimento`/`ItemServico` rows) straight to the model and asking it to aggregate → discarded because of the risk of arithmetic errors and higher token cost.
 
-**Nota de escopo:** os identificadores de código (`MicroERP.Api`, `MicroERP.Tests`, namespaces `MicroERP.*`) **não** são renomeados neste momento — é refactor mecânico de baixo valor/alto risco de ruído no histórico; fica para uma limpeza futura, se e quando fizer sentido. A renomeação aqui é de **produto/marca e repositório**, não de namespace.
+**Implications:**
+- Implementation order: the metrics layer (which already delivers the charts/dashboards) is implemented **first**; the AI on top comes later.
+- Planned base metrics: best-selling product (quantity and revenue), average ticket, revenue per period; revenue per service type, average time, margin/hour; stock turnover, idle products, imminent stockout; margin per atendimento (DEC-19).
+- The AI interprets these metrics in four blocks: (1) period summary, (2) highlights (e.g. most profitable service per hour), (3) alerts (idle product, stock running out), (4) recommendations (restock/promote). A structured endpoint can return all four.
 
----
+**Resolution applied (Phase 1):** implemented `MetricasController`, `MetricasService`/`IMetricasService`, `MetricasRepository`/`IMetricasRepository` and the endpoints `GET /api/metrics/vendas`, `/api/metrics/servicos`, `/api/metrics/estoque` and `/api/metrics/dashboard`, with their own DTOs (`MetricasVendasResponse`, `MetricasServicosResponse`, `MetricasEstoqueResponse`, `DashboardResponse`) and `MetricasServiceTests` tests (InMemory DbContext). All queries filter by `EmpresaId` + `DeletedAt == null`, joining through `Atendimento` (since `ItemProduto`/`ItemServico` have no `EmpresaId` of their own). Of KAN-79 (Service Metrics), only revenue per service type was delivered in this phase — margin/hour and average time are still pending, waiting for the `Custo` field (DEC-19/KAN-72) and a duration field not yet modeled.
 
-## DEC-25 — Stack e arquitetura do Frontend Web (Módulo Dono)
-
-**Status:** ✅ Resolvido — implementado (web-01 a web-12, integrado na `main` em 04/08/2026)
-
-**Decisão:** O frontend web do Dono (`web/` no monorepo `Agesto-Platform/Agesto`) usa **Vite + React 19 + TypeScript**, **Tailwind CSS v4** (config CSS-first via `@theme`, tokens portados do protótipo aprovado `web-dono.html`), **React Router**, **TanStack Query** para dados de servidor, **MSW** (Mock Service Worker) como camada de mock stateful enquanto não há banco/API real no ar, e **Recharts** para gráficos. Lint via oxlint.
-
-**Contexto:** O front precisava ser construído antes do banco Supabase novo estar pronto (ver `project_banco_supabase`). Para não travar no schema real, o time optou por consumir o contrato real da API (DTOs espelhados em `types/api.ts`) contra um mock stateful (MSW), permitindo alternar para a API real trocando só uma env var.
-
-**Decisões de arquitetura de pastas:** cada recurso de negócio vive em `features/<nome>/` (Clientes, Produtos, Serviços, Agenda, Orçamentos, Atendimentos, Configuração); kit de UI reutilizável em `components/ui/` (Drawer slide-over, DataTable, ConfirmDialog, TextField/NumberField/SelectField, Toast, Card, Kpi, Money, Pill, RankBar, Alert); `lib/api.ts` desembrulha o envelope `ApiResponse` e injeta o Bearer token, tratando 401; `lib/resource.ts` fornece a fábrica `createResource` (list/create/update/delete com invalidação automática do TanStack Query); mock stateful em `mocks/lib/http.ts` (`makeStore` + `crudHandlers`).
-
-**Formulários em drawer lateral (slide-over)**, não em modal central nem em página cheia — decisão de UX para manter contexto da lista visível durante a edição.
-
-**Costura de troca de dados:** a env var `VITE_USE_MOCKS=true|false` liga/desliga o MSW. Desligar aponta direto para a API real via `VITE_API_BASE_URL`, sem qualquer mudança de código nas features.
-
-**Delta de backend resolvido no front (não no backend):** `GET /api/atendimento` (o `AtendimentoResponse` real) substituiu o antigo formato fictício "AtendimentoResumo" que existia só na apresentação. Como a API devolve apenas `clienteId` (não o nome do cliente), o nome é resolvido no front, juntando com a lista de clientes já carregada. Se isso virar gargalo de performance, a alternativa é expor `clienteNome` diretamente no backend (não decidido ainda).
-
-**Alternativas descartadas:**
-- Esperar o banco/API real estar pronto para começar o front → descartado, atrasaria o cronograma sem necessidade; o contrato de API já estava estável o suficiente para mockar.
-- Modal central para formulários → descartado em favor do drawer lateral, que preserva o contexto da lista.
-
-**Segurança de dependência:** `react-router-dom` fixado em `7.18.2` — há um advisory conhecido de modo RSC, aceito como risco porque o projeto não usa RSC.
-
-**Login demo (mock):** `dono@agesto.app` / `agesto123`.
-
-**Resolução aplicada:** 12 tasks incrementais (web-01 a web-12), todas com build+lint verdes, entregando scaffold, app shell, cliente de API + mock, autenticação JWT, dashboard "Visão geral", fundação de CRUD + Clientes, Produtos, Serviços, Agenda, Orçamentos, Atendimentos e Parametrização.
-
-**Atualização posterior:** Relatórios deixou de ser placeholder na web-13 e a suíte foi ampliada na web-14 e evoluções seguintes. O Módulo Dono possui MVP funcional e roda em produção contra a API real desde a DEC-32; o MSW fica para desenvolvimento local.
+**Later addition (commit `5e82411`):** with `Custo`/`Margem` already implemented (DEC-19), `GET /api/metrics/rentabilidade` and the `Rentabilidade` block in `DashboardResponse` were added — revenue, cost, margin, margin %, average ticket and number of atendimentos, counting only `Concluido` in the period. Margin/hour per service (the remaining part of KAN-79) is still postponed — service duration and revenue per hour already exist (DEC-45, 11/11/2026), but assigning cost to the service is missing; the owner's decision is to replace "most profitable service per hour" with "top-earning services" in the panel, a metric that already exists.
 
 ---
 
-## DEC-26 — Stack e arquitetura do Mobile (App do Agente)
+## DEC-21 — Native AI paid per use; interprets metrics; cost controls
 
-**Status:** ✅ Resolvido — implementado (mob-01 a mob-07, integrado na `main` em 11/08/2026). Os dois deltas de backend abaixo: o mapeamento uuid→id foi resolvido pela DEC-33; a agenda na Carga segue pendente
+**Status:** Decided. (Reaffirms and details DEC-03.) 🟢 Implemented and in production since 10/11/2026 (PRs #126 to #130), requested by Davi Oliveira for testing with the test accounts. AI remains out of the launch scope (DEC-46) until a new decision.
 
-**Decisão:** O app mobile do agente de campo (`mobile/` no monorepo `Agesto-Platform/Agesto`) usa **React Native + TypeScript via Expo (prebuild)**, com **Expo Router** para navegação, tokens de design portados do protótipo aprovado (azul `#243FA6` + verde `#12B886`, tema claro), e uma tab bar (Início/Agenda/Atendimentos/Clientes/Mais). Estilização via **theme + StyleSheet** — não NativeWind. Persistência offline via **`expo-sqlite`** no device, atrás de uma interface própria (`LocalDb`), com adapter em memória para Web/testes. Cliente de API com envelope padrão + tratamento de 401, e uma **camada de mock em código** (`config.useMocks`), análoga ao `VITE_USE_MOCKS` do web (DEC-25). Login JWT com token guardado via `expo-secure-store` (device) ou `localStorage` (web), split por plataforma.
+**Decision:** AI is native and paid per use by the SaaS operator (Davi), not BYOK. A single API key (Anthropic Claude) lives on the server; all tenants use this key; the per-token cost is built into the plan's monthly fee. Every subscribing customer has access to AI.
 
-**Contexto:** Assim como o front web (DEC-25), o mobile precisou ser construído antes do banco Supabase novo estar pronto e antes de o backend do domínio Prestador de Serviço (KAN-69) estar mergeado/aplicado. A camada de mock em código replica a mesma filosofia do MSW do web — consumir o contrato real da API, mockado, com troca por uma flag.
+**Discarded alternatives:**
+- **BYOK** (customer brings their own token) — discarded in DEC-03; it breaks the "every customer has AI" proposition.
+- **Free AI / self-hosted open model (Llama/Mistral via Ollama)** — discarded for the MVP: "free" shifts the cost to infra (a 24/7 GPU server) and ops, unworkable for a solo dev, with lower quality. Paying per use is cheaper at a micro-ERP's volume (an analysis costs cents with an economy model) and has zero fixed infra.
 
-**React Native em vez de Flutter:** decisão de stack — coesão em TypeScript com o web (reúso de tipos e lógica), e menor superfície de manutenção para dev solo (ver `project_solo_dev`).
+**Cost controls (AI spends the operator's money):**
+- Economy model (e.g. Claude Haiku) for the common case; a more capable model only where deep reasoning is needed.
+- Prompt caching for repeated context.
+- Usage limit per company per plan (smaller free tier, larger paid plan).
+- Usage tracking per `EmpresaId` (the `TenantUsage` already planned in DEC-03) to know who consumes what and charge accordingly.
 
-**Expo (prebuild) em vez de bare React Native puro:** tooling mais rápido para dev solo, mantendo acesso a módulos nativos (`expo-sqlite`, `expo-secure-store`) via prebuild quando necessário.
+**Security (kept from DEC-03):** key only on the server (never on the front end/mobile, never in the tenant's `Configuracao`); mask CPF and sensitive data before sending to the model; multi-tenant isolation by `EmpresaId` in every query that feeds the prompt; read-only in the MVP (the AI reads and suggests, never writes).
 
-**`expo-sqlite` atrás de interface (`LocalDb`), com dois adapters — decisão de arquitetura:**
-- `index.native.ts` — `expo-sqlite`, usado no device (Android/iOS)
-- `index.ts` — adapter em memória, usado no Expo Web e em testes (Jest não roda `expo-sqlite` nativo)
+**Open point:** ✅ RESOLVED on 20/07/2026. Owner's decision (solo dev, Davi): the AI layer runs **inside the C# backend**, using the official Anthropic SDK — not a separate Python/FastAPI service (original design, KAN-30). Reason: it removes an extra codebase for a solo dev, reducing the operational surface (see `project_solo_dev`). Consequence: the "Módulo IA/Insights (Python)" epic (KAN-30) becomes **obsolete** — see TASKS.md.
 
-Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest sem um device físico/emulador Android, mantendo o mesmo contrato de dados nos dois ambientes.
-
-**`theme + StyleSheet` em vez de NativeWind:** decisão de robustez sobre conveniência — evita uma camada de build adicional (Tailwind-in-RN) e mantém estilos tipados e previsíveis, alinhados aos tokens do protótipo.
-
-**Ciclo offline-first (Carga/Descarga), reaproveitando os endpoints do backend (KAN-60):**
-- **Carga:** login → popula o banco local com clientes/produtos/serviços/configuração. A agenda **não** vem na Carga — um passo adicional `syncAgenda` busca e cacheia `GET /api/atendimento/agenda` separadamente (ver DEC-17, delta de backend).
-- **Registro offline:** cliente + itens de catálogo por quantidade (contrato enxuto) + status → salvo localmente como pendente (`SyncedAt = null`).
-- **Descarga:** empurra clientes pendentes e atendimentos pendentes para o servidor, marca como sincronizado ao confirmar.
-
-**Deltas de backend identificados durante a construção (não resolvidos nesta decisão, registrados como pendência — ver TASKS.md):**
-1. A Carga (`GET /api/sync/carga`) deveria idealmente incluir a agenda, evitando o passo `syncAgenda` à parte no mobile.
-2. Um atendimento criado offline não pode referenciar um cliente também criado offline (`PendingCliente`), porque o atendimento local não tem o id de servidor do cliente antes da sincronização. Resolver exigiria mapear uuid→id do cliente durante a Descarga.
-
-**Verificação sem device Android:** todo o ciclo foi validado no **Expo Web** (login demo `agente@agesto.app` / `agesto123`) mais build/lint (`tsc`, `expo lint`) e 15 testes Jest (jest-expo) verdes. Teste de componente React Native (`@testing-library/react-native`) foi adiado — incompatibilidade de versão entre a lib v14, jest-expo e React 19 nesta janela de tempo.
-
-**Alternativas descartadas:**
-- Flutter → descartado por fragmentar a stack (Dart vs TypeScript), sem reúso de tipos/lógica com o web, pior para manutenção solo.
-- NativeWind → descartado em favor de `theme + StyleSheet` (ver acima).
-- Testar exclusivamente em device/emulador Android → descartado como único caminho de verificação; Expo Web serve como ambiente de verificação rápido e reprodutível neste momento do projeto.
-
-**Resolução aplicada:** 7 tasks incrementais (mob-01 a mob-07) — scaffold, camada de dados offline, cliente de API + mock + auth, Home action-first, registrar atendimento, Clientes (lista + cadastro rápido offline), Descarga + aba "Mais" com status de sync. Build/lint/testes verdes. Revisão própria (agente `revisor-frontend`) corrigiu invalidação de auth em 401 da API real e uma guarda de desmontagem. Ver TASKS.md para a tabela de commits/detalhes e as pendências residuais.
+**Implementation (10/11/2026):**
+- `POST /api/insights`: period report in four blocks (summary, highlights, alerts and recommendations), with structured output. `POST /api/agente/perguntar`: chat of the Agente panel on the web. Both for the Dono only.
+- Default model `claude-haiku-5-5` (the economy model of this decision), swappable through `Insights__Modelo` without changing code. Key in `Insights__AnthropicApiKey` on Render; without it, the endpoints answer 503.
+- The model receives only the period's already computed metrics (DEC-20). In the chat, it also receives the schedule for the next 7 days without the client's name, phone or address.
+- Read-only: the AI does not create, change or delete anything.
+- Cost controls delivered: limit per company (10 reports and 30 questions per hour) and token consumption logged per `EmpresaId`. Pending: the consumption table (`TenantUsage`) and the per-plan limit.
+- **Daily limit and consumption (13/11/2026, requested by Davi):** each company has up to **20 questions per day** to the Agente (Brasília day; `Insights__PerguntasPorDia` changes the number without touching code). The `UsosIa` table is the `TenantUsage`: one row per company and day, with questions, reports and input and output tokens. The question is reserved before calling the model, in a single `INSERT ... ON CONFLICT` with the limit condition, so simultaneous questions cannot go past 20. If the model fails, the question is given back. Above the limit, the API answers 429 and the Agente panel locks the input box until the next day. `GET /api/agente/uso` shows how many are left, and the panel displays the counter. Insights reports are recorded, but do not count towards the limit of 20 (they keep the hourly limit). Per-plan limit: by Davi's decision (13/11/2026), it stays as is while there is only one plan (DEC-57); every company has 20. In production since release #177 (13/11/2026).
+- Manual security tests in production (data leakage, isolation between companies, injection through product name, write requests) passed on 10/11/2026.
 
 ---
 
-## DEC-27 — Parametrização: modo de agenda do agente e controle de estoque
+## DEC-22 — Service outside the catalog = quick registration (not an ephemeral line)
 
-**Status:** ✅ Resolvido — implementado (Plano 1, tasks param-01 a param-08, na `main`).
+**Status:** ✅ Resolved — implemented by design (commit `61a9c29`)
 
-**Contexto:** o produto atende tanto **prestadores solo** quanto **equipes**, e tanto quem **mantém estoque** de material (ex: instalador de AC) quanto quem **compra por serviço** (pass-through, sem inventário). Em vez de impor um comportamento único, dois eixos viram **parâmetros por Empresa**, editáveis pelo Dono em **Parametrização** (web).
+**Decision:** When a service comes up that is not in the catalog, the provider does a **quick registration** that creates a reusable `Servico` (catalog) entity, and then adds the item normally. There is NO "ephemeral ad hoc service" (a line with a null `ServicoId`). Therefore `ItemServico.ServicoId` remains **mandatory**. No schema change — it reuses the existing `POST /api/servico`.
 
-**Decisão — dois campos novos em `Configuracao`:**
+**Context:** A deliberate contrast with the **ad hoc product** (DEC-18): a product/material bought at the store on the spot (e.g. a TV bracket) is genuinely one-off and stays as an ephemeral line (null `ProdutoId` + free description), so as not to pollute the product catalog. Services, on the other hand, tend to repeat and need to show up in the metrics (revenue per service type, margin/hour — DEC-20/KAN-77 layer). An ephemeral service would not enter these rankings. That is why a service becomes catalog; an ad hoc product does not.
+
+**Discarded alternative:** `ItemServico` with a null `ServicoId` + free description (ephemeral service line) — discarded because the service would be lost in the metrics and reuse/profitability history would be impossible.
+
+**Implications:** intentional asymmetry: ephemeral ad hoc product vs service always in the catalog. "Quick service registration" UX in the atendimento flow (frontend/mobile), but no new backend.
+
+**Resolution applied:** no schema change was needed — `ItemServico.ServicoId` remains mandatory, as decided. Commit `61a9c29` (the same batch that delivered DEC-18/19/23) only confirms that the backend behavior is already aligned with this decision; the quick registration itself is a UX responsibility on frontend/mobile, not built yet.
+
+---
+
+## DEC-23 — Item value is editable in the atendimento; the catalog is only a suggestion
+
+**Status:** ✅ Resolved — implemented (commit `61a9c29`)
+
+**Decision:** The value of any atendimento item (product or service) becomes **typed/editable during the atendimento**. The catalog value (`Produto.Preco`, `Servico.ValorHora`, `Servico.ValorEmpreitada`) becomes just a **suggestion/pre-fill**; the provider can override it depending on difficulty/situation (e.g. the same service costs more in a difficult case).
+
+**Context:** The same service can have different prices depending on the situation; forcing the catalog value made this rigid.
+
+**Relation to earlier decisions:**
+- **DEC-05** (PrecoUnitario snapshot) still applies: the value stays frozen in the atendimento history. The change is that it is now **entered/editable**, not just inherited from the catalog.
+- **DEC-04** (Empreitada = fixed ValorEmpreitada, ignores quantity): becomes "the catalog pre-fills this value, but the provider can adjust it". The rule of not multiplying by quantity remains the default behavior.
+
+**Implications:** `ItemProdutoService`/`ItemServicoService` no longer derive the `Subtotal` strictly from the catalog — they accept the value provided (with the catalog as the default). Applies to product and service items.
+
+**Resolution applied:** `PrecoUnitario` became optional in the `ItemProduto` and `ItemServico` requests; when provided, it overrides the default from the catalog. Commit `61a9c29`.
+
+---
+
+## DEC-24 — Product renamed to "Agesto" and its own public repository
+
+**Status:** ✅ Resolved — 04/08/2026 (owner's decision, solo dev)
+
+**Decision:** The product is now called **Agesto** (formerly "Micro-ERP Auto"). The code now lives in a **new repository of its own, public**, separate from the original academic repository (`Auto-academic-erp/micro-erp-auto`), which was created by another group member and is abandoned as legacy.
+
+**Governance update — 19/08/2026:** the repository was transferred to the organization and renamed to [`Agesto-Platform/Agesto`](https://github.com/Agesto-Platform/Agesto), preserving history, branches, pull requests and CI.
+
+**Origin of the name:** a brand coined from Latin roots — *agere* (to act, to operate) + *gestio* (to manage, management) → **Agesto**. Chosen for sounding serious/international (avoiding Portuguese names, perceived as informal) and for being "ownable" (no prior meaning, making trademark registration easier). "Auto" was discarded for being generic and probably not registrable.
+
+**Commercial + portfolio strategy (same repo):**
+- **Public repository** — serves as a portfolio; the README is the key piece (problem, architecture, decisions, screenshots, green tests).
+- **Restrictive license, not permissive** — proprietary ("All Rights Reserved") or source-available (BSL/PolyForm Noncommercial), so the code can be read but not used commercially by third parties. **Never MIT/Apache** for this product.
+- **Secret hygiene (non-negotiable):** `.gitignore` for `appsettings.*.json`/`.env`; commit only examples (`appsettings.Example.json`); never the Postgres connection string, the Supabase key or the JWT `SymmetricSecurityKey`. Scan the history before publishing.
+- When the product matures commercially (paying customer/partner/investor), the repository can become **private** with one click, without rework.
+
+**Pending validation:** check domain availability (`.com`/`.com.br`) and trademark registration at INPI before investing in the final visual identity.
+
+**Scope note:** the code identifiers (`MicroERP.Api`, `MicroERP.Tests`, `MicroERP.*` namespaces) are **not** renamed at this time — it is a mechanical refactor of low value/high risk of noise in the history; it is left for a future cleanup, if and when it makes sense. The rename here is of **product/brand and repository**, not of namespace.
+
+---
+
+## DEC-25 — Web Frontend stack and architecture (Dono Module)
+
+**Status:** ✅ Resolved — implemented (web-01 to web-12, integrated into `main` on 04/08/2026)
+
+**Decision:** The Dono's web frontend (`web/` in the `Agesto-Platform/Agesto` monorepo) uses **Vite + React 19 + TypeScript**, **Tailwind CSS v4** (CSS-first config via `@theme`, tokens ported from the approved prototype `web-dono.html`), **React Router**, **TanStack Query** for server data, **MSW** (Mock Service Worker) as a stateful mock layer while there is no real database/API online, and **Recharts** for charts. Lint via oxlint.
+
+**Context:** The front end had to be built before the new Supabase database was ready (see `project_banco_supabase`). To avoid being blocked on the real schema, the team chose to consume the real API contract (DTOs mirrored in `types/api.ts`) against a stateful mock (MSW), allowing a switch to the real API by changing just one env var.
+
+**Folder architecture decisions:** each business resource lives in `features/<name>/` (Clientes, Produtos, Serviços, Agenda, Orçamentos, Atendimentos, Configuração); reusable UI kit in `components/ui/` (Drawer slide-over, DataTable, ConfirmDialog, TextField/NumberField/SelectField, Toast, Card, Kpi, Money, Pill, RankBar, Alert); `lib/api.ts` unwraps the `ApiResponse` envelope and injects the Bearer token, handling 401; `lib/resource.ts` provides the `createResource` factory (list/create/update/delete with automatic TanStack Query invalidation); stateful mock in `mocks/lib/http.ts` (`makeStore` + `crudHandlers`).
+
+**Forms in a side drawer (slide-over)**, not in a central modal or a full page — a UX decision to keep the list context visible while editing.
+
+**Data switch seam:** the env var `VITE_USE_MOCKS=true|false` turns MSW on/off. Turning it off points straight to the real API via `VITE_API_BASE_URL`, with no code change at all in the features.
+
+**Backend delta solved in the front end (not in the backend):** `GET /api/atendimento` (the real `AtendimentoResponse`) replaced the old fictitious "AtendimentoResumo" format that only existed in the presentation. Since the API returns only `clienteId` (not the client's name), the name is resolved in the front end by joining with the already loaded client list. If this becomes a performance bottleneck, the alternative is to expose `clienteNome` directly in the backend (not decided yet).
+
+**Discarded alternatives:**
+- Waiting for the real database/API to be ready before starting the front end → discarded, it would delay the schedule unnecessarily; the API contract was already stable enough to mock.
+- Central modal for forms → discarded in favor of the side drawer, which preserves the list context.
+
+**Dependency security:** `react-router-dom` pinned at `7.18.2` — there is a known advisory for RSC mode, accepted as a risk because the project does not use RSC.
+
+**Demo login (mock):** `dono@agesto.app` / `agesto123`.
+
+**Resolution applied:** 12 incremental tasks (web-01 to web-12), all with green build+lint, delivering the scaffold, app shell, API client + mock, JWT authentication, the "Visão geral" (overview) dashboard, the CRUD foundation + Clientes, Produtos, Serviços, Agenda, Orçamentos, Atendimentos and Parametrização.
+
+**Later update:** Relatórios stopped being a placeholder in web-13 and the suite was expanded in web-14 and the following changes. The Dono Module has a functional MVP and runs in production against the real API since DEC-32; MSW is kept for local development.
+
+---
+
+## DEC-26 — Mobile stack and architecture (Agent App)
+
+**Status:** ✅ Resolved — implemented (mob-01 to mob-07, integrated into `main` on 11/08/2026). The two backend deltas below: the uuid→id mapping was resolved by DEC-33; the schedule in the Carga is still pending
+
+**Decision:** The field agent's mobile app (`mobile/` in the `Agesto-Platform/Agesto` monorepo) uses **React Native + TypeScript via Expo (prebuild)**, with **Expo Router** for navigation, design tokens ported from the approved prototype (blue `#243FA6` + green `#12B886`, light theme), and a tab bar (Início/Agenda/Atendimentos/Clientes/Mais). Styling via **theme + StyleSheet** — not NativeWind. Offline persistence via **`expo-sqlite`** on the device, behind its own interface (`LocalDb`), with an in-memory adapter for Web/tests. API client with the standard envelope + 401 handling, and an **in-code mock layer** (`config.useMocks`), analogous to the web's `VITE_USE_MOCKS` (DEC-25). JWT login with the token stored via `expo-secure-store` (device) or `localStorage` (web), split by platform.
+
+**Context:** Like the web front end (DEC-25), mobile had to be built before the new Supabase database was ready and before the Service Provider domain backend (KAN-69) was merged/applied. The in-code mock layer follows the same philosophy as the web's MSW — consume the real API contract, mocked, switchable by a flag.
+
+**React Native instead of Flutter:** a stack decision — TypeScript cohesion with the web (reuse of types and logic), and a smaller maintenance surface for a solo dev (see `project_solo_dev`).
+
+**Expo (prebuild) instead of plain bare React Native:** faster tooling for a solo dev, keeping access to native modules (`expo-sqlite`, `expo-secure-store`) via prebuild when needed.
+
+**`expo-sqlite` behind an interface (`LocalDb`), with two adapters — architecture decision:**
+- `index.native.ts` — `expo-sqlite`, used on the device (Android/iOS)
+- `index.ts` — in-memory adapter, used on Expo Web and in tests (Jest does not run native `expo-sqlite`)
+
+Reason: allows checking the app end to end on Expo Web and running Jest tests without a physical Android device/emulator, keeping the same data contract in both environments.
+
+**`theme + StyleSheet` instead of NativeWind:** robustness over convenience — avoids an extra build layer (Tailwind-in-RN) and keeps styles typed and predictable, aligned with the prototype's tokens.
+
+**Offline-first cycle (Carga/Descarga), reusing the backend endpoints (KAN-60):**
+- **Carga:** login → fills the local database with clients/products/services/configuration. The schedule does **not** come in the Carga — an additional `syncAgenda` step fetches and caches `GET /api/atendimento/agenda` separately (see DEC-17, backend delta).
+- **Offline recording:** client + catalog items by quantity (lean contract) + status → saved locally as pending (`SyncedAt = null`).
+- **Descarga:** pushes pending clients and pending atendimentos to the server, marks them as synced on confirmation.
+
+**Backend deltas found during the build (not resolved in this decision, recorded as pending — see TASKS.md):**
+1. The Carga (`GET /api/sync/carga`) should ideally include the schedule, avoiding the separate `syncAgenda` step on mobile.
+2. An atendimento created offline cannot reference a client also created offline (`PendingCliente`), because the local atendimento does not have the client's server id before sync. Solving it would require mapping the client's uuid→id during the Descarga.
+
+**Verification without an Android device:** the whole cycle was validated on **Expo Web** (demo login `agente@agesto.app` / `agesto123`) plus build/lint (`tsc`, `expo lint`) and 15 green Jest tests (jest-expo). React Native component testing (`@testing-library/react-native`) was postponed — version incompatibility between lib v14, jest-expo and React 19 in this time window.
+
+**Discarded alternatives:**
+- Flutter → discarded for fragmenting the stack (Dart vs TypeScript), with no reuse of types/logic with the web, worse for solo maintenance.
+- NativeWind → discarded in favor of `theme + StyleSheet` (see above).
+- Testing only on an Android device/emulator → discarded as the only verification path; Expo Web serves as a fast and reproducible verification environment at this point in the project.
+
+**Resolution applied:** 7 incremental tasks (mob-01 to mob-07) — scaffold, offline data layer, API client + mock + auth, action-first Home, record atendimento, Clientes (list + quick offline registration), Descarga + "Mais" tab with sync status. Build/lint/tests green. Self-review (`revisor-frontend` agent) fixed auth invalidation on a 401 from the real API and an unmount guard. See TASKS.md for the table of commits/details and the remaining open items.
+
+---
+
+## DEC-27 — Parametrização: agent schedule mode and stock control
+
+**Status:** ✅ Resolved — implemented (Plan 1, tasks param-01 to param-08, in `main`).
+
+**Context:** the product serves both **solo providers** and **teams**, and both those who **keep stock** of material (e.g. AC installer) and those who **buy per service** (pass-through, no inventory). Instead of imposing a single behavior, two axes become **parameters per Empresa**, editable by the Dono in **Parametrização** (web).
+
+**Decision — two new fields in `Configuracao`:**
 1. `ModoAgendaAgente` (enum `{ Flexivel, Fixa }`, default `Flexivel`):
-   - **Flexível (solo):** o agente registra atendimento *agora* **ou** agenda para o futuro (data + hora), direto do app.
-   - **Fixa (equipe):** o agente segue a agenda montada pelo Dono; **não cria agendamento futuro**. **Walk-in liberado** (registrar atendimento avulso *agora* continua permitido — decisão do dono).
+   - **Flexível (solo):** the agent records an atendimento *now* **or** schedules it for the future (date + time), straight from the app.
+   - **Fixa (team):** the agent follows the schedule built by the Dono; **does not create future appointments**. **Walk-in allowed** (recording an ad hoc atendimento *now* is still allowed — owner's decision).
 2. `ControlaEstoque` (bool, default `true`):
-   - **true:** itens de produto de catálogo baixam/devolvem estoque e validam saldo (comportamento atual, DEC-11/DEC-18).
-   - **false:** o catálogo de produtos vira uma **lista de materiais com preço/custo**, sem baixa nem validação. Atende o prestador pass-through, mantendo os materiais como `Produto` de catálogo (id estável, reutilizável, com custo — pré-requisito do futuro "kit de materiais", ver DEC-28/Plano 2).
+   - **true:** catalog product items deduct/return stock and validate the balance (current behavior, DEC-11/DEC-18).
+   - **false:** the product catalog becomes a **list of materials with price/cost**, without deduction or validation. Serves the pass-through provider, keeping materials as catalog `Produto` (stable id, reusable, with cost — prerequisite of the future "materials kit", see DEC-28/Plan 2).
 
 **Enforcement:**
-- O **default é sempre seguro** (`ControlaEstoque = true`, `ModoAgendaAgente = Flexivel`) em todos os caminhos onde a config pode faltar; a migration seta `ControlaEstoque = true` para empresas existentes.
-- `ControlaEstoque` é gateado no backend nos **5 pontos de mutação de estoque** (criar/editar/remover item de produto, cancelar atendimento, importar na Descarga).
-- `Fixa` tem **enforcement de servidor** (param-08): a Descarga **ignora `DataAgendada`** vinda do agente quando a empresa é `Fixa` — defesa contra payload forjado, além do gating no app. O caminho **online** de atendimento (`AtendimentoController`) permanece livre por ser a ferramenta do **Dono** (montar a agenda é papel dele).
+- The **default is always safe** (`ControlaEstoque = true`, `ModoAgendaAgente = Flexivel`) on every path where the config may be missing; the migration sets `ControlaEstoque = true` for existing companies.
+- `ControlaEstoque` is gated in the backend at the **5 stock mutation points** (create/edit/remove product item, cancel atendimento, import in the Descarga).
+- `Fixa` has **server enforcement** (param-08): the Descarga **ignores `DataAgendada`** coming from the agent when the company is `Fixa` — defense against a forged payload, on top of the gating in the app. The **online** atendimento path (`AtendimentoController`) stays open because it is the **Dono's** tool (building the schedule is their role).
 
-**Fluxo até o mobile:** a `Configuracao` passou a viajar na **Carga** (`SyncCargaResponse.Configuracao`) — antes ela não ia. O mobile persiste em `meta` (`appConfig`) com default seguro e usa para: mostrar/ocultar o modo "Agendar" no registrar e o CTA "+ Agendar" na aba Agenda; ocultar o hint de estoque. O contrato offline (`AtendimentoSyncRequest`) ganhou `DataAgendada` (antes era descartada entre device e servidor).
+**Flow to mobile:** `Configuracao` now travels in the **Carga** (`SyncCargaResponse.Configuracao`) — before, it did not. Mobile persists it in `meta` (`appConfig`) with a safe default and uses it to: show/hide the "Agendar" mode when recording and the "+ Agendar" CTA in the Agenda tab; hide the stock hint. The offline contract (`AtendimentoSyncRequest`) gained `DataAgendada` (before, it was dropped between device and server).
 
-**Escopo:** parâmetro por **Empresa** (não por Usuário/agente — granularidade por agente fica como evolução futura). Custo/insumo no mobile continua **web-only** por ora (opção 2a): o Dono ajusta margem/custo no web; o agente só lança catálogo.
+**Scope:** parameter per **Empresa** (not per Usuário/agent — per-agent granularity is a future evolution). Cost/supplies on mobile remain **web-only** for now (option 2a): the Dono adjusts margin/cost on the web; the agent only records catalog items.
 
-**Revisão:** `@revisor` (backend) e `@revisor-frontend` — ambos **aprovados**, sem achados críticos/importantes; sugestões aplicadas (mock de estoque explícito em teste, `appConfig.test.ts`, fim do flicker do toggle). Backend 83 testes, mobile 25, web 17 — verdes.
+**Review:** `@revisor` (backend) and `@revisor-frontend` — both **approved**, with no critical/important findings; suggestions applied (explicit stock mock in a test, `appConfig.test.ts`, end of the toggle flicker). Backend 83 tests, mobile 25, web 17 — green.
 
-**Pendência residual:** granularidade do parâmetro por agente (hoje por empresa); custo/insumo no mobile (opção 2b, se um dia fizer sentido).
-
----
-
-## DEC-28 — Kit de materiais sugeridos por serviço
-
-**Status:** ✅ Resolvido — implementado (Plano 2, tasks kit-01 a kit-06, na `main`).
-
-**Contexto:** certos serviços sempre consomem os mesmos materiais (ex: instalar lava-roupas usa Ts, cotovelos, veda-rosca). Reintroduzi-los à mão em cada orçamento/atendimento é repetitivo e propenso a esquecimento (que sangra estoque e margem).
-
-**Decisão — "kit" de materiais por Serviço:**
-- Nova entidade `ServicoItemSugerido` (`EmpresaId`, `ServicoId`, `ProdutoId`, `QuantidadePadrao`), com índice único `(ServicoId, ProdutoId)`. Sem soft delete: o `PUT` **substitui o conjunto** inteiro (delete-all + insert), escopado por `EmpresaId + ServicoId`.
-- Os materiais são sempre **Produto de catálogo** (id estável, reutilizável, com preço/custo). Se baixam estoque ou não depende de `ControlaEstoque` (DEC-27) — resolvendo o caso pass-through vs quem estoca.
-- Endpoints `GET`/`PUT /api/servico/{id}/sugeridos`. Service valida tenant (serviço e cada produto pertencem à empresa) e faz dedupe por `ProdutoId` (última quantidade vence).
-
-**Como se popula (decisão de UX):** **curado** pelo Dono na tela de Serviço (funciona desde o dia 1) **+ atalho "salvar materiais como sugeridos"** a partir de um atendimento real (constrói o kit pelo uso concreto — o "usados anteriormente" que o dono pediu — sem motor de frequência). Histórico automático foi **descartado** por ora.
-
-**Onde aparece:**
-- **Web (Dono):** editor "Materiais que costuma usar" no Serviço; bloco "Materiais sugeridos (n)" com 1 clique ao lançar o serviço num **Orçamento** e **Atendimento**; atalho "salvar como sugeridos".
-- **Mobile (Agente):** os sugeridos viajam na **Carga** (`SyncCargaResponse.Sugeridos`, achatados) e ficam offline (`meta`); no registrar, um chip **"+ Materiais sugeridos (n)"** soma os materiais dos serviços selecionados ao produtoQty em 1 toque (`Math.max` na quantidade).
-
-**Revisão:** auto-revisão (revisores bloqueados por limite de sessão nesta janela; "revisão própria" como na DEC-26). Achado e corrigido 1 bug: o editor de kit no web reescrevia edições não salvas num refetch de foco — corrigido com guarda de dirty + `refetchOnWindowFocus: false`. Backend 90 testes, mobile 29, web 17 — verdes.
-
-**Pendência residual:** no Atendimento web, o "Adicionar" dispara as mutations em paralelo (falha parcial não tratada — baixo risco); custo/insumo no mobile segue web-only (DEC-27, opção 2a).
+**Remaining open item:** per-agent granularity of the parameter (today per company); cost/supplies on mobile (option 2b, if it ever makes sense).
 
 ---
 
-## DEC-29 — Retomada do desenvolvimento em equipe e propriedade organizacional
+## DEC-28 — Suggested materials kit per service
 
-**Status:** 🟡 Em implementação — organização, transferência e equipe concluídas em 19/08/2026; ruleset `Protected branches` ativo (revisto em 10/10/2026); formalização jurídica ainda pendente
+**Status:** ✅ Resolved — implemented (Plan 2, tasks kit-01 to kit-06, in `main`).
 
-**Decisão:** O Agesto deixa de operar como projeto mantido por uma única pessoa e volta ao desenvolvimento em equipe. Davi continua responsável pelas decisões de produto. O repositório foi transferido para a organização `Agesto-Platform`, preservando histórico, branches e contribuições.
+**Context:** certain services always consume the same materials (e.g. installing a washing machine uses Ts, elbows, thread seal tape). Re-entering them by hand in every quote/atendimento is repetitive and prone to omissions (which bleed stock and margin).
 
-**Motivo:** embora o MVP tenha avançado sob desenvolvimento individual, a continuidade comercial exige revisão humana, divisão de responsabilidades, continuidade de acesso e capacidade de evolução paralela.
+**Decision — a materials "kit" per Serviço:**
+- New entity `ServicoItemSugerido` (`EmpresaId`, `ServicoId`, `ProdutoId`, `QuantidadePadrao`), with a unique index `(ServicoId, ProdutoId)`. No soft delete: the `PUT` **replaces the whole set** (delete-all + insert), scoped by `EmpresaId + ServicoId`.
+- Materials are always a **catalog Produto** (stable id, reusable, with price/cost). Whether they deduct stock or not depends on `ControlaEstoque` (DEC-27) — solving the pass-through vs stock-keeper case.
+- Endpoints `GET`/`PUT /api/servico/{id}/sugeridos`. The Service validates the tenant (the service and each product belong to the company) and dedupes by `ProdutoId` (last quantity wins).
 
-**Regras iniciais:**
-- monorepo mantido enquanto backend, web e mobile evoluírem de forma acoplada;
-- fluxo `feature/* → develop → main` por pull request;
-- `develop` e `main` protegidas por PR obrigatório e pelos checks Backend, Web e Mobile, sem aprovação obrigatória (revisto em 10/10/2026);
-- permissões concedidas por função e com privilégio mínimo;
-- documentação oficial versionada em `docs/project/`;
-- equipe fundadora registrada como Davi Gomes Rocha (Founder e Product Owner), Depowo (Cofounder, foco inicial em infraestrutura) e ghzpro034 (Cofounder, atuação generalista);
-- Davi e Depowo como Owners da organização; ghzpro034 como Member com acesso Write pelo time visível `Core`;
-- propriedade intelectual e responsabilidades definitivas por módulo ainda precisam ser formalizadas.
+**How it is filled (UX decision):** **curated** by the Dono on the Serviço screen (works from day 1) **+ the "salvar materiais como sugeridos" (save materials as suggested) shortcut** from a real atendimento (builds the kit from actual use — the "used before" the owner asked for — without a frequency engine). Automatic history was **discarded** for now.
 
-**Impacto em decisões anteriores:** menções a “dev solo” permanecem como contexto histórico da decisão original e não representam a composição atual. A escolha de React Native, C# e monorepo não muda automaticamente com a retomada da equipe; qualquer revisão será uma nova decisão explícita.
+**Where it shows up:**
+- **Web (Dono):** "Materiais que costuma usar" (materials you usually use) editor on the Serviço; a "Materiais sugeridos (n)" block with 1 click when adding the service to an **Orçamento** and **Atendimento**; "salvar como sugeridos" shortcut.
+- **Mobile (Agente):** the suggested items travel in the **Carga** (`SyncCargaResponse.Sugeridos`, flattened) and stay offline (`meta`); when recording, a **"+ Materiais sugeridos (n)"** chip adds the selected services' materials to produtoQty in 1 tap (`Math.max` on the quantity).
 
----
+**Review:** self-review (reviewers blocked by the session limit in this window; "self-review" as in DEC-26). 1 bug found and fixed: the kit editor on the web overwrote unsaved edits on a focus refetch — fixed with a dirty guard + `refetchOnWindowFocus: false`. Backend 90 tests, mobile 29, web 17 — green.
 
-## DEC-30 — Hospedagem do MVP em tiers gratuitos: Cloudflare Pages + Oracle Cloud + Supabase
-
-**Status:** ⚠️ Parcialmente substituída pela DEC-32 em 08/10/2026 — a web segue na Cloudflare Pages; a API saiu da Oracle para o Render e o banco foi recriado no Supabase em N. Virginia
-
-**Decisão:** O MVP será hospedado apenas em tiers gratuitos:
-- **Web (Módulo Dono):** Cloudflare Pages, servindo o build estático do Vite.
-- **API (.NET 8):** VM Ampere A1 (ARM) do Oracle Cloud Always Free, com a API em container Docker atrás de um proxy reverso com HTTPS.
-- **Banco:** Supabase (PostgreSQL), plano Free, usado apenas como Postgres gerenciado; a autenticação continua sendo o JWT próprio da API.
-- **Região:** São Paulo para a API (`sa-saopaulo-1`, como home region da conta Oracle) e para o banco (Supabase South America), mantendo a API ao lado do banco.
-
-**Motivo:** custo zero na fase de MVP. A VM Oracle fica ligada 24h, sem cold start, e permite colocar a API no Brasil junto do banco. A Cloudflare Pages permite uso comercial no plano gratuito.
-
-**Alternativas descartadas:**
-- **Vercel Hobby** para a web → proíbe uso comercial.
-- **Render** para a API → sem região no Brasil e cold start de cerca de 1 minuto no plano gratuito.
-- **Google Cloud Run** para a API → exige cartão e cobrança fora da cota; preterido pela equipe.
-- **Azure App Service F1** → limite de 60 min de CPU por dia, sem suporte para produção.
-- **Neon** para o banco → equipe optou por manter Supabase, já usado no setup inicial (KAN-14).
-
-**Riscos e mitigações:**
-- **Pausa do Supabase Free** após 7 dias sem atividade → endpoint `/health` da API consulta o banco e é chamado periodicamente por um monitor externo.
-- **Sem backup automático no Supabase Free** → `pg_dump` periódico agendado, guardado fora do Supabase.
-- **Data API do Supabase expõe o schema `public`** pela API REST com a chave `anon` (pública) → Data API desativada no projeto; o banco é acessado só pela API .NET.
-- **Oracle recupera VMs ociosas de contas Always Free** (7 dias com CPU, rede e memória abaixo de 20%), e a API do MVP fica ociosa a maior parte do tempo → **conta convertida para Pay As You Go** com alerta de orçamento; a VM sai da regra de recuperação e segue sem custo dentro dos limites Always Free. A Oracle também alterou os limites sem aviso em 2026 (A1 reduzido para 2 OCPUs / 12 GB) → dimensionar dentro do limite atual e manter o deploy reproduzível (Dockerfile + compose em `deploy/oracle/`) para recriar a VM.
-- **Home region da Oracle é definitiva** e a capacidade A1 não é garantida → confirmar São Paulo na criação da conta.
-- **Domínio provisório:** enquanto não houver domínio próprio, a API usa `api.<IP>.sslip.io` para o HTTPS automático → IP público reservado na Oracle para o endereço não mudar; ao adotar domínio próprio, trocar a URL na web e no mobile.
-- **Operação da VM** (SO, Docker, HTTPS, firewall, atualizações) fica com a equipe de infraestrutura (Depowo).
-- **Segredos** (connection string, chave JWT) apenas em variáveis de ambiente na VM, nunca no Git.
-
-**Impacto em documentos anteriores:** substitui a menção a Azure em `docs/PROJETO_CONTEXTO.md` (contexto histórico) e define a hospedagem que `DESIGN.md` seção 8 deixava em aberto. O `SETUP_LOG.md`, registro histórico do Supabase de desenvolvimento original, foi removido em 21/10/2026 por conter dados pessoais de ex-integrantes; continua acessível no histórico do Git.
-
-**Revisão:** os tiers gratuitos não são recomendados pelos provedores para produção. Ao surgir receita, reavaliar Supabase Pro (sem pausa, com backup) e a hospedagem da API.
+**Remaining open item:** in the web Atendimento, "Adicionar" fires the mutations in parallel (partial failure not handled — low risk); cost/supplies on mobile remain web-only (DEC-27, option 2a).
 
 ---
 
-## DEC-31 — Migrations consolidadas numa `InitialCreate` única para o banco novo
+## DEC-29 — Return to team development and organizational ownership
 
-**Status:** ✅ Aplicada em 08/10/2026 no Supabase de São Paulo pelo SQL Editor; `__EFMigrationsHistory` contém só `20261008213822_InitialCreate` e as 12 tabelas foram conferidas. Com a DEC-32, o banco é recriado em N. Virginia com o mesmo script
+**Status:** 🟡 In progress — organization, transfer and team done on 19/08/2026; `Protected branches` ruleset active (revised on 10/10/2026); legal formalization still pending
 
-**Contexto:** ao gerar o script idempotente para o banco novo (DEC-30), constatou-se que a migration `20260618193156_ConvertEnumsToString` tem o `Up()` vazio: o schema correspondente tinha sido aplicado manualmente no Supabase antigo e a migration foi esvaziada só para alinhar o histórico. Num banco novo, o script rodaria sem erro, mas criaria o schema **sem a tabela `Empresas` e sem as colunas `EmpresaId`**. O snapshot do EF estava correto, por isso `has-pending-model-changes` não acusava nada.
+**Decision:** Agesto stops operating as a project maintained by a single person and returns to team development. Davi remains responsible for product decisions. The repository was transferred to the `Agesto-Platform` organization, preserving history, branches and contributions.
 
-**Decisão:** substituir as 10 migrations anteriores por uma `InitialCreate` única (`20261008213822_InitialCreate`), gerada a partir do modelo atual. Possível porque nenhum banco em uso depende do histórico antigo: o Supabase antigo será substituído.
+**Reason:** although the MVP advanced under individual development, commercial continuity requires human review, split responsibilities, continuity of access and the ability to evolve in parallel.
 
-**Verificação:** o `AppDbContextModelSnapshot.cs` gerado difere do anterior só pela correção de `ModoAgendaAgente` abaixo; o script tem as 12 tabelas, incluindo `Empresas`, e nenhuma operação destrutiva; build e 90 testes verdes.
+**Initial rules:**
+- monorepo kept while backend, web and mobile evolve in a coupled way;
+- `feature/* → develop → main` flow through pull requests;
+- `develop` and `main` protected by a required PR and by the Backend, Web and Mobile checks, without required approval (revised on 10/10/2026);
+- permissions granted by role and with least privilege;
+- official documentation versioned in `docs/project/`;
+- founding team recorded as Davi Gomes Rocha (Founder and Product Owner), Depowo (Cofounder, initial focus on infrastructure) and ghzpro034 (Cofounder, generalist role);
+- Davi and Depowo as Owners of the organization; ghzpro034 as Member with Write access through the visible `Core` team;
+- intellectual property and final responsibilities per module still need to be formalized.
 
-**Alternativa descartada:** reescrever à mão o `Up()` da `ConvertEnumsToString` espelhando o `Down()` (28 operações) → preservaria o histórico, mas com risco de erro manual sem como provar a equivalência com o modelo.
-
-**Divergências do modelo encontradas na revisão:**
-- `Configuracao.ModoAgendaAgente` era persistido como `integer`, sem `HasConversion<string>()`, contrariando o invariante de enums como string → **corrigido** na mesma migration (`varchar(10)`), aproveitando o banco ainda vazio.
-- `Orcamentos` e `ServicoItemSugeridos` têm `EmpresaId` indexado, mas sem chave estrangeira para `Empresas` → não alterado; aguarda decisão.
-
-**Regra a partir daqui:** nenhuma migration pode ter o `Up()` esvaziado para "sincronizar histórico". Mudança aplicada manualmente em algum banco deve ser revertida ou reproduzida pela migration.
-
----
-
-## DEC-32 — API no Render e banco no Supabase em N. Virginia
-
-**Status:** 🟢 Provisionado — API no Render (`agesto-api.onrender.com`) e banco no Supabase de N. Virginia em produção; ping do `/health` pelo Worker `agesto-keepalive` da Cloudflare a cada 5 min desde 11/11/2026 (antes, cron-job.org)
-
-**Decisão:** substitui a parte de API e banco da DEC-30:
-- **API (.NET 8; .NET 10 desde a DEC-40):** Render, plano Free, Web Service com o `Dockerfile` existente, configurado pelo `render.yaml` na raiz. Região **Virginia**. Publica a `main` (desde a DEC-41) só depois que o CI passa (`autoDeployTrigger: checksPass`).
-- **Banco:** projeto Supabase novo em **East US (N. Virginia)**, ao lado da API, com a mesma `InitialCreate` da DEC-31. O projeto de São Paulo deixa de ser usado.
-- **Web:** sem mudança, segue na Cloudflare Pages.
-
-**Motivo:** a VM da Oracle exige operação (SO, Docker, HTTPS, firewall) e, sem Pay As You Go, pode ser parada por ociosidade; com Pay As You Go, exige cartão. O Render não pede cartão nem servidor para manter.
-
-**Por que mudar o banco de região:** o Render não tem região no Brasil. Com a API em Virginia e o banco em São Paulo, cada consulta atravessaria EUA↔Brasil (~120 ms cada, várias por requisição). Com os dois em Virginia, o usuário no Brasil paga essa distância uma vez por requisição. A troca foi feita enquanto o banco ainda estava vazio.
-
-**Alternativas descartadas:**
-- **Manter Oracle** → operação da VM e risco de recuperação por ociosidade (ver DEC-30).
-- **Google Cloud Run** em São Paulo → exige cartão.
-- **Trocar a arquitetura da API** (TypeScript no Cloudflare Workers ou Supabase direto com RLS) → reescrever ~5.500 linhas e 51 endpoints já testados para resolver só a hospedagem; contraria o princípio de mudanças pequenas no MVP.
-
-**Riscos e mitigações:**
-- **API dorme após 15 min sem tráfego** e leva ~1 min para acordar → monitor externo chama `/health` (consome ~744 das 750 h mensais; não cabe um segundo serviço Free ligado 24h). Era o cron-job.org a cada 10 min; desde 11/11/2026 é o Worker `agesto-keepalive` da Cloudflare a cada 5 min, versionado em `deploy/keepalive/` (`deploy/README.md`, seção 6).
-- **Pausa do Supabase Free** após 7 dias sem atividade → o mesmo ping, porque o `/health` executa `SELECT 1`.
-- **512 MB de RAM e 0,1 CPU** → suficiente para o MVP; reavaliar no primeiro sinal de lentidão.
-- **Sem disco persistente** → a API não grava arquivos hoje; uploads futuros precisam de storage externo.
-- **SMTP bloqueado** no plano Free → envio de e-mail futuro por API HTTP.
-- **Latência Brasil↔EUA** (~120 ms por requisição) → aceita no MVP; o mobile é offline-first.
-
-**Impacto no código:** nenhum na lógica. `deploy/oracle/` foi removido (fica no histórico do Git); o passo a passo está em `deploy/README.md`.
-
-**Revisão:** ao surgir receita, reavaliar Render Starter (sem dormir) e Supabase Pro (sem pausa, com backup).
+**Impact on earlier decisions:** mentions of "solo dev" remain as historical context of the original decision and do not represent the current team. The choice of React Native, C# and monorepo does not change automatically with the team's return; any revision will be a new explicit decision.
 
 ---
 
-## DEC-33 — Sincronização confiável: Carga completa, Descarga por atendimento e cliente offline por UUID
+## DEC-30 — MVP hosting on free tiers: Cloudflare Pages + Oracle Cloud + Supabase
 
-**Status:** 🟢 Implementado em `develop` e `main` (PR #43, 10/10/2026)
+**Status:** ⚠️ Partially replaced by DEC-32 on 08/10/2026 — the web stays on Cloudflare Pages; the API moved from Oracle to Render and the database was recreated on Supabase in N. Virginia
 
-**Contexto:** revisão do ciclo Carga/Descarga encontrou perda de dados no mobile:
-- a Carga era incremental (`ultimaSincronizacao`), mas o app substitui a tabela local inteira a cada Carga — a partir da segunda sincronização, clientes/produtos/serviços sem alteração sumiam do device; exclusões (soft delete) nunca chegavam ao device;
-- o app marcava **todos** os pendentes como sincronizados, mesmo os que o servidor rejeitou (só reportados em `Erros`), perdendo-os;
-- a Descarga gravava o atendimento sem os itens inválidos (produto inexistente, estoque insuficiente), com `ValorTotal` menor; não validava `ClienteId` contra a empresa; quantidade negativa aumentava o estoque.
+**Decision:** The MVP will be hosted only on free tiers:
+- **Web (Dono Module):** Cloudflare Pages, serving the static Vite build.
+- **API (.NET 8):** Oracle Cloud Always Free Ampere A1 (ARM) VM, with the API in a Docker container behind a reverse proxy with HTTPS.
+- **Database:** Supabase (PostgreSQL), Free plan, used only as a managed Postgres; authentication remains the API's own JWT.
+- **Region:** São Paulo for the API (`sa-saopaulo-1`, as the Oracle account's home region) and for the database (Supabase South America), keeping the API next to the database.
 
-**Decisão:**
-1. **Carga sempre completa** no mobile (sem `ultimaSincronizacao`). O parâmetro continua aceito pelo backend, mas o app não o usa. Volume de catálogo do público-alvo torna o custo irrelevante; ganha-se propagação de exclusões sem tombstones.
-2. **Descarga tudo-ou-nada por atendimento:** cliente, itens, quantidades (> 0) e estoque (somado por produto) são validados antes de gravar; qualquer falha rejeita o atendimento inteiro, que segue pendente no device. Falha de um atendimento não bloqueia os demais da leva.
-3. **Confirmação explícita:** `SyncDescargaResponse` devolve `ClientesSincronizados` e `AtendimentosSincronizados` (importados agora ou já existentes). O device só marca como sincronizado o que estiver nessas listas.
-4. **UUID do cliente nasce no device:** `ClienteCreateRequest.Uuid` (opcional; ausente = gerado no servidor). Reenvio do mesmo cliente é idempotente.
-5. **Atendimento referencia cliente criado offline** por `AtendimentoSyncRequest.ClienteUuid` (`ClienteId` passa a ser opcional). Clientes são processados antes dos atendimentos na mesma leva; a resposta traz `ClientesMapeados` (uuid → id) e o device religa os atendimentos locais ao id do servidor. Cliente offline com CPF já existente é mapeado para o cliente existente (coerente com a DEC-06).
-6. O botão Sincronizar do mobile passa a fazer Descarga seguida de Carga + agenda, e informa quantos itens não foram enviados.
+**Reason:** zero cost in the MVP phase. The Oracle VM stays on 24h, with no cold start, and allows putting the API in Brazil next to the database. Cloudflare Pages allows commercial use on the free plan.
 
-**Impacto:** contrato da Descarga mudou — API e mobile precisam ser publicados juntos. Resolve as pendências "Mapear uuid→id do cliente na Descarga" (DEC-26) e a perda de dados acima. Testes: backend 127, mobile 32 — verdes.
+**Discarded alternatives:**
+- **Vercel Hobby** for the web → forbids commercial use.
+- **Render** for the API → no region in Brazil and a cold start of about 1 minute on the free plan.
+- **Google Cloud Run** for the API → requires a card and charges outside the quota; passed over by the team.
+- **Azure App Service F1** → 60 min of CPU per day limit, no support for production.
+- **Neon** for the database → the team chose to keep Supabase, already used in the initial setup (KAN-14).
 
+**Risks and mitigations:**
+- **Supabase Free pauses** after 7 days without activity → the API's `/health` endpoint queries the database and is called periodically by an external monitor.
+- **No automatic backup on Supabase Free** → scheduled periodic `pg_dump`, stored outside Supabase.
+- **Supabase Data API exposes the `public` schema** through the REST API with the (public) `anon` key → Data API turned off in the project; the database is accessed only through the .NET API.
+- **Oracle reclaims idle VMs from Always Free accounts** (7 days with CPU, network and memory below 20%), and the MVP API is idle most of the time → **account converted to Pay As You Go** with a budget alert; the VM is out of the reclaim rule and still costs nothing within the Always Free limits. Oracle also changed the limits without notice in 2026 (A1 reduced to 2 OCPUs / 12 GB) → size within the current limit and keep the deploy reproducible (Dockerfile + compose in `deploy/oracle/`) to recreate the VM.
+- **Oracle's home region is permanent** and A1 capacity is not guaranteed → confirm São Paulo when creating the account.
+- **Temporary domain:** while there is no own domain, the API uses `api.<IP>.sslip.io` for automatic HTTPS → public IP reserved on Oracle so the address does not change; when adopting an own domain, change the URL on the web and mobile.
+- **VM operation** (OS, Docker, HTTPS, firewall, updates) is with the infrastructure team (Depowo).
+- **Secrets** (connection string, JWT key) only in environment variables on the VM, never in Git.
+
+**Impact on earlier documents:** replaces the mention of Azure in `docs/PROJETO_CONTEXTO.md` (historical context) and defines the hosting that `DESIGN.md` section 8 left open. `SETUP_LOG.md`, the historical record of the original development Supabase, was removed on 21/10/2026 because it contained personal data of former members; it remains accessible in the Git history.
+
+**Review:** free tiers are not recommended by the providers for production. When revenue comes in, reassess Supabase Pro (no pause, with backup) and the API hosting.
 
 ---
 
-## DEC-34 — Endurecimento de segurança pós-auditoria
+## DEC-31 — Migrations consolidated into a single `InitialCreate` for the new database
 
-**Status:** 🟢 Implementado e validado em produção em 10/10/2026 (PRs #44 e #45)
+**Status:** ✅ Applied on 08/10/2026 to the São Paulo Supabase through the SQL Editor; `__EFMigrationsHistory` contains only `20261008213822_InitialCreate` and the 12 tables were checked. With DEC-32, the database is recreated in N. Virginia with the same script
 
-**Contexto:** auditoria de API, front, banco e infraestrutura com o sistema já em produção. Não havia vazamento ativo (Data API do Supabase desligada), mas havia brechas exploráveis: sem limite de tentativas, sem checagem de perfil, cadastro aberto, token irrevogável, dados pessoais completos no celular do agente.
+**Context:** when generating the idempotent script for the new database (DEC-30), we found that the `20260618193156_ConvertEnumsToString` migration has an empty `Up()`: the corresponding schema had been applied by hand to the old Supabase and the migration was emptied just to align the history. On a new database, the script would run without error, but would create the schema **without the `Empresas` table and without the `EmpresaId` columns**. The EF snapshot was correct, which is why `has-pending-model-changes` reported nothing.
 
-**Decisão:**
-1. **Cadastro fechado.** `POST /api/auth/register` só funciona com `Auth:RegistrationKey` configurada e enviada em `X-Registration-Key`; sem a chave, responde 404. Reabrir exige verificação de email (pendente).
-2. **Perfis no back.** Policy `Dono` em toda rota de gestão; o Agente usa só sync e a própria agenda. Um teste falha se uma action nova não declarar a policy.
-3. **Rate limiting** por IP no login e cadastro e por usuário no sync.
-4. **Token revalidado a cada requisição:** usuário excluído, de outra empresa ou com perfil alterado perde o acesso na hora, sem esperar o JWT expirar.
-5. **LGPD:** o Agente recebe CPF mascarado e orçamentos sem custo na Carga; cliente excluído é anonimizado (nome, CPF, telefone e endereço), mantendo a linha para o histórico.
-6. **Banco:** RLS em todas as tabelas sem acesso para `anon`/`authenticated`; a API conecta com o role `agesto_api` (só DML, `deploy/api-role.sql`) e TLS `VerifyFull` com a CA do Supabase.
+**Decision:** replace the 10 previous migrations with a single `InitialCreate` (`20261008213822_InitialCreate`), generated from the current model. Possible because no database in use depends on the old history: the old Supabase will be replaced.
 
-**Validação em produção (10/10/2026):**
-- Supabase: Data API desligada e `pg_graphql` não instalado (sem acesso público às tabelas); RLS ativo em todas as tabelas.
-- API: headers de segurança e HSTS presentes; cadastro responde 404; login e cadastro bloqueiam com 429 após o limite; payload acima do limite recusado com 413 (testado localmente).
-- Web (Cloudflare): CSP, `X-Frame-Options` e HSTS presentes; a CSP libera só a API usada pelo bundle de produção.
-- Banco: API conectando como `agesto_api` com `SSL Mode=VerifyFull`; CA do Supabase conferida com `openssl` nos poolers `aws-0` e `aws-1` de us-east-1. O `ssl = false` em `pg_stat_ssl` refere-se ao trecho interno pooler → Postgres.
-- Login, configuração, clientes, produtos, serviços, orçamentos, atendimentos, agenda, sync e dashboard respondendo 200 com a conta de teste depois de todas as mudanças.
+**Verification:** the generated `AppDbContextModelSnapshot.cs` differs from the previous one only by the `ModoAgendaAgente` fix below; the script has the 12 tables, including `Empresas`, and no destructive operation; build and 90 tests green.
 
-**Pendências:**
-- **Verificação de email** antes de reabrir o cadastro. Depende de provedor de envio com API HTTP (o Render bloqueia SMTP; sugestão: Resend) e de domínio próprio verificado.
-- **Backup automático** do banco (o plano Free do Supabase não faz).
-- ~~**Migração para .NET 10** (o .NET 8 perde suporte em 10/11/2026).~~ Feita na DEC-40.
+**Discarded alternative:** rewriting by hand the `Up()` of `ConvertEnumsToString` mirroring the `Down()` (28 operations) → would preserve the history, but with the risk of manual error and no way to prove equivalence with the model.
+
+**Model divergences found in the review:**
+- `Configuracao.ModoAgendaAgente` was persisted as `integer`, without `HasConversion<string>()`, going against the enums-as-string invariant → **fixed** in the same migration (`varchar(10)`), taking advantage of the still empty database.
+- `Orcamentos` and `ServicoItemSugeridos` have an indexed `EmpresaId`, but no foreign key to `Empresas` → not changed; awaiting a decision.
+
+**Rule from here on:** no migration may have its `Up()` emptied to "sync history". A change applied by hand to any database must be reverted or reproduced by the migration.
+
+---
+
+## DEC-32 — API on Render and database on Supabase in N. Virginia
+
+**Status:** 🟢 Provisioned — API on Render (`agesto-api.onrender.com`) and database on Supabase in N. Virginia in production; `/health` pinged by the Cloudflare Worker `agesto-keepalive` every 5 min since 11/11/2026 (before, cron-job.org)
+
+**Decision:** replaces the API and database part of DEC-30:
+- **API (.NET 8; .NET 10 since DEC-40):** Render, Free plan, Web Service with the existing `Dockerfile`, configured by the `render.yaml` at the root. Region **Virginia**. Deploys `main` (since DEC-41) only after CI passes (`autoDeployTrigger: checksPass`).
+- **Database:** new Supabase project in **East US (N. Virginia)**, next to the API, with the same `InitialCreate` from DEC-31. The São Paulo project is no longer used.
+- **Web:** no change, stays on Cloudflare Pages.
+
+**Reason:** the Oracle VM requires operation (OS, Docker, HTTPS, firewall) and, without Pay As You Go, can be stopped for idleness; with Pay As You Go, it requires a card. Render requires neither a card nor a server to maintain.
+
+**Why change the database region:** Render has no region in Brazil. With the API in Virginia and the database in São Paulo, each query would cross US↔Brazil (~120 ms each, several per request). With both in Virginia, the user in Brazil pays that distance once per request. The switch was made while the database was still empty.
+
+**Discarded alternatives:**
+- **Keep Oracle** → VM operation and risk of reclaim for idleness (see DEC-30).
+- **Google Cloud Run** in São Paulo → requires a card.
+- **Change the API architecture** (TypeScript on Cloudflare Workers or Supabase directly with RLS) → rewriting ~5,500 lines and 51 already tested endpoints just to solve hosting; goes against the principle of small changes in the MVP.
+
+**Risks and mitigations:**
+- **The API sleeps after 15 min without traffic** and takes ~1 min to wake up → an external monitor calls `/health` (uses ~744 of the 750 monthly hours; a second Free service on 24h does not fit). It was cron-job.org every 10 min; since 11/11/2026 it is the Cloudflare Worker `agesto-keepalive` every 5 min, versioned in `deploy/keepalive/` (`deploy/README.md`, section 6).
+- **Supabase Free pauses** after 7 days without activity → the same ping, because `/health` runs `SELECT 1`.
+- **512 MB of RAM and 0.1 CPU** → enough for the MVP; reassess at the first sign of slowness.
+- **No persistent disk** → the API does not write files today; future uploads need external storage.
+- **SMTP blocked** on the Free plan → future email sending through an HTTP API.
+- **Brazil↔US latency** (~120 ms per request) → accepted in the MVP; mobile is offline-first.
+
+**Impact on the code:** none on the logic. `deploy/oracle/` was removed (it stays in the Git history); the step by step is in `deploy/README.md`.
+
+**Review:** when revenue comes in, reassess Render Starter (no sleeping) and Supabase Pro (no pause, with backup).
+
+---
+
+## DEC-33 — Reliable sync: full Carga, Descarga per atendimento and offline client by UUID
+
+**Status:** 🟢 Implemented in `develop` and `main` (PR #43, 10/10/2026)
+
+**Context:** a review of the Carga/Descarga cycle found data loss on mobile:
+- the Carga was incremental (`ultimaSincronizacao`), but the app replaces the whole local table on every Carga — from the second sync on, unchanged clients/products/services disappeared from the device; deletions (soft delete) never reached the device;
+- the app marked **all** pending items as synced, even those the server rejected (only reported in `Erros`), losing them;
+- the Descarga saved the atendimento without the invalid items (nonexistent product, insufficient stock), with a lower `ValorTotal`; it did not validate `ClienteId` against the company; a negative quantity increased stock.
+
+**Decision:**
+1. **Always a full Carga** on mobile (no `ultimaSincronizacao`). The parameter is still accepted by the backend, but the app does not use it. The target audience's catalog volume makes the cost irrelevant; we gain propagation of deletions without tombstones.
+2. **All-or-nothing Descarga per atendimento:** client, items, quantities (> 0) and stock (summed per product) are validated before saving; any failure rejects the whole atendimento, which stays pending on the device. One atendimento's failure does not block the others in the batch.
+3. **Explicit confirmation:** `SyncDescargaResponse` returns `ClientesSincronizados` and `AtendimentosSincronizados` (imported now or already existing). The device only marks as synced what is in those lists.
+4. **The client's UUID is born on the device:** `ClienteCreateRequest.Uuid` (optional; absent = generated on the server). Resending the same client is idempotent.
+5. **An atendimento references a client created offline** through `AtendimentoSyncRequest.ClienteUuid` (`ClienteId` becomes optional). Clients are processed before atendimentos in the same batch; the response brings `ClientesMapeados` (uuid → id) and the device relinks the local atendimentos to the server id. An offline client with an already existing CPF is mapped to the existing client (consistent with DEC-06).
+6. The mobile Sincronizar button now does a Descarga followed by Carga + schedule, and reports how many items were not sent.
+
+**Impact:** the Descarga contract changed — API and mobile must be released together. Resolves the pending items "Map the client's uuid→id in the Descarga" (DEC-26) and the data loss above. Tests: backend 127, mobile 32 — green.
 
 
 ---
 
-## DEC-35 — Gestão de usuários pelo Dono e responsável do atendimento
+## DEC-34 — Security hardening after the audit
 
-**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026); migration aplicada no Supabase
+**Status:** 🟢 Implemented and validated in production on 10/10/2026 (PRs #44 and #45)
 
-**Contexto:** não havia como criar um usuário Agente (o cadastro só cria Dono) e todo atendimento ficava com quem o criou (`UsuarioId` = criador). O app do agente só funcionava com usuário inserido direto no banco.
+**Context:** an audit of API, front end, database and infrastructure with the system already in production. There was no active leak (Supabase Data API turned off), but there were exploitable gaps: no attempt limit, no profile check, open sign-up, irrevocable token, full personal data on the agent's phone.
 
-**Decisão:**
-1. **Aba Usuários no web (só Dono).** `GET/POST/PUT /api/usuario`, `POST /api/usuario/{id}/desativar`, `/reativar` e `/redefinir-senha`, todos com a policy `Dono`.
-2. **Sem convite por email.** O servidor gera uma senha provisória (10 caracteres, alfabeto sem ambíguos), mostrada uma única vez ao Dono, que repassa ao agente. O usuário nasce com `DeveTrocarSenha = true` e web e app levam para a tela de troca no primeiro acesso (`POST /api/auth/trocar-senha`). Email continua pendente da DEC-34. *Substituído pela DEC-55 (12/11/2026): o acesso novo recebe convite por email e a pessoa cria a própria senha; a senha provisória saiu.*
-3. **Desativar em vez de excluir.** `Usuario.Ativo` (default `true` para quem já existe). Inativo não loga (403) e o `TokenRevalidator` derruba o token na hora. Histórico de atendimentos fica preservado.
-4. **Regras:** o Dono não desativa nem rebaixa a si mesmo; a empresa precisa de ao menos um Dono ativo.
-5. **Responsável do atendimento.** `ResponsavelId` opcional no create/update do atendimento; ausente = o próprio Dono (create) ou mantém (update). Validado contra a empresa e só usuário ativo. A agenda do agente passa a mostrar o que o Dono atribuiu; no web, filtro "Toda a equipe" e "Com {nome}".
-6. `UltimoAcessoEm` registrado no login, exibido na lista.
+**Decision:**
+1. **Closed sign-up.** `POST /api/auth/register` only works with `Auth:RegistrationKey` configured and sent in `X-Registration-Key`; without the key, it answers 404. Reopening requires email verification (pending).
+2. **Profiles on the back end.** `Dono` policy on every management route; the Agente uses only sync and their own schedule. A test fails if a new action does not declare the policy.
+3. **Rate limiting** per IP on login and sign-up and per user on sync.
+4. **Token revalidated on every request:** a deleted user, one from another company or with a changed profile loses access immediately, without waiting for the JWT to expire.
+5. **LGPD:** the Agente receives a masked CPF and quotes without cost in the Carga; a deleted client is anonymized (name, CPF, phone and address), keeping the row for the history.
+6. **Database:** RLS on all tables with no access for `anon`/`authenticated`; the API connects with the `agesto_api` role (DML only, `deploy/api-role.sql`) and TLS `VerifyFull` with the Supabase CA.
 
-**Impacto:** migration `AddUsuarioAtivoESenhaProvisoria` (3 colunas em `Usuarios`). API, web e app precisam subir juntos por causa do `deveTrocarSenha` no login.
+**Validation in production (10/10/2026):**
+- Supabase: Data API turned off and `pg_graphql` not installed (no public access to the tables); RLS active on all tables.
+- API: security headers and HSTS present; sign-up answers 404; login and sign-up block with 429 after the limit; payload above the limit refused with 413 (tested locally).
+- Web (Cloudflare): CSP, `X-Frame-Options` and HSTS present; the CSP allows only the API used by the production bundle.
+- Database: API connecting as `agesto_api` with `SSL Mode=VerifyFull`; Supabase CA checked with `openssl` on the `aws-0` and `aws-1` poolers of us-east-1. The `ssl = false` in `pg_stat_ssl` refers to the internal pooler → Postgres hop.
+- Login, configuration, clients, products, services, quotes, atendimentos, schedule, sync and dashboard answering 200 with the test account after all the changes.
 
-
----
-
-## DEC-36 — Agente cadastra serviço no app, com revisão do Dono
-
-**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026); migration aplicada no Supabase
-
-**Contexto:** no web, serviço fora do catálogo já vira cadastro rápido (DEC-22), mas o app não conseguia: toda a API de serviço exige perfil Dono e a Descarga só aceitava itens com id do servidor. Em campo o agente ficava sem como registrar um serviço novo.
-
-**Decisão:**
-1. **Mesmo caminho dos clientes offline (DEC-33).** O app cria o serviço com UUID do device e já pode usá-lo no atendimento. A Descarga aceita `Servicos` (até 100 por leva), cria antes dos atendimentos e devolve `ServicosSincronizados` e `ServicosMapeados`; o item de serviço aceita `ServicoUuid` no lugar de `ServicoId`. O app religa os itens ao id real.
-2. **Sem duplicar.** Reenvio com o mesmo UUID não cria de novo; descrição igual a um serviço ativo (sem diferenciar caixa e espaços) reaproveita o existente, e o atendimento usa o preço do catálogo.
-3. **Revisão do Dono.** `Servico.Revisado` e `Servico.CriadoPorUsuarioId`. Criado pelo agente nasce `Revisado = false`; no web aparece "A revisar · criado no app por Fulano", com filtro e botão para marcar como revisado (`POST /api/servico/{id}/revisar`). Editar pelo web também conta como revisão. Serviços existentes ficam revisados.
-4. **Chave em Parametrização.** `Configuracao.AgenteCadastraServico`, ligada por padrão. Desligada, a Descarga rejeita serviço novo do agente (o atendimento que o usa fica pendente no app com o motivo); o Dono continua podendo.
-
-**Impacto:** migration `AddServicoCriadoPeloAgente` (2 colunas em `Servicos` com FK para `Usuarios` `SET NULL`, 1 em `Configuracoes`). O contrato da Descarga só ganhou campos opcionais: app antigo continua funcionando.
+**Pending:**
+- **Email verification** before reopening sign-up. Depends on a sending provider with an HTTP API (Render blocks SMTP; suggestion: Resend) and on an own verified domain.
+- **Automatic backup** of the database (the Supabase Free plan does not do it).
+- ~~**Migration to .NET 10** (.NET 8 loses support on 10/11/2026).~~ Done in DEC-40.
 
 
 ---
 
-## DEC-37 — Rota do dia pelo endereço, sem geocodificação (fase 1)
+## DEC-35 — User management by the Dono and the atendimento's responsible person
 
-**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026)
+**Status:** 🟢 Implemented in `develop` and `main` (PR #47, 19/10/2026); migration applied on Supabase
 
-**Contexto:** o plano da rota pronta tem três fases e todas dependem de latitude e longitude do cliente, que exigem um serviço de geocodificação (custo, cota e envio do endereço a terceiro, ponto de LGPD ainda não decidido). Abrir o Google Maps com as paradas não precisa disso: a URL aceita endereços em texto.
+**Context:** there was no way to create an Agente user (sign-up only creates a Dono) and every atendimento stayed with whoever created it (`UsuarioId` = creator). The agent app only worked with a user inserted directly into the database.
 
-**Decisão:**
-1. A agenda (`AgendaItemResponse`) passa a trazer `EnderecoCompleto` (rua, número, bairro, cidade e CEP); null quando o cliente não tem rua.
-2. No app, a tela Início mostra "Iniciar rota · N paradas": abre o Google Maps com as visitas **pendentes de hoje**, na ordem dos horários, saindo da localização atual do celular. Limite de 10 paradas (destino + 9 da URL); o app avisa quem ficou de fora (sem endereço ou além do limite).
-3. Cada visita com endereço ganha um botão que abre a navegação só até aquele cliente.
-4. O endereço vai ao Google pelo próprio celular do agente, por ação dele, como já aconteceria copiando o endereço. Nada é enviado pelo servidor.
+**Decision:**
+1. **Usuários tab on the web (Dono only).** `GET/POST/PUT /api/usuario`, `POST /api/usuario/{id}/desativar`, `/reativar` and `/redefinir-senha`, all with the `Dono` policy.
+2. **No email invitation.** The server generates a temporary password (10 characters, alphabet without ambiguous characters), shown only once to the Dono, who passes it on to the agent. The user is born with `DeveTrocarSenha = true` and web and app lead to the password change screen on first access (`POST /api/auth/trocar-senha`). Email is still pending from DEC-34. *Replaced by DEC-55 (12/11/2026): new access gets an email invitation and the person creates their own password; the temporary password is gone.*
+3. **Deactivate instead of delete.** `Usuario.Ativo` (default `true` for existing users). An inactive user cannot log in (403) and `TokenRevalidator` drops the token immediately. Atendimento history is preserved.
+4. **Rules:** the Dono cannot deactivate or demote themselves; the company needs at least one active Dono.
+5. **Atendimento's responsible person.** Optional `ResponsavelId` on atendimento create/update; absent = the Dono themselves (create) or unchanged (update). Validated against the company and only active users. The agent's schedule now shows what the Dono assigned; on the web, "Toda a equipe" (whole team) and "Com {nome}" (with {name}) filters.
+6. `UltimoAcessoEm` recorded at login, shown in the list.
 
-**Pendente (fases seguintes):** escolher o serviço de geocodificação (sugestão: OpenRouteService), registrar a decisão de LGPD, `Cliente.Latitude/Longitude`, `Servico.DuracaoMinutos`, mapa com pinos no web e "Otimizar dia". Atualização em 11/11/2026: só falta o "Otimizar dia"; o resto foi entregue (DEC-38 e DEC-45).
+**Impact:** migration `AddUsuarioAtivoESenhaProvisoria` (3 columns in `Usuarios`). API, web and app must ship together because of `deveTrocarSenha` at login.
 
-**Impacto:** sem migration. Campo novo e opcional na agenda; app antigo ignora.
+
+---
+
+## DEC-36 — Agent registers a service in the app, with the Dono's review
+
+**Status:** 🟢 Implemented in `develop` and `main` (PR #47, 19/10/2026); migration applied on Supabase
+
+**Context:** on the web, a service outside the catalog already becomes a quick registration (DEC-22), but the app could not do it: the whole service API requires the Dono profile and the Descarga only accepted items with a server id. In the field, the agent had no way to record a new service.
+
+**Decision:**
+1. **Same path as offline clients (DEC-33).** The app creates the service with a device UUID and can use it in the atendimento right away. The Descarga accepts `Servicos` (up to 100 per batch), creates them before the atendimentos and returns `ServicosSincronizados` and `ServicosMapeados`; the service item accepts `ServicoUuid` instead of `ServicoId`. The app relinks the items to the real id.
+2. **No duplicates.** Resending with the same UUID does not create it again; a description equal to an active service (ignoring case and spaces) reuses the existing one, and the atendimento uses the catalog price.
+3. **Dono's review.** `Servico.Revisado` and `Servico.CriadoPorUsuarioId`. Created by the agent, it is born `Revisado = false`; on the web it shows "A revisar · criado no app por Fulano" (to review · created in the app by so-and-so), with a filter and a button to mark it as reviewed (`POST /api/servico/{id}/revisar`). Editing on the web also counts as a review. Existing services stay reviewed.
+4. **Switch in Parametrização.** `Configuracao.AgenteCadastraServico`, on by default. When off, the Descarga rejects a new service from the agent (the atendimento that uses it stays pending in the app with the reason); the Dono still can.
+
+**Impact:** migration `AddServicoCriadoPeloAgente` (2 columns in `Servicos` with an FK to `Usuarios` `SET NULL`, 1 in `Configuracoes`). The Descarga contract only gained optional fields: an old app keeps working.
 
 
 ---
 
-## DEC-38 — Geocodificação com OpenRouteService e mapa da agenda com Leaflet
+## DEC-37 — Day's route by address, without geocoding (phase 1)
 
-**Status:** 🟢 Implementado em `develop` e `main` (PR #47, 19/10/2026); migration aplicada no Supabase. Provedor aprovado por Diego em 17/10/2026.
+**Status:** 🟢 Implemented in `develop` and `main` (PR #47, 19/10/2026)
 
-**Contexto:** o mapa da agenda e a otimização da rota (fase 2) precisam de latitude e longitude dos clientes, e o sistema só guarda o endereço em texto.
+**Context:** the ready route plan has three phases and all of them depend on the client's latitude and longitude, which require a geocoding service (cost, quota and sending the address to a third party, an LGPD point not decided yet). Opening Google Maps with the stops does not need that: the URL accepts text addresses.
 
-**Decisão:**
-1. **Geocodificação:** OpenRouteService (plano gratuito, mesma plataforma que fará a otimização da fase 2), atrás da interface `IGeocodificador` para trocar de provedor sem mexer no resto. Chave em `Geocoding__OpenRouteServiceApiKey`; sem ela, a geocodificação fica desligada.
-2. **Em segundo plano:** um `BackgroundService` geocodifica clientes com rua e `GeocodificadoEm` nulo, em lotes de 25 com 1,5 s entre chamadas (dentro da cota de ~100 por minuto). Cadastro e sync não esperam pelo provedor. Endereço não encontrado fica marcado e não é repetido; falha de rede ou cota deixa pendente e o worker espera 10 minutos. Mudar o endereço apaga as coordenadas para geocodificar de novo. Os clientes que já existem são convertidos na primeira execução.
-3. **LGPD:** só o endereço (rua, número, bairro, cidade, CEP e "Brasil") vai ao provedor, nunca nome, CPF ou telefone; a chave vai no cabeçalho, fora da URL. Cliente excluído tem as coordenadas apagadas junto com o endereço.
-4. **Mapa no web:** aba "Mapa" na Agenda, um dia por vez, pinos numerados pela ordem dos horários e coloridos por responsável, com popup do atendimento e lista de quem está sem localização. Leaflet com blocos do OpenStreetMap, carregado só ao abrir a aba. O CSP do painel libera `https://tile.openstreetmap.org` em `img-src`.
+**Decision:**
+1. The schedule (`AgendaItemResponse`) now brings `EnderecoCompleto` (street, number, neighborhood, city and CEP); null when the client has no street.
+2. In the app, the Início screen shows "Iniciar rota · N paradas" (start route · N stops): it opens Google Maps with **today's pending** visits, in time order, starting from the phone's current location. Limit of 10 stops (destination + 9 in the URL); the app warns about who was left out (no address or beyond the limit).
+3. Each visit with an address gets a button that opens navigation to that client only.
+4. The address goes to Google from the agent's own phone, by their action, as would already happen by copying the address. Nothing is sent by the server.
 
-**Impacto:** migration `AddClienteCoordenadas` (3 colunas em `Clientes` + índice). Nova variável no Render. Dependência nova no web: `leaflet` (+ `@types/leaflet`). A política de uso dos blocos do OpenStreetMap vale para volume baixo; se o uso crescer, trocar por um provedor de blocos (ex.: MapTiler) é só mudar a URL e o CSP.
+**Pending (next phases):** choose the geocoding service (suggestion: OpenRouteService), record the LGPD decision, `Cliente.Latitude/Longitude`, `Servico.DuracaoMinutos`, a map with pins on the web and "Otimizar dia". Update on 11/11/2026: only "Otimizar dia" is left; the rest was delivered (DEC-38 and DEC-45).
 
----
+**Impact:** no migration. New optional field in the schedule; an old app ignores it.
 
-## DEC-39 — Atendimento no app no mesmo nível do web
-
-**Status:** 🟢 Implementado em `develop` e `main` (PR #48, 20/10/2026). Pedido por Diego em 20/10/2026, depois do levantamento web × app (documento fora do repositório).
-
-**Contexto:** no app o agente só usava o preço do catálogo, não conseguia concluir uma visita agendada (só criar outro atendimento), não corrigia nada depois de salvar e via um "Estimado" diferente do que o servidor cobrava na empreitada com quantidade 2.
-
-**Decisão:**
-1. **Valor ajustado (DEC-23 no app):** a Descarga aceita `PrecoUnitario` opcional no item de produto de catálogo e no item de serviço; nulo cobra o catálogo. No app, o valor de cada item é editável e aparece marcado como "ajustado".
-2. **Concluir atendimento existente:** nova lista `Conclusoes` na Descarga, com o uuid do atendimento do servidor, o novo status e itens acrescentados (os já gravados não mudam). O Agente só conclui atendimentos dos quais é responsável; o Dono conclui qualquer um. Cada item leva um `Uuid` do device, e o reenvio é reconhecido por ele, sem duplicar. Atendimento já finalizado rejeita itens novos. A agenda passa a trazer os itens já lançados (`Itens`) para o agente ver o que foi combinado.
-3. **Corrigir antes de enviar:** atendimento e conclusão ainda não enviados podem ser reabertos, alterados ou excluídos no aparelho.
-4. **Empreitada:** mantém a DEC-04. App e web lançam uma linha por unidade (quantidade 2 = duas linhas), e o estimado do app bate com o que o servidor cobra.
-
-**Impacto:** sem migration. Contrato da Descarga e da agenda só ganha campos opcionais, então um app antigo continua funcionando.
 
 ---
 
-## DEC-40 — Backend migrado para .NET 10
+## DEC-38 — Geocoding with OpenRouteService and schedule map with Leaflet
 
-**Status:** 🟢 Implementado em `develop` e `main` (PR #53, 21/10/2026) e validado em produção por Davi (deploy Live no Render, login e sync testados). Pedido por Davi em 20/10/2026.
+**Status:** 🟢 Implemented in `develop` and `main` (PR #47, 19/10/2026); migration applied on Supabase. Provider approved by Diego on 17/10/2026.
 
-**Decisão:** API e testes passam de `net8.0` para `net10.0` (LTS), antes do fim do suporte do .NET 8 em 10/11/2026.
-- Pacotes ASP.NET Core e EF Core em `10.0.13`, provider `Npgsql.EntityFrameworkCore.PostgreSQL` em `10.0.3`; Api e Tests seguem na mesma versão de EF Core (DEC-13).
-- `Swashbuckle.AspNetCore` de 6.6.2 para 10.3.1: o `Microsoft.AspNetCore.OpenApi` 10 usa `Microsoft.OpenApi` 2.x, incompatível com o Swashbuckle 6. Major feito à mão, com validação (regra do `dependabot.yml`).
-- Imagens Docker `sdk:10.0` e `aspnet:10.0`; CI com `dotnet-version: 10.0.x`.
-- `ForwardedHeadersOptions.KnownNetworks` (obsoleto no .NET 10) trocado por `KnownIPNetworks`, sem mudar o comportamento.
+**Context:** the schedule map and route optimization (phase 2) need the clients' latitude and longitude, and the system only stores the address as text.
 
-**Impacto:** sem migration (`has-pending-model-changes` não acusa mudanças com o EF Core 10). Contratos da API iguais. A imagem Docker nova foi validada no deploy do Render.
+**Decision:**
+1. **Geocoding:** OpenRouteService (free plan, the same platform that will do the phase 2 optimization), behind the `IGeocodificador` interface to switch providers without touching the rest. Key in `Geocoding__OpenRouteServiceApiKey`; without it, geocoding is off.
+2. **In the background:** a `BackgroundService` geocodes clients with a street and a null `GeocodificadoEm`, in batches of 25 with 1.5 s between calls (within the ~100 per minute quota). Registration and sync do not wait for the provider. An address not found is marked and not retried; a network or quota failure leaves it pending and the worker waits 10 minutes. Changing the address clears the coordinates so it is geocoded again. Existing clients are converted on the first run.
+3. **LGPD:** only the address (street, number, neighborhood, city, CEP and "Brasil") goes to the provider, never name, CPF or phone; the key goes in the header, outside the URL. A deleted client has the coordinates cleared together with the address.
+4. **Map on the web:** "Mapa" tab in the Agenda, one day at a time, pins numbered by time order and colored by responsible person, with an atendimento popup and a list of those without a location. Leaflet with OpenStreetMap tiles, loaded only when the tab is opened. The panel's CSP allows `https://tile.openstreetmap.org` in `img-src`.
 
----
-
-## DEC-41 — `main` é a produção; `develop` é integração e teste local
-
-**Status:** 🟢 Implementado em 21/10/2026, pedido por Diego e autorizado por Davi: PR #60 promoveu a `develop` para a `main` (merge commit) e Render e Cloudflare passaram a publicar a `main`; previews da Cloudflare desligados.
-
-**Decisão:** o Render (API) e a Cloudflare Pages (web) publicam a `main`. A `develop` recebe as funcionalidades novas e é testada na máquina, com API local e Postgres local (`docker-compose.yml`, parte da KAN-14), sem ambiente de homologação na nuvem.
-- Preview deployments da Cloudflare desligados, para nada fora da `main` falar com a API de produção.
-- Promoção sempre por PR `develop → main` com merge commit, nunca squash, para as duas branches manterem o mesmo histórico.
-- Migration nova é aplicada no Supabase antes do merge na `main` e precisa ser compatível com a versão anterior da API.
-
-**Por quê:** o plano Free do Render dá para um serviço ligado 24 h, não dois, e o Supabase Free tem dois projetos; um ambiente de homologação na nuvem custaria dinheiro ou acordaria a API pela metade. Teste local cobre o tamanho atual da equipe.
-
-**Impacto:** sem migration e sem mudança de código. Passo a passo em `deploy/README.md` (seções 8 e 9).
+**Impact:** migration `AddClienteCoordenadas` (3 columns in `Clientes` + index). New variable on Render. New web dependency: `leaflet` (+ `@types/leaflet`). The OpenStreetMap tile usage policy applies to low volume; if usage grows, switching to a tile provider (e.g. MapTiler) is just changing the URL and the CSP.
 
 ---
 
-> **DEC-42 a DEC-45** estão reservadas para o lote de outubro do Davi Gomes (paginação opcional, bloqueio da conta, exclusão de usuário com anonimização e duração do serviço). Os PRs #98 a #102 foram fechados sem merge em 25/10/2026, a pedido dele, para retomar depois; as branches seguem no GitHub. A DEC-42 foi retomada em 28/10/2026; DEC-43 a DEC-45 foram retomadas em 11/11/2026 (PRs #133 e #134).
+## DEC-39 — Atendimento in the app on par with the web
+
+**Status:** 🟢 Implemented in `develop` and `main` (PR #48, 20/10/2026). Requested by Diego on 20/10/2026, after the web × app comparison (document outside the repository).
+
+**Context:** in the app, the agent could only use the catalog price, could not complete a scheduled visit (only create another atendimento), could not correct anything after saving and saw an "Estimado" (estimate) different from what the server charged for an empreitada with quantity 2.
+
+**Decision:**
+1. **Adjusted value (DEC-23 in the app):** the Descarga accepts an optional `PrecoUnitario` on the catalog product item and on the service item; null charges the catalog price. In the app, each item's value is editable and shows up marked as "ajustado" (adjusted).
+2. **Complete an existing atendimento:** new `Conclusoes` list in the Descarga, with the server atendimento's uuid, the new status and added items (the ones already saved do not change). The Agente only completes atendimentos they are responsible for; the Dono completes any. Each item carries a device `Uuid`, and a resend is recognized by it, without duplicating. An already finished atendimento rejects new items. The schedule now brings the items already recorded (`Itens`) so the agent can see what was agreed.
+3. **Correct before sending:** an atendimento or completion not yet sent can be reopened, changed or deleted on the device.
+4. **Empreitada:** keeps DEC-04. App and web record one line per unit (quantity 2 = two lines), and the app's estimate matches what the server charges.
+
+**Impact:** no migration. The Descarga and schedule contracts only gain optional fields, so an old app keeps working.
 
 ---
 
-## DEC-42 — Paginação opcional nas listas
+## DEC-40 — Backend migrated to .NET 10
 
-**Status:** 🟢 Implementado em `develop` e `main` (PR #98, reaberto e mesclado em 28/10/2026), pedido por Davi.
+**Status:** 🟢 Implemented in `develop` and `main` (PR #53, 21/10/2026) and validated in production by Davi (Live deploy on Render, login and sync tested). Requested by Davi on 20/10/2026.
 
-**Decisão:** `GET` de clientes, atendimentos, orçamentos, produtos e serviços aceitam `?pagina=&tamanho=` (padrão 20, máximo 100) e então devolvem `{ itens, pagina, tamanho, total }`. Sem os parâmetros, a resposta continua sendo a lista inteira.
+**Decision:** API and tests move from `net8.0` to `net10.0` (LTS), before the end of .NET 8 support on 10/11/2026.
+- ASP.NET Core and EF Core packages at `10.0.13`, `Npgsql.EntityFrameworkCore.PostgreSQL` provider at `10.0.3`; Api and Tests stay on the same EF Core version (DEC-13).
+- `Swashbuckle.AspNetCore` from 6.6.2 to 10.3.1: `Microsoft.AspNetCore.OpenApi` 10 uses `Microsoft.OpenApi` 2.x, incompatible with Swashbuckle 6. Major done by hand, with validation (rule in `dependabot.yml`).
+- Docker images `sdk:10.0` and `aspnet:10.0`; CI with `dotnet-version: 10.0.x`.
+- `ForwardedHeadersOptions.KnownNetworks` (obsolete in .NET 10) replaced by `KnownIPNetworks`, without changing the behavior.
 
-**Por quê:** o web usa as listas completas em buscas e seletores, e o mobile não usa esses endpoints (só o sync); paginação opcional não quebra nenhum consumidor e fica pronta para quando uma tela precisar.
-
-**Impacto:** sem migration. A paginação é feita no banco e a ordenação ganhou desempate por `Id`.
-
-**Atualização (PAG-01, 12/11/2026):** a paginação ficou obrigatória. Sem `?pagina=&tamanho=`, as cinco listas devolvem a página 1 com 20; o teto continua 100. O web deixou de baixar listas inteiras: as telas carregam de 50 em 50, os campos de escolha de cliente, produto e serviço buscam no servidor, e os nomes de cliente e itens vêm nas respostas. Novos: busca em produtos, serviços e orçamentos, `ids` em produtos, `revisado` em serviços, `ordem=registro` em atendimentos e `GET /api/orcamento/resumo`. Usuários continua sem paginação.
-
----
-
-## DEC-43 — Bloqueio da conta após senhas erradas
-
-**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira; migration `AddBloqueioLoginExclusaoLgpdDuracaoServico` aplicada no Supabase em 11/11/2026.
-
-**Decisão:** 5 senhas erradas seguidas na mesma conta bloqueiam o login por 15 minutos, mesmo com a senha certa; a API responde 423 com os minutos restantes. Login certo zera o contador. A senha provisória gerada pelo Dono ou pela equipe do Agesto (DEC-52) desbloqueia na hora. Vale para Dono e Agente; o login da área de superadmin não tem esse bloqueio.
-
-**Por quê:** complementa o limite por IP, que não segura tentativas vindas de vários IPs.
-
-**Impacto:** colunas `Usuarios.TentativasLoginFalhas` e `Usuarios.BloqueadoAte`. Quem sabe o email de alguém consegue bloquear essa conta por 15 minutos; o limite por IP reduz o abuso.
+**Impact:** no migration (`has-pending-model-changes` reports no changes with EF Core 10). API contracts unchanged. The new Docker image was validated in the Render deploy.
 
 ---
 
-## DEC-44 — Exclusão da própria conta com anonimização
+## DEC-41 — `main` is production; `develop` is integration and local testing
 
-**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes, integrado por Davi Oliveira.
+**Status:** 🟢 Implemented on 21/10/2026, requested by Diego and authorized by Davi: PR #60 promoted `develop` to `main` (merge commit) and Render and Cloudflare started deploying `main`; Cloudflare previews turned off.
 
-**Decisão:** a exclusão da própria conta (`DELETE /api/usuario`, LGPD) deixa de apagar a linha: o usuário é anonimizado ("Usuário removido", email `removido-{id}@anonimo.invalid`), ganha uma senha aleatória e `DeletedAt`. O histórico (atendimentos, orçamentos) continua apontando para a linha, a pessoa não entra mais e o email real fica livre. A empresa não pode ficar sem Dono ativo.
+**Decision:** Render (API) and Cloudflare Pages (web) deploy `main`. `develop` receives the new features and is tested on the machine, with a local API and local Postgres (`docker-compose.yml`, part of KAN-14), with no staging environment in the cloud.
+- Cloudflare preview deployments turned off, so nothing outside `main` talks to the production API.
+- Promotion always through a `develop → main` PR with a merge commit, never squash, so both branches keep the same history.
+- A new migration is applied on Supabase before the merge into `main` and must be compatible with the previous API version.
 
-**Por quê:** o DELETE físico falhava com erro 500 para quem tinha atendimentos ou orçamentos (chaves estrangeiras *Restrict*) e contrariava o soft delete das entidades operacionais.
+**Why:** Render's Free plan allows one service on 24 h, not two, and Supabase Free has two projects; a staging environment in the cloud would cost money or wake the API halfway. Local testing covers the current team size.
 
-**Impacto:** coluna `Usuarios.DeletedAt`. Listas de usuários, inclusive as da área de superadmin, ignoram os removidos, e o token deles cai na hora.
-
----
-
-## DEC-45 — Duração do serviço e receita por hora
-
-**Status:** 🟢 Em `main` (PR #133, release #134, 11/11/2026). Código do lote de outubro do Davi Gomes (KAN-79), integrado por Davi Oliveira.
-
-**Decisão:** `Servico.DuracaoMinutos` (opcional, de 1 a 1440) entra no cadastro de serviço do web. As métricas de serviços passam a devolver horas e receita por hora: serviço por hora usa as horas lançadas; serviço por empreitada usa execuções vezes a duração estimada, e fica sem R$/h quando não tem duração. Os Relatórios mostram o R$/h por serviço.
-
-**Por quê:** parte restante do KAN-79. A margem por hora continua pendente, porque o custo ainda não é atribuído ao serviço.
-
-**Impacto:** coluna `Servicos.DuracaoMinutos`. O Agente IA (DEC-21) recebe as horas e o R$/h junto com as métricas.
+**Impact:** no migration and no code change. Step by step in `deploy/README.md` (sections 8 and 9).
 
 ---
 
-## DEC-46 — Plano de lançamento do MVP: escopo e cronograma
-
-**Status:** 🟢 Decidido por Diego em 22/10/2026 no plano de lançamento, com aval do Davi Gomes no merge do PR #106 (27/10/2026). O plano completo, com tarefas, prazos e status por pessoa, está no documento "Agesto: plano de lançamento do MVP".
-
-**Decisão:**
-1. **Público do lançamento:** o prestador de serviço com equipe pequena (Dono no web, agentes no app Android). O modo Venda/Híbrido, o comerciante e a IA (DEC-21) ficam fora do lançamento.
-2. **Cronograma:** ensaio geral em 03/11, piloto pago com desconto de 04/11 a 28/11 com um cliente real, revisão do piloto em 01/12 e lançamento oficial em 15/12/2026.
-3. **Portão do piloto (bloqueadores):** APK instalável, API sem dormir, backup diário do banco, sessão de 30 dias (DEC-50), CPF validado pelo dígito no app e no web, termos de uso e política de privacidade aceitos no primeiro acesso, monitor do `/health` e chave do OpenRouteService no Render.
-4. **Cobrança:** sem módulo de cobrança no piloto. Para o lançamento, o Dono marca no web se o atendimento foi pago ou está em aberto, com forma e data do pagamento (cobrança mínima). A assinatura do Agesto é mensal por empresa, com faixas pelo número de agentes, paga por link de pagamento recorrente.
-5. **Outras decisões do plano:** o agente pode mudar o preço no app (DEC-39 mantida); organização `agesto` no expo.dev; pacote Android `br.com.agesto.app`; acordo do piloto por escrito; termos escritos por Davi Gomes com revisão jurídica; domínio próprio (ex.: `agesto.com.br`); suporte por WhatsApp Business e email; redesign no web antes do lançamento e no app depois (DEC-51).
-
-**Responsáveis:** Davi Gomes (mobile e geral), Davi Oliveira (web e geral) e Diego (infra e redesign). A divisão das tarefas está em `TASKS.md`, seção "Lançamento do MVP".
-
-**Impacto:** a seção "Lançamento do MVP" do `TASKS.md` passa a ser a prioridade; o resto do backlog só entra se não atrasar o portão do piloto.
+> **DEC-42 to DEC-45** are reserved for Davi Gomes's October batch (optional pagination, account lockout, user deletion with anonymization and service duration). PRs #98 to #102 were closed without merge on 25/10/2026, at his request, to be resumed later; the branches remain on GitHub. DEC-42 was resumed on 28/10/2026; DEC-43 to DEC-45 were resumed on 11/11/2026 (PRs #133 and #134).
 
 ---
 
-## DEC-47 — Android só por APK, fora das lojas
+## DEC-42 — Optional pagination in the lists
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Projeto do app pronto em `develop` (PR #108, 28/10/2026: `eas.json`, `br.com.agesto.app`, `expo-updates` e aviso de versão) e página de download em `/baixar` (PR #111). Falta o primeiro `eas build` até 31/10.
+**Status:** 🟢 Implemented in `develop` and `main` (PR #98, reopened and merged on 28/10/2026), requested by Davi.
 
-**Decisão:** o app do agente não vai para a Google Play nem para a App Store. No Android ele é sempre distribuído como APK, gerado pelo EAS Build e baixado de uma página do Agesto com o passo a passo de instalação. Correções de JavaScript chegam por `eas update` (OTA); mudança nativa exige APK novo.
-- Todo APK é assinado com a mesma chave, para instalar por cima do anterior sem perder os dados offline. Uma cópia da chave fica guardada fora do repositório e do Expo.
-- O app avisa quando existe versão nova que precisa de APK novo.
-- iPhone fica fora por enquanto: o piloto e o lançamento são só Android.
+**Decision:** `GET` for clients, atendimentos, quotes, products and services accept `?pagina=&tamanho=` (default 20, maximum 100) and then return `{ itens, pagina, tamanho, total }`. Without the parameters, the response is still the whole list.
 
-**Por quê:** evita a taxa e a revisão das lojas e dá controle total do ritmo de versões para um produto vendido diretamente a poucas empresas.
+**Why:** the web uses the full lists in searches and pickers, and mobile does not use these endpoints (only sync); optional pagination breaks no consumer and is ready for when a screen needs it.
 
-**Impacto:** `mobile/eas.json`, `android.package` = `br.com.agesto.app` e `expo-updates` no app; ícone, ícone adaptativo e splash do Agesto.
+**Impact:** no migration. Pagination is done in the database and the ordering gained a tiebreak by `Id`.
 
----
-
-## DEC-48 — Cadastro aberto com verificação de email e período de teste
-
-**Status:** ⛔ Substituída pela DEC-57 (12/11/2026): não haverá cadastro aberto; a assinatura começa pelo contato. Decidida antes por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026).
-
-**Decisão:** no lançamento, qualquer prestador cria a conta pelo web, confirma o email e ganha um período de teste antes de assinar. Isso substitui, a partir do lançamento, o cadastro fechado por `Auth__RegistrationKey` da DEC-34. O rate limit por IP continua.
-
-**Por quê:** a venda direta não escala se cada conta nova depender de alguém da equipe. A DEC-34 já condicionava reabrir o cadastro à verificação de email.
-
-**Impacto:** depende de domínio próprio e de provedor de email por API (ex.: Resend), que também atende o "esqueci a senha". A chave de cadastro fica só para contas criadas pela equipe durante o piloto.
+**Update (PAG-01, 12/11/2026):** pagination became mandatory. Without `?pagina=&tamanho=`, the five lists return page 1 with 20; the ceiling is still 100. The web stopped downloading whole lists: screens load 50 at a time, the client, product and service picker fields search on the server, and client names and items come in the responses. New: search in products, services and quotes, `ids` in products, `revisado` in services, `ordem=registro` in atendimentos and `GET /api/orcamento/resumo`. Users still have no pagination.
 
 ---
 
-## DEC-49 — Hospedagem paga para o piloto e o lançamento
+## DEC-43 — Account lockout after wrong passwords
 
-**Status:** 🟡 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). A fazer: Render Starter antes do ensaio, Supabase Pro no lançamento.
+**Status:** 🟢 In `main` (PR #133, release #134, 11/11/2026). Code from Davi Gomes's October batch, integrated by Davi Oliveira; migration `AddBloqueioLoginExclusaoLgpdDuracaoServico` applied on Supabase on 11/11/2026.
 
-**Decisão:**
-1. **API:** Render Starter antes do piloto, para a API não dormir (no Free a primeira chamada leva cerca de 1 minuto e o app do agente sofre com isso no campo).
-2. **Backup:** `pg_dump` diário por GitHub Actions, guardado fora do Supabase, com um teste de restauração antes do piloto.
-3. **Banco:** Supabase Pro a partir do lançamento, para ter backup gerenciado e não pausar por inatividade. No piloto, o Free com o backup do item 2 basta.
+**Decision:** 5 wrong passwords in a row on the same account lock the login for 15 minutes, even with the right password; the API answers 423 with the remaining minutes. A correct login resets the counter. The temporary password generated by the Dono or by the Agesto team (DEC-52) unlocks it immediately. Applies to Dono and Agente; the superadmin area login does not have this lockout.
 
-**Por quê:** revê o "plano gratuito" das DEC-30 e DEC-32 para clientes pagantes, que não podem esperar a API acordar nem perder dados.
+**Why:** complements the per-IP limit, which does not stop attempts coming from several IPs.
 
-**Impacto:** custo mensal fixo de hospedagem, a entrar no preço da assinatura (DEC-46). Sem mudança de código; o backup ganha um workflow novo em `.github/workflows/`.
+**Impact:** columns `Usuarios.TentativasLoginFalhas` and `Usuarios.BloqueadoAte`. Anyone who knows someone's email can lock that account for 15 minutes; the per-IP limit reduces abuse.
 
 ---
 
-## DEC-50 — Sessão de 30 dias
+## DEC-44 — Deleting one's own account with anonymization
 
-**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` e `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
+**Status:** 🟢 In `main` (PR #133, release #134, 11/11/2026). Code from Davi Gomes's October batch, integrated by Davi Oliveira.
 
-**Decisão:** o login vale 30 dias na API e no app (hoje o JWT expira em 120 minutos, `Jwt:ExpiresMinutes`). A revogação da DEC-34 continua: desativar o usuário ou trocar a senha derruba a sessão na próxima requisição.
+**Decision:** deleting one's own account (`DELETE /api/usuario`, LGPD) no longer deletes the row: the user is anonymized ("Usuário removido", email `removido-{id}@anonimo.invalid`), gets a random password and `DeletedAt`. The history (atendimentos, quotes) keeps pointing to the row, the person can no longer log in and the real email becomes free. The company cannot be left without an active Dono.
 
-**Por quê:** o agente trabalha offline e não pode ser deslogado no meio do dia, sem internet, com atendimentos pendentes de envio.
+**Why:** the physical DELETE failed with a 500 error for anyone who had atendimentos or quotes (*Restrict* foreign keys) and went against the soft delete of the operational entities.
 
-**Impacto:** sem migration. Configuração no Render e ajuste no app para tratar sessão vencida sem perder dados locais.
-
----
-
-## DEC-51 — Redesign do web
-
-**Status:** 🟢 Em `develop` e `main` (PRs #80 a #95, de 22 a 25/10/2026): Diego fez o redesign e Davi Oliveira o ajuste do painel do Agente (#95).
-
-**Decisão:** o painel do Dono passou a seguir os templates aprovados em `agesto/design/templates`, com os mesmos dados e fluxos de antes:
-- paletas Marinho + Vermelho (padrão) e Oceano, cada uma com tema claro e escuro, escolhidas em "Aparência"; fonte Geist servida pelo próprio app, sem CDN;
-- sidebar recolhível, trilha de navegação, busca (Ctrl K) e menu em gaveta no celular;
-- login novo sem entrar com conta social, símbolo Bloco como marca e favicon;
-- gavetas e diálogos por cima da tela inteira, revisão visual das telas e painel do Agente recolhido entre telas.
-
-**Por quê:** a DEC-46 pede o redesign no web antes do lançamento; o app recebe o mesmo visual depois.
-
-**Impacto:** só front-end, sem mudança na API. O painel do Agente aparece como "Prévia" e não faz parte do lançamento (a IA ficou fora do escopo na DEC-46); desde 10/11/2026 o chat dele funciona com a IA da DEC-21, ainda com o selo "Prévia". Falta fechar o design system até 17/11.
+**Impact:** column `Usuarios.DeletedAt`. User lists, including those in the superadmin area, ignore removed users, and their token drops immediately.
 
 ---
 
-## DEC-52 — Área de superadmin da equipe do Agesto
+## DEC-45 — Service duration and revenue per hour
 
-**Status:** 🟢 Em `main` (PR #131, release #132, 10/11/2026), decidido por Davi Oliveira em 10/11/2026. Migration `AddSuperadmin` aplicada no Supabase em 10/11/2026; o primeiro admin foi criado no mesmo dia.
+**Status:** 🟢 In `main` (PR #133, release #134, 11/11/2026). Code from Davi Gomes's October batch (KAN-79), integrated by Davi Oliveira.
 
-**Decisão:** a equipe do Agesto gerencia as empresas clientes em `/admin`, no web atual:
-- contas de admin separadas dos usuários das empresas (tabela `AdminsPlataforma`); o token de admin tem audiência própria e a claim `escopo=plataforma`, então o token de um cliente não abre o `/admin` e o de admin não abre o painel do cliente;
-- listar e ver empresas, criar empresa com Dono (senha provisória), bloquear e desbloquear empresa com motivo, e desativar, reativar ou gerar senha provisória para usuários de qualquer empresa (*desde a DEC-55, a senha provisória virou convite e "enviar link de senha" por email, e a equipe também cria acessos numa empresa*);
-- equipe de admins (cadastrar, desativar e reativar; ninguém desativa a si mesmo; *desde a DEC-55, cadastrar é convidar por email*);
-- auditoria de toda ação de admin, inclusive logins e tentativas recusadas (tabela `AuditoriasAdmin`).
+**Decision:** `Servico.DuracaoMinutos` (optional, from 1 to 1440) enters the web's service form. The service metrics now return hours and revenue per hour: an hourly service uses the hours recorded; an empreitada service uses executions times the estimated duration, and has no R$/h when it has no duration. Relatórios show R$/h per service.
 
-**Por quê:** substituir o cadastro por `curl` com `X-Registration-Key` e dar à equipe um jeito de atender os clientes (acesso, senha, inadimplência) sem mexer no banco. Integrações ficam para depois.
+**Why:** the remaining part of KAN-79. Margin per hour is still pending, because cost is not yet assigned to the service.
 
-**Impacto:** empresa bloqueada perde o login e os tokens já emitidos (`TokenRevalidator`, inclusive no sync do app). O primeiro admin é criado por `POST /api/admin/auth/setup` com `Admin__SetupKey`, uma vez só (`deploy/README.md`, seção 10). O login de admin vale 30 dias (`Admin__ExpiresMinutes`), por escolha do Davi Oliveira; desde 13/11/2026 vale 24 horas (DEC-53). Pendências: a senha provisória derrubar as sessões já abertas do usuário (também em aberto na DEC-50).
-
-**Login de admin mais forte (13/11/2026, branch `feature/superadmin-2fa-e-expo-web`):**
-- **Bloqueio por conta:** 5 senhas erradas seguidas bloqueiam o login do admin por 15 minutos, igual ao dos usuários (DEC-43). Fica na auditoria ("conta-bloqueada").
-- **Verificação em duas etapas por email** (escolha do Davi, no lugar do app autenticador): depois da senha, o Agesto manda um código de 6 dígitos pelo Brevo, que vale 10 minutos e uma vez só, preso àquela tentativa de login por um desafio. Cinco códigos errados invalidam o desafio, e um login novo invalida o código anterior. O banco guarda só os hashes. A tela pede o código, mostra o email mascarado e permite reenviar. `Admin__DoisFatores=false` desliga a segunda etapa só em emergência (ex.: Brevo fora do ar).
+**Impact:** column `Servicos.DuracaoMinutos`. The AI Agente (DEC-21) receives the hours and R$/h together with the metrics.
 
 ---
 
-## DEC-53 — Token do web em `localStorage`: risco aceito no MVP
+## DEC-46 — MVP launch plan: scope and schedule
 
-**Status:** 🟡 Risco aceito por Davi Oliveira em 11/11/2026, com gatilhos de revisão. Sem mudança de código.
+**Status:** 🟢 Decided by Diego on 22/10/2026 in the launch plan, with Davi Gomes's approval in the merge of PR #106 (27/10/2026). The full plan, with tasks, deadlines and status per person, is in the document "Agesto: plano de lançamento do MVP".
 
-**Decisão:** o web continua guardando o JWT em `localStorage`: o token das empresas em `web/src/lib/token.ts` e o de admin (`agesto_admin_token`) em `web/src/admin/sessao.ts`. O cookie httpOnly recomendado em `docs/SECURITY_NOTES.md` (seção 1) fica para depois. O app segue com `expo-secure-store`.
+**Decision:**
+1. **Launch audience:** the service provider with a small team (Dono on the web, agents on the Android app). The Venda/Híbrido mode, the retailer and AI (DEC-21) are out of the launch.
+2. **Schedule:** dress rehearsal on 03/11, discounted paid pilot from 04/11 to 28/11 with a real customer, pilot review on 01/12 and official launch on 15/12/2026.
+3. **Pilot gate (blockers):** installable APK, API that does not sleep, daily database backup, 30-day session (DEC-50), CPF validated by check digit in the app and on the web, terms of use and privacy policy accepted on first access, `/health` monitor and OpenRouteService key on Render.
+4. **Billing:** no billing module in the pilot. For the launch, the Dono marks on the web whether the atendimento was paid or is open, with payment method and date (minimal billing). The Agesto subscription is monthly per company, with tiers by number of agents, paid through a recurring payment link.
+5. **Other plan decisions:** the agent can change the price in the app (DEC-39 kept); `agesto` organization on expo.dev; Android package `br.com.agesto.app`; written pilot agreement; terms written by Davi Gomes with legal review; own domain (e.g. `agesto.com.br`); support by WhatsApp Business and email; redesign on the web before the launch and on the app afterwards (DEC-51).
 
-**Por quê:**
-- API (`agesto-api.onrender.com`) e web (Cloudflare Pages) estão em sites diferentes. Cookie de login entre eles exige `SameSite=None`, proteção contra CSRF e credenciais no CORS, e navegadores que bloqueiam cookie de terceiros podem quebrar o login. Fazer bem pede domínio próprio com API e web no mesmo site.
-- O app usa token Bearer; a API teria de aceitar os dois modos.
-- O risco hoje é contido: a CSP de `web/public/_headers` só roda script do próprio site (`script-src 'self'`) e só conecta no próprio site e na API; o React escapa o texto exibido; o único `dangerouslySetInnerHTML` (`Icon.tsx`) usa desenhos fixos do código; o `TokenRevalidator` derruba na hora o token de usuário desativado ou de empresa bloqueada; e só há contas de teste.
+**Owners:** Davi Gomes (mobile and general), Davi Oliveira (web and general) and Diego (infra and redesign). The task split is in `TASKS.md`, section "Lançamento do MVP".
 
-**Risco aceito:** um XSS que passe pela CSP leva um token válido por até 30 dias (DEC-50 e DEC-52), e trocar a senha ainda não derruba as sessões abertas.
-
-**Revisar quando acontecer o primeiro destes:** domínio próprio do Agesto, primeiro cliente pagante ou fim da fase de contas de teste. Nesse ponto, migrar o web para cookie httpOnly.
-
-**Até lá:**
-- não remover nem afrouxar a CSP de `web/public/_headers`;
-- não usar `dangerouslySetInnerHTML` com dado de usuário ou da API;
-- pendências que reduzem o risco sem migrar: encurtar a validade do token de admin (feito em 13/11/2026: 24 horas por padrão em `Admin__ExpiresMinutes`, decidido pelo Davi Oliveira) e fazer a troca de senha derrubar as sessões abertas (versão do token, também em aberto nas DEC-50 e DEC-52).
-
-**Impacto:** nenhum agora. A migração futura mexe na emissão do token, na autenticação da API, no CORS e no cliente HTTP do web.
+**Impact:** the "Lançamento do MVP" section of `TASKS.md` becomes the priority; the rest of the backlog only gets in if it does not delay the pilot gate.
 
 ---
 
-## DEC-54 — "Esqueci a senha" do Dono por email, com o Brevo
+## DEC-47 — Android only via APK, outside the stores
 
-**Status:** 🟢 Em `main` (PR #161, release #163, 12/11/2026), escolhido por Davi Oliveira. Migration `AddTokenRedefinicaoSenha` aplicada no Supabase; Brevo configurado no Render e envio testado em produção em 12/11/2026.
+**Status:** 🟡 Decided by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026). App project ready in `develop` (PR #108, 28/10/2026: `eas.json`, `br.com.agesto.app`, `expo-updates` and version warning) and download page at `/baixar` (PR #111). The first `eas build` is still missing, due by 31/10.
 
-**Decisão:** o Dono pede, na tela de login, um link para criar uma senha nova:
-- `POST /api/auth/esqueci-senha` responde sempre a mesma mensagem, exista o email ou não. Só gera link para Dono ativo de empresa ativa; o agente continua recebendo senha provisória do Dono (DEC-35).
-- O token tem 32 bytes aleatórios e vale 15 minutos, uma vez só. No banco fica só o hash SHA-256 (tabela `TokensRedefinicaoSenha`). Um pedido novo invalida o anterior, e cada conta recebe no máximo um email a cada 2 minutos.
-- O link é `{Email:UrlWeb}/redefinir-senha#token=...`: depois do `#`, o token não vai ao servidor do web nem aparece em logs.
-- `POST /api/auth/redefinir-senha` troca a senha, tira o bloqueio por senhas erradas (DEC-43) e invalida todos os links abertos da conta.
-- O envio é pelo Brevo (API HTTP; o Render Free bloqueia SMTP), numa fila em memória fora da requisição: a resposta leva o mesmo tempo exista o email ou não, e uma lentidão do Brevo não segura a tela.
-- Sem `Email__BrevoApiKey` e `Email__RemetenteEmail`, o envio fica desligado e a rota continua respondendo igual.
+**Decision:** the agent app does not go to Google Play or the App Store. On Android it is always distributed as an APK, generated by EAS Build and downloaded from an Agesto page with step-by-step installation instructions. JavaScript fixes arrive through `eas update` (OTA); a native change requires a new APK.
+- Every APK is signed with the same key, so it installs over the previous one without losing offline data. A copy of the key is kept outside the repository and Expo.
+- The app warns when there is a new version that needs a new APK.
+- iPhone is out for now: the pilot and the launch are Android only.
 
-**Por quê:** o Dono sem acesso dependia da equipe do Agesto para uma senha provisória (DEC-52). O Brevo foi escolhido por Davi Oliveira; o plano gratuito envia até 300 emails por dia.
+**Why:** avoids the stores' fee and review and gives full control of the release pace for a product sold directly to a few companies.
 
-**Impacto:** migration `AddTokenRedefinicaoSenha` (tabela nova com RLS e a policy do `agesto_api`). Variáveis novas no Render (`deploy/README.md`, seção 3). Enquanto o SEG-01 não entrar (PR #155), redefinir a senha não derruba as sessões já abertas.
-
-**Atualização (DEC-55, 12/11/2026):** o "Esqueci a senha" passou a valer também para o Agente (no app e no web), e a mesma tabela guarda os links de convite.
+**Impact:** `mobile/eas.json`, `android.package` = `br.com.agesto.app` and `expo-updates` in the app; Agesto icon, adaptive icon and splash.
 
 ---
 
-## DEC-55 — Acessos novos por convite no email; fim da senha provisória
+## DEC-48 — Open sign-up with email verification and a trial period
 
-**Status:** 🟢 Em `main` (PR #162, release #163, 12/11/2026), decidido por Davi Oliveira. Migration `AddConvitesPorEmail` aplicada no Supabase; envio testado em produção em 12/11/2026.
+**Status:** ⛔ Replaced by DEC-57 (12/11/2026): there will be no open sign-up; the subscription starts through contact. Decided earlier by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026).
 
-**Decisão:** ninguém mais recebe senha de outra pessoa. Todo acesso novo nasce com o **convite pendente** e a pessoa cria a própria senha pelo link do email:
-- **Quem cria acesso:** o Dono, na tela Usuários (funcionário Agente ou outro Dono da empresa), e a equipe do Agesto, no superadmin (Dono da empresa nova e qualquer acesso de uma empresa). Novo administrador da equipe também é convidado assim; só o primeiro admin continua pelo setup com `Admin__SetupKey`.
-- **Convite:** link `{Email:UrlWeb}/criar-senha#token=...` (admin: `/admin/criar-senha`), válido por **72 horas** e uma vez só; um convite novo invalida o anterior. Ao usar, a senha é criada e o email fica confirmado (`Usuario.EmailConfirmadoEm`, `AdminPlataforma.EmailConfirmadoEm`). O email do agente aponta para o app e para `/baixar`.
-- **Senha provisória:** sai do Dono e do superadmin. O Dono só **reenvia o convite** de quem ainda não criou a senha. No superadmin, "senha provisória" virou **"Enviar link de senha"** (reenvia o convite, ou manda um link de 72 horas a quem já tem acesso; a senha atual vale até o link ser usado).
-- **Esqueci a senha:** Dono e Agente (link de 15 minutos, DEC-54).
-- **Acessos que já existiam:** não mudam. A migration marca o email deles como confirmado pela data de criação; ninguém perde a senha nem recebe email.
+**Decision:** at the launch, any provider creates the account on the web, confirms the email and gets a trial period before subscribing. From the launch on, this replaces the sign-up closed by `Auth__RegistrationKey` from DEC-34. The per-IP rate limit stays.
 
-**Por quê:** pedido de Davi Oliveira em 12/11/2026. A senha provisória passava por terceiros (Dono, equipe, WhatsApp); com o convite, só a própria pessoa conhece a senha e o email fica confirmado.
+**Why:** direct sales do not scale if each new account depends on someone from the team. DEC-34 already made reopening sign-up conditional on email verification.
 
-**Impacto:** migration `AddConvitesPorEmail` (colunas `EmailConfirmadoEm`, e `AdminId` e `Tipo` na tabela de links). Rotas novas: `POST /api/usuario/{id}/reenviar-convite`, `POST /api/admin/empresas/{id}/usuarios`, `POST /api/admin/empresas/{id}/usuarios/{usuarioId}/enviar-link-senha`, `POST /api/admin/equipe/{id}/reenviar-convite` e `POST /api/admin/auth/criar-senha`. Saem `POST /api/usuario/{id}/redefinir-senha` e `.../senha-provisoria`. Telas novas no web: `/criar-senha` e `/admin/criar-senha`; o app ganha "Esqueci a senha". Revê o item 2 da DEC-35 e a senha provisória da DEC-52.
+**Impact:** depends on an own domain and on an email provider with an API (e.g. Resend), which also serves "forgot password". The sign-up key stays only for accounts created by the team during the pilot.
 
-## DEC-56 — WhatsApp por link (wa.me), sem integração com a conta do Dono
+---
 
-**Status:** 🟢 Links em `main` (PR #168, release #169, 12/11/2026), escolhido por Davi Oliveira. PDF do orçamento na branch `feature/orcamento-pdf` (12/11/2026).
+## DEC-49 — Paid hosting for the pilot and the launch
 
-**Decisão:** o Agesto conversa com o WhatsApp só por **links `wa.me`**. O botão abre o WhatsApp de quem está usando o Agesto (web ou app), na conversa com o cliente e, quando faz sentido, com a mensagem já escrita. A pessoa revisa e envia pelo próprio WhatsApp. O Agesto não guarda sessão, credencial nem conversa:
-- **Orçamento (web):** vai como **PDF** (pedido do Davi em 12/11/2026, no lugar da mensagem com os itens). O PDF é gerado no navegador e leva empresa, cliente, itens e total, **nunca custo nem margem**. Como o `wa.me` não aceita anexo: no celular, "Enviar PDF por WhatsApp" abre o compartilhar do sistema com o arquivo, e a pessoa escolhe o WhatsApp e o contato; no computador, o PDF é baixado e a conversa do cliente abre no WhatsApp, para anexar o arquivo. "Baixar PDF" serve para email ou impressão.
-- **Clientes e Agenda (web), agenda do app:** botão ou link que abre a conversa com o cliente.
-- **Telefone:** aceita DDD + número (10 ou 11 dígitos) ou já com o 55; sem telefone válido, o botão não aparece (no orçamento, fica desligado e explica o motivo).
-- **Fora desta fase:** conversar com os clientes dentro do Agesto. Se for preciso, o caminho é a API oficial do WhatsApp (Cloud API, da Meta), em uma DEC própria com custo e escopo. **Baileys não**, nem outras bibliotecas que imitam o WhatsApp Web.
+**Status:** 🟡 Decided by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026). To do: Render Starter before the rehearsal, Supabase Pro at the launch.
 
-**Por quê:** pedido de Davi Oliveira em 12/11/2026, para o Dono falar com os clientes pelo WhatsApp a partir do Agesto. O Baileys foi avaliado e recusado: não é oficial e pode levar ao banimento do número do Dono; a sessão guardada daria acesso ao WhatsApp inteiro dele; exigiria um serviço Node.js sempre ligado, fora da arquitetura atual; quebra quando o WhatsApp muda; e aumentaria muito os dados pessoais sob responsabilidade do Agesto (LGPD). O link entrega o principal, cabe antes do lançamento e não tem nenhum desses riscos.
+**Decision:**
+1. **API:** Render Starter before the pilot, so the API does not sleep (on Free the first call takes about 1 minute and the agent app suffers from it in the field).
+2. **Backup:** daily `pg_dump` through GitHub Actions, stored outside Supabase, with a restore test before the pilot.
+3. **Database:** Supabase Pro from the launch on, to have managed backup and no pause for inactivity. In the pilot, Free with the backup from item 2 is enough.
 
-**Impacto:** `OrcamentoResponse` ganha `ClienteTelefone`, e `ConfiguracaoResponse` ganha `EmpresaNome` e `EmpresaDocumento` (sem migration; o nome também passa a aparecer na conta do web, no lugar de "Minha empresa"). Utilitários `web/src/lib/whatsapp.ts` e `mobile/src/lib/whatsapp.ts`; PDF em `web/src/features/orcamentos/pdf.ts`, com a dependência `jspdf` carregada só quando o orçamento abre. O app só recebe o botão num próximo build ou update.
+**Why:** revisits the "free plan" of DEC-30 and DEC-32 for paying customers, who cannot wait for the API to wake up or lose data.
 
-## DEC-57 — Venda por contato, sem cadastro aberto; página de venda na raiz do web
+**Impact:** fixed monthly hosting cost, to be included in the subscription price (DEC-46). No code change; the backup gets a new workflow in `.github/workflows/`.
 
-**Status:** 🟢 Em `main` (página de venda: PR #172, release #173, 12/11/2026; `/conheca`: PR #174, release #175, 13/11/2026), decidido por Davi Oliveira e testado por ele em produção. Substitui a DEC-48.
+---
 
-**Decisão:** o Agesto **não terá cadastro aberto**. Quem quer assinar entra em contato, e a equipe cria a empresa no superadmin; o Dono recebe o convite por email e cria a senha (DEC-52, DEC-55).
-- **Página de venda:** quem não está logado e abre a raiz do web (`/`) vê a apresentação do Agesto. Quem está logado continua indo direto para a Visão geral. A página fica sempre no modo claro (paleta Marinho), e o login ganha o link "Conheça e fale com a gente". O endereço **`/conheca`** mostra a página para qualquer pessoa, logada ou não; é o link para divulgar (redes, WhatsApp, propostas) e para mostrar o Agesto sem sair da conta. Para quem está logado, o botão "Entrar" vira "Ir para o painel".
-- **Conteúdo:** a promessa "sua empresa inteira em um lugar só", os recursos, o fluxo do orçamento ao resultado, como começar, os preços, as dúvidas frequentes e o contato.
-- **Preços** (definidos pelo Davi em 12/11/2026): **assinatura de R$ 49,90/mês** por empresa, com o acesso do Dono e todos os recursos, **mais 1 licença de funcionário inclusa**. Cada funcionário a mais custa **R$ 19,90/mês**. A página tem uma calculadora que leva a quantidade de funcionários para a mensagem do WhatsApp.
-- **Pagamento:** cartão de crédito, boleto ou Pix. A forma, e outros acordos, são combinados no contato; a página não fala de fidelidade nem de cancelamento.
-- **Contato:** WhatsApp comercial (34) 99632-6130, pelo link `wa.me` (DEC-56), e o email agesto.contact@gmail.com. Não há formulário, para não abrir endpoint público na API.
-- **Hospedagem:** no mesmo projeto do web (Cloudflare Pages), com o código da página num pedaço separado, carregado só por quem a abre. Quando houver domínio próprio, ou se o marketing crescer, a página pode ir para um projeto próprio (ex.: `agesto.com.br` e o painel em `app.agesto.com.br`).
+## DEC-50 — 30-day session
 
-**Por quê:** pedido de Davi Oliveira em 12/11/2026. A venda é feita pela equipe, com assinatura e licenças combinadas no contato. A DEC-48 previa cadastro aberto com verificação de email e período de teste; isso deixa de ser necessário. No mesmo projeto não há infra nova nem dependência do domínio próprio, que ainda não existe.
+**Status:** 🟢 Decided by Diego on 22/10/2026, with Davi Gomes's approval (PR #106, 27/10/2026). Implemented in `develop` and `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Deactivating the user already drops the session; changing the password does not yet drop open sessions (`TokenRevalidator` only checks active user, company and profile), an open point.
 
-**Impacto:** sem mudança na API nem migration. `ProtectedRoute` ganha `raizPublica`; a página fica em `web/src/pages/venda/`. As tarefas de cadastro aberto saem do TASKS, e a página de apresentação passa a ser feita agora. O controle de assinatura (quem pagou e quem está em atraso) continua em aberto.
+**Decision:** the login lasts 30 days in the API and in the app (today the JWT expires in 120 minutes, `Jwt:ExpiresMinutes`). The revocation from DEC-34 stays: deactivating the user or changing the password drops the session on the next request.
 
-## DEC-58 — Controle de assinatura e licenças no superadmin
+**Why:** the agent works offline and cannot be logged out in the middle of the day, without internet, with atendimentos waiting to be sent.
 
-**Status:** 🟡 Definido por Davi Oliveira em 13/11/2026; implementado na branch `feature/controle-assinatura` (13/11/2026). Falta aplicar a migration `AddAssinatura`.
+**Impact:** no migration. Configuration on Render and an adjustment in the app to handle an expired session without losing local data.
 
-**Decisão:** a assinatura de cada empresa é controlada no superadmin, sem gateway de pagamento no MVP (cartão, boleto ou Pix são combinados no contato, DEC-57):
-- **Registro manual de pagamento:** a equipe registra cada pagamento (data, valor, forma e a que mês se refere), com histórico por empresa. Cada pagamento leva o "pago até" para o fim do período pago.
-- **Situação:** em dia, vence em breve ou em atraso (com os dias de atraso), e a lista de empresas do superadmin pode filtrar por ela.
-- **Atraso:** bloqueio **manual** (o botão que já existe, DEC-52) e **automático**: depois de **10 dias de carência** sem pagamento, a empresa é bloqueada sozinha até a equipe registrar o pagamento e desbloquear. O desbloqueio também pode ser manual.
-- **Aviso ao Dono:** um aviso no topo do painel quando a assinatura estiver perto de vencer, vencida ou na carência (com quantos dias faltam para o bloqueio), e um bloco "Assinatura" na Parametrização com plano, licenças e vencimento.
-- **Licenças:** a assinatura (R$ 49,90/mês) inclui o Dono e **1 funcionário**; cada funcionário a mais é uma licença de R$ 19,90/mês (DEC-57). O número de licenças fica na empresa e só a equipe muda. O Dono **não passa do contratado**: ao tentar convidar um funcionário além das licenças, o Agesto pede para falar com a equipe.
+---
 
-**Por quê:** a venda é por contato e o pagamento é combinado fora do sistema; o controle precisa mostrar quem pagou, quem atrasou e travar o uso sem pagamento, com uma carência para não cortar um cliente por um atraso de dias.
+## DEC-51 — Web redesign
 
-**Como ficou (13/11/2026):**
-- **Empresa:** `PagoAte`, `LicencasFuncionarios` (padrão 1), `BloqueioAutomatico` e `BloqueioAutomaticoReferencia`. Tabela `PagamentosAssinatura` com o histórico, com RLS.
-- **Empresas que já existiam:** ficam **sem cobrança** (`PagoAte` vazio), sem aviso e sem bloqueio automático, até a equipe registrar o primeiro pagamento ou ajustar o "pago até". A migration põe nas licenças os acessos ativos de hoje, para ninguém ficar travado.
-- **Situação, pelo dia de Brasília:** em dia; vence em breve (até 5 dias); em carência (venceu há até 10 dias, com aviso ao Dono e a contagem até o bloqueio); atrasada (mais de 10 dias).
-- **Pagamento:** o período começa no dia seguinte ao último pago (sem histórico, hoje) e cobre de 1 a 12 meses.
-- **Bloqueio automático:** uma rotina na API roda de hora em hora e bloqueia as atrasadas, com registro na auditoria como "Sistema". O pagamento tira esse bloqueio sozinho; o bloqueio manual só sai pela equipe. Se a equipe desbloquear na mão uma empresa atrasada, a rotina não bloqueia de novo até o "pago até" mudar.
-- **Licenças:** contam os acessos ativos, inclusive convites pendentes. O Dono e a equipe não criam nem reativam acesso além do contratado (409, com a mensagem pedindo para falar com a equipe); desativar sempre pode.
-- **Telas:**
-  - no superadmin, o bloco **Assinatura** (situação, valor, licenças, acessos em uso, histórico, "Registrar pagamento" e "Ajustar"), a coluna e o filtro de assinatura na lista de empresas;
-  - para o Dono, o aviso no topo do painel (vence em breve ou carência, com o link do WhatsApp do Agesto) e o bloco **Assinatura** na Parametrização (`GET /api/assinatura`).
-- **Desfazer pagamento (13/11/2026, branch `feature/pagamentos`):** a equipe desfaz um pagamento registrado por engano no histórico do superadmin. Só o último pagamento ativo, e só enquanto o "pago até" ainda é o que ele gerou; depois de um "Ajustar", corrige-se pelo "Ajustar". O "pago até" volta ao de antes do pagamento, o registro fica no histórico como desfeito (quem e quando), a rotina de bloqueio automático volta a valer e a ação entra na auditoria.
+**Status:** 🟢 In `develop` and `main` (PRs #80 to #95, from 22 to 25/10/2026): Diego did the redesign and Davi Oliveira the adjustment of the Agente panel (#95).
+
+**Decision:** the Dono panel now follows the templates approved in `agesto/design/templates`, with the same data and flows as before:
+- Marinho + Vermelho (default) and Oceano palettes, each with a light and dark theme, chosen in "Aparência"; Geist font served by the app itself, no CDN;
+- collapsible sidebar, breadcrumb, search (Ctrl K) and drawer menu on the phone;
+- new login without social sign-in, the Bloco symbol as logo and favicon;
+- drawers and dialogs over the whole screen, visual review of the screens and Agente panel collapsed between screens.
+
+**Why:** DEC-46 asks for the redesign on the web before the launch; the app gets the same look afterwards.
+
+**Impact:** front end only, no change to the API. The Agente panel shows as "Prévia" (Preview) and is not part of the launch (AI was left out of scope in DEC-46); since 10/11/2026 its chat works with the AI from DEC-21, still with the "Prévia" badge. The design system is still to be closed by 17/11.
+
+---
+
+## DEC-52 — Superadmin area for the Agesto team
+
+**Status:** 🟢 In `main` (PR #131, release #132, 10/11/2026), decided by Davi Oliveira on 10/11/2026. Migration `AddSuperadmin` applied on Supabase on 10/11/2026; the first admin was created the same day.
+
+**Decision:** the Agesto team manages customer companies at `/admin`, in the current web:
+- admin accounts separate from the companies' users (`AdminsPlataforma` table); the admin token has its own audience and the claim `escopo=plataforma`, so a customer's token does not open `/admin` and an admin's does not open the customer panel;
+- list and view companies, create a company with a Dono (temporary password), block and unblock a company with a reason, and deactivate, reactivate or generate a temporary password for users of any company (*since DEC-55, the temporary password became an invitation and "enviar link de senha" (send password link) by email, and the team also creates accesses in a company*);
+- admin team (add, deactivate and reactivate; nobody deactivates themselves; *since DEC-55, adding means inviting by email*);
+- auditing of every admin action, including logins and refused attempts (`AuditoriasAdmin` table).
+
+**Why:** replace sign-up through `curl` with `X-Registration-Key` and give the team a way to serve customers (access, password, late payment) without touching the database. Integrations come later.
+
+**Impact:** a blocked company loses login and already issued tokens (`TokenRevalidator`, including in the app's sync). The first admin is created through `POST /api/admin/auth/setup` with `Admin__SetupKey`, only once (`deploy/README.md`, section 10). The admin login lasts 30 days (`Admin__ExpiresMinutes`), by Davi Oliveira's choice; since 13/11/2026 it lasts 24 hours (DEC-53). Pending: the temporary password dropping the user's already open sessions (also open in DEC-50).
+
+**Stronger admin login (13/11/2026, branch `feature/superadmin-2fa-e-expo-web`):**
+- **Per-account lockout:** 5 wrong passwords in a row lock the admin login for 15 minutes, the same as for users (DEC-43). It goes into the audit log ("conta-bloqueada").
+- **Two-step verification by email** (Davi's choice, instead of an authenticator app): after the password, Agesto sends a 6-digit code through Brevo, valid for 10 minutes and only once, tied to that login attempt by a challenge. Five wrong codes invalidate the challenge, and a new login invalidates the previous code. The database stores only the hashes. The screen asks for the code, shows the masked email and allows resending. `Admin__DoisFatores=false` turns off the second step only in an emergency (e.g. Brevo down).
+
+---
+
+## DEC-53 — Web token in `localStorage`: risk accepted in the MVP
+
+**Status:** 🟡 Risk accepted by Davi Oliveira on 11/11/2026, with review triggers. No code change.
+
+**Decision:** the web keeps storing the JWT in `localStorage`: the companies' token in `web/src/lib/token.ts` and the admin one (`agesto_admin_token`) in `web/src/admin/sessao.ts`. The httpOnly cookie recommended in `docs/SECURITY_NOTES.md` (section 1) is left for later. The app keeps using `expo-secure-store`.
+
+**Why:**
+- API (`agesto-api.onrender.com`) and web (Cloudflare Pages) are on different sites. A login cookie between them requires `SameSite=None`, CSRF protection and credentials in CORS, and browsers that block third-party cookies can break the login. Doing it well needs an own domain with API and web on the same site.
+- The app uses a Bearer token; the API would have to accept both modes.
+- The risk today is contained: the CSP in `web/public/_headers` only runs scripts from the site itself (`script-src 'self'`) and only connects to the site itself and the API; React escapes displayed text; the only `dangerouslySetInnerHTML` (`Icon.tsx`) uses fixed drawings from the code; `TokenRevalidator` immediately drops the token of a deactivated user or a blocked company; and there are only test accounts.
+
+**Accepted risk:** an XSS that gets past the CSP takes a token valid for up to 30 days (DEC-50 and DEC-52), and changing the password does not yet drop open sessions.
+
+**Review when the first of these happens:** Agesto's own domain, the first paying customer or the end of the test accounts phase. At that point, migrate the web to an httpOnly cookie.
+
+**Until then:**
+- do not remove or loosen the CSP in `web/public/_headers`;
+- do not use `dangerouslySetInnerHTML` with user or API data;
+- open items that reduce the risk without migrating: shorten the admin token's validity (done on 13/11/2026: 24 hours by default in `Admin__ExpiresMinutes`, decided by Davi Oliveira) and make a password change drop open sessions (token version, also open in DEC-50 and DEC-52).
+
+**Impact:** none now. The future migration touches token issuing, API authentication, CORS and the web's HTTP client.
+
+---
+
+## DEC-54 — Dono's "Esqueci a senha" (forgot password) by email, with Brevo
+
+**Status:** 🟢 In `main` (PR #161, release #163, 12/11/2026), chosen by Davi Oliveira. Migration `AddTokenRedefinicaoSenha` applied on Supabase; Brevo configured on Render and sending tested in production on 12/11/2026.
+
+**Decision:** the Dono asks, on the login screen, for a link to create a new password:
+- `POST /api/auth/esqueci-senha` always answers the same message, whether the email exists or not. It only generates a link for an active Dono of an active company; the agent keeps getting a temporary password from the Dono (DEC-35).
+- The token has 32 random bytes and lasts 15 minutes, only once. The database keeps only the SHA-256 hash (`TokensRedefinicaoSenha` table). A new request invalidates the previous one, and each account gets at most one email every 2 minutes.
+- The link is `{Email:UrlWeb}/redefinir-senha#token=...`: after the `#`, the token does not go to the web server nor show up in logs.
+- `POST /api/auth/redefinir-senha` changes the password, removes the wrong-password lockout (DEC-43) and invalidates all of the account's open links.
+- Sending is through Brevo (HTTP API; Render Free blocks SMTP), in an in-memory queue outside the request: the response takes the same time whether the email exists or not, and a slow Brevo does not hold up the screen.
+- Without `Email__BrevoApiKey` and `Email__RemetenteEmail`, sending is off and the route keeps answering the same.
+
+**Why:** a Dono without access depended on the Agesto team for a temporary password (DEC-52). Brevo was chosen by Davi Oliveira; the free plan sends up to 300 emails per day.
+
+**Impact:** migration `AddTokenRedefinicaoSenha` (new table with RLS and the `agesto_api` policy). New variables on Render (`deploy/README.md`, section 3). Until SEG-01 lands (PR #155), resetting the password does not drop already open sessions.
+
+**Update (DEC-55, 12/11/2026):** "Esqueci a senha" now also applies to the Agente (in the app and on the web), and the same table stores the invitation links.
+
+---
+
+## DEC-55 — New accesses by email invitation; end of the temporary password
+
+**Status:** 🟢 In `main` (PR #162, release #163, 12/11/2026), decided by Davi Oliveira. Migration `AddConvitesPorEmail` applied on Supabase; sending tested in production on 12/11/2026.
+
+**Decision:** nobody receives a password from another person anymore. Every new access is born with a **pending invitation** and the person creates their own password through the link in the email:
+- **Who creates access:** the Dono, on the Usuários screen (Agente employee or another Dono of the company), and the Agesto team, in the superadmin (Dono of the new company and any access of a company). A new team administrator is also invited this way; only the first admin still goes through the setup with `Admin__SetupKey`.
+- **Invitation:** link `{Email:UrlWeb}/criar-senha#token=...` (admin: `/admin/criar-senha`), valid for **72 hours** and only once; a new invitation invalidates the previous one. When used, the password is created and the email is confirmed (`Usuario.EmailConfirmadoEm`, `AdminPlataforma.EmailConfirmadoEm`). The agent's email points to the app and to `/baixar`.
+- **Temporary password:** removed from the Dono and the superadmin. The Dono only **resends the invitation** to whoever has not created a password yet. In the superadmin, "senha provisória" (temporary password) became **"Enviar link de senha"** (resends the invitation, or sends a 72-hour link to whoever already has access; the current password works until the link is used).
+- **Forgot password:** Dono and Agente (15-minute link, DEC-54).
+- **Existing accesses:** do not change. The migration marks their email as confirmed by the creation date; nobody loses their password or gets an email.
+
+**Why:** requested by Davi Oliveira on 12/11/2026. The temporary password passed through third parties (Dono, team, WhatsApp); with the invitation, only the person knows the password and the email is confirmed.
+
+**Impact:** migration `AddConvitesPorEmail` (columns `EmailConfirmadoEm`, and `AdminId` and `Tipo` in the links table). New routes: `POST /api/usuario/{id}/reenviar-convite`, `POST /api/admin/empresas/{id}/usuarios`, `POST /api/admin/empresas/{id}/usuarios/{usuarioId}/enviar-link-senha`, `POST /api/admin/equipe/{id}/reenviar-convite` and `POST /api/admin/auth/criar-senha`. Removed: `POST /api/usuario/{id}/redefinir-senha` and `.../senha-provisoria`. New web screens: `/criar-senha` and `/admin/criar-senha`; the app gets "Esqueci a senha". Revisits item 2 of DEC-35 and the temporary password of DEC-52.
+
+## DEC-56 — WhatsApp by link (wa.me), with no integration with the Dono's account
+
+**Status:** 🟢 Links in `main` (PR #168, release #169, 12/11/2026), chosen by Davi Oliveira. Quote PDF on the `feature/orcamento-pdf` branch (12/11/2026).
+
+**Decision:** Agesto talks to WhatsApp only through **`wa.me` links**. The button opens the WhatsApp of whoever is using Agesto (web or app), in the conversation with the client and, when it makes sense, with the message already written. The person reviews and sends it from their own WhatsApp. Agesto stores no session, credential or conversation:
+- **Quote (web):** goes as a **PDF** (Davi's request on 12/11/2026, instead of the message with the items). The PDF is generated in the browser and carries company, client, items and total, **never cost or margin**. Since `wa.me` does not accept attachments: on the phone, "Enviar PDF por WhatsApp" (send PDF by WhatsApp) opens the system share sheet with the file, and the person picks WhatsApp and the contact; on the computer, the PDF is downloaded and the client's conversation opens in WhatsApp, to attach the file. "Baixar PDF" (download PDF) is for email or printing.
+- **Clientes and Agenda (web), app schedule:** a button or link that opens the conversation with the client.
+- **Phone:** accepts area code + number (10 or 11 digits) or already with the 55; without a valid phone, the button does not show (on the quote, it is disabled and explains why).
+- **Out of this phase:** talking to clients inside Agesto. If needed, the way is the official WhatsApp API (Cloud API, from Meta), in its own DEC with cost and scope. **Not Baileys**, nor other libraries that imitate WhatsApp Web.
+
+**Why:** requested by Davi Oliveira on 12/11/2026, for the Dono to talk to clients through WhatsApp from Agesto. Baileys was evaluated and refused: it is not official and can lead to the Dono's number being banned; the stored session would give access to their whole WhatsApp; it would require an always-on Node.js service, outside the current architecture; it breaks when WhatsApp changes; and it would greatly increase the personal data under Agesto's responsibility (LGPD). The link delivers the main thing, fits before the launch and has none of these risks.
+
+**Impact:** `OrcamentoResponse` gains `ClienteTelefone`, and `ConfiguracaoResponse` gains `EmpresaNome` and `EmpresaDocumento` (no migration; the name also shows up in the web account, instead of "Minha empresa"). Utilities `web/src/lib/whatsapp.ts` and `mobile/src/lib/whatsapp.ts`; PDF in `web/src/features/orcamentos/pdf.ts`, with the `jspdf` dependency loaded only when the quote opens. The app only gets the button in a next build or update.
+
+## DEC-57 — Sales by contact, no open sign-up; sales page at the web root
+
+**Status:** 🟢 In `main` (sales page: PR #172, release #173, 12/11/2026; `/conheca`: PR #174, release #175, 13/11/2026), decided by Davi Oliveira and tested by him in production. Replaces DEC-48.
+
+**Decision:** Agesto **will not have open sign-up**. Whoever wants to subscribe gets in touch, and the team creates the company in the superadmin; the Dono receives the invitation by email and creates the password (DEC-52, DEC-55).
+- **Sales page:** someone not logged in who opens the web root (`/`) sees the Agesto presentation. Someone logged in keeps going straight to the Visão geral. The page is always in light mode (Marinho palette), and the login gets the link "Conheça e fale com a gente" (learn more and talk to us). The **`/conheca`** address shows the page to anyone, logged in or not; it is the link to share (social media, WhatsApp, proposals) and to show Agesto without leaving the account. For someone logged in, the "Entrar" (sign in) button becomes "Ir para o painel" (go to the panel).
+- **Content:** the promise "sua empresa inteira em um lugar só" (your whole company in one place), the features, the flow from quote to result, how to start, the prices, the FAQ and the contact.
+- **Prices** (set by Davi on 12/11/2026): **subscription of R$ 49,90/month** per company, with the Dono's access and all features, **plus 1 employee license included**. Each additional employee costs **R$ 19,90/month**. The page has a calculator that carries the number of employees into the WhatsApp message.
+- **Payment:** credit card, boleto or Pix. The method, and other arrangements, are agreed in the contact; the page does not talk about lock-in or cancellation.
+- **Contact:** commercial WhatsApp (34) 99632-6130, through the `wa.me` link (DEC-56), and the email agesto.contact@gmail.com. There is no form, so as not to open a public endpoint in the API.
+- **Hosting:** in the same web project (Cloudflare Pages), with the page's code in a separate chunk, loaded only by whoever opens it. When there is an own domain, or if marketing grows, the page can move to its own project (e.g. `agesto.com.br` and the panel at `app.agesto.com.br`).
+
+**Why:** requested by Davi Oliveira on 12/11/2026. Sales are done by the team, with subscription and licenses agreed in the contact. DEC-48 planned open sign-up with email verification and a trial period; that is no longer needed. In the same project there is no new infra nor dependency on the own domain, which does not exist yet.
+
+**Impact:** no API change or migration. `ProtectedRoute` gains `raizPublica`; the page lives in `web/src/pages/venda/`. The open sign-up tasks leave TASKS, and the presentation page is done now. Subscription control (who paid and who is late) remains open.
+
+## DEC-58 — Subscription and license control in the superadmin
+
+**Status:** 🟡 Defined by Davi Oliveira on 13/11/2026; implemented on the `feature/controle-assinatura` branch (13/11/2026). The `AddAssinatura` migration is still to be applied.
+
+**Decision:** each company's subscription is controlled in the superadmin, with no payment gateway in the MVP (card, boleto or Pix are agreed in the contact, DEC-57):
+- **Manual payment record:** the team records each payment (date, amount, method and which month it refers to), with a history per company. Each payment moves "pago até" (paid until) to the end of the paid period.
+- **Status:** up to date, due soon or late (with the days late), and the superadmin's company list can filter by it.
+- **Late payment:** **manual** blocking (the button that already exists, DEC-52) and **automatic**: after a **10-day grace period** without payment, the company is blocked on its own until the team records the payment and unblocks it. Unblocking can also be manual.
+- **Notice to the Dono:** a notice at the top of the panel when the subscription is close to due, overdue or in the grace period (with how many days are left before blocking), and an "Assinatura" (subscription) block in Parametrização with plan, licenses and due date.
+- **Licenses:** the subscription (R$ 49,90/month) includes the Dono and **1 employee**; each additional employee is a R$ 19,90/month license (DEC-57). The number of licenses is stored on the company and only the team changes it. The Dono **cannot go beyond what was contracted**: when trying to invite an employee beyond the licenses, Agesto asks them to talk to the team.
+
+**Why:** sales are by contact and payment is agreed outside the system; the control needs to show who paid, who is late and lock usage without payment, with a grace period so as not to cut off a customer for being a few days late.
+
+**How it turned out (13/11/2026):**
+- **Empresa:** `PagoAte`, `LicencasFuncionarios` (default 1), `BloqueioAutomatico` and `BloqueioAutomaticoReferencia`. `PagamentosAssinatura` table with the history, with RLS.
+- **Existing companies:** stay **without billing** (empty `PagoAte`), with no notice and no automatic blocking, until the team records the first payment or adjusts "pago até". The migration sets the licenses to today's active accesses, so nobody is locked.
+- **Status, by the Brasília day:** up to date; due soon (up to 5 days); in grace period (overdue for up to 10 days, with a notice to the Dono and the countdown to blocking); late (more than 10 days).
+- **Payment:** the period starts the day after the last paid day (with no history, today) and covers 1 to 12 months.
+- **Automatic blocking:** a routine in the API runs every hour and blocks the late ones, recorded in the audit log as "Sistema". A payment removes this block on its own; a manual block is only removed by the team. If the team manually unblocks a late company, the routine does not block it again until "pago até" changes.
+- **Licenses:** count active accesses, including pending invitations. The Dono and the team cannot create or reactivate access beyond what was contracted (409, with the message asking to talk to the team); deactivating is always allowed.
+- **Screens:**
+  - in the superadmin, the **Assinatura** block (status, amount, licenses, accesses in use, history, "Registrar pagamento" (record payment) and "Ajustar" (adjust)), the subscription column and filter in the company list;
+  - for the Dono, the notice at the top of the panel (due soon or grace period, with the link to Agesto's WhatsApp) and the **Assinatura** block in Parametrização (`GET /api/assinatura`).
+- **Undo payment (13/11/2026, branch `feature/pagamentos`):** the team undoes a payment recorded by mistake from the superadmin history. Only the last active payment, and only while "pago até" is still the one it generated; after an "Ajustar", it is corrected through "Ajustar". "Pago até" goes back to what it was before the payment, the record stays in the history as undone (who and when), the automatic blocking routine applies again and the action goes into the audit log.
 
 ---
 
