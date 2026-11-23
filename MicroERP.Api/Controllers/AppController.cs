@@ -5,7 +5,8 @@ namespace MicroERP.Api.Controllers;
 
 // Sem loja (DEC-47), o app pergunta aqui se o APK instalado ficou velho e avisa
 // o agente. Configurado no Render por App__VersaoMinimaAndroid e App__UrlDownload;
-// sem a versão configurada, o app não avisa nada. Rota pública e sem banco.
+// sem a versão configurada, o app não avisa nada. App__UrlManual é o link do
+// manual de uso (KAN-42), aberto pela aba "Mais". Rota pública e sem banco.
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AppController : ApiControllerBase
@@ -27,7 +28,8 @@ public sealed class AppController : ApiControllerBase
             Data = new AppVersaoResponse
             {
                 VersaoMinimaAndroid = Valor("App:VersaoMinimaAndroid"),
-                UrlDownload = Valor("App:UrlDownload")
+                UrlDownload = Valor("App:UrlDownload"),
+                UrlManual = Valor("App:UrlManual")
             }
         });
     }

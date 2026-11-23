@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type ClipboardEvent, type FormEvent } from 'react'
-import { Badge, Button, DataTable, Drawer, PageHead, SelectField, useToast, type Column } from '../../components/ui'
+import { Badge, Button, ButtonExterno, DataTable, Drawer, PageHead, SelectField, useToast, type Column } from '../../components/ui'
 import { ApiError } from '../../lib/api'
 import { dataCurta, hora } from '../../lib/format'
 import type { AssuntoTicket, Ticket } from '../../types/api'
@@ -201,9 +201,14 @@ export function SuportePage() {
         title="Suporte"
         sub="Fale com a equipe do Agesto: tire dúvidas, avise de um problema ou sugira uma melhoria. Acompanhe aqui a resposta de cada chamado."
         actions={
-          <Button variant="primary" icon="plus" onClick={() => setNovo(true)}>
-            Novo chamado
-          </Button>
+          <>
+            <ButtonExterno href="/manual" icon="file">
+              Manual de uso
+            </ButtonExterno>
+            <Button variant="primary" icon="plus" onClick={() => setNovo(true)}>
+              Novo chamado
+            </Button>
+          </>
         }
       />
 

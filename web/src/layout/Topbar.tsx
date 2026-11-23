@@ -55,7 +55,8 @@ export function Topbar({
         <span className="kbd">Ctrl K</span>
       </label>
       <span className="spacer" />
-      <a className="help-link" href="#" onClick={(e) => e.preventDefault()}>
+      {/* Manual de uso (KAN-42) em outra aba. */}
+      <a className="help-link" href="/manual" target="_blank" rel="noopener noreferrer">
         Precisa de ajuda?
       </a>
       <Seg<Mode>

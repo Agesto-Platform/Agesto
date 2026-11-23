@@ -230,8 +230,10 @@ export interface SyncDescargaResponse {
   sincronizadoEm: string
 }
 
-/** GET /api/app/versao — APK mínimo que o app precisa ter (DEC-47). */
+/** GET /api/app/versao — APK mínimo que o app precisa ter (DEC-47) e link do manual de uso (KAN-42). */
 export interface AppVersao {
   versaoMinimaAndroid: string | null
   urlDownload: string | null
+  /** Opcional: API antiga não manda. Sem ele, a aba "Mais" não mostra o manual. */
+  urlManual?: string | null
 }
