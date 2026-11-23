@@ -23,7 +23,7 @@ public sealed class AgenteServiceTests
         gerador.SetupGet(g => g.Habilitado).Returns(false);
 
         var usoIa = UsoIaLiberado();
-        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, Ferramentas().Object, NullLogger<AgenteService>.Instance);
 
         await Assert.ThrowsAsync<InsightsIndisponivelException>(
             () => service.PerguntarAsync(1, new AgentePerguntaRequest { Pergunta = "Quanto sobrou?" }, CancellationToken.None));
@@ -61,12 +61,12 @@ public sealed class AgenteServiceTests
         IReadOnlyList<MensagemIA>? conversa = null;
         var gerador = new Mock<IInsightsGerador>();
         gerador.SetupGet(g => g.Habilitado).Returns(true);
-        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<CancellationToken>()))
-            .Callback<IReadOnlyList<MensagemIA>, CancellationToken>((c, _) => conversa = c)
+        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<IExecutorDeFerramentas?>(), It.IsAny<CancellationToken>()))
+            .Callback<IReadOnlyList<MensagemIA>, IExecutorDeFerramentas?, CancellationToken>((c, _, _) => conversa = c)
             .ReturnsAsync(new RespostaIA("Sobraram R$ 1.100,00.", "claude-haiku-5-5", 900, 40));
 
         var usoIa = UsoIaLiberado();
-        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, Ferramentas().Object, NullLogger<AgenteService>.Instance);
         var resposta = await service.PerguntarAsync(7,
             new AgentePerguntaRequest { Pergunta = "Quanto sobrou este mês?", De = De, Ate = Ate },
             CancellationToken.None);
@@ -115,6 +115,15 @@ public sealed class AgenteServiceTests
         Assert.Equal("Oi\n\nQuanto sobrou?", unica.Texto);
     }
 
+    private static Mock<IAgenteFerramentasFactory> Ferramentas(params AcaoAgenteResponse[] acoes)
+    {
+        var executor = new Mock<IAgenteFerramentas>();
+        executor.SetupGet(e => e.Acoes).Returns(acoes);
+        var fabrica = new Mock<IAgenteFerramentasFactory>();
+        fabrica.Setup(f => f.Criar(It.IsAny<long>())).Returns(executor.Object);
+        return fabrica;
+    }
+
     private static Mock<IUsoIaService> UsoIaLiberado(int restantes = 19)
     {
         var uso = new Mock<IUsoIaService>();
@@ -143,11 +152,11 @@ public sealed class AgenteServiceTests
         var usoIa = new Mock<IUsoIaService>();
         usoIa.Setup(u => u.ReservarPerguntaAsync(3, It.IsAny<CancellationToken>())).ThrowsAsync(new LimiteIaExcedidoException(20));
 
-        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, Ferramentas().Object, NullLogger<AgenteService>.Instance);
 
         await Assert.ThrowsAsync<LimiteIaExcedidoException>(
             () => service.PerguntarAsync(3, new AgentePerguntaRequest { Pergunta = "Oi" }, CancellationToken.None));
-        gerador.Verify(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<CancellationToken>()), Times.Never);
+        gerador.Verify(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<IExecutorDeFerramentas?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -156,11 +165,11 @@ public sealed class AgenteServiceTests
         var (metricas, atendimentos) = DadosVazios(3);
         var gerador = new Mock<IInsightsGerador>();
         gerador.SetupGet(g => g.Habilitado).Returns(true);
-        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<CancellationToken>()))
+        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<IExecutorDeFerramentas?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("falhou"));
         var usoIa = UsoIaLiberado();
 
-        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, Ferramentas().Object, NullLogger<AgenteService>.Instance);
 
         await Assert.ThrowsAsync<HttpRequestException>(
             () => service.PerguntarAsync(3, new AgentePerguntaRequest { Pergunta = "Oi" }, CancellationToken.None));
@@ -174,15 +183,38 @@ public sealed class AgenteServiceTests
         var (metricas, atendimentos) = DadosVazios(3);
         var gerador = new Mock<IInsightsGerador>();
         gerador.SetupGet(g => g.Habilitado).Returns(true);
-        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<CancellationToken>()))
+        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<IExecutorDeFerramentas?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new RespostaIA("Ok.", "claude-haiku-5-5", 500, 30));
         var usoIa = UsoIaLiberado(restantes: 4);
 
-        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, NullLogger<AgenteService>.Instance);
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, usoIa.Object, Ferramentas().Object, NullLogger<AgenteService>.Instance);
         var resposta = await service.PerguntarAsync(3, new AgentePerguntaRequest { Pergunta = "Oi" }, CancellationToken.None);
 
         Assert.Equal(4, resposta.PerguntasRestantes);
         Assert.Equal(20, resposta.LimiteDiario);
         usoIa.Verify(u => u.RegistrarTokensDaPerguntaAsync(3, 500, 30, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PerguntarAsync_UsaConsultasDaEmpresaDoLoginEDevolveOsRascunhos()
+    {
+        var (metricas, atendimentos) = DadosVazios(5);
+        var acao = new AcaoAgenteResponse { Tipo = "whatsapp", ClienteId = 9, ClienteNome = "Ana", Telefone = "11999990000", Mensagem = "Oi, Ana!" };
+        var fabrica = Ferramentas(acao);
+        IExecutorDeFerramentas? usado = null;
+        var gerador = new Mock<IInsightsGerador>();
+        gerador.SetupGet(g => g.Habilitado).Returns(true);
+        gerador.Setup(g => g.ResponderAsync(It.IsAny<IReadOnlyList<MensagemIA>>(), It.IsAny<IExecutorDeFerramentas?>(), It.IsAny<CancellationToken>()))
+            .Callback<IReadOnlyList<MensagemIA>, IExecutorDeFerramentas?, CancellationToken>((_, f, _) => usado = f)
+            .ReturnsAsync(new RespostaIA("Preparei a cobrança.", "claude-haiku-5-5", 800, 50, ConsultasFeitas: 2));
+
+        var service = new AgenteService(metricas.Object, atendimentos.Object, gerador.Object, UsoIaLiberado().Object, fabrica.Object, NullLogger<AgenteService>.Instance);
+        var resposta = await service.PerguntarAsync(5, new AgentePerguntaRequest { Pergunta = "Cobre a Ana" }, CancellationToken.None);
+
+        fabrica.Verify(f => f.Criar(5), Times.Once);
+        Assert.NotNull(usado);
+        var devolvida = Assert.Single(resposta.Acoes);
+        Assert.Equal("whatsapp", devolvida.Tipo);
+        Assert.Equal("11999990000", devolvida.Telefone);
     }
 }

@@ -2,18 +2,22 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { Icon, type IconName } from '../components/Icon'
 import { Mascote, type MascoteApi } from '../components/Mascote'
 import { api, ApiError } from '../lib/api'
+import { linkWhatsApp } from '../lib/whatsapp'
 import { periodRange } from '../lib/period'
-import type { AgenteMensagem, AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../types/api'
+import type { AcaoAgente, AgenteMensagem, AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../types/api'
 import type { Period } from './PeriodSwitch'
 import { saudacao, useConta } from './useConta'
 
 const CHIPS: [IconName, string][] = [
   ['coins', 'Quanto sobrou este mês?'],
-  ['trend', 'Qual serviço dá mais margem?'],
-  ['file', 'Montar um orçamento'],
+  ['alert', 'Quem está me devendo?'],
+  ['file', 'Orçamentos sem resposta'],
   ['calendar', 'O que tenho amanhã?'],
-  ['alert', 'O que está acabando?'],
+  ['box', 'O que está acabando?'],
 ]
+
+/** Fala no painel: as do Agente podem trazer rascunhos de WhatsApp (KAN-77). */
+type Fala = AgenteMensagem & { acoes?: AcaoAgente[] }
 
 /** Quantas falas anteriores vão junto com a pergunta (a API aceita até 10). */
 const HISTORICO_MAX = 10
@@ -36,7 +40,7 @@ export function AgentPanel({
 }) {
   const conta = useConta()
   const [texto, setTexto] = useState('')
-  const [mensagens, setMensagens] = useState<AgenteMensagem[]>([])
+  const [mensagens, setMensagens] = useState<Fala[]>([])
   const [pensando, setPensando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [uso, setUso] = useState<{ limite: number; restantes: number } | null>(null)
@@ -73,7 +77,8 @@ export function AgentPanel({
     const pergunta = bruta.trim()
     if (!pergunta || pensando || esgotado) return
 
-    const historico = mensagens.slice(-HISTORICO_MAX)
+    // a API só recebe papel e texto; os rascunhos ficam aqui no painel
+    const historico: AgenteMensagem[] = mensagens.slice(-HISTORICO_MAX).map(({ papel, texto }) => ({ papel, texto }))
     setMensagens([...mensagens, { papel: 'usuario', texto: pergunta }])
     setTexto('')
     setErro(null)
@@ -84,7 +89,7 @@ export function AgentPanel({
       const { de, ate } = periodRange(period)
       const corpo: AgentePerguntaRequest = { pergunta, historico, de, ate }
       const r = await api.post<AgenteResposta>('/api/agente/perguntar', corpo)
-      setMensagens((atual) => [...atual, { papel: 'agente', texto: r.resposta }])
+      setMensagens((atual) => [...atual, { papel: 'agente', texto: r.resposta, acoes: r.acoes ?? [] }])
       if (r.limiteDiario) setUso({ limite: r.limiteDiario, restantes: r.perguntasRestantes ?? 0 })
       local.current?.face('happy', 1200)
     } catch (e) {
@@ -167,6 +172,7 @@ export function AgentPanel({
                 <li key={i} className={`msg ${m.papel}`}>
                   <span className="sr-only">{m.papel === 'usuario' ? 'Você:' : 'Agente:'}</span>
                   {m.texto}
+                  {m.acoes && m.acoes.length > 0 && <Rascunhos acoes={m.acoes} />}
                 </li>
               ))}
               {pensando && (
@@ -220,5 +226,32 @@ export function AgentPanel({
         </form>
       </div>
     </aside>
+  )
+}
+
+/**
+ * Mensagens de WhatsApp que a IA preparou (KAN-77). Nada é enviado pelo Agesto:
+ * o botão abre o WhatsApp do Dono com o texto pronto, para ele revisar e enviar.
+ */
+function Rascunhos({ acoes }: { acoes: AcaoAgente[] }) {
+  return (
+    <ul className="msg-rascunhos" aria-label="Mensagens preparadas">
+      {acoes.map((a, i) => {
+        const link = linkWhatsApp(a.telefone, a.mensagem)
+        return (
+          <li key={i}>
+            <p>{a.mensagem}</p>
+            {link ? (
+              <a className="btn sm" href={link} target="_blank" rel="noopener noreferrer">
+                <Icon name="send" />
+                Revisar e enviar para {a.clienteNome}
+              </a>
+            ) : (
+              <span className="muted">O telefone de {a.clienteNome} não serve para o WhatsApp. Confira em Clientes.</span>
+            )}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

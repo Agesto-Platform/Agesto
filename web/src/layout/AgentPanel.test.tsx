@@ -94,6 +94,35 @@ describe('AgentPanel', () => {
     )
   })
 
+  it('mostra o rascunho de WhatsApp com o link e não manda o rascunho no histórico', async () => {
+    post.mockResolvedValueOnce({
+      resposta: 'Preparei a cobrança do Bruno.',
+      modelo: 'm',
+      acoes: [{ tipo: 'whatsapp', clienteId: 10, clienteNome: 'Bruno', telefone: '(11) 91111-2222', mensagem: 'Oi, Bruno! Lembrete do pagamento.' }],
+    })
+    post.mockResolvedValueOnce({ resposta: 'Ok.', modelo: 'm' })
+    const user = userEvent.setup()
+    render(<AgentPanel period="mes" onClose={() => {}} />)
+
+    await user.click(screen.getByRole('button', { name: /Quem está me devendo\?/ }))
+
+    const link = await screen.findByRole('link', { name: /Revisar e enviar para Bruno/ })
+    expect(link).toHaveAttribute('href', `https://wa.me/5511911112222?text=${encodeURIComponent('Oi, Bruno! Lembrete do pagamento.')}`)
+    expect(screen.getByText('Oi, Bruno! Lembrete do pagamento.')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Pergunta para o Agente'), 'Obrigado{Enter}')
+    expect(await screen.findByText('Ok.')).toBeInTheDocument()
+    expect(post).toHaveBeenLastCalledWith(
+      '/api/agente/perguntar',
+      expect.objectContaining({
+        historico: [
+          { papel: 'usuario', texto: 'Quem está me devendo?' },
+          { papel: 'agente', texto: 'Preparei a cobrança do Bruno.' },
+        ],
+      }),
+    )
+  })
+
   it('mostra a mensagem da API quando o Agente está indisponível', async () => {
     post.mockRejectedValue(new ApiError(503, 'O Agente ainda não está configurado neste servidor.'))
     const user = userEvent.setup()
