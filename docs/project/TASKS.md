@@ -95,7 +95,7 @@
 
 ## Correções da auditoria de 17/11/2026
 
-> Auditoria completa da `develop` `0be630f`, com API local e PostgreSQL descartável (relatório local do Davi, fora do repositório). Os três achados abaixo foram corrigidos em 17/11 a pedido do Davi; os demais seguem só no relatório. Nenhum está em `main` ainda: a API e o web entram na próxima release, e o app só chega aos celulares no próximo APK. As correções do app não foram testadas em aparelho.
+> Auditoria completa da `develop` `0be630f`, com API local e PostgreSQL descartável (relatório local do Davi, fora do repositório). Os três achados abaixo foram corrigidos em 17/11 a pedido do Davi; os demais seguem só no relatório. Update 23/11/2026: the API and web fixes are in `main` since 18/11 (PR #224); the app fixes reach phones only in the next APK and were not tested on a device.
 
 | ID | Problema | Onde | Status |
 |----|----------|------|--------|
