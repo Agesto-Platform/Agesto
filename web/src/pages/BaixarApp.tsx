@@ -64,8 +64,8 @@ export function BaixarApp() {
               <b>Mais detalhes</b> e em <b>Instalar mesmo assim</b>.
             </li>
             <li>
-              Abra o Agesto e entre com o seu email e a senha que você criou pelo link do convite. Ainda não criou?
-              Procure o email do Agesto na sua caixa de entrada (e no spam).
+              Abra o Agesto e entre com o login e a senha que o responsável pela sua empresa passou para você. Se
+              recebeu um convite por email, crie a senha pelo link do email e entre com ela.
             </li>
           </ol>
 

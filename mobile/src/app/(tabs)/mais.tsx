@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native'
+import { useCallback, useEffect, useState } from 'react'
+import { View, Text, Pressable, StyleSheet, ActivityIndicator, Linking } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useFocusEffect } from 'expo-router'
 import { Screen } from '@/ui/Screen'
@@ -8,6 +8,8 @@ import { useSairComAviso } from '@/auth/useSairComAviso'
 import { db } from '@/db/instance'
 import { resumoSincronizacao } from '@/sync/sync'
 import { sincronizarUmaVez, useAoSincronizar } from '@/sync/automatica'
+import { api } from '@/lib/api'
+import type { AppVersao } from '@/types/api'
 
 function fmt(iso: string | null): string {
   if (!iso) return '—'
@@ -22,6 +24,22 @@ export default function Mais() {
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [flash, setFlash] = useState<string | null>(null)
+  const [urlManual, setUrlManual] = useState<string | null>(null)
+
+  // Manual de uso (KAN-42): o link vem da API (App__UrlManual), para trocar de
+  // domínio sem APK novo. Sem internet ou sem o link configurado, a linha não aparece.
+  useEffect(() => {
+    let ativo = true
+    api
+      .get<AppVersao>('/api/app/versao')
+      .then((info) => {
+        if (ativo) setUrlManual(info.urlManual ?? null)
+      })
+      .catch(() => {})
+    return () => {
+      ativo = false
+    }
+  }, [])
 
   const reload = useCallback(async () => {
     const [at, cli, serv, ls] = await Promise.all([
@@ -90,6 +108,18 @@ export default function Mais() {
             {syncing ? <ActivityIndicator color="#fff" /> : <Text style={styles.syncText}>Sincronizar agora</Text>}
           </Pressable>
         </View>
+
+        {urlManual && (
+          <Pressable
+            onPress={() => Linking.openURL(urlManual)}
+            accessibilityRole="link"
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}
+          >
+            <Ionicons name="book-outline" size={20} color={colors.brandInk} />
+            <Text style={[styles.rowText, { color: colors.ink }]}>Manual de uso</Text>
+            <Ionicons name="open-outline" size={16} color={colors.ink3} style={{ marginLeft: 'auto' }} />
+          </Pressable>
+        )}
 
         <Pressable onPress={sair} style={({ pressed }) => [styles.row, pressed && { opacity: 0.85 }]}>
           <Ionicons name="log-out-outline" size={20} color={colors.bad} />

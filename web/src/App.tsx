@@ -19,6 +19,7 @@ import { AdminCriarSenha, CriarSenha, RedefinirSenha } from './pages/RedefinirSe
 import { BaixarApp } from './pages/BaixarApp'
 import { AceitarTermos } from './pages/AceitarTermos'
 import { Privacidade, Termos } from './pages/legal/Documento'
+import { Manual } from './pages/manual/Manual'
 import { AdminLogin } from './admin/AdminLogin'
 import { AdminLayout } from './admin/AdminLayout'
 import { AdminEmpresasPage } from './admin/AdminEmpresasPage'
@@ -55,6 +56,8 @@ export default function App() {
       {/* Públicas: links de Termos__UrlTermos e Termos__UrlPrivacidade na tela de aceite (B6). */}
       <Route path="/termos" element={<Termos />} />
       <Route path="/privacidade" element={<Privacidade />} />
+      {/* Pública: manual de uso do Dono e do agente (KAN-42); o app abre por App__UrlManual. */}
+      <Route path="/manual" element={<Manual />} />
 
       {/* Área de superadmin (equipe do Agesto): sessão e token próprios. */}
       <Route path="/admin/login" element={<AdminLogin />} />
