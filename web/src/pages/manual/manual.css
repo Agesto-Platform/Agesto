@@ -1,0 +1,24 @@
+/* Manual de uso (KAN-42): reaproveita o cartão das páginas públicas (login.css). */
+.manual-indice { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; }
+.manual-indice ol { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 4px; color: var(--ink-2); }
+.manual-indice a { color: inherit; }
+.manual-indice-parte { font-weight: 600; text-decoration: none; }
+.manual-parte { margin-top: 32px; }
+.manual-parte-titulo { margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.manual-parte-titulo .muted { display: block; margin-top: 2px; color: var(--ink-3); font-size: 14px; font-weight: 500; letter-spacing: 0; }
+.manual-secao { scroll-margin-top: 16px; }
+.manual-secao h3 { scroll-margin-top: 16px; }
+.manual-lista { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
+.manual .passos { margin-top: 10px; }
+.manual-alerta { padding: 10px 12px; border-left: 3px solid var(--brand); background: var(--brand-soft); border-radius: 6px; }
+.manual-rodape { margin-top: 32px; text-align: left; line-height: 1.6; }
+.manual-imprimir { padding: 0; border: 0; background: none; color: var(--brand); font: inherit; text-decoration: underline; cursor: pointer; }
+
+/* Para imprimir ou salvar em PDF no treino: só o texto, sem fundo nem índice. */
+@media print {
+  .manual-page { position: static; overflow: visible !important; background: #fff; }
+  .manual-page .login-top, .manual-indice, .manual-imprimir { display: none; }
+  .manual-page .login { padding: 0; }
+  .manual-page .login-card { width: 100%; border: 0; box-shadow: none; background: #fff; padding: 0; }
+  .manual-secao { break-inside: avoid; }
+}

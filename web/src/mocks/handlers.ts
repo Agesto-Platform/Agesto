@@ -58,7 +58,14 @@ export const handlers = [
 
   http.get('*/api/app/versao', () =>
     HttpResponse.json(
-      ok({ versaoMinimaAndroid: '1.0.0', urlDownload: 'https://expo.dev/artifacts/eas/agesto-demo.apk' }, 'Versão do app.'),
+      ok(
+        {
+          versaoMinimaAndroid: '1.0.0',
+          urlDownload: 'https://expo.dev/artifacts/eas/agesto-demo.apk',
+          urlManual: 'https://agesto.pages.dev/manual',
+        },
+        'Versão do app.',
+      ),
     ),
   ),
 

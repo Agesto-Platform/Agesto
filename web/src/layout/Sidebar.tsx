@@ -283,7 +283,15 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
               <Icon name="lock" />
               <span>Alterar senha</span>
             </button>
-            <button type="button" role="menuitem">
+            {/* Manual de uso (KAN-42) em outra aba, para não perder o que está aberto no painel. */}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuAberto(false)
+                window.open('/manual', '_blank', 'noopener')
+              }}
+            >
               <Icon name="help" />
               <span>Ajuda</span>
             </button>

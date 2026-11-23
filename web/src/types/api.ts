@@ -572,10 +572,11 @@ export interface AgenteUso {
 
 /* ---------- App do agente ---------- */
 
-/** GET /api/app/versao — versão mínima do APK e link para baixar (DEC-47). */
+/** GET /api/app/versao — versão mínima do APK, link para baixar (DEC-47) e manual de uso (KAN-42). */
 export interface AppVersao {
   versaoMinimaAndroid: string | null
   urlDownload: string | null
+  urlManual: string | null
 }
 
 /* ---------- Assinatura (DEC-58) ---------- */
