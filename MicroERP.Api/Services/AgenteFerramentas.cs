@@ -43,6 +43,8 @@ public sealed class AgenteFerramentasFactory : IAgenteFerramentasFactory
 // Ao modelo vão nomes de clientes e da equipe, valores, datas e status; nunca CPF,
 // telefone, email nem endereço (decisão do Davi, 23/11/2026). As contas (totais,
 // dias em aberto) são feitas aqui, não pelo modelo (DEC-20).
+// Fase 2 (DEC-62): a IA também propõe mudanças em atendimentos pendentes, mas
+// nada é gravado aqui; o painel mostra um cartão e só o Dono confirma.
 public sealed class AgenteFerramentas : IAgenteFerramentas
 {
     private const int MaxItens = 30;
@@ -102,6 +104,15 @@ public sealed class AgenteFerramentas : IAgenteFerramentas
                 ("cliente_id", Inteiro("Id do cliente (veja buscar_clientes)")),
                 ("mensagem", Texto("Texto da mensagem, cordial e curto, em português"))),
             ["cliente_id", "mensagem"]),
+        new("propor_mudanca_atendimento",
+            "Propõe ao dono uma mudança num atendimento pendente: concluir, cancelar, reagendar (nova data e, se quiser, nova hora) ou trocar o responsável. Não muda nada: o painel mostra um cartão para o dono confirmar ou descartar. Para cancelar, não junte outras mudanças; ao concluir, só dá para trocar também o responsável.",
+            Props(
+                ("atendimento_id", Inteiro("Id do atendimento (veja listar_atendimentos)")),
+                ("novo_status", Opcoes("Concluido", "Cancelado")),
+                ("nova_data", Data("Novo dia do atendimento")),
+                ("nova_hora", Texto("Novo horário, no formato HH:MM (horário de Brasília)")),
+                ("novo_responsavel_id", Inteiro("Id da pessoa da equipe que vai atender (veja listar_equipe)"))),
+            ["atendimento_id"]),
     ];
 
     private readonly long _empresaId;
@@ -151,6 +162,7 @@ public sealed class AgenteFerramentas : IAgenteFerramentas
                 "historico_do_cliente" => await HistoricoAsync(entrada, cancellationToken),
                 "buscar_produtos" => await ProdutosAsync(entrada, cancellationToken),
                 "preparar_whatsapp" => await WhatsAppAsync(entrada, cancellationToken),
+                "propor_mudanca_atendimento" => await ProporMudancaAsync(entrada, cancellationToken),
                 _ => throw new FerramentaInvalidaException($"A consulta \"{nome}\" não existe."),
             };
             return resultado as string ?? JsonSerializer.Serialize(resultado, JsonEnvio);
@@ -232,9 +244,11 @@ public sealed class AgenteFerramentas : IAgenteFerramentas
                 {
                     atendimentoId = a.Id,
                     data = Formatar(FusoBrasilia.DiaLocal(a.DataAgendada ?? a.DataRegistro)),
+                    hora = a.DataAgendada is { } agendada ? HoraLocal(agendada) : null,
                     status = a.Status.ToString(),
                     clienteId = a.ClienteId,
                     cliente = a.ClienteNome,
+                    responsavelId = a.UsuarioId,
                     responsavel = nomes.GetValueOrDefault(a.UsuarioId, "Sem nome"),
                     servico = a.Resumo,
                     valor = a.ValorTotal,
@@ -427,6 +441,83 @@ public sealed class AgenteFerramentas : IAgenteFerramentas
         return $"Mensagem para {cliente.Nome} preparada. O painel mostra o botão para o dono revisar e enviar; não repita o texto inteiro na resposta.";
     }
 
+    private async Task<string> ProporMudancaAsync(JsonElement entrada, CancellationToken ct)
+    {
+        if (_acoes.Count >= MaxAcoes)
+            throw new FerramentaInvalidaException($"Já há {MaxAcoes} ações preparadas nesta resposta.");
+
+        var id = LerInteiro(entrada, "atendimento_id", obrigatorio: true)!.Value;
+        var novoStatus = LerEnum<StatusAtendimento>(entrada, "novo_status");
+        DateOnly? novoDia = Propriedade(entrada, "nova_data") is { ValueKind: not JsonValueKind.Null } ? LerDia(entrada, "nova_data") : null;
+        var novaHora = LerHora(entrada, "nova_hora");
+        var novoResponsavelId = LerInteiro(entrada, "novo_responsavel_id", obrigatorio: false);
+
+        if (novoStatus == StatusAtendimento.Pendente)
+            throw new FerramentaInvalidaException("novo_status deve ser Concluido ou Cancelado.");
+        var reagenda = novoDia is not null || novaHora is not null;
+        if (novoStatus == StatusAtendimento.Cancelado && (reagenda || novoResponsavelId is not null))
+            throw new FerramentaInvalidaException("Para cancelar, proponha só o cancelamento, sem outras mudanças.");
+        if (novoStatus == StatusAtendimento.Concluido && reagenda)
+            throw new FerramentaInvalidaException("Ao concluir, não reagende: proponha só a conclusão (e, se for o caso, o responsável).");
+
+        var atendimento = await _atendimentos.GetByIdAsync(_empresaId, id, ct);
+        if (atendimento.Status != StatusAtendimento.Pendente)
+            throw new FerramentaInvalidaException(
+                $"O atendimento de {atendimento.ClienteNome} está {atendimento.Status}. Só atendimentos pendentes mudam por aqui.");
+
+        DateTime? novaData = null;
+        if (reagenda)
+        {
+            DateTime? atualLocal = atendimento.DataAgendada is { } d
+                ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(d, DateTimeKind.Utc), FusoBrasilia.Info)
+                : null;
+            var dia = novoDia ?? (atualLocal is { } a ? DateOnly.FromDateTime(a) : (DateOnly?)null)
+                ?? throw new FerramentaInvalidaException("Este atendimento não tem data marcada: informe nova_data.");
+            var hora = novaHora ?? (atualLocal is { } b ? TimeOnly.FromDateTime(b) : (TimeOnly?)null)
+                ?? throw new FerramentaInvalidaException("Este atendimento não tem horário marcado: informe nova_hora.");
+            var quando = TimeZoneInfo.ConvertTimeToUtc(dia.ToDateTime(hora), FusoBrasilia.Info);
+            if (quando <= DateTime.UtcNow)
+                throw new FerramentaInvalidaException("A nova data e hora já passaram. Proponha um horário futuro.");
+            var igual = atendimento.DataAgendada is { } atual && DateTime.SpecifyKind(atual, DateTimeKind.Utc) == quando;
+            novaData = igual ? null : quando;
+        }
+
+        var equipe = await _usuarios.GetAllAsync(_empresaId, ct);
+        var responsavelAtual = equipe.FirstOrDefault(u => u.Id == atendimento.UsuarioId);
+        UsuarioResponse? novoResponsavel = null;
+        if (novoResponsavelId is { } rid && rid != atendimento.UsuarioId)
+        {
+            novoResponsavel = equipe.FirstOrDefault(u => u.Id == rid)
+                ?? throw new FerramentaInvalidaException("Essa pessoa não é da equipe. Veja listar_equipe.");
+            if (!novoResponsavel.Ativo)
+                throw new FerramentaInvalidaException($"{novoResponsavel.Nome} está com o acesso desativado.");
+        }
+
+        if (novoStatus is null && novaData is null && novoResponsavel is null)
+            throw new FerramentaInvalidaException("Nada muda: o atendimento já está assim.");
+
+        _acoes.Add(new AcaoAgenteResponse
+        {
+            Tipo = "atendimento",
+            ClienteId = atendimento.ClienteId,
+            ClienteNome = atendimento.ClienteNome ?? string.Empty,
+            AtendimentoId = atendimento.Id,
+            Servico = atendimento.Resumo,
+            DataAtual = atendimento.DataAgendada,
+            ResponsavelAtualId = atendimento.UsuarioId,
+            ResponsavelAtualNome = responsavelAtual?.Nome,
+            NovoStatus = novoStatus?.ToString(),
+            NovaData = novaData,
+            NovoResponsavelId = novoResponsavel?.Id,
+            NovoResponsavelNome = novoResponsavel?.Nome,
+        });
+        return $"Proposta pronta para o atendimento de {atendimento.ClienteNome}. Nada mudou ainda: o painel mostra um cartão para o dono confirmar ou descartar. Diga que a mudança está proposta, nunca que foi feita.";
+    }
+
+    private static string HoraLocal(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), FusoBrasilia.Info)
+            .ToString("HH:mm", CultureInfo.InvariantCulture);
+
     private async Task<Dictionary<long, string>> NomesDaEquipeAsync(CancellationToken ct) =>
         (await _usuarios.GetAllAsync(_empresaId, ct)).ToDictionary(u => u.Id, u => u.Nome);
 
@@ -449,6 +540,16 @@ public sealed class AgenteFerramentas : IAgenteFerramentas
         if (texto is null || !DateOnly.TryParseExact(texto, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var dia))
             throw new FerramentaInvalidaException($"\"{campo}\" deve ser uma data no formato AAAA-MM-DD.");
         return dia;
+    }
+
+    private static TimeOnly? LerHora(JsonElement entrada, string campo)
+    {
+        var v = Propriedade(entrada, campo);
+        if (v is null or { ValueKind: JsonValueKind.Null }) return null;
+        if (v.Value.ValueKind == JsonValueKind.String
+            && TimeOnly.TryParseExact(v.Value.GetString(), "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var hora))
+            return hora;
+        throw new FerramentaInvalidaException($"\"{campo}\" deve ser um horário no formato HH:MM.");
     }
 
     private static long? LerInteiro(JsonElement entrada, string campo, bool obrigatorio)

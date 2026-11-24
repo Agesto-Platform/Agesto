@@ -8,7 +8,8 @@ using MicroERP.Api.Services.Interfaces;
 namespace MicroERP.Api.Services;
 
 // Chat do painel Agente (DEC-21): responde perguntas do Dono com as métricas
-// já calculadas do período (DEC-20) e a agenda dos próximos 7 dias. Só leitura.
+// já calculadas do período (DEC-20) e a agenda dos próximos 7 dias. A IA não grava:
+// as mudanças que ela propõe (DEC-62) só o Dono grava, pelo cartão do painel.
 // Da agenda saem só horário, status, serviço e valor: nome, telefone e
 // endereço do cliente não são enviados ao modelo. Para o resto, o modelo
 // consulta o sistema pelas ferramentas da empresa do login (KAN-77).

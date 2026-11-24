@@ -570,13 +570,34 @@ export interface AgenteResposta {
   acoes?: AcaoAgente[]
 }
 
+export type AcaoAgente = AcaoWhatsApp | AcaoAtendimento
+
 /** Mensagem de WhatsApp preparada pela IA; o telefone vem do cadastro, não do modelo. */
-export interface AcaoAgente {
+export interface AcaoWhatsApp {
   tipo: 'whatsapp'
   clienteId: number
   clienteNome: string
   telefone: string
   mensagem: string
+}
+
+/**
+ * Fase 2 da IA (DEC-62): mudança proposta num atendimento pendente. Nada muda até o
+ * Dono confirmar no cartão; "atual" é como estava quando a IA propôs. Nulo = não muda.
+ */
+export interface AcaoAtendimento {
+  tipo: 'atendimento'
+  clienteId: number
+  clienteNome: string
+  atendimentoId: number
+  servico: string | null
+  dataAtual: string | null
+  responsavelAtualId: number
+  responsavelAtualNome: string | null
+  novoStatus: 'Concluido' | 'Cancelado' | null
+  novaData: string | null
+  novoResponsavelId: number | null
+  novoResponsavelNome: string | null
 }
 
 /** GET /api/agente/uso: perguntas ao Agente usadas hoje pela empresa (DEC-21). */

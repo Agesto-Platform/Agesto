@@ -188,6 +188,144 @@ public sealed class AgenteFerramentasTests
         Assert.Empty(ferramentas.Acoes);
     }
 
+    // ---------- fase 2 (DEC-62): propostas de mudança em atendimentos ----------
+
+    private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+
+    private static DateOnly DiaDaqui(int dias) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, Brasilia)).AddDays(dias);
+
+    private static DateTime Utc(DateOnly dia, int hora, int minuto) =>
+        TimeZoneInfo.ConvertTimeToUtc(dia.ToDateTime(new TimeOnly(hora, minuto)), Brasilia);
+
+    private void Pendente(long id, DateTime? dataAgendada, long responsavel = 4, StatusAtendimento status = StatusAtendimento.Pendente)
+    {
+        _atendimentos.Setup(a => a.GetByIdAsync(Empresa, id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AtendimentoResponse
+            {
+                Id = id, ClienteId = 10, ClienteNome = "Bruno", ClienteTelefone = "11911112222", Status = status,
+                DataAgendada = dataAgendada, UsuarioId = responsavel, Resumo = "Limpeza",
+            });
+        _usuarios.Setup(u => u.GetAllAsync(Empresa, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new UsuarioResponse { Id = 4, Nome = "João", Ativo = true },
+                new UsuarioResponse { Id = 5, Nome = "Lia", Ativo = true },
+                new UsuarioResponse { Id = 6, Nome = "Rui", Ativo = false },
+            ]);
+    }
+
+    [Fact]
+    public async Task ProporMudanca_ReagendarSoODia_MantemOHorarioENaoGrava()
+    {
+        var atual = Utc(DiaDaqui(5), 14, 30);
+        Pendente(1, atual);
+        var ferramentas = Criar();
+
+        var resultado = await ferramentas.ExecutarAsync("propor_mudanca_atendimento",
+            Entrada(new { atendimento_id = 1, nova_data = DiaDaqui(8).ToString("yyyy-MM-dd") }), CancellationToken.None);
+
+        Assert.Contains("Nada mudou ainda", resultado);
+        Assert.DoesNotContain("11911112222", resultado);
+        var acao = Assert.Single(ferramentas.Acoes);
+        Assert.Equal("atendimento", acao.Tipo);
+        Assert.Equal(1, acao.AtendimentoId);
+        Assert.Equal(atual, acao.DataAtual);
+        Assert.Equal(Utc(DiaDaqui(8), 14, 30), acao.NovaData);
+        Assert.Null(acao.NovoStatus);
+        Assert.Null(acao.NovoResponsavelId);
+        Assert.Equal("João", acao.ResponsavelAtualNome);
+        Assert.Empty(acao.Telefone);
+        _atendimentos.Verify(a => a.UpdateAsync(It.IsAny<long>(), It.IsAny<long>(), It.IsAny<AtendimentoUpdateRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProporMudanca_SoAHora_MantemODia()
+    {
+        Pendente(1, Utc(DiaDaqui(5), 14, 30));
+        var ferramentas = Criar();
+
+        await ferramentas.ExecutarAsync("propor_mudanca_atendimento",
+            Entrada(new { atendimento_id = 1, nova_hora = "09:15" }), CancellationToken.None);
+
+        Assert.Equal(Utc(DiaDaqui(5), 9, 15), Assert.Single(ferramentas.Acoes).NovaData);
+    }
+
+    [Fact]
+    public async Task ProporMudanca_ConcluirETrocarResponsavel()
+    {
+        Pendente(1, Utc(DiaDaqui(-1), 10, 0));
+        var ferramentas = Criar();
+
+        await ferramentas.ExecutarAsync("propor_mudanca_atendimento",
+            Entrada(new { atendimento_id = 1, novo_status = "Concluido", novo_responsavel_id = 5 }), CancellationToken.None);
+
+        var acao = Assert.Single(ferramentas.Acoes);
+        Assert.Equal("Concluido", acao.NovoStatus);
+        Assert.Equal(5, acao.NovoResponsavelId);
+        Assert.Equal("Lia", acao.NovoResponsavelNome);
+        Assert.Null(acao.NovaData);
+    }
+
+    [Theory]
+    [InlineData("{\"atendimento_id\":1,\"novo_status\":\"Cancelado\",\"novo_responsavel_id\":5}")]
+    [InlineData("{\"atendimento_id\":1,\"novo_status\":\"Concluido\",\"nova_hora\":\"10:00\"}")]
+    [InlineData("{\"atendimento_id\":1,\"novo_status\":\"Pendente\"}")]
+    [InlineData("{\"atendimento_id\":1,\"nova_hora\":\"25:00\"}")]
+    [InlineData("{\"atendimento_id\":1,\"novo_responsavel_id\":6}")]
+    [InlineData("{\"atendimento_id\":1,\"novo_responsavel_id\":99}")]
+    [InlineData("{\"atendimento_id\":1,\"novo_responsavel_id\":4}")]
+    [InlineData("{\"atendimento_id\":1}")]
+    public async Task ProporMudanca_PedidoInvalido_VoltaComoErroSemProposta(string json)
+    {
+        Pendente(1, Utc(DiaDaqui(5), 14, 30));
+        var ferramentas = Criar();
+
+        await Assert.ThrowsAsync<FerramentaInvalidaException>(() => ferramentas.ExecutarAsync("propor_mudanca_atendimento",
+            JsonDocument.Parse(json).RootElement, CancellationToken.None));
+        Assert.Empty(ferramentas.Acoes);
+    }
+
+    [Fact]
+    public async Task ProporMudanca_DataQueJaPassou_VoltaComoErro()
+    {
+        Pendente(1, Utc(DiaDaqui(5), 14, 30));
+
+        var ex = await Assert.ThrowsAsync<FerramentaInvalidaException>(() => Criar().ExecutarAsync("propor_mudanca_atendimento",
+            Entrada(new { atendimento_id = 1, nova_data = DiaDaqui(-2).ToString("yyyy-MM-dd") }), CancellationToken.None));
+        Assert.Contains("já passaram", ex.Message);
+    }
+
+    [Fact]
+    public async Task ProporMudanca_AtendimentoQueNaoEstaPendente_VoltaComoErro()
+    {
+        Pendente(1, Utc(DiaDaqui(-3), 9, 0), status: StatusAtendimento.Concluido);
+
+        var ex = await Assert.ThrowsAsync<FerramentaInvalidaException>(() => Criar().ExecutarAsync("propor_mudanca_atendimento",
+            Entrada(new { atendimento_id = 1, novo_status = "Cancelado" }), CancellationToken.None));
+        Assert.Contains("Só atendimentos pendentes", ex.Message);
+    }
+
+    [Fact]
+    public async Task ProporMudanca_SemDataMarcada_PedeDiaEHora()
+    {
+        Pendente(1, null);
+
+        await Assert.ThrowsAsync<FerramentaInvalidaException>(() => Criar().ExecutarAsync("propor_mudanca_atendimento",
+            Entrada(new { atendimento_id = 1, nova_hora = "10:00" }), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task ProporMudanca_AtendimentoDeOutraEmpresa_VoltaComoNaoEncontrado()
+    {
+        _atendimentos.Setup(a => a.GetByIdAsync(Empresa, 99, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException("Atendimento não encontrado."));
+
+        var ex = await Assert.ThrowsAsync<FerramentaInvalidaException>(() => Criar().ExecutarAsync("propor_mudanca_atendimento",
+            Entrada(new { atendimento_id = 99, novo_status = "Cancelado" }), CancellationToken.None));
+        Assert.Equal("Atendimento não encontrado.", ex.Message);
+    }
+
     [Fact]
     public async Task ClienteDeOutraEmpresa_VoltaComoNaoEncontrado()
     {
