@@ -24,6 +24,7 @@ const ACAO: Record<string, string> = {
   'criar-usuario': 'Criou acesso e enviou convite',
   'reenviar-convite': 'Reenviou convite',
   'enviar-link-senha': 'Enviou link de senha',
+  'definir-senha': 'Definiu a senha do agente',
   // Login de admin (DEC-52) e assinatura (DEC-58).
   'conta-bloqueada': 'Conta de admin bloqueada por senhas erradas',
   'login-codigo-enviado': 'Recebeu o código de acesso',

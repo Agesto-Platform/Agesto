@@ -91,6 +91,8 @@ public sealed class RedefinicaoSenhaService : IRedefinicaoSenhaService
         // Quem provou ter acesso ao email sai do bloqueio por senhas erradas (DEC-43).
         usuario.TentativasLoginFalhas = 0;
         usuario.BloqueadoAte = null;
+        // Senha nova encerra as sessões abertas, inclusive a de quem roubou a antiga (SEG-01).
+        usuario.VersaoSessao++;
         usuario.UpdatedAt = agora;
 
         await InvalidarAsync(usuario.Id, null, agora, cancellationToken);

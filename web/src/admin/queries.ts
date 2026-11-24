@@ -170,6 +170,16 @@ export function useEnviarLinkSenhaAdmin(empresaId: number) {
   })
 }
 
+/** A equipe define a senha de um Agente (DEC-59, KAN-32); o Dono recebe link por email. */
+export function useDefinirSenhaAdmin(empresaId: number) {
+  const invalidar = useInvalidarAdmin()
+  return useMutation({
+    mutationFn: ({ usuarioId, novaSenha }: { usuarioId: number; novaSenha: string }) =>
+      adminApi.post<null>(`/api/admin/empresas/${empresaId}/usuarios/${usuarioId}/senha`, { novaSenha }),
+    onSuccess: invalidar,
+  })
+}
+
 /** Texto do aviso depois de um convite ou link de senha. */
 export function avisoDeEnvio(r: ConviteEnviado, oQue = 'Convite enviado'): { ok: boolean; texto: string } {
   return r.envioHabilitado

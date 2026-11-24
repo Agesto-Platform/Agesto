@@ -940,7 +940,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-50 — Sessão de 30 dias
 
-**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` e `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto.
+**Status:** 🟢 Decidido por Diego em 22/10/2026, com aval do Davi Gomes (PR #106, 27/10/2026). Implementado em `develop` e `main` (PR #109, 28/10/2026): `Jwt:ExpiresMinutes` = 43200. Desativar o usuário já derruba a sessão; trocar a senha ainda não derruba as sessões abertas (o `TokenRevalidator` só confere usuário ativo, empresa e perfil), ponto em aberto. Update 24/11/2026 (SEG-01, KAN-31, branch `feature/KAN-31-32-33-seguranca`): resolved with a session version on the user (`Usuario.VersaoSessao`, claim `sv` in the token, migration `AddUsuarioVersaoSessao`). It goes up when the password changes (own change, reset link, password set by the Dono or by the Agesto team) and when the access is deactivated, so reactivating does not bring old tokens back. Whoever changes their own password gets a new token and stays signed in on that device. Tokens issued before the deploy have no claim and count as version 0, so nobody is signed out by the deploy.
 
 **Decisão:** o login vale 30 dias na API e no app (hoje o JWT expira em 120 minutos, `Jwt:ExpiresMinutes`). A revogação da DEC-34 continua: desativar o usuário ou trocar a senha derruba a sessão na próxima requisição.
 
@@ -988,7 +988,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-53 — Token do web em `localStorage`: risco aceito no MVP
 
-**Status:** 🟡 Risco aceito por Davi Oliveira em 11/11/2026, com gatilhos de revisão. Sem mudança de código.
+**Status:** 🟡 Risco aceito por Davi Oliveira em 11/11/2026, com gatilhos de revisão. Sem mudança de código. Update 24/11/2026 (KAN-33, Davi's choice "prepare it switched off"): the API can now also read the token from an httpOnly cookie (`agesto_sessao`, `Secure`, `SameSite=Lax`, `Path=/api`), set at login and on password change, with the `X-Agesto-Csrf: 1` header required on requests that change data. It stays off (`Auth__CookieSessao=false`) until the own domain (KAN-16) puts web and API on the same site; the web keeps using `localStorage` for now, and turning the cookie on for the web is still a separate change. `POST /api/auth/sair` clears the cookie.
 
 **Decisão:** o web continua guardando o JWT em `localStorage`: o token das empresas em `web/src/lib/token.ts` e o de admin (`agesto_admin_token`) em `web/src/admin/sessao.ts`. O cookie httpOnly recomendado em `docs/SECURITY_NOTES.md` (seção 1) fica para depois. O app segue com `expo-secure-store`.
 
@@ -997,7 +997,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - O app usa token Bearer; a API teria de aceitar os dois modos.
 - O risco hoje é contido: a CSP de `web/public/_headers` só roda script do próprio site (`script-src 'self'`) e só conecta no próprio site e na API; o React escapa o texto exibido; o único `dangerouslySetInnerHTML` (`Icon.tsx`) usa desenhos fixos do código; o `TokenRevalidator` derruba na hora o token de usuário desativado ou de empresa bloqueada; e só há contas de teste.
 
-**Risco aceito:** um XSS que passe pela CSP leva um token válido por até 30 dias (DEC-50 e DEC-52), e trocar a senha ainda não derruba as sessões abertas.
+**Risco aceito:** um XSS que passe pela CSP leva um token válido por até 30 dias (DEC-50 e DEC-52), e trocar a senha ainda não derruba as sessões abertas. *Since 24/11/2026 (SEG-01), changing the password does sign out the other sessions.*
 
 **Revisar quando acontecer o primeiro destes:** domínio próprio do Agesto, primeiro cliente pagante ou fim da fase de contas de teste. Nesse ponto, migrar o web para cookie httpOnly.
 
@@ -1121,6 +1121,11 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - Web: the new-user form asks for the password when the profile is Agente, and the agent detail has "Definir senha". The web login accepts `name@something`. The app's "Esqueci a senha" screen tells agents to ask the Dono.
 
 **Pending:** a password set by the Dono does not sign out sessions already open on the agent's phone (same open point as SEG-01). Promoting an agent with a made-up email to Dono leaves that Dono without a working "Esqueci a senha"; the panel does not warn about it yet. The superadmin still creates agents through the invite flow.
+
+**Update 24/11/2026 (KAN-31 and KAN-32, decided by Davi Oliveira):**
+- A password set by the Dono now signs out the agent's open sessions (SEG-01, DEC-50).
+- **Agent promoted to Dono:** `PUT /api/usuario/{id}` from Agente to Dono requires `email`, the person's real email (format with a dot in the domain; not used by another account). The login changes to that email, the access goes back to "convite pendente" and the invite goes out; until the person uses it, they keep signing in with the current password. After that, the new Dono has a working "Esqueci a senha". The panel asks for the real email when the profile changes.
+- **Superadmin, same as the Dono:** a new Agente is created with a password set by the team and no invite (`conviteEnviado: false`); a Dono still gets the invite. For an existing agent, "Enviar link de senha" became "Definir senha" (`POST /api/admin/empresas/{id}/usuarios/{usuarioId}/senha`, audited as `definir-senha`); the email link is refused for agents.
 
 ---
 
