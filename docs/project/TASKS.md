@@ -1,8 +1,8 @@
 # Agesto — Tasks e Roadmap
 
-> Espelho simplificado do Jira (projeto KAN). Para status detalhado, acessar o board em `gomesdavi731.atlassian.net`.
+> Espelho simplificado do Jira (projeto KAN). Para status detalhado, acessar o board em `agesto.atlassian.net`.
 > Atualizar este arquivo sempre que uma task mudar de status ou uma nova decisão impactar o roadmap.
-> **Nota:** este arquivo está em reconciliação com código e Git. O Jira deve ser sincronizado somente depois dessa auditoria.
+> **Jira keys (24/11/2026):** the current board started a new numbering on 18/11/2026, and the Git history up to 24/11/2026 was recorded there as KAN-61 to KAN-96. Keys in the launch tasks and in the open items below are the current ones. Keys in the historical tables (epics, Backend Core sprint, tables by area, `web-0x`, commit examples) come from the old board and do not match the current Jira.
 
 ## Transição para trabalho em equipe — 18/08/2026
 
@@ -48,16 +48,16 @@
 |-------|--------|--------|--------|
 | 24/10 | CPF com dígito verificador no web | B5 | Feito (PR #117, 28/10) |
 | 31/10 | Tela de aceite dos termos no web (a API já existe desde o PR #110) | B6 | Feito (PR #119, 28/10) |
-| 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-41) | Portão | A fazer |
+| 03/11 | Testes integrados com web, app, API e PostgreSQL reais, como roteiro do ensaio geral (KAN-43) | Portão | A fazer |
 | 14/11 | "Esqueci a senha" do Dono por email (API e web) | I4 | Feito no código (12/11, DEC-54): telas `/esqueci-senha` e `/redefinir-senha`, envio pelo Brevo. Em `main` desde 12/11 (release #163); Brevo configurado no Render e envio testado em produção. Desde a DEC-55 vale também para o Agente, no app e no web. Update 17/11/2026: since DEC-59 the email link is for the Dono only; the Dono sets the agent's new password in the panel |
 | ~~17/11~~ | ~~Desenhar o fluxo do cadastro aberto: tela, email de verificação e período de teste (DEC-48)~~ | D11 | Cancelado (12/11): sem cadastro aberto, a venda é por contato (DEC-57) |
 | ~~28/11~~ | ~~Cadastro aberto no ar com verificação de email e período de teste~~ | L1 | Cancelado (12/11, DEC-57). A conta nova é criada pela equipe no superadmin, com convite por email (DEC-55) |
 | 01/12 | Canal de suporte: WhatsApp Business e email | D14 | Em parte: a aba Suporte no painel do Dono está em `main` desde 17/11 (PR #216, release #217; DEC-60). O Dono abre chamados com até 3 anexos, a equipe responde no superadmin e os dois recebem email. Migration `AddTicketsSuporte` e bucket privado `suporte-anexos` no Supabase em 17/11. Falta o WhatsApp Business |
 | 08/12 | Cobrança mínima no web: atendimento pago ou em aberto, forma e data do pagamento | L5 | Feito (PR #188, release #189, 13/11): aba "A receber" com total, selo Pago/A receber na lista e registro de data e forma no detalhe (`PUT /api/atendimento/{id}/recebimento`, só Dono). Migration `AddRecebimentoEDesfazerPagamento` aplicada no Supabase em 13/11 |
-| 08/12 | Manual do usuário curto para o Dono e o agente (KAN-42) | L4 | Update 23/11/2026: in review on branch `feature/KAN-42-manual-do-usuario`. Public page `/manual` on the web, text only, in Portuguese; opened from "Ajuda" and "Precisa de ajuda?" in the panel, from the Suporte tab, and from the app's "Mais" tab through `App__UrlManual` (needs to be set on Render; reaches phones only in the next APK). Prints as PDF for the pilot training |
+| 08/12 | Manual do usuário curto para o Dono e o agente (KAN-44) | L4 | Done (PR #230, release #231, 23/11/2026; the PRs cite the old key KAN-42). Public page `/manual` on the web, text only, in Portuguese; opened from "Ajuda" and "Precisa de ajuda?" in the panel, from the Suporte tab, and from the app's "Mais" tab through `App__UrlManual` (set on Render on 23/11/2026; reaches phones only in the next APK). Prints as PDF for the pilot training |
 | 12/12 | Controle de assinatura: quem pagou e quem está em atraso | L5 | Feito (PR #184, release #185, 13/11; DEC-58): pagamento registrado no superadmin, bloqueio manual e automático após 10 dias de carência, aviso ao Dono e trava de licenças. Desfazer o último pagamento registrado por engano: PR #188, release #189 (13/11). Migrations `AddAssinatura` e `AddRecebimentoEDesfazerPagamento` aplicadas no Supabase |
 | 12/11 | Página de apresentação com preço, termos, download e contato | L4 | Feito (PR #172, release #173, 12/11; `/conheca` no PR #174, release #175, 13/11; testado pelo Davi): página de venda na raiz do web, com assinatura de R$ 49,90 (Dono e 1 funcionário) e R$ 19,90 por funcionário a mais; pagamento por cartão, boleto ou Pix, combinado no contato (DEC-57) |
-| 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render. Update 23/11/2026: phase 1 of the AI expansion (KAN-77) in production since 24/11/2026 (PR #232, release #233) and tested by Davi with the real AI: read-only queries on demand and WhatsApp drafts (see DEC-21). Phases 2 (actions with confirmation) and 3 (proactive summaries and alerts) wait for Davi |
+| 10/11 | IA: relatório de insights e chat do painel Agente (DEC-21), fora do escopo do lançamento | Extra | Feito (PRs #126 a #130, 10/11); chave `Insights__AnthropicApiKey` no Render. Update 23/11/2026: phase 1 of the AI expansion (KAN-60; the PRs cite the old key KAN-77) in production since 24/11/2026 (PR #232, release #233) and tested by Davi with the real AI: read-only queries on demand and WhatsApp drafts (see DEC-21). Phases 2 (actions with confirmation) and 3 (proactive summaries and alerts) wait for Davi |
 | 10/11 | Área de superadmin em `/admin`: empresas, usuários, equipe e auditoria (DEC-52) | Extra | Feito (PR #131, release #132, 10/11); primeiro admin criado |
 | — | Superadmin: bloqueio por conta no login de admin e verificação em duas etapas (DEC-52) | Extra | Feito (PR #182, release #183, 13/11): 5 senhas erradas bloqueiam 15 min; código de 6 dígitos por email no login. Migration `AddAdminLoginSeguro` aplicada no Supabase |
 | — | Senha provisória derrubar as sessões já abertas do usuário (DEC-50, DEC-52, DEC-53) | Extra | Pronto no PR #155 (SEG-01), em espera: fora da `develop` por decisão do Davi (12/11). Ver o SEG-01 abaixo |
@@ -124,6 +124,8 @@
 
 ## Status dos Épicos
 
+> Old board epics. Current Jira epics: KAN-4 (E1 back end and infra), KAN-5 (E2 agent app and APK), KAN-6 (E3 web panel), KAN-7 (E4 security and LGPD), KAN-8 (E5 pilot, sales and legal), KAN-9 (E6 design), KAN-10 (E7 docs and QA).
+
 | Épico | Descrição | Status |
 |-------|-----------|--------|
 | KAN-11 | Infraestrutura & DevOps | 🟡 Em andamento |
@@ -180,7 +182,7 @@
 
 ---
 
-## Domínio Prestador de Serviço (KAN-69)
+## Domínio Prestador de Serviço (old board: KAN-69)
 
 > Épico que reúne os refinamentos do pivô de produto (DEC-15 a DEC-19, DEC-22, DEC-23): Orçamento, Agenda/Rota e item de atendimento genérico. O batch está publicado nas linhas `develop` e `main` de `Agesto-Platform/Agesto`.
 
@@ -208,7 +210,7 @@
 
 | Item | Descrição | Prioridade | Responsável | Depende de |
 |------|-----------|------------|-------------|------------|
-| Margem/hora por serviço | Parte restante do KAN-79 — a duração do serviço e a receita por hora já existem (DEC-45, 11/11); falta atribuir custo ao serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Atribuição de custo ao serviço (DEC-19/KAN-72) |
+| Margem/hora por serviço (KAN-29) | Parte restante do antigo KAN-79 — a duração do serviço e a receita por hora já existem (DEC-45, 11/11); falta atribuir custo ao serviço. Decisão do dono: no protótipo, "serviço mais rentável" vira "serviços que mais faturam" (receita por serviço, já existente) enquanto isso não é priorizado | Baixa | Davi Gomes | Atribuição de custo ao serviço (DEC-19/KAN-72) |
 | Descarga de Orçamento no sync | Criar orçamento a partir do mobile offline — decisão de fluxo em aberto (se o agente cria proposta offline). Hoje a API envia os orçamentos na Carga, mas o app não os carrega nem tem tela de orçamento (conferido em 21/10/2026) | Média | Davi Gomes | Decisão de produto |
 | ~~Gestão de usuários (DEC-35)~~ | 🟢 Aba Usuários no web, convite por email para criar a senha (DEC-55; antes, senha provisória), desativar/reativar, responsável do atendimento. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
 | ~~Serviço no app (DEC-36)~~ | 🟢 Agente cria serviço offline no registrar; Descarga cria, reaproveita pela descrição e devolve `ServicosMapeados`; web mostra "a revisar" e o Dono revisa; chave em Parametrização. Em `develop` (PR #47); migration aplicada no Supabase | Alta | — | — |
@@ -238,8 +240,8 @@
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
-| KAN-14 | PostgreSQL de desenvolvimento + migrations — parcial: Postgres local via `docker-compose.yml` (DEC-41); falta rodar os testes automatizados contra ele | Alta | Diego |
-| KAN-54 | Agents de QA automatizados | Baixa | Diego |
+| KAN-19 | PostgreSQL de desenvolvimento + migrations — parcial: Postgres local via `docker-compose.yml` (DEC-41); falta rodar os testes automatizados contra ele | Alta | Diego |
+| — | Agents de QA automatizados (no item in the current Jira) | Baixa | Diego |
 | — | ~~Instalar dotnet ef global na máquina~~ ✅ 21/10/2026 — `dotnet-ef` 10.0.13 | Média | — |
 | — | ~~Aplicar migrations pendentes no novo PostgreSQL~~ ✅ 08/10/2026 (DEC-31) | Alta | — |
 | — | Backup automático do banco (Supabase Free não faz) — DEC-34; `pg_dump` diário até 31/10 (DEC-49, ver Lançamento do MVP) | Alta | Diego |
@@ -298,7 +300,7 @@
 
 ---
 
-## Métricas & Dashboards (KAN-77)
+## Métricas & Dashboards (old board: KAN-77)
 
 > Fase 1 da camada de métricas determinística (DEC-20), que alimenta tanto os dashboards quanto a futura interpretação por IA. Implementada no backend C#, commit `87f54e6`, build verde e 51 testes xUnit passando. Complementada depois pelo bloco de rentabilidade (commit `5e82411`, ver KAN-69).
 
@@ -333,11 +335,11 @@
 
 | KAN | Descrição | Prioridade | Responsável |
 |-----|-----------|------------|-------------|
-| KAN-39 | Documentação de API (Swagger/OpenAPI) — parcial: Swashbuckle configurado, UI só em Development; sem documentação publicada | Baixa | Davi Oliveira (depois do lançamento) |
-| KAN-40 | ~~Documentação de deploy~~ ✅ `deploy/README.md` (ver KAN-18) | Baixa | — |
-| KAN-41 | Testes de integração ponta-a-ponta — roteiro do ensaio geral até 03/11 | Alta | Davi Oliveira |
-| KAN-42 | Manual do usuário — versão curta até 08/12 | Média | Davi Oliveira |
-| KAN-43 | ~~Atualizar README~~ ✅ 21/10/2026 (PR #56) | Média | — |
+| KAN-46 | Documentação de API (Swagger/OpenAPI) — parcial: Swashbuckle configurado, UI só em Development; sem documentação publicada | Baixa | Davi Oliveira (depois do lançamento) |
+| — | ~~Documentação de deploy~~ ✅ `deploy/README.md` | Baixa | — |
+| KAN-43 | Testes de integração ponta-a-ponta — roteiro do ensaio geral até 03/11 | Alta | Davi Oliveira |
+| KAN-44 | ~~Manual do usuário — versão curta até 08/12~~ ✅ 23/11/2026 (PR #230) | Média | — |
+| — | ~~Atualizar README~~ ✅ 21/10/2026 (PR #56) | Média | — |
 | — | Diagrama de Arquitetura (componentes) | Baixa | Davi Gomes (depois do lançamento) |
 | — | Diagrama de Sequência (Atendimento Híbrido) | Baixa | Davi Gomes (depois do lançamento) |
 
@@ -462,7 +464,7 @@ Ordem sugerida, se o Davi aprovar: Pix e garantia; lembrete de manutenção; ace
 
 ### Depois do lançamento
 2. Auditoria de `REQUIREMENTS.md` e remoção da documentação legada (Davi Gomes)
-3. Débitos residuais: margem/hora do KAN-79, "Otimizar dia" (fase 2 da rota, DEC-37/38), descarga de Orçamento no sync (Davi Gomes); lazy-load do Recharts, testes do web e documentação da API (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
+3. Débitos residuais: margem/hora (KAN-29), "Otimizar dia" (fase 2 da rota, DEC-37/38, KAN-27), descarga de Orçamento no sync (KAN-26) (Davi Gomes); lazy-load do Recharts e testes do web (KAN-30), documentação da API (KAN-46) (Davi Oliveira); redesign do app e testes contra PostgreSQL real no CI (Diego)
 4. Planos futuros de 13/11/2026 (seção acima), quando o Davi decidir quais entram e em que ordem
 
 ---
