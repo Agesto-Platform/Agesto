@@ -1,10 +1,10 @@
 /**
- * Fundo líquido do login: porte do PixelLiquidBg (three.js). Simulação de fluido
+ * Fundo líquido do login: porte do PixelLiquidBg. Simulação de fluido
  * Navier-Stokes com pontilhado Bayer, pixelização, granulado de filme e modo
  * automático que cede ao cursor. As cores saem dos tokens da paleta ativa e
- * acompanham a troca de paleta e de modo.
+ * acompanham a troca de paleta e de modo. Roda em WebGL puro desde a KAN-30
+ * (antes, three.js: 544 kB só para este fundo).
  */
-import * as THREE from 'three'
 
 // ---------- shaders (iguais ao original) ----------
 const face_vert = `
@@ -234,25 +234,348 @@ function writePaletteData(data: Uint8Array, stops: string[]): void {
   })
 }
 
-function makePaletteTexture(stops: string[]): THREE.DataTexture {
+// ---------- WebGL puro (KAN-30): o que o three.js fazia pelo efeito ----------
+// Os shaders acima são GLSL ES 1.0 crus; abaixo fica só a infraestrutura: contexto
+// WebGL2, alvos de renderização RGBA16F, passes de tela cheia e as duas texturas
+// de dados. Mesmo estado que o three usava: sem profundidade, sem limpar entre
+// quadros, mistura aditiva na força do cursor e normal (não pré-multiplicada) na saída.
+
+class Vec2 {
+  x: number
+  y: number
+  constructor(x = 0, y = 0) {
+    this.x = x
+    this.y = y
+  }
+  set(x: number, y: number): this {
+    this.x = x
+    this.y = y
+    return this
+  }
+  copy(v: Vec2): this {
+    return this.set(v.x, v.y)
+  }
+  subVectors(a: Vec2, b: Vec2): this {
+    return this.set(a.x - b.x, a.y - b.y)
+  }
+  multiplyScalar(s: number): this {
+    return this.set(this.x * s, this.y * s)
+  }
+  addScaledVector(v: Vec2, s: number): this {
+    return this.set(this.x + v.x * s, this.y + v.y * s)
+  }
+  length(): number {
+    return Math.hypot(this.x, this.y)
+  }
+  normalize(): this {
+    return this.multiplyScalar(1 / (this.length() || 1))
+  }
+}
+
+class Vec4 {
+  x: number
+  y: number
+  z: number
+  w: number
+  constructor(x = 0, y = 0, z = 0, w = 0) {
+    this.x = x
+    this.y = y
+    this.z = z
+    this.w = w
+  }
+  copy(v: Vec4): this {
+    this.x = v.x
+    this.y = v.y
+    this.z = v.z
+    this.w = v.w
+    return this
+  }
+}
+
+/** Referência estável a uma textura: o redimensionamento troca o `handle`, não o objeto. */
+class Tex {
+  handle: WebGLTexture
+  constructor(handle: WebGLTexture) {
+    this.handle = handle
+  }
+}
+
+type UniformValue = number | boolean | Vec2 | Vec4 | Tex
+type Uniforms = Record<string, { value: UniformValue }>
+
+class Program {
+  private gl: WebGL2RenderingContext
+  private program: WebGLProgram
+  private locs = new Map<string, WebGLUniformLocation | null>()
+  readonly position: number
+  readonly uv: number
+
+  constructor(gl: WebGL2RenderingContext, vert: string, frag: string) {
+    this.gl = gl
+    const compile = (type: number, src: string) => {
+      const s = gl.createShader(type)!
+      gl.shaderSource(s, src)
+      gl.compileShader(s)
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) ?? 'shader')
+      return s
+    }
+    const p = gl.createProgram()!
+    const vs = compile(gl.VERTEX_SHADER, vert)
+    const fs = compile(gl.FRAGMENT_SHADER, frag)
+    gl.attachShader(p, vs)
+    gl.attachShader(p, fs)
+    gl.linkProgram(p)
+    gl.deleteShader(vs)
+    gl.deleteShader(fs)
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p) ?? 'program')
+    this.program = p
+    this.position = gl.getAttribLocation(p, 'position')
+    this.uv = gl.getAttribLocation(p, 'uv')
+  }
+
+  private loc(name: string): WebGLUniformLocation | null {
+    if (!this.locs.has(name)) this.locs.set(name, this.gl.getUniformLocation(this.program, name))
+    return this.locs.get(name) ?? null
+  }
+
+  /** Liga o programa e envia os uniforms; os que o shader não usa ficam de fora. */
+  use(uniforms: Uniforms): void {
+    const gl = this.gl
+    gl.useProgram(this.program)
+    let unit = 0
+    for (const [name, { value }] of Object.entries(uniforms)) {
+      const l = this.loc(name)
+      if (!l) continue
+      if (value instanceof Tex) {
+        gl.activeTexture(gl.TEXTURE0 + unit)
+        gl.bindTexture(gl.TEXTURE_2D, value.handle)
+        gl.uniform1i(l, unit++)
+      } else if (value instanceof Vec2) gl.uniform2f(l, value.x, value.y)
+      else if (value instanceof Vec4) gl.uniform4f(l, value.x, value.y, value.z, value.w)
+      else if (typeof value === 'boolean') gl.uniform1i(l, value ? 1 : 0)
+      else gl.uniform1f(l, value)
+    }
+  }
+
+  dispose(): void {
+    this.gl.deleteProgram(this.program)
+  }
+}
+
+/** Geometria: posição (xy) e uv intercaladas, desenhada como tira de triângulos ou linhas. */
+class Geometry {
+  private gl: WebGL2RenderingContext
+  private buffer: WebGLBuffer
+  readonly mode: number
+  readonly count: number
+
+  constructor(gl: WebGL2RenderingContext, data: number[], mode: number, count: number) {
+    this.gl = gl
+    this.mode = mode
+    this.count = count
+    this.buffer = gl.createBuffer()!
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW)
+  }
+
+  draw(program: Program): void {
+    const gl = this.gl
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer)
+    for (let i = 0; i < 2; i++) gl.disableVertexAttribArray(i)
+    if (program.position >= 0) {
+      gl.enableVertexAttribArray(program.position)
+      gl.vertexAttribPointer(program.position, 2, gl.FLOAT, false, 16, 0)
+    }
+    if (program.uv >= 0) {
+      gl.enableVertexAttribArray(program.uv)
+      gl.vertexAttribPointer(program.uv, 2, gl.FLOAT, false, 16, 8)
+    }
+    gl.drawArrays(this.mode, 0, this.count)
+  }
+
+  dispose(): void {
+    this.gl.deleteBuffer(this.buffer)
+  }
+}
+
+/** Plano centrado de lado `s` (o PlaneGeometry do three): x, y, u, v. */
+function plane(gl: WebGL2RenderingContext, s: number): Geometry {
+  const h = s / 2
+  return new Geometry(gl, [-h, -h, 0, 0, h, -h, 1, 0, -h, h, 0, 1, h, h, 1, 1], gl.TRIANGLE_STRIP, 4)
+}
+
+class RenderTarget {
+  readonly texture: Tex
+  private gl: WebGL2RenderingContext
+  private fb: WebGLFramebuffer
+  width = 1
+  height = 1
+
+  constructor(gl: WebGL2RenderingContext, width: number, height: number) {
+    this.gl = gl
+    this.fb = gl.createFramebuffer()!
+    this.texture = new Tex(gl.createTexture()!)
+    this.setSize(width, height)
+  }
+
+  /** Recria a textura vazia (zerada), como o setSize do three. */
+  setSize(width: number, height: number): void {
+    const gl = this.gl
+    this.width = width
+    this.height = height
+    gl.deleteTexture(this.texture.handle)
+    this.texture.handle = gl.createTexture()!
+    gl.bindTexture(gl.TEXTURE_2D, this.texture.handle)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, width, height, 0, gl.RGBA, gl.HALF_FLOAT, null)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fb)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture.handle, 0)
+    const ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    if (!ok) throw new Error('RGBA16F sem suporte')
+  }
+
+  bind(): void {
+    this.gl.bindFramebuffer(this.gl.FRAMEBUFFER, this.fb)
+    this.gl.viewport(0, 0, this.width, this.height)
+  }
+
+  dispose(): void {
+    this.gl.deleteFramebuffer(this.fb)
+    this.gl.deleteTexture(this.texture.handle)
+  }
+}
+
+type Blend = 'none' | 'additive' | 'normal'
+
+class CommonGL {
+  width = 1
+  height = 1
+  time = 0
+  delta = 0
+  readonly canvas = document.createElement('canvas')
+  readonly gl: WebGL2RenderingContext
+  readonly quad: Geometry
+  private last = performance.now()
+  private container: HTMLElement
+
+  constructor(container: HTMLElement) {
+    this.container = container
+    const gl = this.canvas.getContext('webgl2', {
+      alpha: true,
+      antialias: false,
+      depth: false,
+      stencil: false,
+      premultipliedAlpha: true,
+    })
+    if (!gl) throw new Error('sem WebGL2')
+    // Renderizar em RGBA16F precisa de uma destas extensões (o three pedia a mesma).
+    if (!gl.getExtension('EXT_color_buffer_float') && !gl.getExtension('EXT_color_buffer_half_float'))
+      throw new Error('sem float')
+    this.gl = gl
+    gl.disable(gl.DEPTH_TEST)
+    gl.disable(gl.CULL_FACE)
+    this.quad = plane(gl, 2)
+    this.resize()
+    const s = this.canvas.style
+    s.width = '100%'
+    s.height = '100%'
+    s.display = 'block'
+  }
+
+  resize(): void {
+    const r = this.container.getBoundingClientRect()
+    this.width = Math.max(1, Math.floor(r.width))
+    this.height = Math.max(1, Math.floor(r.height))
+    this.canvas.width = this.width
+    this.canvas.height = this.height
+  }
+
+  update(): void {
+    const now = performance.now()
+    this.delta = (now - this.last) / 1000
+    this.last = now
+    this.time += this.delta
+  }
+
+  /** Um passe: alvo (null = tela), programa, uniforms, geometria e mistura. */
+  render(
+    target: RenderTarget | null,
+    program: Program,
+    uniforms: Uniforms,
+    geometry: Geometry = this.quad,
+    blend: Blend = 'none',
+  ): void {
+    const gl = this.gl
+    if (target) target.bind()
+    else {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+      gl.viewport(0, 0, this.width, this.height)
+    }
+    if (blend === 'none') gl.disable(gl.BLEND)
+    else {
+      gl.enable(gl.BLEND)
+      gl.blendEquation(gl.FUNC_ADD)
+      if (blend === 'additive') gl.blendFunc(gl.SRC_ALPHA, gl.ONE)
+      else gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    }
+    program.use(uniforms)
+    geometry.draw(program)
+  }
+
+  dispose(): void {
+    this.quad.dispose()
+    this.gl.getExtension('WEBGL_lose_context')?.loseContext()
+    this.canvas.remove()
+  }
+}
+
+class DataTex extends Tex {
+  readonly data: Uint8Array
+  private gl: WebGL2RenderingContext
+  private width: number
+  private height: number
+
+  constructor(gl: WebGL2RenderingContext, data: Uint8Array, width: number, height: number, filter: number, wrap: number) {
+    super(gl.createTexture()!)
+    this.gl = gl
+    this.data = data
+    this.width = width
+    this.height = height
+    gl.bindTexture(gl.TEXTURE_2D, this.handle)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, wrap)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wrap)
+    this.upload()
+  }
+
+  upload(): void {
+    const gl = this.gl
+    gl.bindTexture(gl.TEXTURE_2D, this.handle)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, this.width, this.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, this.data)
+  }
+
+  dispose(): void {
+    this.gl.deleteTexture(this.handle)
+  }
+}
+
+function makePaletteTexture(gl: WebGL2RenderingContext, stops: string[]): DataTex {
   const data = new Uint8Array(stops.length * 4)
   writePaletteData(data, stops)
-  const tex = new THREE.DataTexture(data, stops.length, 1, THREE.RGBAFormat)
-  tex.magFilter = THREE.LinearFilter
-  tex.minFilter = THREE.LinearFilter
-  tex.wrapS = THREE.ClampToEdgeWrapping
-  tex.wrapT = THREE.ClampToEdgeWrapping
-  tex.generateMipmaps = false
-  tex.needsUpdate = true
-  return tex
+  return new DataTex(gl, data, stops.length, 1, gl.LINEAR, gl.CLAMP_TO_EDGE)
 }
 
-function bgVec(stops: string[]): THREE.Vector4 {
+function bgVec(stops: string[]): Vec4 {
   const c = hexRGB(stops[0] ?? '#ffffff')
-  return new THREE.Vector4(c[0] / 255, c[1] / 255, c[2] / 255, 0)
+  return new Vec4(c[0] / 255, c[1] / 255, c[2] / 255, 0)
 }
 
-function makeBayerTexture(): THREE.DataTexture {
+function makeBayerTexture(gl: WebGL2RenderingContext): DataTex {
   const raw = [0, 136, 34, 170, 204, 68, 238, 102, 51, 187, 17, 153, 255, 119, 221, 85]
   const data = new Uint8Array(16 * 4)
   raw.forEach((r, i) => {
@@ -261,63 +584,14 @@ function makeBayerTexture(): THREE.DataTexture {
     data[i * 4 + 2] = r
     data[i * 4 + 3] = 255
   })
-  const tex = new THREE.DataTexture(data, 4, 4, THREE.RGBAFormat)
-  tex.magFilter = THREE.NearestFilter
-  tex.minFilter = THREE.NearestFilter
-  tex.wrapS = THREE.RepeatWrapping
-  tex.wrapT = THREE.RepeatWrapping
-  tex.generateMipmaps = false
-  tex.needsUpdate = true
-  return tex
+  return new DataTex(gl, data, 4, 4, gl.NEAREST, gl.REPEAT)
 }
 
 // ---------- infraestrutura (igual ao original) ----------
-class CommonGL {
-  width = 1
-  height = 1
-  pixelRatio = 1
-  time = 0
-  delta = 0
-  renderer: THREE.WebGLRenderer
-  clock = new THREE.Clock()
-  private container: HTMLElement
-
-  constructor(container: HTMLElement) {
-    this.container = container
-    this.measure()
-    this.renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true })
-    this.renderer.autoClear = false
-    this.renderer.setClearColor(0x000000, 0)
-    this.renderer.setPixelRatio(this.pixelRatio)
-    this.renderer.setSize(this.width, this.height, false)
-    const el = this.renderer.domElement
-    el.style.width = '100%'
-    el.style.height = '100%'
-    el.style.display = 'block'
-    this.clock.start()
-  }
-
-  private measure(): void {
-    const r = this.container.getBoundingClientRect()
-    this.width = Math.max(1, Math.floor(r.width))
-    this.height = Math.max(1, Math.floor(r.height))
-  }
-
-  resize(): void {
-    this.measure()
-    this.renderer.setSize(this.width, this.height, false)
-  }
-
-  update(): void {
-    this.delta = this.clock.getDelta()
-    this.time += this.delta
-  }
-}
-
 class MouseGL {
-  coords = new THREE.Vector2()
-  coordsOld = new THREE.Vector2()
-  diff = new THREE.Vector2()
+  coords = new Vec2()
+  coordsOld = new Vec2()
+  diff = new Vec2()
   mouseMoved = false
   isInside = false
   isAutoActive = false
@@ -385,36 +659,33 @@ class MouseGL {
   }
 }
 
-type Uniforms = Record<string, THREE.IUniform>
-
 class ShaderPass {
-  scene = new THREE.Scene()
-  camera = new THREE.Camera()
-  material: THREE.RawShaderMaterial
+  readonly program: Program
   uniforms: Uniforms
-  private renderer: THREE.WebGLRenderer
-  private output: THREE.WebGLRenderTarget | null
+  private common: CommonGL
+  private output: RenderTarget | null
 
-  constructor(renderer: THREE.WebGLRenderer, vert: string, frag: string, uniforms: Uniforms, output: THREE.WebGLRenderTarget | null = null) {
-    this.renderer = renderer
+  constructor(common: CommonGL, vert: string, frag: string, uniforms: Uniforms, output: RenderTarget | null = null) {
+    this.common = common
     this.uniforms = uniforms
     this.output = output
-    this.material = new THREE.RawShaderMaterial({ vertexShader: vert, fragmentShader: frag, uniforms })
-    this.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.material))
+    this.program = new Program(common.gl, vert, frag)
   }
 
-  render(to: THREE.WebGLRenderTarget | null = this.output): void {
-    this.renderer.setRenderTarget(to)
-    this.renderer.render(this.scene, this.camera)
-    this.renderer.setRenderTarget(null)
+  render(to: RenderTarget | null = this.output): void {
+    this.common.render(to, this.program, this.uniforms)
+  }
+
+  dispose(): void {
+    this.program.dispose()
   }
 }
 
 class AutoDriver {
-  current = new THREE.Vector2()
-  target = new THREE.Vector2()
+  current = new Vec2()
+  target = new Vec2()
   lastTime = performance.now()
-  private tmp = new THREE.Vector2()
+  private tmp = new Vec2()
   private mouse: MouseGL
   private lastInteraction: () => number
   private speed: number
@@ -467,19 +738,24 @@ interface SimOpts {
 }
 
 const FBO_NAMES = ['vel_0', 'vel_1', 'vel_v0', 'vel_v1', 'div', 'p0', 'p1'] as const
-type Fbos = Record<(typeof FBO_NAMES)[number], THREE.WebGLRenderTarget>
-type Pair = { pass: ShaderPass; output0: THREE.WebGLRenderTarget; output1: THREE.WebGLRenderTarget }
+type Fbos = Record<(typeof FBO_NAMES)[number], RenderTarget>
+type Pair = { pass: ShaderPass; output0: RenderTarget; output1: RenderTarget }
+
+// Borda da advecção (modo "isBounce"): quatro segmentos no contorno; x, y, u, v.
+const BORDA = [-1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, -1, 1, -1, -1, -1].flatMap((v, i, a) =>
+  i % 2 ? [] : [v, a[i + 1] ?? 0, 0, 0],
+)
 
 class FluidSim {
   opts: SimOpts
-  fboSize = new THREE.Vector2()
-  cellScale = new THREE.Vector2()
-  boundarySpace = new THREE.Vector2()
+  fboSize = new Vec2()
+  cellScale = new Vec2()
+  boundarySpace = new Vec2()
   fbos: Fbos
   private gl: CommonGL
   private mouse: MouseGL
-  private advection: { pass: ShaderPass; line: THREE.LineSegments }
-  private externalForce: { scene: THREE.Scene; camera: THREE.Camera; uniforms: Uniforms }
+  private advection: { pass: ShaderPass; lineProgram: Program; line: Geometry }
+  private externalForce: { program: Program; plane: Geometry; uniforms: Uniforms }
   private viscousPass: Pair
   private divergencePass: ShaderPass
   private poissonPass: Pair
@@ -502,11 +778,12 @@ class FluidSim {
       ...opts,
     }
     this.calcSize()
-    this.fbos = Object.fromEntries(FBO_NAMES.map((n) => [n, this.makeFBO()])) as Fbos
+    this.fbos = Object.fromEntries(
+      FBO_NAMES.map((n) => [n, new RenderTarget(gl.gl, this.fboSize.x, this.fboSize.y)]),
+    ) as Fbos
 
     const { fbos, cellScale, fboSize } = this
     const o = this.opts
-    const r = this.gl.renderer
     const advUniforms: Uniforms = {
       boundarySpace: { value: cellScale },
       px: { value: cellScale },
@@ -515,43 +792,26 @@ class FluidSim {
       dt: { value: o.dt },
       isBFECC: { value: true },
     }
-    const advPass = new ShaderPass(r, face_vert, advection_frag, advUniforms, fbos.vel_1)
-    const bGeo = new THREE.BufferGeometry()
-    bGeo.setAttribute(
-      'position',
-      new THREE.BufferAttribute(new Float32Array([-1, -1, 0, -1, 1, 0, -1, 1, 0, 1, 1, 0, 1, 1, 0, 1, -1, 0, 1, -1, 0, -1, -1, 0]), 3),
-    )
-    const bLine = new THREE.LineSegments(
-      bGeo,
-      new THREE.RawShaderMaterial({ vertexShader: line_vert, fragmentShader: advection_frag, uniforms: advUniforms }),
-    )
-    advPass.scene.add(bLine)
-    this.advection = { pass: advPass, line: bLine }
-
-    const efUniforms: Uniforms = {
-      px: { value: cellScale },
-      force: { value: new THREE.Vector2() },
-      center: { value: new THREE.Vector2() },
-      scale: { value: new THREE.Vector2(o.cursor_size, o.cursor_size) },
+    this.advection = {
+      pass: new ShaderPass(gl, face_vert, advection_frag, advUniforms, fbos.vel_1),
+      lineProgram: new Program(gl.gl, line_vert, advection_frag),
+      line: new Geometry(gl.gl, BORDA, gl.gl.LINES, 8),
     }
-    const efScene = new THREE.Scene()
-    efScene.add(
-      new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 1),
-        new THREE.RawShaderMaterial({
-          vertexShader: mouse_vert,
-          fragmentShader: externalForce_frag,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          uniforms: efUniforms,
-        }),
-      ),
-    )
-    this.externalForce = { scene: efScene, camera: new THREE.Camera(), uniforms: efUniforms }
+
+    this.externalForce = {
+      program: new Program(gl.gl, mouse_vert, externalForce_frag),
+      plane: plane(gl.gl, 1),
+      uniforms: {
+        px: { value: cellScale },
+        force: { value: new Vec2() },
+        center: { value: new Vec2() },
+        scale: { value: new Vec2(o.cursor_size, o.cursor_size) },
+      },
+    }
 
     this.viscousPass = {
       pass: new ShaderPass(
-        r,
+        gl,
         face_vert,
         viscous_frag,
         {
@@ -569,7 +829,7 @@ class FluidSim {
     }
 
     this.divergencePass = new ShaderPass(
-      r,
+      gl,
       face_vert,
       divergence_frag,
       { boundarySpace: { value: cellScale }, velocity: { value: fbos.vel_v0.texture }, px: { value: cellScale }, dt: { value: o.dt } },
@@ -578,7 +838,7 @@ class FluidSim {
 
     this.poissonPass = {
       pass: new ShaderPass(
-        r,
+        gl,
         face_vert,
         poisson_frag,
         { boundarySpace: { value: cellScale }, pressure: { value: fbos.p0.texture }, divergence: { value: fbos.div.texture }, px: { value: cellScale } },
@@ -589,7 +849,7 @@ class FluidSim {
     }
 
     this.pressurePass = new ShaderPass(
-      r,
+      gl,
       face_vert,
       pressure_frag,
       {
@@ -610,18 +870,6 @@ class FluidSim {
     this.fboSize.set(w, h)
   }
 
-  private makeFBO(): THREE.WebGLRenderTarget {
-    return new THREE.WebGLRenderTarget(this.fboSize.x, this.fboSize.y, {
-      type: THREE.HalfFloatType,
-      depthBuffer: false,
-      stencilBuffer: false,
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      wrapS: THREE.ClampToEdgeWrapping,
-      wrapT: THREE.ClampToEdgeWrapping,
-    })
-  }
-
   resize(): void {
     this.calcSize()
     for (const n of FBO_NAMES) this.fbos[n].setSize(this.fboSize.x, this.fboSize.y)
@@ -629,29 +877,32 @@ class FluidSim {
 
   dispose(): void {
     for (const n of FBO_NAMES) this.fbos[n].dispose()
+    for (const p of [this.advection.pass, this.viscousPass.pass, this.divergencePass, this.poissonPass.pass, this.pressurePass])
+      p.dispose()
+    this.advection.lineProgram.dispose()
+    this.advection.line.dispose()
+    this.externalForce.program.dispose()
+    this.externalForce.plane.dispose()
   }
 
   update(): void {
     const { opts, mouse, fbos } = this
-    const r = this.gl.renderer
-    this.boundarySpace.copy(opts.isBounce ? new THREE.Vector2() : this.cellScale)
+    this.boundarySpace.copy(opts.isBounce ? new Vec2() : this.cellScale)
 
-    const adv = this.advection.pass.uniforms
-    adv.dt!.value = opts.dt
-    adv.isBFECC!.value = opts.BFECC
-    this.advection.line.visible = opts.isBounce
-    this.advection.pass.render()
+    const adv = this.advection
+    adv.pass.uniforms.dt!.value = opts.dt
+    adv.pass.uniforms.isBFECC!.value = opts.BFECC
+    adv.pass.render()
+    if (opts.isBounce) this.gl.render(fbos.vel_1, adv.lineProgram, adv.pass.uniforms, adv.line)
 
     const mf = opts.mouse_force, cs = opts.cursor_size, cx = this.cellScale.x, cy = this.cellScale.y
     const clampedX = Math.min(Math.max(mouse.coords.x, -1 + cs * cx * 2 + cx * 2), 1 - cs * cx * 2 - cx * 2)
     const clampedY = Math.min(Math.max(mouse.coords.y, -1 + cs * cy * 2 + cy * 2), 1 - cs * cy * 2 - cy * 2)
-    const ef = this.externalForce.uniforms
-    ;(ef.force!.value as THREE.Vector2).set((mouse.diff.x / 2) * mf, (mouse.diff.y / 2) * mf)
-    ;(ef.center!.value as THREE.Vector2).set(clampedX, clampedY)
-    ;(ef.scale!.value as THREE.Vector2).set(cs, cs)
-    r.setRenderTarget(fbos.vel_1)
-    r.render(this.externalForce.scene, this.externalForce.camera)
-    r.setRenderTarget(null)
+    const ef = this.externalForce
+    ;(ef.uniforms.force!.value as Vec2).set((mouse.diff.x / 2) * mf, (mouse.diff.y / 2) * mf)
+    ;(ef.uniforms.center!.value as Vec2).set(clampedX, clampedY)
+    ;(ef.uniforms.scale!.value as Vec2).set(cs, cs)
+    this.gl.render(fbos.vel_1, ef.program, ef.uniforms, ef.plane, 'additive')
 
     let velFBO = fbos.vel_1
     if (opts.isViscous) {
@@ -686,7 +937,7 @@ class FluidSim {
 
 /**
  * Liga o fundo no `container` e devolve a função que desliga (para o unmount).
- * Com movimento reduzido, ou sem WebGL, não liga nada: o fundo fica liso.
+ * Com movimento reduzido, ou sem WebGL2, não liga nada: o fundo fica liso.
  */
 export function startLiquido(
   container: HTMLElement,
@@ -694,31 +945,36 @@ export function startLiquido(
 ): () => void {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return () => {}
 
-  let gl: CommonGL
+  const mouse = new MouseGL(container)
+  let stops = paletteStops()
+  let gl: CommonGL | null = null
+  let parts: { sim: FluidSim; output: Program; palette: DataTex; bayerTex: DataTex }
   try {
     gl = new CommonGL(container)
+    parts = {
+      palette: makePaletteTexture(gl.gl, stops),
+      bayerTex: makeBayerTexture(gl.gl),
+      sim: new FluidSim(gl, mouse, {
+        resolution,
+        mouse_force: mouseForce,
+        cursor_size: cursorSize,
+        dt: 0.008,
+        BFECC: false,
+        isBounce: false,
+        isViscous: false,
+        iterations_poisson: 8,
+      }),
+      output: new Program(gl.gl, face_vert, color_frag),
+    }
   } catch {
+    mouse.dispose()
+    gl?.dispose()
     return () => {}
   }
-  container.prepend(gl.renderer.domElement)
-
-  const mouse = new MouseGL(container)
+  const common = gl
+  const { sim, output, palette, bayerTex } = parts
+  container.prepend(common.canvas)
   mouse.autoIntensity = 2.4
-
-  let stops = paletteStops()
-  const palette = makePaletteTexture(stops)
-  const bayerTex = makeBayerTexture()
-
-  const sim = new FluidSim(gl, mouse, {
-    resolution,
-    mouse_force: mouseForce,
-    cursor_size: cursorSize,
-    dt: 0.008,
-    BFECC: false,
-    isBounce: false,
-    isViscous: false,
-    iterations_poisson: 8,
-  })
 
   const outputUniforms = {
     velocity: { value: sim.fbos.vel_0.texture },
@@ -726,31 +982,17 @@ export function startLiquido(
     uBayer: { value: bayerTex },
     bgColor: { value: bgVec(stops) },
     uTime: { value: 0 },
-    uRes: { value: new THREE.Vector2(gl.width, gl.height) },
+    uRes: { value: new Vec2(common.width, common.height) },
     uPixelSize: { value: pixelSize },
-    boundarySpace: { value: new THREE.Vector2() },
-    px: { value: new THREE.Vector2() },
+    boundarySpace: { value: new Vec2() },
+    px: { value: new Vec2() },
   }
-  const outputScene = new THREE.Scene()
-  const outputCam = new THREE.Camera()
-  outputScene.add(
-    new THREE.Mesh(
-      new THREE.PlaneGeometry(2, 2),
-      new THREE.RawShaderMaterial({
-        vertexShader: face_vert,
-        fragmentShader: color_frag,
-        transparent: true,
-        depthWrite: false,
-        uniforms: outputUniforms,
-      }),
-    ),
-  )
 
   // troca de paleta ou tema: regrava as cores
   const themeObs = new MutationObserver(() => {
     stops = paletteStops()
-    writePaletteData(palette.image.data as unknown as Uint8Array, stops)
-    palette.needsUpdate = true
+    writePaletteData(palette.data, stops)
+    palette.upload()
     outputUniforms.bgColor.value.copy(bgVec(stops))
   })
   themeObs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-palette', 'data-mode'] })
@@ -762,9 +1004,9 @@ export function startLiquido(
   const driver = autoDemo ? new AutoDriver(mouse, () => lastInteraction, 0.45, 1200) : null
 
   const sizeObs = new ResizeObserver(() => {
-    gl.resize()
+    common.resize()
     sim.resize()
-    outputUniforms.uRes.value.set(gl.width, gl.height)
+    outputUniforms.uRes.value.set(common.width, common.height)
   })
   sizeObs.observe(container)
 
@@ -775,11 +1017,10 @@ export function startLiquido(
     raf = requestAnimationFrame(loop)
     driver?.update()
     mouse.update()
-    gl.update()
-    outputUniforms.uTime.value = gl.time
+    common.update()
+    outputUniforms.uTime.value = common.time
     sim.update()
-    gl.renderer.setRenderTarget(null)
-    gl.renderer.render(outputScene, outputCam)
+    common.render(null, output, outputUniforms, common.quad, 'normal')
   }
   loop()
 
@@ -802,9 +1043,9 @@ export function startLiquido(
     sizeObs.disconnect()
     mouse.dispose()
     sim.dispose()
+    output.dispose()
     palette.dispose()
     bayerTex.dispose()
-    gl.renderer.dispose()
-    gl.renderer.domElement.remove()
+    common.dispose()
   }
 }

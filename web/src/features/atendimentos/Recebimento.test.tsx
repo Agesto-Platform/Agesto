@@ -28,7 +28,10 @@ function renderizar(a: Atendimento) {
 }
 
 describe('Recebimento', () => {
-  beforeEach(() => put.mockReset())
+  // Com chaves: uma função devolvida pelo beforeEach vira limpeza e o Vitest a chama depois do teste.
+  beforeEach(() => {
+    put.mockReset()
+  })
 
   it('concluído sem pagamento fica a receber e registra data e forma', async () => {
     put.mockResolvedValue({ ...base, pagoEm: '2026-11-10', formaPagamento: 'Dinheiro' })

@@ -1150,3 +1150,15 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 - Attachment storage: Supabase Storage, private bucket `suporte-anexos`, outside the database (the database keeps only name, type, size and path, in `AnexosTicketSuporte`). The API checks the real type by the file's first bytes, not by its name, and opens each file through a signed link valid for 10 minutes. The files are not attached to the emails; the emails say how many there are. Without `Storage__SupabaseUrl` and `Storage__ChaveSecreta`, tickets still work, but attachments are refused.
 
 **Pending:** the Dono cannot reply inside the ticket yet (a new ticket is needed); the team cannot attach files to a reply; the agent app has no support tab.
+
+---
+
+## DEC-61 — Margin per hour per service: the job's margin is split by service revenue
+
+**Status:** 🟡 Decided by Davi Oliveira on 24/11/2026 (KAN-29); implemented on branch `feature/KAN-29-30-margem-hora-e-bundle`. No migration.
+
+**Decision:** cost lives only on product lines (DEC-19), so each completed job's margin (`ValorTotal − CustoTotal`) is split among the job's services in proportion to each service's revenue; when the services in a job have no revenue, it is split equally. Margin per hour is that margin divided by the service hours from DEC-45, and stays empty when a fixed-price service has no duration.
+
+**Why:** it works with the data that already exists, needs no new field in the web or the app, and the service margins add up to the margin shown in Rentabilidade. A cost field on the service would need a migration and offline sync changes, and would only cover new jobs.
+
+**Impact:** `ServicoReceitaItem` gains `Margem` and `MargemPorHora` (also sent to the AI agent with the other metrics). The Relatórios page shows "margem R$ X/h" per service, and the CSV export gains the Margem and Margem por hora columns. Product revenue in a job counts towards its services' margin. A service deleted from the catalogue still takes its share of the split, so its margin does not go to the other services, but it is not listed (as with revenue).

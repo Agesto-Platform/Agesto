@@ -56,6 +56,8 @@ export const dashboardMock: DashboardResponse = {
         receita: 6400,
         horas: 36,
         receitaPorHora: 177.78,
+        margem: 4800,
+        margemPorHora: 133.33,
       },
       {
         servicoId: 2,
@@ -65,6 +67,8 @@ export const dashboardMock: DashboardResponse = {
         receita: 2980,
         horas: 21,
         receitaPorHora: 141.9,
+        margem: 2700,
+        margemPorHora: 128.57,
       },
       {
         servicoId: 3,
@@ -74,6 +78,8 @@ export const dashboardMock: DashboardResponse = {
         receita: 1980,
         horas: 14,
         receitaPorHora: 141.43,
+        margem: 1650,
+        margemPorHora: 117.86,
       },
     ],
   },

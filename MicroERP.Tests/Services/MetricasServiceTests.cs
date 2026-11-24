@@ -108,6 +108,77 @@ public sealed class MetricasServiceTests
     }
 
     [Fact]
+    public async Task GetServicos_MargemPorHora_RateiaAMargemDoAtendimentoPelaReceita()
+    {
+        await using var db = CreateContext();
+        var instalacao = Servico(1, "Instalacao AC", TipoCobranca.Empreitada, empresaId: 1);
+        instalacao.DuracaoMinutos = 120;
+        db.Servicos.AddRange(instalacao, Servico(2, "Manutencao", TipoCobranca.PorHora, empresaId: 1));
+
+        // Margem 800 (o valor inclui 200 de material): 600 para a instalação, 200 para a manutenção.
+        AddAtendimentoComServico(db, atId: 1, empresaId: 1, StatusAtendimento.Concluido, valorTotal: 1000, NoPeriodo,
+            (servicoId: 1, qtd: 1, subtotal: 600m), (servicoId: 2, qtd: 2, subtotal: 200m));
+        // Margem 300, toda da instalação.
+        AddAtendimentoComServico(db, atId: 2, empresaId: 1, StatusAtendimento.Concluido, valorTotal: 300, NoPeriodo,
+            (servicoId: 1, qtd: 1, subtotal: 300m));
+        // Serviços sem cobrança: a margem de 60 vai em partes iguais.
+        AddAtendimentoComServico(db, atId: 3, empresaId: 1, StatusAtendimento.Concluido, valorTotal: 100, NoPeriodo,
+            (servicoId: 1, qtd: 1, subtotal: 0m), (servicoId: 2, qtd: 1, subtotal: 0m));
+        db.Atendimentos.Local.Single(a => a.Id == 1).CustoTotal = 200m;
+        db.Atendimentos.Local.Single(a => a.Id == 3).CustoTotal = 40m;
+        await db.SaveChangesAsync();
+
+        var servicos = await new MetricasService(new MetricasRepository(db)).GetServicosAsync(1, De, Ate, CancellationToken.None);
+
+        var ac = servicos.ReceitaPorServico.Single(s => s.ServicoId == 1);
+        Assert.Equal(930m, ac.Margem);          // 600 + 300 + 30
+        Assert.Equal(6m, ac.Horas);             // 3 execuções x 2 h
+        Assert.Equal(155m, ac.MargemPorHora);
+        var manutencao = servicos.ReceitaPorServico.Single(s => s.ServicoId == 2);
+        Assert.Equal(230m, manutencao.Margem);  // 200 + 30
+        Assert.Equal(76.67m, manutencao.MargemPorHora);
+        // A soma das margens bate com a margem dos atendimentos (800 + 300 + 60).
+        Assert.Equal(1160m, servicos.ReceitaPorServico.Sum(s => s.Margem));
+    }
+
+    [Fact]
+    public async Task GetServicos_ServicoExcluidoEntraNoRateioMasNaoNaLista()
+    {
+        await using var db = CreateContext();
+        var excluido = Servico(2, "Servico antigo", TipoCobranca.Empreitada, empresaId: 1);
+        excluido.DeletedAt = NoPeriodo;
+        db.Servicos.AddRange(Servico(1, "Instalacao AC", TipoCobranca.Empreitada, empresaId: 1), excluido);
+        // Margem 400 dividida meio a meio: a instalação fica com 200, não com 400.
+        AddAtendimentoComServico(db, atId: 1, empresaId: 1, StatusAtendimento.Concluido, valorTotal: 400, NoPeriodo,
+            (servicoId: 1, qtd: 1, subtotal: 200m), (servicoId: 2, qtd: 1, subtotal: 200m));
+        await db.SaveChangesAsync();
+
+        var servicos = await new MetricasService(new MetricasRepository(db)).GetServicosAsync(1, De, Ate, CancellationToken.None);
+
+        var ac = Assert.Single(servicos.ReceitaPorServico);
+        Assert.Equal(1, ac.ServicoId);
+        Assert.Equal(200m, ac.Receita);
+        Assert.Equal(200m, ac.Margem);
+        Assert.Equal(200m, servicos.ReceitaTotal);
+    }
+
+    [Fact]
+    public async Task GetServicos_SemDuracao_FicaSemMargemPorHora()
+    {
+        await using var db = CreateContext();
+        db.Servicos.Add(Servico(1, "Limpeza de dreno", TipoCobranca.Empreitada, empresaId: 1));
+        AddAtendimentoComServico(db, atId: 1, empresaId: 1, StatusAtendimento.Concluido, valorTotal: 120, NoPeriodo,
+            (servicoId: 1, qtd: 1, subtotal: 120m));
+        await db.SaveChangesAsync();
+
+        var dreno = (await new MetricasService(new MetricasRepository(db)).GetServicosAsync(1, De, Ate, CancellationToken.None))
+            .ReceitaPorServico.Single();
+
+        Assert.Equal(120m, dreno.Margem);
+        Assert.Null(dreno.MargemPorHora);
+    }
+
+    [Fact]
     public async Task GetEstoque_CalculaGiroParadosERuptura()
     {
         await using var db = CreateContext();
