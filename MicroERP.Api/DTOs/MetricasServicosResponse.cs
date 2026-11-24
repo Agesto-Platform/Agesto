@@ -17,4 +17,7 @@ public sealed class ServicoReceitaItem
     // Nulo quando o serviço por empreitada não tem duração cadastrada.
     public decimal? Horas { get; set; }
     public decimal? ReceitaPorHora { get; set; }
+    // KAN-29: margem dos atendimentos rateada pela fatia de receita do serviço.
+    public decimal Margem { get; set; }
+    public decimal? MargemPorHora { get; set; }
 }

@@ -175,6 +175,9 @@ export interface ServicoReceitaItem {
   /** Por hora: as horas lançadas; por empreitada: execuções × duração estimada. null sem duração cadastrada. */
   horas: number | null
   receitaPorHora: number | null
+  /** KAN-29: margem dos atendimentos (valor − custo) rateada pela fatia de receita do serviço. */
+  margem: number
+  margemPorHora: number | null
 }
 
 export interface MetricasServicos {

@@ -4,15 +4,6 @@ import { AppShell } from './layout/AppShell'
 import { ProtectedRoute } from './auth/ProtectedRoute'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
-import { ClientesPage } from './features/clientes/ClientesPage'
-import { ProdutosPage } from './features/produtos/ProdutosPage'
-import { ServicosPage } from './features/servicos/ServicosPage'
-import { AgendaPage } from './features/agenda/AgendaPage'
-import { OrcamentosPage } from './features/orcamentos/OrcamentosPage'
-import { AtendimentosPage } from './features/atendimentos/AtendimentosPage'
-import { ParametrizacaoPage } from './features/parametrizacao/ParametrizacaoPage'
-import { RelatoriosPage } from './features/relatorios/RelatoriosPage'
-import { UsuariosPage } from './features/usuarios/UsuariosPage'
 import { TrocarSenha } from './pages/TrocarSenha'
 import { EsqueciSenha } from './pages/EsqueciSenha'
 import { AdminCriarSenha, CriarSenha, RedefinirSenha } from './pages/RedefinirSenha'
@@ -22,15 +13,30 @@ import { Privacidade, Termos } from './pages/legal/Documento'
 import { Manual } from './pages/manual/Manual'
 import { AdminLogin } from './admin/AdminLogin'
 import { AdminLayout } from './admin/AdminLayout'
-import { AdminEmpresasPage } from './admin/AdminEmpresasPage'
-import { AdminEmpresaPage } from './admin/AdminEmpresaPage'
-import { AdminAuditoriaPage } from './admin/AuditoriaLista'
-import { AdminEquipePage } from './admin/AdminEquipePage'
-import { AdminSuportePage } from './admin/AdminSuportePage'
-import { SuportePage } from './features/suporte/SuportePage'
 
 // DEC-57: a página de venda carrega à parte; quem usa o painel não baixa o código dela.
 const PaginaDeVenda = lazy(() => import('./pages/venda/PaginaDeVenda'))
+
+// KAN-30: as telas do painel e do superadmin também carregam sob demanda. O login e o
+// Dashboard (primeira tela do Dono) seguem no pacote inicial; o AppShell e o
+// AdminLayout seguram a troca de tela com Suspense em volta do Outlet.
+const AtendimentosPage = lazy(() => import('./features/atendimentos/AtendimentosPage').then((m) => ({ default: m.AtendimentosPage })))
+const OrcamentosPage = lazy(() => import('./features/orcamentos/OrcamentosPage').then((m) => ({ default: m.OrcamentosPage })))
+const AgendaPage = lazy(() => import('./features/agenda/AgendaPage').then((m) => ({ default: m.AgendaPage })))
+const ClientesPage = lazy(() => import('./features/clientes/ClientesPage').then((m) => ({ default: m.ClientesPage })))
+const ProdutosPage = lazy(() => import('./features/produtos/ProdutosPage').then((m) => ({ default: m.ProdutosPage })))
+const ServicosPage = lazy(() => import('./features/servicos/ServicosPage').then((m) => ({ default: m.ServicosPage })))
+const UsuariosPage = lazy(() => import('./features/usuarios/UsuariosPage').then((m) => ({ default: m.UsuariosPage })))
+const RelatoriosPage = lazy(() => import('./features/relatorios/RelatoriosPage').then((m) => ({ default: m.RelatoriosPage })))
+const ParametrizacaoPage = lazy(() =>
+  import('./features/parametrizacao/ParametrizacaoPage').then((m) => ({ default: m.ParametrizacaoPage })),
+)
+const SuportePage = lazy(() => import('./features/suporte/SuportePage').then((m) => ({ default: m.SuportePage })))
+const AdminEmpresasPage = lazy(() => import('./admin/AdminEmpresasPage').then((m) => ({ default: m.AdminEmpresasPage })))
+const AdminEmpresaPage = lazy(() => import('./admin/AdminEmpresaPage').then((m) => ({ default: m.AdminEmpresaPage })))
+const AdminAuditoriaPage = lazy(() => import('./admin/AuditoriaLista').then((m) => ({ default: m.AdminAuditoriaPage })))
+const AdminEquipePage = lazy(() => import('./admin/AdminEquipePage').then((m) => ({ default: m.AdminEquipePage })))
+const AdminSuportePage = lazy(() => import('./admin/AdminSuportePage').then((m) => ({ default: m.AdminSuportePage })))
 
 export default function App() {
   return (

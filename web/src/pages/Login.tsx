@@ -35,7 +35,7 @@ export function Login() {
   const senhaRef = useRef<HTMLInputElement>(null)
 
   // fundo líquido com as cores da paleta ativa (mesmos parâmetros do componente original);
-  // o three.js só baixa aqui, fora do pacote principal do painel
+  // o efeito só baixa aqui, fora do pacote principal do painel
   useEffect(() => {
     const el = liquidoRef.current
     if (!el) return

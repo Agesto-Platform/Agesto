@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from '../components/Logo'
 import { Button } from '../components/ui'
@@ -41,7 +42,9 @@ export function AdminLayout() {
         </div>
       </header>
       <main className="adm-main" id="page">
-        <Outlet />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

@@ -125,33 +125,72 @@ public sealed class MetricasRepository : IMetricasRepository
 
     public async Task<MetricasServicosResponse> GetServicosAsync(long empresaId, DateTime de, DateTime ate, CancellationToken cancellationToken)
     {
-        var grouped = await (
+        var linhas = await (
             from isv in _dbContext.ItemServicos.AsNoTracking()
             join a in _dbContext.Atendimentos on isv.AtendimentoId equals a.Id
             join s in _dbContext.Servicos on isv.ServicoId equals s.Id
             where a.EmpresaId == empresaId
                   && a.DeletedAt == null
                   && isv.DeletedAt == null
-                  && s.DeletedAt == null
                   && a.Status == StatusAtendimento.Concluido
                   && a.DataRegistro >= de
                   && a.DataRegistro <= ate
-            group new { isv.Quantidade, isv.Subtotal } by new { isv.ServicoId, s.Descricao, s.TipoCobranca, s.DuracaoMinutos } into g
             select new
+            {
+                isv.AtendimentoId,
+                isv.ServicoId,
+                s.Descricao,
+                s.TipoCobranca,
+                s.DuracaoMinutos,
+                isv.Quantidade,
+                isv.Subtotal,
+                a.ValorTotal,
+                a.CustoTotal,
+                ServicoExcluido = s.DeletedAt != null
+            })
+            .ToListAsync(cancellationToken);
+
+        // KAN-29: o custo só existe nas linhas de produto, então a margem do atendimento
+        // (valor - custo) é rateada entre os serviços dele pela fatia de receita de cada
+        // um; sem receita de serviço, em partes iguais. O serviço excluído do catálogo
+        // entra no rateio, para a fatia dele não inflar a dos outros, mas não aparece
+        // na lista (como já acontecia com a receita).
+        var comMargem = linhas
+            .GroupBy(l => l.AtendimentoId)
+            .SelectMany(at =>
+            {
+                var margemAtendimento = at.First().ValorTotal - at.First().CustoTotal;
+                var receitaServicos = at.Sum(l => l.Subtotal);
+                var linhasDoAtendimento = at.Count();
+                return at.Select(l => new
+                {
+                    Linha = l,
+                    Margem = receitaServicos > 0
+                        ? margemAtendimento * l.Subtotal / receitaServicos
+                        : margemAtendimento / linhasDoAtendimento
+                });
+            })
+            .Where(x => !x.Linha.ServicoExcluido);
+
+        var grouped = comMargem
+            .GroupBy(x => new { x.Linha.ServicoId, x.Linha.Descricao, x.Linha.TipoCobranca, x.Linha.DuracaoMinutos })
+            .Select(g => new
             {
                 g.Key.ServicoId,
                 g.Key.Descricao,
                 g.Key.TipoCobranca,
                 g.Key.DuracaoMinutos,
-                Quantidade = g.Sum(x => x.Quantidade),
-                Receita = g.Sum(x => x.Subtotal)
+                Quantidade = g.Sum(x => x.Linha.Quantidade),
+                Receita = g.Sum(x => x.Linha.Subtotal),
+                Margem = g.Sum(x => x.Margem)
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var receitaPorServico = grouped
             .Select(x =>
             {
                 var horas = HorasTrabalhadas(x.TipoCobranca, x.Quantidade, x.DuracaoMinutos);
+                var margem = Math.Round(x.Margem, 2);
                 return new ServicoReceitaItem
                 {
                     ServicoId = x.ServicoId,
@@ -160,7 +199,9 @@ public sealed class MetricasRepository : IMetricasRepository
                     Quantidade = x.Quantidade,
                     Receita = x.Receita,
                     Horas = horas,
-                    ReceitaPorHora = horas > 0 ? Math.Round(x.Receita / horas.Value, 2) : null
+                    ReceitaPorHora = horas > 0 ? Math.Round(x.Receita / horas.Value, 2) : null,
+                    Margem = margem,
+                    MargemPorHora = horas > 0 ? Math.Round(x.Margem / horas.Value, 2) : null
                 };
             })
             .OrderByDescending(x => x.Receita)

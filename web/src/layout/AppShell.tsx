@@ -1,5 +1,5 @@
 import { AvisoAssinatura } from '../features/assinatura/AvisoAssinatura'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
@@ -126,7 +126,9 @@ export function AppShell() {
             <div className="page">
               <AvisoAssinatura />
               <div id="page">
-                <Outlet context={{ period, setPeriod, entradaPronta } satisfies ShellContext} />
+                <Suspense fallback={null}>
+                  <Outlet context={{ period, setPeriod, entradaPronta } satisfies ShellContext} />
+                </Suspense>
               </div>
             </div>
           </div>
