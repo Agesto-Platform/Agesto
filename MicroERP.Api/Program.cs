@@ -96,6 +96,7 @@ builder.Services.PostConfigure<InsightsOptions>(options =>
 builder.Services.AddSingleton<IInsightsGerador, ClaudeInsightsGerador>();
 builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAgenteService, AgenteService>();
+builder.Services.AddScoped<IAgenteFerramentasFactory, AgenteFerramentasFactory>();
 builder.Services.AddScoped<IUsoIaService, UsoIaService>();
 builder.Services.AddScoped<IEnvioCodigoAdmin, EnvioCodigoAdmin>();
 builder.Services.AddScoped<IAssinaturaService, AssinaturaService>();

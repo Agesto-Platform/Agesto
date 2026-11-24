@@ -10,7 +10,8 @@ namespace MicroERP.Api.Services;
 // Chat do painel Agente (DEC-21): responde perguntas do Dono com as métricas
 // já calculadas do período (DEC-20) e a agenda dos próximos 7 dias. Só leitura.
 // Da agenda saem só horário, status, serviço e valor: nome, telefone e
-// endereço do cliente não são enviados ao modelo.
+// endereço do cliente não são enviados ao modelo. Para o resto, o modelo
+// consulta o sistema pelas ferramentas da empresa do login (KAN-77).
 public sealed class AgenteService : IAgenteService
 {
     private const int DiasDeAgenda = 7;
@@ -28,6 +29,7 @@ public sealed class AgenteService : IAgenteService
     private readonly IAtendimentoService _atendimentoService;
     private readonly IInsightsGerador _gerador;
     private readonly IUsoIaService _usoIa;
+    private readonly IAgenteFerramentasFactory _ferramentas;
     private readonly ILogger<AgenteService> _logger;
 
     public AgenteService(
@@ -35,12 +37,14 @@ public sealed class AgenteService : IAgenteService
         IAtendimentoService atendimentoService,
         IInsightsGerador gerador,
         IUsoIaService usoIa,
+        IAgenteFerramentasFactory ferramentas,
         ILogger<AgenteService> logger)
     {
         _metricasService = metricasService;
         _atendimentoService = atendimentoService;
         _gerador = gerador;
         _usoIa = usoIa;
+        _ferramentas = ferramentas;
         _logger = logger;
     }
 
@@ -92,10 +96,12 @@ public sealed class AgenteService : IAgenteService
         // Limite diário por empresa (DEC-21): reserva a pergunta antes de chamar
         // o modelo e devolve se ele falhar, para a empresa não pagar pela falha.
         var restantes = await _usoIa.ReservarPerguntaAsync(empresaId, cancellationToken);
+        // Presas à empresa do login: o modelo escolhe a consulta, nunca a empresa.
+        var ferramentas = _ferramentas.Criar(empresaId);
         RespostaIA resposta;
         try
         {
-            resposta = await _gerador.ResponderAsync(conversa, cancellationToken);
+            resposta = await _gerador.ResponderAsync(conversa, ferramentas, cancellationToken);
         }
         catch
         {
@@ -105,8 +111,8 @@ public sealed class AgenteService : IAgenteService
 
         await _usoIa.RegistrarTokensDaPerguntaAsync(empresaId, resposta.TokensEntrada, resposta.TokensSaida, CancellationToken.None);
         _logger.LogInformation(
-            "Agente IA respondeu: empresa {EmpresaId}, modelo {Modelo}, tokens de entrada {TokensEntrada}, tokens de saída {TokensSaida}",
-            empresaId, resposta.Modelo, resposta.TokensEntrada, resposta.TokensSaida);
+            "Agente IA respondeu: empresa {EmpresaId}, modelo {Modelo}, consultas {Consultas}, tokens de entrada {TokensEntrada}, tokens de saída {TokensSaida}",
+            empresaId, resposta.Modelo, resposta.ConsultasFeitas, resposta.TokensEntrada, resposta.TokensSaida);
 
         return new AgenteRespostaResponse
         {
@@ -114,6 +120,7 @@ public sealed class AgenteService : IAgenteService
             Modelo = resposta.Modelo,
             PerguntasRestantes = restantes,
             LimiteDiario = _usoIa.PerguntasPorDia,
+            Acoes = ferramentas.Acoes.ToList(),
         };
     }
 

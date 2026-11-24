@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace MicroERP.Api.Services.Insights;
 
 // Fronteira com o provedor de IA: recebe dados já calculados (DEC-20) e devolve
@@ -10,13 +12,40 @@ public interface IInsightsGerador
     Task<InsightsGerados> GerarAsync(string metricasJson, CancellationToken cancellationToken);
 
     // Conversa do painel Agente. A conversa começa e termina com o usuário e
-    // alterna os papéis; a última mensagem já traz os dados e a pergunta.
-    Task<RespostaIA> ResponderAsync(IReadOnlyList<MensagemIA> conversa, CancellationToken cancellationToken);
+    // alterna os papéis; a última mensagem já traz os dados e a pergunta. Com
+    // ferramentas, o modelo pode consultar o sistema antes de responder.
+    Task<RespostaIA> ResponderAsync(IReadOnlyList<MensagemIA> conversa, IExecutorDeFerramentas? ferramentas, CancellationToken cancellationToken);
+}
+
+// Consultas que o modelo pode pedir no chat do Agente (KAN-77, fase 1: só leitura).
+// Quem implementa já nasce preso à empresa do login: o modelo nunca escolhe a empresa.
+public interface IExecutorDeFerramentas
+{
+    IReadOnlyList<FerramentaIA> Ferramentas { get; }
+
+    // Resultado que volta ao modelo (JSON ou texto). Entrada inválida ou registro
+    // que não existe: FerramentaInvalidaException, devolvida ao modelo como erro.
+    Task<string> ExecutarAsync(string nome, JsonElement entrada, CancellationToken cancellationToken);
+}
+
+// Propriedades: o JSON Schema de cada parâmetro.
+public sealed record FerramentaIA(
+    string Nome,
+    string Descricao,
+    IReadOnlyDictionary<string, JsonElement> Propriedades,
+    IReadOnlyList<string> Obrigatorias);
+
+public sealed class FerramentaInvalidaException : Exception
+{
+    public FerramentaInvalidaException(string message) : base(message)
+    {
+    }
 }
 
 public sealed record MensagemIA(bool DoUsuario, string Texto);
 
-public sealed record RespostaIA(string Texto, string Modelo, long TokensEntrada, long TokensSaida);
+// Tokens somados de todas as chamadas ao modelo da pergunta.
+public sealed record RespostaIA(string Texto, string Modelo, long TokensEntrada, long TokensSaida, int ConsultasFeitas = 0);
 
 public sealed class InsightsGerados
 {

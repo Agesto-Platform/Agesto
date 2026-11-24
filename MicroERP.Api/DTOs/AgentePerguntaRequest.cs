@@ -36,4 +36,18 @@ public sealed class AgenteRespostaResponse
     // Limite diário por empresa (DEC-21): quantas perguntas ainda restam hoje.
     public int PerguntasRestantes { get; set; }
     public int LimiteDiario { get; set; }
+
+    // Rascunhos preparados pela IA para o Dono revisar (KAN-77).
+    public List<AcaoAgenteResponse> Acoes { get; set; } = [];
+}
+
+// Por enquanto só "whatsapp": o painel abre o WhatsApp do Dono com a mensagem
+// pronta. O telefone sai do cadastro, nunca passa pelo modelo.
+public sealed class AcaoAgenteResponse
+{
+    public string Tipo { get; set; } = string.Empty;
+    public long ClienteId { get; set; }
+    public string ClienteNome { get; set; } = string.Empty;
+    public string Telefone { get; set; } = string.Empty;
+    public string Mensagem { get; set; } = string.Empty;
 }
