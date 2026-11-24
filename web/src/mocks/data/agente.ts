@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import type { AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../../types/api'
+import type { AcaoAgente, AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../../types/api'
 import { ok, fail } from '../lib/http'
 
 /** Respostas de exemplo do Agente (mock): sem IA, só para navegar o painel. */
@@ -9,8 +9,23 @@ function responder(pergunta: string): string {
   if (p.includes('margem')) return 'Instalação de split foi o serviço que mais rendeu: R$ 8.100,00 em 18 atendimentos.'
   if (p.includes('amanhã') || p.includes('amanha')) return 'Amanhã você tem 2 atendimentos:\n- 09:00 Instalação de split\n- 14:30 Limpeza e higienização'
   if (p.includes('acabando')) return 'O Gás R410A está acabando: restam 6 kg, o que dá cerca de 4 dias no ritmo atual.'
-  if (p.includes('orçamento') || p.includes('orcamento')) return 'Eu só consigo ler os dados. Para montar um orçamento, abra a tela Orçamentos no menu.'
+  if (p.includes('devendo')) return 'Você tem R$ 1.250,00 a receber em 3 atendimentos. O mais antigo é do Fernando Lima: R$ 680,00, há 18 dias. Preparei uma mensagem de cobrança para ele.'
+  if (p.includes('orçamento') || p.includes('orcamento')) return 'Há 2 orçamentos enviados sem resposta há mais de 7 dias, somando R$ 3.400,00. O maior é da Clínica Sorriso: R$ 2.600,00, há 12 dias.'
   return 'Esta é uma resposta de exemplo do modo de demonstração. Com a API real, o Agente responde com os números da sua empresa.'
+}
+
+/** Rascunho de WhatsApp de exemplo (KAN-77): na API, o telefone vem do cadastro do cliente. */
+function acoes(pergunta: string): AcaoAgente[] {
+  if (!pergunta.toLowerCase().includes('devendo')) return []
+  return [
+    {
+      tipo: 'whatsapp',
+      clienteId: 1,
+      clienteNome: 'Fernando Lima',
+      telefone: '11987654321',
+      mensagem: 'Olá, Fernando! Tudo bem? Passando para lembrar do pagamento de R$ 680,00 da instalação do dia 05/11. Qualquer dúvida, é só chamar.',
+    },
+  ]
 }
 
 /** Limite diário por empresa (DEC-21), contado só nesta aba no modo de demonstração. */
@@ -32,6 +47,7 @@ export const agenteHandlers = [
       modelo: 'mock',
       perguntasRestantes: LIMITE - usadas,
       limiteDiario: LIMITE,
+      acoes: acoes(body.pergunta),
     }
     return HttpResponse.json(ok(data, 'Resposta do Agente.'))
   }),

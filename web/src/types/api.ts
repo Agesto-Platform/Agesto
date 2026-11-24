@@ -561,6 +561,17 @@ export interface AgenteResposta {
   /** Limite diário por empresa (DEC-21): quantas perguntas ainda restam hoje. */
   perguntasRestantes?: number
   limiteDiario?: number
+  /** Rascunhos preparados pela IA para o Dono revisar (KAN-77). API antiga não manda. */
+  acoes?: AcaoAgente[]
+}
+
+/** Mensagem de WhatsApp preparada pela IA; o telefone vem do cadastro, não do modelo. */
+export interface AcaoAgente {
+  tipo: 'whatsapp'
+  clienteId: number
+  clienteNome: string
+  telefone: string
+  mensagem: string
 }
 
 /** GET /api/agente/uso: perguntas ao Agente usadas hoje pela empresa (DEC-21). */
