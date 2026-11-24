@@ -1155,7 +1155,7 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ## DEC-61 — Margin per hour per service: the job's margin is split by service revenue
 
-**Status:** 🟡 Decided by Davi Oliveira on 24/11/2026 (KAN-29); implemented on branch `feature/KAN-29-30-margem-hora-e-bundle`. No migration.
+**Status:** 🟢 Decided by Davi Oliveira on 24/11/2026 (KAN-29); in production since 24/11/2026 (PR #239, release #240) and tested by Davi. No migration.
 
 **Decision:** cost lives only on product lines (DEC-19), so each completed job's margin (`ValorTotal − CustoTotal`) is split among the job's services in proportion to each service's revenue; when the services in a job have no revenue, it is split equally. Margin per hour is that margin divided by the service hours from DEC-45, and stays empty when a fixed-price service has no duration.
 
