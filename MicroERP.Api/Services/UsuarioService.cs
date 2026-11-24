@@ -124,6 +124,8 @@ public sealed class UsuarioService : IUsuarioService
         usuario.EmailConfirmadoEm ??= agora;
         usuario.TentativasLoginFalhas = 0;
         usuario.BloqueadoAte = null;
+        // A senha definida pelo Dono derruba as sessões abertas no celular do agente (SEG-01).
+        usuario.VersaoSessao++;
         usuario.UpdatedAt = agora;
         await _usuarioRepository.InvalidarLinksDeSenhaAsync(usuario.Id, agora, cancellationToken);
         await _usuarioRepository.SaveChangesAsync(cancellationToken);
@@ -157,12 +159,42 @@ public sealed class UsuarioService : IUsuarioService
                 throw new RegraUsuarioException("A empresa precisa de pelo menos um Dono ativo.");
         }
 
+        // Agente promovido a Dono (KAN-32): o login do agente pode ser inventado (DEC-59),
+        // então a promoção pede o email real e manda o convite para confirmá-lo. Até usar o
+        // convite, a pessoa segue entrando com a senha atual; depois, tem "Esqueci a senha".
+        var promovido = usuario.Perfil == PerfilUsuario.Agente && request.Perfil == PerfilUsuario.Dono;
+        if (promovido)
+        {
+            var email = EmailRealOuErro(request.Email);
+            if (email != usuario.Email && await _usuarioRepository.EmailExistsAsync(email, cancellationToken))
+                throw new EmailAlreadyExistsException("Email já cadastrado.");
+            usuario.Email = email;
+            usuario.EmailConfirmadoEm = null;
+        }
+
         usuario.Nome = request.Nome.Trim();
         usuario.Perfil = request.Perfil;
         usuario.UpdatedAt = DateTime.UtcNow;
 
         await _usuarioRepository.SaveChangesAsync(cancellationToken);
+        if (promovido)
+            await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
         return MapResponse(usuario);
+    }
+
+    // Email que pode receber o convite: além do formato, o domínio precisa ter ponto
+    // (o login inventado do agente, como joao@minhaempresa, não serve).
+    private static string EmailRealOuErro(string? email)
+    {
+        const string erro = "Para promover a Dono, informe o email real da pessoa: ela recebe um convite para confirmar o email.";
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException(erro);
+        var normalizado = AuthService.NormalizeEmail(email);
+        var arroba = normalizado.IndexOf('@');
+        var dominio = arroba > 0 ? normalizado[(arroba + 1)..] : string.Empty;
+        if (dominio.Length < 3 || !dominio.Contains('.') || dominio.StartsWith('.') || dominio.EndsWith('.'))
+            throw new ArgumentException(erro);
+        return normalizado;
     }
 
     public async Task<UsuarioResponse> SetAtivoAsync(long empresaId, long donoId, long id, bool ativo, CancellationToken cancellationToken)
@@ -180,6 +212,9 @@ public sealed class UsuarioService : IUsuarioService
 
         if (ativo && !usuario.Ativo)
             await _assinaturas.GarantirLicencaAsync(empresaId, cancellationToken);
+        // Desativar encerra as sessões de vez: ao reativar, o token antigo não volta (SEG-01).
+        if (!ativo && usuario.Ativo)
+            usuario.VersaoSessao++;
         usuario.Ativo = ativo;
         usuario.UpdatedAt = DateTime.UtcNow;
 

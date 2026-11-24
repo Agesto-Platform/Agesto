@@ -139,12 +139,23 @@ public sealed class AuthController : ApiControllerBase
             });
         }
 
+        // Cookie httpOnly do web (KAN-33): só grava com Auth:CookieSessao=true.
+        CookieDeSessao.Gravar(Response, _configuration, response.Token, response.ExpiresAt);
         return Ok(new ApiResponse
         {
             Success = true,
             Message = "Login realizado com sucesso.",
             Data = response
         });
+    }
+
+    // Sair: apaga o cookie de sessão do web (KAN-33). Sem cookie ligado, não faz nada;
+    // o token Bearer continua sendo descartado pelo próprio cliente.
+    [HttpPost("sair")]
+    public ActionResult<ApiResponse> Sair()
+    {
+        CookieDeSessao.Apagar(Response, _configuration);
+        return Ok(new ApiResponse { Success = true, Message = "Sessão encerrada." });
     }
 
     // Qualquer perfil troca a própria senha; obrigatório no primeiro acesso de
@@ -159,8 +170,10 @@ public sealed class AuthController : ApiControllerBase
 
         try
         {
-            await _authService.TrocarSenhaAsync(usuarioId, request, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Senha alterada com sucesso." });
+            // As outras sessões caem (SEG-01); este aparelho segue com o token novo.
+            var response = await _authService.TrocarSenhaAsync(usuarioId, request, cancellationToken);
+            CookieDeSessao.Gravar(Response, _configuration, response.Token, response.ExpiresAt);
+            return Ok(new ApiResponse { Success = true, Message = "Senha alterada com sucesso.", Data = response });
         }
         catch (SenhaAtualInvalidaException ex)
         {

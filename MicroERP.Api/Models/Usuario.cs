@@ -29,6 +29,10 @@ public class Usuario
     // Quando a pessoa criou a senha pelo link do email (DEC-55). Nulo = convite
     // pendente: o acesso existe, mas ainda não tem senha que alguém saiba.
     public DateTime? EmailConfirmadoEm { get; set; }
+    // Versão de sessão (SEG-01): vai no token e sobe quando a senha muda ou o acesso é
+    // desativado; o TokenRevalidator recusa token com versão antiga, então trocar a senha
+    // encerra as outras sessões e reativar não faz o token antigo voltar a valer.
+    public int VersaoSessao { get; set; }
     // Exclusão da própria conta (LGPD): a linha fica anonimizada, o histórico continua apontando para ela.
     public DateTime? DeletedAt { get; set; }
     public Empresa? Empresa { get; set; }

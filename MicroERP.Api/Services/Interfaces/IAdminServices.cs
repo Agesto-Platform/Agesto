@@ -29,5 +29,6 @@ public interface IAdminEmpresaService
     Task<ConviteEnviadoResponse> CriarUsuarioAsync(long adminId, long empresaId, UsuarioCreateRequest request, string? ip, CancellationToken cancellationToken);
     // Reenvia o convite ou manda um link de senha nova (no lugar da senha provisória).
     Task<ConviteEnviadoResponse> EnviarLinkSenhaAsync(long adminId, long empresaId, long usuarioId, string? ip, CancellationToken cancellationToken);
+    Task DefinirSenhaUsuarioAsync(long adminId, long empresaId, long usuarioId, DefinirSenhaUsuarioRequest request, string? ip, CancellationToken cancellationToken);
     Task<IReadOnlyList<AuditoriaAdminItem>> ListarAuditoriaAsync(long? empresaId, CancellationToken cancellationToken);
 }

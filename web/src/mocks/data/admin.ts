@@ -239,15 +239,19 @@ export const adminHandlers = [
   http.post('*/api/admin/empresas/:id/usuarios', async ({ params, request }) => {
     const e = empresas.find((x) => x.id === Number(params.id))
     if (!e) return fail(404, 'Empresa não encontrada.')
-    const body = (await request.json()) as { nome: string; email: string; perfil: 'Dono' | 'Agente' }
+    const body = (await request.json()) as { nome: string; email: string; perfil: 'Dono' | 'Agente'; senha?: string }
     const email = body.email.trim().toLowerCase()
+    const agente = body.perfil === 'Agente'
+    if (agente && (body.senha ?? '').length < 8) return fail(400, 'Defina a senha do agente (mínimo 8 caracteres).')
     if (empresas.some((x) => x.usuarios.some((u) => u.email === email))) return fail(409, 'Email já cadastrado.')
     if (e.usuarios.filter((u) => u.ativo).length >= 1 + e.licencas)
       return fail(409, 'A assinatura não tem licença livre. Aumente as licenças na assinatura antes de criar o acesso.')
     const id = Math.max(0, ...empresas.flatMap((x) => x.usuarios.map((u) => u.id))) + 1
-    e.usuarios.push({ ...usuario(id, body.nome.trim(), email, body.perfil, null), convitePendente: true, createdAt: agora() })
+    e.usuarios.push({ ...usuario(id, body.nome.trim(), email, body.perfil, null), convitePendente: !agente, createdAt: agora() })
     auditar('criar-usuario', e.id, `${email} (${body.perfil})`, id)
-    return HttpResponse.json(ok({ email, envioHabilitado: true }, 'Acesso criado. Convite enviado.'))
+    return agente
+      ? HttpResponse.json(ok({ email, envioHabilitado: true, conviteEnviado: false }, 'Acesso criado. Passe a senha para o agente.'))
+      : HttpResponse.json(ok({ email, envioHabilitado: true }, 'Acesso criado. Convite enviado.'))
   }),
 
   http.post('*/api/admin/empresas/:id/bloquear', async ({ params, request }) => {
@@ -271,7 +275,15 @@ export const adminHandlers = [
     const e = empresas.find((x) => x.id === Number(params.id))
     const u = e?.usuarios.find((x) => x.id === Number(params.usuarioId))
     if (!e || !u) return fail(404, 'Usuário não encontrado nesta empresa.')
+    if (params.acao === 'senha') {
+      if (u.perfil !== 'Agente') return fail(409, 'Só a senha do Agente é definida aqui. O Dono recebe o link de senha por email.')
+      u.convitePendente = false
+      u.bloqueadoAte = null
+      auditar('definir-senha', e.id, u.email, u.id)
+      return HttpResponse.json(ok(null, 'Senha definida. Passe a nova senha para o agente.'))
+    }
     if (params.acao === 'enviar-link-senha') {
+      if (u.perfil === 'Agente') return fail(409, 'A senha do Agente não vai por email: use "Definir senha".')
       if (!u.ativo) return fail(409, 'Reative o acesso antes de enviar o link de senha.')
       auditar(u.convitePendente ? 'reenviar-convite' : 'enviar-link-senha', e.id, u.email, u.id)
       return HttpResponse.json(ok({ email: u.email, envioHabilitado: true }, 'Link de senha enviado.'))

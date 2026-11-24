@@ -335,6 +335,27 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
+    public async Task TrocarSenhaAsync_SobeAVersaoDeSessaoEDevolveTokenNovo()
+    {
+        await using var dbContext = CreateContext();
+        var service = new AuthService(dbContext, CreateConfiguration());
+        await service.RegisterAsync(new AuthRegisterRequest { Nome = "Dono", Email = "sessao@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var antes = await service.LoginAsync(new AuthLoginRequest { Email = "sessao@teste.com", Senha = "Senha123!" }, CancellationToken.None);
+        var usuario = await dbContext.Usuarios.SingleAsync();
+
+        var depois = await service.TrocarSenhaAsync(usuario.Id, new TrocarSenhaRequest { SenhaAtual = "Senha123!", NovaSenha = "NovaSenha2" }, CancellationToken.None);
+
+        Assert.Equal(1, (await dbContext.Usuarios.SingleAsync()).VersaoSessao);
+        Assert.Equal("0", VersaoSessao(antes!.Token));
+        Assert.Equal("1", VersaoSessao(depois.Token));
+        Assert.False(depois.DeveTrocarSenha);
+    }
+
+    private static string? VersaoSessao(string token) =>
+        new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(token)
+            .Claims.FirstOrDefault(c => c.Type == MicroERP.Api.Authorization.TokenRevalidator.ClaimVersaoSessao)?.Value;
+
+    [Fact]
     public async Task TrocarSenhaAsync_ComSenhaAtualErrada_Lanca()
     {
         await using var dbContext = CreateContext();

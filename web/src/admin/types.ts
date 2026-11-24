@@ -33,6 +33,8 @@ export interface AdminConvidarInput {
 export interface ConviteEnviado {
   email: string
   envioHabilitado: boolean
+  /** Falso no acesso de Agente: a equipe definiu a senha e não houve convite (DEC-59). */
+  conviteEnviado?: boolean
 }
 
 export interface EmpresaAdminResumo {
@@ -116,6 +118,8 @@ export interface UsuarioAdminCriarInput {
   nome: string
   email: string
   perfil: PerfilUsuario
+  /** Senha do Agente, definida pela equipe (DEC-59, KAN-32). O Dono recebe convite. */
+  senha?: string
 }
 
 export interface AuditoriaAdminItem {

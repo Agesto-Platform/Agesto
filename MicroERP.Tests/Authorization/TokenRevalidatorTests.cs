@@ -61,6 +61,32 @@ public sealed class TokenRevalidatorTests
     }
 
     [Fact]
+    public async Task VersaoDeSessaoAntiga_EhInvalida()
+    {
+        await using var db = await Seed();
+        var usuario = await db.Usuarios.SingleAsync();
+        usuario.VersaoSessao = 2;
+        await db.SaveChangesAsync();
+
+        Assert.False(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono", "1"), CancellationToken.None));
+        Assert.False(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono", "x"), CancellationToken.None));
+        Assert.True(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono", "2"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task TokenSemVersao_ValeSoEnquantoAVersaoForZero()
+    {
+        await using var db = await Seed();
+        Assert.True(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono"), CancellationToken.None));
+
+        var usuario = await db.Usuarios.SingleAsync();
+        usuario.VersaoSessao = 1;
+        await db.SaveChangesAsync();
+
+        Assert.False(await TokenRevalidator.IsValidAsync(db, Principal("1", "10", "Dono"), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task TokenDeAdmin_SoValeComAdminAtivoEEscopoDePlataforma()
     {
         await using var db = await Seed();
@@ -90,11 +116,16 @@ public sealed class TokenRevalidatorTests
         return db;
     }
 
-    private static ClaimsPrincipal Principal(string sub, string empresaId, string perfil) =>
-        new(new ClaimsIdentity(
-        [
-            new Claim(ClaimTypes.NameIdentifier, sub),
-            new Claim("empresaId", empresaId),
-            new Claim("perfil", perfil)
-        ], "test"));
+    private static ClaimsPrincipal Principal(string sub, string empresaId, string perfil, string? versaoSessao = null)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, sub),
+            new("empresaId", empresaId),
+            new("perfil", perfil)
+        };
+        if (versaoSessao is not null)
+            claims.Add(new Claim(TokenRevalidator.ClaimVersaoSessao, versaoSessao));
+        return new(new ClaimsIdentity(claims, "test"));
+    }
 }
