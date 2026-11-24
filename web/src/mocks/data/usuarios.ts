@@ -94,6 +94,15 @@ export const usuarioHandlers = [
       if (u.id === 1) return fail(409, 'Voce nao pode remover o seu proprio perfil de Dono.')
       if (u.ativo && donosAtivos() <= 1) return fail(409, 'A empresa precisa de pelo menos um Dono ativo.')
     }
+    // Agente promovido a Dono: email real e convite para confirmar (KAN-32).
+    if (u.perfil === 'Agente' && b.perfil === 'Dono') {
+      const email = (b.email ?? '').trim().toLowerCase()
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        return fail(400, 'Para promover a Dono, informe o email real da pessoa: ela recebe um convite para confirmar o email.')
+      if (email !== u.email && usuarios.some((x) => x.email === email)) return fail(409, 'Email já cadastrado.')
+      u.email = email
+      u.convitePendente = true
+    }
     u.nome = b.nome.trim()
     u.perfil = b.perfil
     return HttpResponse.json(ok(u, 'Usuario atualizado com sucesso.'))

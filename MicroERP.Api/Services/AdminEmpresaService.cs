@@ -152,6 +152,14 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         if (request.Perfil is not (PerfilUsuario.Dono or PerfilUsuario.Agente))
             throw new ArgumentException("Perfil inválido.");
 
+        // Igual ao painel do Dono (DEC-59, KAN-32): o Agente nasce com a senha definida
+        // pela equipe e sem convite; o Dono recebe o convite e cria a própria senha.
+        var agente = request.Perfil == PerfilUsuario.Agente;
+        if (agente && string.IsNullOrEmpty(request.Senha))
+            throw new ArgumentException("Defina a senha do agente (mínimo 8 caracteres).");
+        if (!agente && request.Senha is not null)
+            throw new ArgumentException("O Dono cria a própria senha pelo convite no email.");
+
         _ = await ObterEmpresaAsync(empresaId, cancellationToken);
         var email = AuthService.NormalizeEmail(request.Email);
         if (await _db.Usuarios.AnyAsync(u => u.Email == email, cancellationToken))
@@ -170,15 +178,25 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
             CreatedAt = agora,
             UpdatedAt = agora,
         };
-        usuario.Senha = _hasher.HashPassword(usuario, AuthService.SenhaDesconhecida());
+        if (agente)
+        {
+            usuario.Senha = _hasher.HashPassword(usuario, request.Senha!);
+            usuario.EmailConfirmadoEm = agora;
+        }
+        else
+        {
+            usuario.Senha = _hasher.HashPassword(usuario, AuthService.SenhaDesconhecida());
+        }
         _db.Usuarios.Add(usuario);
         await _db.SaveChangesAsync(cancellationToken);
 
         AdminAuditoria.Registrar(_db, adminId, "criar-usuario", empresaId, usuario.Id,
             $"{usuario.Email} ({usuario.Perfil})", ip);
         await _db.SaveChangesAsync(cancellationToken);
-        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
+        if (agente)
+            return new ConviteEnviadoResponse { Email = usuario.Email, EnvioHabilitado = _convites.EnvioHabilitado, ConviteEnviado = false };
 
+        await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
         return new ConviteEnviadoResponse { Email = usuario.Email, EnvioHabilitado = _convites.EnvioHabilitado };
     }
 
@@ -213,6 +231,9 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         var usuario = await ObterUsuarioAsync(empresaId, usuarioId, cancellationToken);
         if (ativo && !usuario.Ativo)
             await _assinaturas.GarantirLicencaAsync(empresaId, cancellationToken);
+        // Desativar encerra as sessões de vez: ao reativar, o token antigo não volta (SEG-01).
+        if (!ativo && usuario.Ativo)
+            usuario.VersaoSessao++;
         usuario.Ativo = ativo;
 
         AdminAuditoria.Registrar(_db, adminId, ativo ? "reativar-usuario" : "desativar-usuario", empresaId, usuarioId, usuario.Email, ip);
@@ -225,6 +246,9 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
     public async Task<ConviteEnviadoResponse> EnviarLinkSenhaAsync(long adminId, long empresaId, long usuarioId, string? ip, CancellationToken cancellationToken)
     {
         var usuario = await ObterUsuarioAsync(empresaId, usuarioId, cancellationToken);
+        // O Agente não depende de email (DEC-59): a equipe define a senha dele.
+        if (usuario.Perfil == PerfilUsuario.Agente)
+            throw new InvalidOperationException("A senha do Agente não vai por email: use \"Definir senha\".");
         if (!usuario.Ativo)
             throw new InvalidOperationException("Reative o acesso antes de enviar o link de senha.");
         _ = await ObterEmpresaAsync(empresaId, cancellationToken);
@@ -235,6 +259,32 @@ public sealed class AdminEmpresaService : IAdminEmpresaService
         await _convites.EnviarParaUsuarioAsync(usuario, cancellationToken);
 
         return new ConviteEnviadoResponse { Email = usuario.Email, EnvioHabilitado = _convites.EnvioHabilitado };
+    }
+
+    // A equipe define a senha de um Agente (DEC-59, KAN-32), como o Dono faz no painel:
+    // links de senha abertos deixam de valer, um bloqueio por senhas erradas sai e as
+    // sessões abertas no celular caem (SEG-01).
+    public async Task DefinirSenhaUsuarioAsync(long adminId, long empresaId, long usuarioId, DefinirSenhaUsuarioRequest request, string? ip, CancellationToken cancellationToken)
+    {
+        var usuario = await ObterUsuarioAsync(empresaId, usuarioId, cancellationToken);
+        if (usuario.Perfil != PerfilUsuario.Agente)
+            throw new RegraUsuarioException("Só a senha do Agente é definida aqui. O Dono recebe o link de senha por email.");
+        if (string.IsNullOrEmpty(request.NovaSenha) || request.NovaSenha.Length < 8)
+            throw new ArgumentException("Senha deve ter no mínimo 8 caracteres.");
+
+        var agora = DateTime.UtcNow;
+        usuario.Senha = _hasher.HashPassword(usuario, request.NovaSenha);
+        usuario.DeveTrocarSenha = false;
+        usuario.EmailConfirmadoEm ??= agora;
+        usuario.TentativasLoginFalhas = 0;
+        usuario.BloqueadoAte = null;
+        usuario.VersaoSessao++;
+        usuario.UpdatedAt = agora;
+        foreach (var t in await LinksDeSenha.Abertos(_db, usuario.Id, null).ToListAsync(cancellationToken))
+            t.UsadoEm = agora;
+
+        AdminAuditoria.Registrar(_db, adminId, "definir-senha", empresaId, usuarioId, usuario.Email, ip);
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<AuditoriaAdminItem>> ListarAuditoriaAsync(long? empresaId, CancellationToken cancellationToken)

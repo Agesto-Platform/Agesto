@@ -103,6 +103,8 @@ public sealed class UsuarioServiceTests
 
         Assert.False(r.ConvitePendente);
         Assert.All(db.TokensRedefinicaoSenha, t => Assert.NotNull(t.UsadoEm));
+        // SEG-01: a senha nova derruba as sessões abertas no celular do agente.
+        Assert.Equal(1, (await db.Usuarios.SingleAsync(u => u.Id == 101)).VersaoSessao);
         var login = await new AuthService(db, Configuracao())
             .LoginAsync(new AuthLoginRequest { Email = "carla@teste.com", Senha = "SenhaNovaCarla1" }, CancellationToken.None);
         Assert.NotNull(login);
@@ -175,6 +177,9 @@ public sealed class UsuarioServiceTests
 
         var reativado = await service.SetAtivoAsync(Empresa, DonoId, 101, true, CancellationToken.None);
         Assert.True(reativado.Ativo);
+
+        // SEG-01: desativar sobe a versão de sessão; reativar não volta o token antigo.
+        Assert.Equal(1, (await db.Usuarios.SingleAsync(u => u.Id == 101)).VersaoSessao);
     }
 
     [Fact]
@@ -216,12 +221,61 @@ public sealed class UsuarioServiceTests
     public async Task UpdateAsync_PromoveAgenteADono()
     {
         await using var db = await Seed();
-        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
+        var carla = await db.Usuarios.SingleAsync(u => u.Id == 101);
+        carla.Email = "carla@minhaempresa";
+        carla.EmailConfirmadoEm = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        var convites = new ConvitesFalsos();
+        var service = new UsuarioService(new UsuarioRepository(db), convites, new LicencasLivres());
 
-        var atualizado = await service.UpdateAsync(Empresa, DonoId, 101, new UsuarioUpdateRequest { Nome = "Carla Souza", Perfil = PerfilUsuario.Dono }, CancellationToken.None);
+        var atualizado = await service.UpdateAsync(Empresa, DonoId, 101,
+            new UsuarioUpdateRequest { Nome = "Carla Souza", Perfil = PerfilUsuario.Dono, Email = " Carla@Gmail.com " }, CancellationToken.None);
 
         Assert.Equal("Carla Souza", atualizado.Nome);
         Assert.Equal(PerfilUsuario.Dono, atualizado.Perfil);
+        // KAN-32: o email real substitui o login inventado e recebe o convite para confirmar.
+        Assert.Equal("carla@gmail.com", atualizado.Email);
+        Assert.True(atualizado.ConvitePendente);
+        Assert.Equal(["carla@gmail.com"], convites.Usuarios.Select(u => u.Email));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("carla@minhaempresa")]
+    [InlineData("carla@.com")]
+    public async Task UpdateAsync_PromoverADonoSemEmailReal_Lanca(string? email)
+    {
+        await using var db = await Seed();
+        var convites = new ConvitesFalsos();
+        var service = new UsuarioService(new UsuarioRepository(db), convites, new LicencasLivres());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateAsync(Empresa, DonoId, 101,
+            new UsuarioUpdateRequest { Nome = "Carla", Perfil = PerfilUsuario.Dono, Email = email }, CancellationToken.None));
+        Assert.Equal(PerfilUsuario.Agente, (await db.Usuarios.SingleAsync(u => u.Id == 101)).Perfil);
+        Assert.Empty(convites.Usuarios);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_PromoverADonoComEmailDeOutraConta_Lanca()
+    {
+        await using var db = await Seed();
+        var service = new UsuarioService(new UsuarioRepository(db), new ConvitesFalsos(), new LicencasLivres());
+
+        await Assert.ThrowsAsync<EmailAlreadyExistsException>(() => service.UpdateAsync(Empresa, DonoId, 101,
+            new UsuarioUpdateRequest { Nome = "Carla", Perfil = PerfilUsuario.Dono, Email = "estranho@teste.com" }, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_SoMudarONomeDoAgente_NaoPedeEmailNemConvite()
+    {
+        await using var db = await Seed();
+        var convites = new ConvitesFalsos();
+        var service = new UsuarioService(new UsuarioRepository(db), convites, new LicencasLivres());
+
+        var r = await service.UpdateAsync(Empresa, DonoId, 101, new UsuarioUpdateRequest { Nome = "Carla S.", Perfil = PerfilUsuario.Agente }, CancellationToken.None);
+
+        Assert.Equal("Carla S.", r.Nome);
+        Assert.Empty(convites.Usuarios);
     }
 
     [Fact]

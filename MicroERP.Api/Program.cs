@@ -160,6 +160,14 @@ builder.Services.AddAuthentication(options =>
         };
         options.Events = new JwtBearerEvents
         {
+            // Cookie httpOnly do web (KAN-33), só com Auth:CookieSessao=true; sem ele, nada muda.
+            OnMessageReceived = context =>
+            {
+                var token = CookieDeSessao.TokenDaRequisicao(context.Request, builder.Configuration);
+                if (token is not null)
+                    context.Token = token;
+                return Task.CompletedTask;
+            },
             OnTokenValidated = async context =>
             {
                 var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
@@ -260,6 +268,9 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
+        // O cookie de sessão (KAN-33) só vai nas chamadas do web com credenciais liberadas.
+        if (CookieDeSessao.Ligado(builder.Configuration))
+            policy.AllowCredentials();
     });
 });
 

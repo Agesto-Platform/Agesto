@@ -233,12 +233,14 @@ export function UsuariosPage() {
     setServerError(null)
     const onError = (e: unknown) => setServerError(erro(e, 'Erro ao salvar.'))
     if (editing) {
+      // Agente promovido a Dono leva o email real, que recebe o convite (KAN-32).
+      const promovendo = editing.perfil === 'Agente' && input.perfil === 'Dono'
       update.mutate(
-        { id: editing.id, body: { nome: input.nome, perfil: input.perfil } },
+        { id: editing.id, body: promovendo ? { nome: input.nome, perfil: input.perfil, email: input.email } : { nome: input.nome, perfil: input.perfil } },
         {
-          onSuccess: () => {
+          onSuccess: (u) => {
             setDrawerOpen(false)
-            toast.success('Usuário atualizado.')
+            toast.success(promovendo ? `${u.nome} agora é Dono. Convite enviado para ${u.email}.` : 'Usuário atualizado.')
           },
           onError,
         },

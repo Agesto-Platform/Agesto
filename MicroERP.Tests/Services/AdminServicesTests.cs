@@ -165,7 +165,7 @@ public sealed class AdminServicesTests
     }
 
     [Fact]
-    public async Task CriarUsuario_SoPelaEquipe_NasceComConvitePendente()
+    public async Task CriarUsuario_DonoPelaEquipe_NasceComConvitePendente()
     {
         await using var db = CreateContext();
         var adminId = await SeedAdmin(db);
@@ -176,12 +176,13 @@ public sealed class AdminServicesTests
         var service = Empresas(db, convites);
 
         var convite = await service.CriarUsuarioAsync(adminId, 5,
-            new UsuarioCreateRequest { Nome = " Carlos ", Email = " Carlos@Refri.com ", Perfil = PerfilUsuario.Agente }, null, CancellationToken.None);
+            new UsuarioCreateRequest { Nome = " Carlos ", Email = " Carlos@Refri.com ", Perfil = PerfilUsuario.Dono }, null, CancellationToken.None);
 
         var carlos = await db.Usuarios.SingleAsync(u => u.Email == "carlos@refri.com");
         Assert.Equal("Carlos", carlos.Nome);
         Assert.Equal(5, carlos.EmpresaId);
-        Assert.Equal(PerfilUsuario.Agente, carlos.Perfil);
+        Assert.Equal(PerfilUsuario.Dono, carlos.Perfil);
+        Assert.True(convite.ConviteEnviado);
         Assert.Null(carlos.EmailConfirmadoEm);
         Assert.Equal("carlos@refri.com", convite.Email);
         Assert.Equal(["carlos@refri.com"], convites.Usuarios.Select(u => u.Email));
@@ -189,11 +190,72 @@ public sealed class AdminServicesTests
         Assert.True((await service.ObterAsync(5, CancellationToken.None)).Usuarios.Single(u => u.Id == carlos.Id).ConvitePendente);
 
         await Assert.ThrowsAsync<EmailAlreadyExistsException>(() => service.CriarUsuarioAsync(adminId, 5,
-            new UsuarioCreateRequest { Nome = "Outro", Email = "DONO@refri.com" }, null, CancellationToken.None));
+            new UsuarioCreateRequest { Nome = "Outro", Email = "DONO@refri.com", Perfil = PerfilUsuario.Dono }, null, CancellationToken.None));
         await Assert.ThrowsAsync<ArgumentException>(() => service.CriarUsuarioAsync(adminId, 5,
             new UsuarioCreateRequest { Nome = "X", Email = "x@refri.com", Perfil = PerfilUsuario.Nenhum }, null, CancellationToken.None));
         await Assert.ThrowsAsync<NotFoundException>(() => service.CriarUsuarioAsync(adminId, 999,
-            new UsuarioCreateRequest { Nome = "Y", Email = "y@refri.com" }, null, CancellationToken.None));
+            new UsuarioCreateRequest { Nome = "Y", Email = "y@refri.com", Perfil = PerfilUsuario.Dono }, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task CriarUsuario_AgentePelaEquipe_NasceComASenhaESemConvite()
+    {
+        await using var db = CreateContext();
+        var adminId = await SeedAdmin(db);
+        db.Empresas.Add(new Empresa { Id = 5, Nome = "Refrigeração" });
+        await db.SaveChangesAsync();
+        var convites = new ConvitesFalsos();
+        var service = Empresas(db, convites);
+
+        var r = await service.CriarUsuarioAsync(adminId, 5,
+            new UsuarioCreateRequest { Nome = "Joao", Email = "joao@refri", Perfil = PerfilUsuario.Agente, Senha = "SenhaJoao1" }, null, CancellationToken.None);
+
+        Assert.False(r.ConviteEnviado);
+        Assert.Empty(convites.Usuarios);
+        var joao = await db.Usuarios.SingleAsync();
+        Assert.NotNull(joao.EmailConfirmadoEm);
+        Assert.Equal(PasswordVerificationResult.Success, new PasswordHasher<Usuario>().VerifyHashedPassword(joao, joao.Senha, "SenhaJoao1"));
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CriarUsuarioAsync(adminId, 5,
+            new UsuarioCreateRequest { Nome = "Sem senha", Email = "sem@refri", Perfil = PerfilUsuario.Agente }, null, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() => service.CriarUsuarioAsync(adminId, 5,
+            new UsuarioCreateRequest { Nome = "Dono", Email = "dono@refri.com", Perfil = PerfilUsuario.Dono, Senha = "SenhaDono1" }, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DefinirSenhaUsuario_SoParaAgente_DerrubaSessoesEAudita()
+    {
+        await using var db = CreateContext();
+        var adminId = await SeedAdmin(db);
+        db.Empresas.Add(new Empresa { Id = 5, Nome = "Refrigeração" });
+        db.Usuarios.AddRange(
+            new Usuario { Id = 50, Nome = "Dono", Email = "dono@refri.com", Senha = "hash", EmpresaId = 5, Perfil = PerfilUsuario.Dono },
+            new Usuario { Id = 51, Nome = "Joao", Email = "joao@refri", Senha = "hash", EmpresaId = 5, Perfil = PerfilUsuario.Agente,
+                TentativasLoginFalhas = 4, BloqueadoAte = DateTime.UtcNow.AddMinutes(10) });
+        await db.SaveChangesAsync();
+        await LinksDeSenha.EmitirAsync(db, 51, null, TipoTokenSenha.Convite, DateTime.UtcNow, CancellationToken.None);
+        await db.SaveChangesAsync();
+        var convites = new ConvitesFalsos();
+        var service = Empresas(db, convites);
+
+        await service.DefinirSenhaUsuarioAsync(adminId, 5, 51, new DefinirSenhaUsuarioRequest { NovaSenha = "NovaSenha9" }, null, CancellationToken.None);
+
+        var joao = await db.Usuarios.SingleAsync(u => u.Id == 51);
+        Assert.Equal(PasswordVerificationResult.Success, new PasswordHasher<Usuario>().VerifyHashedPassword(joao, joao.Senha, "NovaSenha9"));
+        Assert.Equal(1, joao.VersaoSessao);
+        Assert.Equal(0, joao.TentativasLoginFalhas);
+        Assert.Null(joao.BloqueadoAte);
+        Assert.NotNull(joao.EmailConfirmadoEm);
+        Assert.All(db.TokensRedefinicaoSenha, t => Assert.NotNull(t.UsadoEm));
+        Assert.Contains(db.AuditoriasAdmin, a => a.Acao == "definir-senha" && a.UsuarioId == 51);
+
+        await Assert.ThrowsAsync<RegraUsuarioException>(() => service.DefinirSenhaUsuarioAsync(adminId, 5, 50,
+            new DefinirSenhaUsuarioRequest { NovaSenha = "NovaSenha9" }, null, CancellationToken.None));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.DefinirSenhaUsuarioAsync(adminId, 6, 51,
+            new DefinirSenhaUsuarioRequest { NovaSenha = "NovaSenha9" }, null, CancellationToken.None));
+        // O Agente não recebe link de senha por email (DEC-59).
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.EnviarLinkSenhaAsync(adminId, 5, 51, null, CancellationToken.None));
+        Assert.Empty(convites.Usuarios);
     }
 
     [Fact]
@@ -240,6 +302,8 @@ public sealed class AdminServicesTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.EnviarLinkSenhaAsync(adminId, 2, 20, null, CancellationToken.None));
 
         await service.DefinirUsuarioAtivoAsync(adminId, 2, 20, true, null, CancellationToken.None);
+        // SEG-01: desativar subiu a versão de sessão; reativar não volta o token antigo.
+        Assert.Equal(1, (await db.Usuarios.SingleAsync()).VersaoSessao);
         var envio = await service.EnviarLinkSenhaAsync(adminId, 2, 20, null, CancellationToken.None);
         Assert.Equal("bia@b.com", envio.Email);
         Assert.Equal(["bia@b.com"], convites.Usuarios.Select(u => u.Email));

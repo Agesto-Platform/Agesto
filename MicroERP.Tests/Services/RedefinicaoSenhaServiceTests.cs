@@ -133,6 +133,7 @@ public sealed class RedefinicaoSenhaServiceTests
         Assert.Equal(0, dono.TentativasLoginFalhas);
         Assert.Null(dono.BloqueadoAte);
         Assert.False(dono.DeveTrocarSenha);
+        Assert.Equal(1, dono.VersaoSessao); // SEG-01: a senha nova derruba as sessões abertas
         Assert.NotNull((await db.TokensRedefinicaoSenha.SingleAsync()).UsadoEm);
 
         await Assert.ThrowsAsync<TokenRedefinicaoInvalidoException>(() =>

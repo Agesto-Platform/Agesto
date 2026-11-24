@@ -92,6 +92,8 @@ public sealed class ConviteEnviadoResponse
 {
     public string Email { get; set; } = string.Empty;
     public bool EnvioHabilitado { get; set; }
+    // Falso quando o acesso é de Agente: a equipe define a senha e não há convite (DEC-59).
+    public bool ConviteEnviado { get; set; } = true;
 }
 
 // ---------- empresas clientes ----------

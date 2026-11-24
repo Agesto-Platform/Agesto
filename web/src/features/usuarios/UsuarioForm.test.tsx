@@ -59,4 +59,23 @@ describe('UsuarioForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /Salvar/i }))
     expect(onSubmit).toHaveBeenCalledWith({ nome: 'Carla', email: 'carla@agesto.app', perfil: 'Dono' })
   })
+
+  it('promover agente com login inventado a Dono pede o email real (KAN-32)', async () => {
+    const onSubmit = vi.fn()
+    const joao: Usuario = { ...carla, nome: 'Joao', email: 'joao@minhaempresa' }
+    render(<UsuarioForm initial={joao} onSubmit={onSubmit} submitting={false} onCancel={vi.fn()} />)
+
+    expect(screen.queryByLabelText(/Email real/i)).not.toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText(/Perfil/i), 'Dono')
+    expect(screen.getByLabelText(/Email real/i)).toHaveValue('joao@minhaempresa')
+
+    await userEvent.click(screen.getByRole('button', { name: /Salvar/i }))
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(screen.getByText(/email real da pessoa/i)).toBeInTheDocument()
+
+    await userEvent.clear(screen.getByLabelText(/Email real/i))
+    await userEvent.type(screen.getByLabelText(/Email real/i), 'joao@gmail.com')
+    await userEvent.click(screen.getByRole('button', { name: /Salvar/i }))
+    expect(onSubmit).toHaveBeenCalledWith({ nome: 'Joao', email: 'joao@gmail.com', perfil: 'Dono' })
+  })
 })

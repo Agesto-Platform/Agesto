@@ -21,6 +21,8 @@ public sealed class PolicyCoverageTests
         "AuthController.RedefinirSenha",
         "AuthController.TrocarSenha",
         "AuthController.AceitarTermos",
+        // Sem login: só apaga o cookie de sessão do web (KAN-33).
+        "AuthController.Sair",
         "SyncController.Carga",
         "SyncController.Descarga",
         "AtendimentoController.GetAgenda",

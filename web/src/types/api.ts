@@ -71,6 +71,8 @@ export interface UsuarioCreateInput {
 export interface UsuarioUpdateInput {
   nome: string
   perfil: PerfilUsuario
+  /** Email real, obrigatório ao promover um Agente a Dono (KAN-32): ele recebe o convite. */
+  email?: string
 }
 
 /**

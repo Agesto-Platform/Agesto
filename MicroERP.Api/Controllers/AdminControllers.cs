@@ -273,7 +273,8 @@ public sealed class AdminEmpresasController : AdminControllerBase
     public Task<ActionResult<ApiResponse>> ReativarUsuario(long id, long usuarioId, CancellationToken cancellationToken) =>
         Executar(adminId => _service.DefinirUsuarioAtivoAsync(adminId, id, usuarioId, true, Ip, cancellationToken), "Usuário reativado.");
 
-    // Acesso novo (Dono ou Agente) com convite por email: só a equipe cria usuários (DEC-55).
+    // Acesso novo numa empresa: o Dono recebe o convite por email (DEC-55); o Agente nasce
+    // com a senha definida pela equipe, sem convite (DEC-59, KAN-32).
     [HttpPost("{id:long}/usuarios")]
     public async Task<ActionResult<ApiResponse>> CriarUsuario(long id, [FromBody] UsuarioCreateRequest request, CancellationToken cancellationToken)
     {
@@ -281,7 +282,8 @@ public sealed class AdminEmpresasController : AdminControllerBase
         try
         {
             var convite = await _service.CriarUsuarioAsync(adminId, id, request, Ip, cancellationToken);
-            return Ok(new ApiResponse { Success = true, Message = "Acesso criado. Convite enviado.", Data = convite });
+            var mensagem = convite.ConviteEnviado ? "Acesso criado. Convite enviado." : "Acesso criado. Passe a senha para o agente.";
+            return Ok(new ApiResponse { Success = true, Message = mensagem, Data = convite });
         }
         catch (NotFoundException ex)
         {
@@ -373,6 +375,12 @@ public sealed class AdminEmpresasController : AdminControllerBase
         }
     }
 
+    // A equipe define a senha de um Agente (DEC-59, KAN-32); para o Dono vale o link por email.
+    [HttpPost("{id:long}/usuarios/{usuarioId:long}/senha")]
+    public Task<ActionResult<ApiResponse>> DefinirSenhaUsuario(long id, long usuarioId, [FromBody] DefinirSenhaUsuarioRequest request, CancellationToken cancellationToken) =>
+        Executar(adminId => _service.DefinirSenhaUsuarioAsync(adminId, id, usuarioId, request, Ip, cancellationToken),
+            "Senha definida. Passe a nova senha para o agente.");
+
     private async Task<ActionResult<ApiResponse>> Executar(Func<long, Task> acao, string mensagem)
     {
         if (!TryGetAdminId(out var adminId)) return Erro(StatusCodes.Status401Unauthorized, "Token inválido.");
@@ -388,6 +396,10 @@ public sealed class AdminEmpresasController : AdminControllerBase
         catch (RegraUsuarioException ex)
         {
             return Erro(StatusCodes.Status409Conflict, ex.Message);
+        }
+        catch (ArgumentException ex)
+        {
+            return Erro(StatusCodes.Status400BadRequest, ex.Message);
         }
     }
 }

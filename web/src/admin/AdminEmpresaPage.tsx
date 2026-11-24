@@ -26,6 +26,7 @@ import {
   useBloquearEmpresa,
   useCriarUsuarioAdmin,
   useDesbloquearEmpresa,
+  useDefinirSenhaAdmin,
   useEmpresaAdmin,
   useEnviarLinkSenhaAdmin,
 } from './queries'
@@ -52,7 +53,12 @@ export function AdminEmpresaPage() {
   const desbloquear = useDesbloquearEmpresa(id)
   const ativo = useAtivoUsuarioAdmin(id)
   const link = useEnviarLinkSenhaAdmin(id)
+  const definirSenha = useDefinirSenhaAdmin(id)
   const criarAcesso = useCriarUsuarioAdmin(id)
+  // Agente cuja senha a equipe está definindo (DEC-59, KAN-32).
+  const [senhaDe, setSenhaDe] = useState<UsuarioAdminItem | null>(null)
+  const [novaSenha, setNovaSenha] = useState('')
+  const [erroSenha, setErroSenha] = useState<string | null>(null)
 
   const [motivo, setMotivo] = useState('')
   const [bloqueando, setBloqueando] = useState(false)
@@ -76,12 +82,19 @@ export function AdminEmpresaPage() {
       setErroNovo('Preencha o nome e o email.')
       return
     }
+    const agente = novo.perfil === 'Agente'
+    if (agente && (novo.senha ?? '').length < 8) {
+      setErroNovo('A senha do agente precisa ter no mínimo 8 caracteres.')
+      return
+    }
     setErroNovo(null)
     try {
-      const r = await criarAcesso.mutateAsync({ ...novo, nome: novo.nome.trim(), email: novo.email.trim() })
+      const { senha, ...dados } = novo
+      const r = await criarAcesso.mutateAsync({ ...dados, nome: novo.nome.trim(), email: novo.email.trim(), ...(agente ? { senha } : {}) })
       setNovoAberto(false)
       setNovo(NOVO_ACESSO)
-      avisar(r, 'Acesso criado. Convite enviado')
+      if (r.conviteEnviado === false) toast.success('Acesso criado. Passe a senha para o agente.')
+      else avisar(r, 'Acesso criado. Convite enviado')
     } catch (err) {
       setErroNovo(err instanceof ApiError ? [err.message, ...err.errors].join(' ') : 'Não foi possível criar o acesso.')
     }
@@ -99,6 +112,24 @@ export function AdminEmpresaPage() {
       toast.success('Empresa bloqueada. Ninguém dela consegue entrar até o desbloqueio.')
     } catch (e) {
       falhou(e, 'Não foi possível bloquear a empresa.')
+    }
+  }
+
+  const salvarSenha = async (ev: FormEvent) => {
+    ev.preventDefault()
+    if (!senhaDe) return
+    if (novaSenha.length < 8) {
+      setErroSenha('A senha precisa ter no mínimo 8 caracteres.')
+      return
+    }
+    setErroSenha(null)
+    try {
+      await definirSenha.mutateAsync({ usuarioId: senhaDe.id, novaSenha })
+      toast.success(`Senha de ${senhaDe.nome} definida. Passe a nova senha para o agente.`)
+      setSenhaDe(null)
+      setNovaSenha('')
+    } catch (err) {
+      setErroSenha(err instanceof ApiError ? [err.message, ...err.errors].join(' ') : 'Não foi possível definir a senha.')
     }
   }
 
@@ -173,7 +204,12 @@ export function AdminEmpresaPage() {
       align: 'right',
       cell: (u) => (
         <div className="adm-acoes">
-          {u.ativo && (
+          {u.ativo && u.perfil === 'Agente' && (
+            <Button size="sm" icon="lock" onClick={() => { setSenhaDe(u); setNovaSenha(''); setErroSenha(null) }}>
+              Definir senha
+            </Button>
+          )}
+          {u.ativo && u.perfil !== 'Agente' && (
             <Button size="sm" icon="mail" onClick={() => setPendente({ tipo: 'link', usuario: u })}>
               {u.convitePendente ? 'Reenviar convite' : 'Enviar link de senha'}
             </Button>
@@ -277,7 +313,7 @@ export function AdminEmpresaPage() {
       <Card className="adm-bloco">
         <CardHead
           title="Usuários"
-          subtitle="Acesso ao painel (Dono) e ao app (Agente). Cada pessoa cria a própria senha pelo convite."
+          subtitle="Acesso ao painel (Dono) e ao app (Agente). O Dono cria a senha pelo convite; a senha do Agente é definida aqui."
           action={
             <Button size="sm" icon="plus" onClick={() => setNovoAberto(true)}>
               Novo acesso
@@ -329,7 +365,11 @@ export function AdminEmpresaPage() {
         open={novoAberto}
         onClose={() => setNovoAberto(false)}
         title={`Novo acesso em ${e.nome}`}
-        sub="A pessoa recebe um convite por email para criar a própria senha (o link vale por 72 horas)."
+        sub={
+          novo.perfil === 'Agente'
+            ? 'O agente entra no app com este email e a senha que você definir; o email não precisa existir (DEC-59).'
+            : 'A pessoa recebe um convite por email para criar a própria senha (o link vale por 72 horas).'
+        }
       >
         <form className="form" onSubmit={salvarNovo} noValidate>
           {erroNovo && (
@@ -339,8 +379,8 @@ export function AdminEmpresaPage() {
           )}
           <TextField label="Nome" value={novo.nome} onChange={(v) => setNovo((n) => ({ ...n, nome: v }))} maxLength={120} required />
           <TextField
-            label="Email"
-            type="email"
+            label={novo.perfil === 'Agente' ? 'Email (login no app)' : 'Email'}
+            type={novo.perfil === 'Agente' ? 'text' : 'email'}
             value={novo.email}
             onChange={(v) => setNovo((n) => ({ ...n, email: v }))}
             maxLength={150}
@@ -353,12 +393,57 @@ export function AdminEmpresaPage() {
             options={PERFIS}
             required
           />
+          {novo.perfil === 'Agente' && (
+            <TextField
+              label="Senha"
+              type="password"
+              value={novo.senha ?? ''}
+              onChange={(v) => setNovo((n) => ({ ...n, senha: v }))}
+              hint="Mínimo de 8 caracteres. Passe a senha para o agente."
+              maxLength={128}
+              autoComplete="new-password"
+              required
+            />
+          )}
           <div className="form-actions">
             <Button type="button" onClick={() => setNovoAberto(false)}>
               Cancelar
             </Button>
             <Button variant="primary" type="submit" disabled={criarAcesso.isPending}>
-              {criarAcesso.isPending ? 'Criando…' : 'Criar e enviar convite'}
+              {criarAcesso.isPending ? 'Criando…' : novo.perfil === 'Agente' ? 'Criar acesso' : 'Criar e enviar convite'}
+            </Button>
+          </div>
+        </form>
+      </Drawer>
+
+      <Drawer
+        open={senhaDe !== null}
+        onClose={() => setSenhaDe(null)}
+        title={senhaDe ? `Definir a senha de ${senhaDe.nome}` : 'Definir senha'}
+        sub="O agente passa a entrar com a senha nova. As sessões abertas no celular dele caem, e um bloqueio por senhas erradas sai."
+      >
+        <form className="form" onSubmit={salvarSenha} noValidate>
+          {erroSenha && (
+            <p className="form-error" role="alert">
+              {erroSenha}
+            </p>
+          )}
+          <TextField
+            label="Nova senha"
+            type="password"
+            value={novaSenha}
+            onChange={setNovaSenha}
+            hint="Mínimo de 8 caracteres."
+            maxLength={128}
+            autoComplete="new-password"
+            required
+          />
+          <div className="form-actions">
+            <Button type="button" onClick={() => setSenhaDe(null)}>
+              Cancelar
+            </Button>
+            <Button variant="primary" type="submit" disabled={definirSenha.isPending}>
+              {definirSenha.isPending ? 'Salvando…' : 'Definir senha'}
             </Button>
           </div>
         </form>

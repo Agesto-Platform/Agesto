@@ -13,4 +13,10 @@ public sealed class UsuarioUpdateRequest
     [Required(ErrorMessage = "Perfil obrigatório.")]
     [EnumDataType(typeof(PerfilUsuario), ErrorMessage = "Perfil inválido.")]
     public PerfilUsuario Perfil { get; set; }
+
+    // Email real da pessoa, obrigatório ao promover um Agente a Dono (KAN-32): o login do
+    // agente pode ser inventado (DEC-59), mas o Dono precisa do "Esqueci a senha".
+    [EmailAddress(ErrorMessage = "Email inválido.")]
+    [MaxLength(150, ErrorMessage = "Email deve ter no máximo 150 caracteres.")]
+    public string? Email { get; set; }
 }
