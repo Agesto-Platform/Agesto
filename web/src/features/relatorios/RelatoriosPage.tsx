@@ -19,9 +19,9 @@ import { periodRange } from '../../lib/period'
 import { ApiError } from '../../lib/api'
 import { MES_LONGO } from '../../lib/format'
 import type { DashboardResponse } from '../../types/api'
+import { metaServico } from './servicos'
 import './relatorios.css'
 
-const COBRANCA: Record<string, string> = { PorHora: 'Por hora', Hora: 'Por hora', Empreitada: 'Empreitada' }
 const NO_PERIODO: Record<Period, string> = { '7d': 'nos últimos 7 dias', mes: 'no mês', ano: 'no ano' }
 const DIA_MS = 864e5
 
@@ -56,8 +56,15 @@ function exportarCsv(data: DashboardResponse) {
     ['Atendimentos', r.atendimentos],
     ['Ticket médio', num(r.ticketMedio)],
     [],
-    ['Serviço', 'Atendimentos', 'Receita', 'Receita por hora'],
-    ...servicos.receitaPorServico.map((s) => [s.descricao, s.quantidade, num(s.receita), s.receitaPorHora === null ? '' : num(s.receitaPorHora)]),
+    ['Serviço', 'Atendimentos', 'Receita', 'Receita por hora', 'Margem', 'Margem por hora'],
+    ...servicos.receitaPorServico.map((s) => [
+      s.descricao,
+      s.quantidade,
+      num(s.receita),
+      s.receitaPorHora === null ? '' : num(s.receitaPorHora),
+      num(s.margem),
+      s.margemPorHora === null ? '' : num(s.margemPorHora),
+    ]),
     [],
     ['Produto', 'Quantidade', 'Receita'],
     ...vendas.topProdutos.map((p) => [p.nome, p.quantidade, num(p.receita)]),
@@ -220,14 +227,14 @@ export function RelatoriosPage() {
 
       <div className="grid g-2 mt">
         <Card>
-          <CardHead title="Receita por serviço" subtitle={`Atendimentos e receita ${noPeriodo}`} />
+          <CardHead title="Receita por serviço" subtitle={`Atendimentos, receita e margem por hora ${noPeriodo}`} />
           <CardBody>
             <RankList>
               {servicos.receitaPorServico.map((s) => (
                 <RankBar
                   key={s.servicoId}
                   name={s.descricao}
-                  meta={`${s.quantidade} ${s.quantidade === 1 ? 'atendimento' : 'atendimentos'} · ${COBRANCA[s.tipoCobranca] ?? s.tipoCobranca}${s.receitaPorHora === null ? '' : ` · ${brl(s.receitaPorHora)}/h`}`}
+                  meta={metaServico(s)}
                   percent={maxServico > 0 ? (s.receita / maxServico) * 100 : 0}
                   amount={brl(s.receita)}
                 />
