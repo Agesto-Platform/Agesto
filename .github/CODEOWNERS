@@ -1,10 +1,5 @@
-# Time principal da organização, responsável pela revisão do monorepo.
-* @Agesto-Platform/core
-
-# Regras sensíveis
-/MicroERP.Api/Migrations/ @Agesto-Platform/core
-/MicroERP.Api/Controllers/ @Agesto-Platform/core
-/MicroERP.Api/Services/ @Agesto-Platform/core
-/mobile/src/sync/ @Agesto-Platform/core
-/.github/ @Agesto-Platform/core
-/docs/project/ @Agesto-Platform/core
+# Tech lead (Davi Gomes, KAN-59): revisa todo o monorepo.
+# O GitHub pede a revisão dele automaticamente nos PRs. Na main, o ruleset
+# exige a aprovação do code owner (configuração em Settings > Rules).
+# A última regra que casa com o arquivo vence: mantenha uma linha só.
+* @falkz-cmd
