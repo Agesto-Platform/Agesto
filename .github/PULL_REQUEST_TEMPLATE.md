@@ -1,36 +1,36 @@
-## Objetivo
+## Goal
 
-<!-- Qual problema esta mudança resolve? Cite a KAN/task quando existir. -->
+<!-- What problem does this change solve? Cite the KAN/task when there is one. -->
 
-## O que mudou
+## What changed
 
 -
 
-## Impacto
+## Impact
 
 - [ ] Backend/API
-- [ ] Banco/migration
+- [ ] Database/migration
 - [ ] Web
 - [ ] Mobile/offline
-- [ ] Sincronização
-- [ ] Documentação
+- [ ] Synchronization
+- [ ] Documentation
 
-## Evidências
+## Evidence
 
-<!-- Testes executados, resultados e screenshots quando aplicável. -->
+<!-- Tests run, results and screenshots when applicable. -->
 
 ## Checklist
 
-- [ ] O escopo corresponde à task aprovada.
-- [ ] Não há `empresaId` ou `usuarioId` confiado pelo body.
-- [ ] Queries operacionais respeitam `EmpresaId` e soft delete.
-- [ ] Contratos C# e TypeScript permanecem compatíveis.
-- [ ] Falhas offline/retentativas foram consideradas quando aplicável.
-- [ ] Não há segredos ou configuração local no diff.
-- [ ] Build, lint, typecheck e testes relevantes estão verdes.
-- [ ] Migration foi revisada e não foi aplicada sem autorização.
-- [ ] Documentação relevante foi atualizada por patch pequeno.
+- [ ] The scope matches the approved task.
+- [ ] No `empresaId` or `usuarioId` is trusted from the body.
+- [ ] Operational queries respect `EmpresaId` and soft delete.
+- [ ] C# and TypeScript contracts remain compatible.
+- [ ] Offline failures/retries were considered when applicable.
+- [ ] There are no secrets or local configuration in the diff.
+- [ ] Relevant build, lint, typecheck and tests are green.
+- [ ] The migration was reviewed and was not applied without authorization.
+- [ ] Relevant documentation was updated with a small patch.
 
-## Riscos e rollback
+## Risks and rollback
 
-<!-- O que ainda não foi validado? Como desfazer a mudança com segurança? -->
+<!-- What has not been validated yet? How can the change be safely undone? -->
