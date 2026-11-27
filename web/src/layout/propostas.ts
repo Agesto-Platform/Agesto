@@ -4,7 +4,7 @@ import { queryClient } from '../lib/queryClient'
 import type { AcaoAtendimento, Atendimento, AtendimentoUpdate } from '../types/api'
 
 /**
- * Fase 2 da IA (DEC-62): a IA só propõe; quem grava é o Dono, pelo cartão do painel,
+ * Fase 2 da IA (DEC-63): a IA só propõe; quem grava é o Dono, pelo cartão do painel,
  * com a mesma rota e as mesmas regras da tela de Atendimentos.
  */
 

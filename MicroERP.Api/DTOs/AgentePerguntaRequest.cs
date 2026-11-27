@@ -43,7 +43,7 @@ public sealed class AgenteRespostaResponse
 
 // "whatsapp": o painel abre o WhatsApp do Dono com a mensagem pronta. O telefone
 // sai do cadastro, nunca passa pelo modelo.
-// "atendimento" (fase 2, DEC-62): mudança proposta num atendimento pendente. Nada
+// "atendimento" (fase 2, DEC-63): mudança proposta num atendimento pendente. Nada
 // muda até o Dono confirmar no painel, que relê o atendimento e só grava se ele
 // ainda estiver como na proposta (status, data e responsável "atuais").
 public sealed class AcaoAgenteResponse

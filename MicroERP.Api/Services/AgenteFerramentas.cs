@@ -43,7 +43,7 @@ public sealed class AgenteFerramentasFactory : IAgenteFerramentasFactory
 // Ao modelo vão nomes de clientes e da equipe, valores, datas e status; nunca CPF,
 // telefone, email nem endereço (decisão do Davi, 23/11/2026). As contas (totais,
 // dias em aberto) são feitas aqui, não pelo modelo (DEC-20).
-// Fase 2 (DEC-62): a IA também propõe mudanças em atendimentos pendentes, mas
+// Fase 2 (DEC-63): a IA também propõe mudanças em atendimentos pendentes, mas
 // nada é gravado aqui; o painel mostra um cartão e só o Dono confirma.
 public sealed class AgenteFerramentas : IAgenteFerramentas
 {

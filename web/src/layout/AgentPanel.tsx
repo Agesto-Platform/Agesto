@@ -17,7 +17,7 @@ const CHIPS: [IconName, string][] = [
   ['box', 'O que está acabando?'],
 ]
 
-/** Fala no painel: as do Agente podem trazer rascunhos de WhatsApp (KAN-77) e propostas (DEC-62). */
+/** Fala no painel: as do Agente podem trazer rascunhos de WhatsApp (KAN-77) e propostas (DEC-63). */
 type Fala = AgenteMensagem & { acoes?: AcaoAgente[] }
 
 /** Quantas falas anteriores vão junto com a pergunta (a API aceita até 10). */
@@ -265,7 +265,7 @@ function RascunhoWhatsApp({ acao: a }: { acao: AcaoWhatsApp }) {
 type EstadoProposta = { fase: 'aberta' | 'gravando' | 'feita' | 'descartada'; erro?: string }
 
 /**
- * Mudança que a IA propôs num atendimento pendente (DEC-62). Só o clique do Dono
+ * Mudança que a IA propôs num atendimento pendente (DEC-63). Só o clique do Dono
  * grava, e só se o atendimento ainda estiver como na proposta.
  */
 function Proposta({ acao }: { acao: AcaoAtendimento }) {

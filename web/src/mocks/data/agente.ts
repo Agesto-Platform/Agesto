@@ -34,7 +34,7 @@ function acoes(pergunta: string): AcaoAgente[] {
   ]
 }
 
-/** Proposta de exemplo (DEC-62): reagenda o primeiro pendente; nada muda até o Dono confirmar. */
+/** Proposta de exemplo (DEC-63): reagenda o primeiro pendente; nada muda até o Dono confirmar. */
 function proposta(): AcaoAgente[] {
   const at = atendimentos.find((a) => a.status === 'Pendente')
   if (!at) return []

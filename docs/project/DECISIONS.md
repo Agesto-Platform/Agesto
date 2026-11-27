@@ -367,7 +367,7 @@ Um produto de catálogo pode viver nos dois contextos. A venda avulsa de produto
 - Controles de custo entregues: limite por empresa (10 relatórios e 30 perguntas por hora) e consumo de tokens no log por `EmpresaId`. Pendentes: a tabela de consumo (`TenantUsage`) e o limite por plano.
 - **Limite diário e consumo (13/11/2026, pedido do Davi):** cada empresa tem até **20 perguntas por dia** ao Agente (dia de Brasília; `Insights__PerguntasPorDia` muda o número sem mexer no código). A tabela `UsosIa` é o `TenantUsage`: uma linha por empresa e dia, com perguntas, relatórios e tokens de entrada e saída. A pergunta é reservada antes de chamar o modelo, num único `INSERT ... ON CONFLICT` com a condição do limite, então perguntas simultâneas não passam de 20. Se o modelo falhar, a pergunta é devolvida. Acima do limite, a API responde 429 e o painel do Agente trava a caixa até o dia seguinte. `GET /api/agente/uso` mostra quantas restam, e o painel exibe o contador. Os relatórios de insights são registrados, mas não entram no limite de 20 (seguem com o limite por hora). Limite por plano: por decisão do Davi (13/11/2026), fica como está enquanto houver um plano só (DEC-57); todas as empresas têm 20. Em produção desde a release #177 (13/11/2026).
 - Testes manuais de segurança em produção (vazamento de dados, isolamento entre empresas, injeção por nome de produto, pedidos de escrita) passaram em 10/11/2026.
-- **Phase 1: on-demand queries (KAN-77, 23/11/2026, requested by Davi Oliveira).** The Agente chat can now call read-only tools (Claude tool use) instead of seeing only the fixed snapshot: amounts receivable, appointments by period, status and assignee, quotes by status and days without change, metrics for any period, the team and its performance, client search and history, and product search. Each tool reuses the panel's services, and the tool set is created per question already bound to the `EmpresaId` from the JWT, so the model picks the query but never the company. Up to 4 query rounds per question; the daily limit still counts one question. Davi's decision on data (23/11/2026): the model receives client and team names, amounts, dates and status, but never CPF, phone, email or address. The tool `preparar_whatsapp` only drafts a message: the API takes the phone from the client record and the panel shows a "Revisar e enviar" button that opens the owner's WhatsApp (DEC-56). The AI still never creates, changes or deletes data; actions with confirmation (phase 2) need a new decision. Update 24/11/2026: phase 2 decided in DEC-62 (the Agente proposes changes to pending jobs; only the Dono confirms).
+- **Phase 1: on-demand queries (KAN-77, 23/11/2026, requested by Davi Oliveira).** The Agente chat can now call read-only tools (Claude tool use) instead of seeing only the fixed snapshot: amounts receivable, appointments by period, status and assignee, quotes by status and days without change, metrics for any period, the team and its performance, client search and history, and product search. Each tool reuses the panel's services, and the tool set is created per question already bound to the `EmpresaId` from the JWT, so the model picks the query but never the company. Up to 4 query rounds per question; the daily limit still counts one question. Davi's decision on data (23/11/2026): the model receives client and team names, amounts, dates and status, but never CPF, phone, email or address. The tool `preparar_whatsapp` only drafts a message: the API takes the phone from the client record and the panel shows a "Revisar e enviar" button that opens the owner's WhatsApp (DEC-56). The AI still never creates, changes or deletes data; actions with confirmation (phase 2) need a new decision. Update 24/11/2026: phase 2 decided in DEC-63 (the Agente proposes changes to pending jobs; only the Dono confirms).
 
 ---
 
@@ -1165,7 +1165,32 @@ Motivo: permite verificar o app ponta a ponta no Expo Web e rodar testes Jest se
 
 ---
 
-## DEC-62 — AI phase 2: the Agente proposes changes to pending jobs; only the Dono confirms
+## DEC-62 — Public showcase (Vitrine) and customer reviews: shows the business and its services, rated only by served customers
+
+**Status:** 🔵 Decided by Diego on 27/11/2026 as a **future plan, to implement later**. Not scheduled, out of the MVP launch scope (DEC-46). No code or migration yet.
+
+**Decision:** when Agesto gets a public showcase where customers find service providers (the "Vitrine"), it shows the **business and its services, not the people**, and its ratings come only from completed jobs:
+
+- **Who can review:** only a customer who was served. A review is tied to one completed atendimento (job); there is no open review form. One review per completed job.
+- **Company rating:** one rating per company, the average of its reviews, with more weight for recent ones. It is shown in the Vitrine only after about 5 reviews, so one or two early reviews do not define the business. Optional questions about the company (punctuality, cleanliness, etc.) can be added later to the same review form.
+- **Empresa (company) in the Vitrine:** shows its services, the area it serves and its single rating. It does not list its field agents: who goes to the customer is decided inside the company by the agenda and availability, and can change per service.
+- **Autônomo (self-employed) in the Vitrine:** shows its services and also the person's name and photo, because there the business is the person.
+- **Rating per agent:** exists only inside the panel, for the Dono (Owner) to follow the team. It is never public.
+- **Filter Empresa / Autônomo:** comes from the account type, set on the company, not from the people in it.
+- **Catalogue:** the Vitrine reuses the services already registered (`Servico`). The Dono picks which ones are shown and can add an optional "a partir de R$" (starting at) price. Nothing is shown by default.
+- **One person, several links:** a person has one login and can have several links, for example Agente of Empresa X and Dono of their own self-employed account. When signing in, they choose which one to work in. Reviews stay attached to the link where the job happened: a review of a job done for Empresa X counts for Empresa X (and, internally, for that agent's rating there), never for the person's self-employed profile. The profiles are not linked publicly.
+
+**Why:** the customer hires the business, not a specific employee, and in a company the person who shows up changes with the schedule. Rating only completed jobs keeps reviews honest (only real customers) and uses data Agesto already has. Weighting recent reviews lets a business recover from an old bad phase. Keeping each review on the link where it happened avoids mixing an employee's work for a company with their own self-employed business.
+
+**Prerequisite, to decide before the Vitrine:** today a user belongs to exactly one company (`Usuario.EmpresaId`, one email per account), so the same person cannot be Agente of one company and Dono of another with the same login. Supporting several links needs a user-to-company link table (with the profile per link), a company choice at sign-in, and the token carrying the chosen company. This is a data model change with its own decision and migration, and must come before the Vitrine. The account type (Empresa / Autônomo) is also a new field on `Empresa`.
+
+**Relation to other plans:** this replaces the "Avaliação depois do serviço" idea in TASKS.md ("Planos futuros", 13/11/2026; KAN-54) as the direction for reviews. The Google review link from that idea can still be offered to every customer, as Google's policy requires; the internal review described here is what feeds the Vitrine.
+
+**Open points:** where and how the customer leaves the review (link after the job, like the quote approval link idea); the exact weighting of recent reviews and the minimum number of reviews; moderation and the Dono's reply to a review; how the customer searches the Vitrine (service, area, distance); LGPD for the Autônomo's name and photo and for review texts.
+
+---
+
+## DEC-63 — AI phase 2: the Agente proposes changes to pending jobs; only the Dono confirms
 
 **Status:** 🟡 Decided by Davi Oliveira on 24/11/2026; implemented on branch `feature/KAN-97-ia-fase-2-acoes` (KAN-97), not in production yet. No migration.
 

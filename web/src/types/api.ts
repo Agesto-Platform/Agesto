@@ -582,7 +582,7 @@ export interface AcaoWhatsApp {
 }
 
 /**
- * Fase 2 da IA (DEC-62): mudança proposta num atendimento pendente. Nada muda até o
+ * Fase 2 da IA (DEC-63): mudança proposta num atendimento pendente. Nada muda até o
  * Dono confirmar no cartão; "atual" é como estava quando a IA propôs. Nulo = não muda.
  */
 export interface AcaoAtendimento {

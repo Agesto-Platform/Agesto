@@ -188,7 +188,7 @@ public sealed class AgenteFerramentasTests
         Assert.Empty(ferramentas.Acoes);
     }
 
-    // ---------- fase 2 (DEC-62): propostas de mudança em atendimentos ----------
+    // ---------- fase 2 (DEC-63): propostas de mudança em atendimentos ----------
 
     private static readonly TimeZoneInfo Brasilia = TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
 

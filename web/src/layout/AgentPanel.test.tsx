@@ -18,7 +18,7 @@ const post = vi.mocked(api.post)
 const get = vi.mocked(api.get)
 const put = vi.mocked(api.put)
 
-/** Proposta da fase 2 (DEC-62): cancelar o atendimento 5 do Bruno. */
+/** Proposta da fase 2 (DEC-63): cancelar o atendimento 5 do Bruno. */
 const PROPOSTA = {
   tipo: 'atendimento',
   clienteId: 10,
