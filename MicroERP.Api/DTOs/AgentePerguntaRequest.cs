@@ -41,8 +41,11 @@ public sealed class AgenteRespostaResponse
     public List<AcaoAgenteResponse> Acoes { get; set; } = [];
 }
 
-// Por enquanto só "whatsapp": o painel abre o WhatsApp do Dono com a mensagem
-// pronta. O telefone sai do cadastro, nunca passa pelo modelo.
+// "whatsapp": o painel abre o WhatsApp do Dono com a mensagem pronta. O telefone
+// sai do cadastro, nunca passa pelo modelo.
+// "atendimento" (fase 2, DEC-63): mudança proposta num atendimento pendente. Nada
+// muda até o Dono confirmar no painel, que relê o atendimento e só grava se ele
+// ainda estiver como na proposta (status, data e responsável "atuais").
 public sealed class AcaoAgenteResponse
 {
     public string Tipo { get; set; } = string.Empty;
@@ -50,4 +53,15 @@ public sealed class AcaoAgenteResponse
     public string ClienteNome { get; set; } = string.Empty;
     public string Telefone { get; set; } = string.Empty;
     public string Mensagem { get; set; } = string.Empty;
+
+    public long? AtendimentoId { get; set; }
+    public string? Servico { get; set; }
+    public DateTime? DataAtual { get; set; }
+    public long? ResponsavelAtualId { get; set; }
+    public string? ResponsavelAtualNome { get; set; }
+    // Nulos = não mudam. NovoStatus: "Concluido" ou "Cancelado".
+    public string? NovoStatus { get; set; }
+    public DateTime? NovaData { get; set; }
+    public long? NovoResponsavelId { get; set; }
+    public string? NovoResponsavelNome { get; set; }
 }

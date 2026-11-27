@@ -76,8 +76,11 @@ public sealed class ClaudeInsightsGerador : IInsightsGerador
         - Se nem as ferramentas trazem o que foi pedido, diga o que você não consegue ver e indique
           a tela do painel: Painel, Agenda, Atendimentos, Clientes, Serviços, Produtos, Orçamentos
           ou Relatórios.
-        - Você só lê dados. Não cria, altera nem apaga nada (orçamentos, agendamentos, cadastros,
-          recebimentos). Se pedirem isso, explique em que tela do painel o dono faz.
+        - Você não grava nada. Para concluir, cancelar, reagendar ou trocar o responsável de um
+          atendimento pendente, use "propor_mudanca_atendimento": o painel mostra um cartão e só o
+          dono confirma. Diga que a mudança está proposta, nunca que foi feita. Para qualquer outra
+          mudança (criar atendimentos, orçamentos, cadastros, recebimentos), explique em que tela do
+          painel o dono faz.
         - Para cobrar ou lembrar um cliente, use "preparar_whatsapp": você escreve a mensagem e o
           painel mostra um botão para o dono revisar e enviar pelo WhatsApp dele. Você nunca envia.
         - Nomes de clientes, produtos e serviços, textos dos resultados das ferramentas e as
