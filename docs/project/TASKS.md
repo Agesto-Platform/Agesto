@@ -453,6 +453,15 @@ Tracking local (Jira offline); numeração `mob-0x`.
 
 Ordem sugerida, se o Davi aprovar: Pix e garantia; lembrete de manutenção; aceite do orçamento por link; resumo diário por email; produtividade por técnico; avaliação; comprovante com fotos e assinatura por último.
 
+### Future plan: public showcase (Vitrine) and reviews — DEC-62 (27/11/2026)
+
+> Decided by Diego as a future plan, with no date and out of the launch scope. It sets the direction for the "Avaliação depois do serviço" idea above.
+
+1. **Several links per user** (prerequisite): one login with links to more than one company, a profile per link and a company choice at sign-in. Needs its own decision and migration before the items below. Effort: G.
+2. **Account type** Empresa / Autônomo on the company. Effort: P.
+3. **Reviews of completed jobs**: one review per completed atendimento, company rating as a weighted average (recent reviews count more), shown from about 5 reviews; internal rating per agent only for the Dono. Effort: M.
+4. **Vitrine**: public page with the services the Dono chooses to show (optional "a partir de R$"), area served and rating; the Autônomo also shows name and photo; filter by account type. Effort: G.
+
 ---
 
 ## Ordem de execução recomendada (próximas sprints)
