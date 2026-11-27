@@ -4,7 +4,8 @@ import { Mascote, type MascoteApi } from '../components/Mascote'
 import { api, ApiError } from '../lib/api'
 import { linkWhatsApp } from '../lib/whatsapp'
 import { periodRange } from '../lib/period'
-import type { AcaoAgente, AgenteMensagem, AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../types/api'
+import type { AcaoAgente, AcaoAtendimento, AcaoWhatsApp, AgenteMensagem, AgentePerguntaRequest, AgenteResposta, AgenteUso } from '../types/api'
+import { aplicarProposta, mudancas } from './propostas'
 import type { Period } from './PeriodSwitch'
 import { saudacao, useConta } from './useConta'
 
@@ -16,7 +17,7 @@ const CHIPS: [IconName, string][] = [
   ['box', 'O que está acabando?'],
 ]
 
-/** Fala no painel: as do Agente podem trazer rascunhos de WhatsApp (KAN-77). */
+/** Fala no painel: as do Agente podem trazer rascunhos de WhatsApp (KAN-77) e propostas (DEC-63). */
 type Fala = AgenteMensagem & { acoes?: AcaoAgente[] }
 
 /** Quantas falas anteriores vão junto com a pergunta (a API aceita até 10). */
@@ -229,29 +230,86 @@ export function AgentPanel({
   )
 }
 
-/**
- * Mensagens de WhatsApp que a IA preparou (KAN-77). Nada é enviado pelo Agesto:
- * o botão abre o WhatsApp do Dono com o texto pronto, para ele revisar e enviar.
- */
+/** O que a IA preparou: rascunhos de WhatsApp e propostas de mudança em atendimentos. */
 function Rascunhos({ acoes }: { acoes: AcaoAgente[] }) {
   return (
-    <ul className="msg-rascunhos" aria-label="Mensagens preparadas">
-      {acoes.map((a, i) => {
-        const link = linkWhatsApp(a.telefone, a.mensagem)
-        return (
-          <li key={i}>
-            <p>{a.mensagem}</p>
-            {link ? (
-              <a className="btn sm" href={link} target="_blank" rel="noopener noreferrer">
-                <Icon name="send" />
-                Revisar e enviar para {a.clienteNome}
-              </a>
-            ) : (
-              <span className="muted">O telefone de {a.clienteNome} não serve para o WhatsApp. Confira em Clientes.</span>
-            )}
-          </li>
-        )
-      })}
+    <ul className="msg-rascunhos" aria-label="Preparado pelo Agente">
+      {acoes.map((a, i) => (
+        <li key={i}>{a.tipo === 'atendimento' ? <Proposta acao={a} /> : <RascunhoWhatsApp acao={a} />}</li>
+      ))}
     </ul>
+  )
+}
+
+/**
+ * Mensagem de WhatsApp que a IA preparou (KAN-77). Nada é enviado pelo Agesto:
+ * o botão abre o WhatsApp do Dono com o texto pronto, para ele revisar e enviar.
+ */
+function RascunhoWhatsApp({ acao: a }: { acao: AcaoWhatsApp }) {
+  const link = linkWhatsApp(a.telefone, a.mensagem)
+  return (
+    <>
+      <p>{a.mensagem}</p>
+      {link ? (
+        <a className="btn sm" href={link} target="_blank" rel="noopener noreferrer">
+          <Icon name="send" />
+          Revisar e enviar para {a.clienteNome}
+        </a>
+      ) : (
+        <span className="muted">O telefone de {a.clienteNome} não serve para o WhatsApp. Confira em Clientes.</span>
+      )}
+    </>
+  )
+}
+
+type EstadoProposta = { fase: 'aberta' | 'gravando' | 'feita' | 'descartada'; erro?: string }
+
+/**
+ * Mudança que a IA propôs num atendimento pendente (DEC-63). Só o clique do Dono
+ * grava, e só se o atendimento ainda estiver como na proposta.
+ */
+function Proposta({ acao }: { acao: AcaoAtendimento }) {
+  const [estado, setEstado] = useState<EstadoProposta>({ fase: 'aberta' })
+
+  const confirmar = async () => {
+    setEstado({ fase: 'gravando' })
+    try {
+      await aplicarProposta(acao)
+      setEstado({ fase: 'feita' })
+    } catch (e) {
+      setEstado({ fase: 'aberta', erro: e instanceof Error ? e.message : 'Não consegui gravar. Tente de novo.' })
+    }
+  }
+
+  return (
+    <div className="proposta" aria-label={`Proposta para o atendimento de ${acao.clienteNome}`}>
+      <b>
+        {acao.clienteNome}
+        {acao.servico ? ` · ${acao.servico}` : ''}
+      </b>
+      <ul>
+        {mudancas(acao).map((m) => (
+          <li key={m}>{m}</li>
+        ))}
+      </ul>
+      {estado.erro && (
+        <span className="erro" role="alert">
+          {estado.erro}
+        </span>
+      )}
+      {estado.fase === 'feita' && <span className="ok">Feito. O atendimento foi atualizado.</span>}
+      {estado.fase === 'descartada' && <span className="muted">Descartada. Nada mudou.</span>}
+      {(estado.fase === 'aberta' || estado.fase === 'gravando') && (
+        <div className="acoes">
+          <button className="btn sm primary" type="button" onClick={() => void confirmar()} disabled={estado.fase === 'gravando'}>
+            <Icon name="check" />
+            {estado.fase === 'gravando' ? 'Gravando…' : 'Confirmar'}
+          </button>
+          <button className="btn sm ghost" type="button" onClick={() => setEstado({ fase: 'descartada' })} disabled={estado.fase === 'gravando'}>
+            Descartar
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
