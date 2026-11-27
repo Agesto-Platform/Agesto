@@ -112,6 +112,25 @@ Conecte o repositório e configure:
 
 Depois, coloque a URL final da Pages em `Cors__AllowedOrigins__0` no painel do Render. O serviço reinicia sozinho ao salvar.
 
+### Domínio próprio (KAN-16)
+
+O código já aceita o domínio próprio por configuração; falta comprar o domínio e trocar os endereços. Com web e API no mesmo domínio (ex.: `agesto.com.br` e `api.agesto.com.br`), o cookie de sessão da KAN-33 pode ser ligado. Durante a troca, mantenha os endereços antigos funcionando até todos os aparelhos terem o APK novo.
+
+1. **Comprar e apontar**: registre o domínio (Registro.br para `.com.br`) e troque os servidores DNS para os da Cloudflare (plano Free).
+2. **Web**: em *Cloudflare Pages → agesto → Custom domains*, adicione `<dominio>` (e `www.<dominio>`, redirecionando para o principal).
+3. **API**: em *Render → agesto-api → Settings → Custom Domains*, adicione `api.<dominio>`. Na Cloudflare, crie o `CNAME api → agesto-api.onrender.com` com o proxy **desligado** (*DNS only*), para o Render emitir o certificado. Confira `https://api.<dominio>/health`.
+4. **Render** (variáveis de ambiente):
+   - `Cors__AllowedOrigins__0`: `https://<dominio>,https://agesto.pages.dev` (a antiga sai depois da transição);
+   - `Email__UrlWeb`, `Termos__UrlTermos` e `Termos__UrlPrivacidade`: trocar `agesto.pages.dev` por `<dominio>`;
+   - só depois do passo 6 no ar: `Auth__CookieSessao=true` e `Auth__CookieDominio=<dominio>` (seção 3).
+5. **Cloudflare Pages**: `VITE_API_BASE_URL=https://api.<dominio>` e um novo deploy.
+6. **Repositório** (um PR, citando a KAN-16):
+   - `web/public/_headers`: incluir `https://api.<dominio>` no `connect-src` (manter o `onrender.com` na transição);
+   - `mobile/eas.json`: `EXPO_PUBLIC_API_BASE_URL=https://api.<dominio>` nos perfis de build; a troca chega aos aparelhos num APK novo;
+   - `deploy/keepalive/wrangler.toml`: `HEALTH_URL=https://api.<dominio>/health` e `npx wrangler deploy`.
+7. **Email**: autentique o domínio no Brevo (SPF e DKIM, seção 11) e troque o remetente para `nao-responda@<dominio>`.
+8. **Testar**: `/health` no endereço novo, login no web (com o cookie ligado, também no iPhone), sincronização no app e o link de um "Esqueci a senha".
+
 ## 5. Mobile
 
 No `mobile/.env`:
